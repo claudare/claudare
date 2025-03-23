@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/repo.dart';
 
 class NotePage extends StatefulWidget {
@@ -24,7 +24,7 @@ class NotePage extends StatefulWidget {
 class _NotePageState extends State<NotePage> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
-  bool _contentChanged = false;
+  bool _noteChanged = false;
 
   @override
   void initState() {
@@ -40,7 +40,7 @@ class _NotePageState extends State<NotePage> {
     // print('Note changed');
     // TextEditingDelta(oldText: _titleController.text, selection: _titleController.selection, composing: _titleController.tex)
     setState(() {
-      _contentChanged = _didTitleChange() || _didContentChange();
+      _noteChanged = _didTitleChange() || _didContentChange();
     });
   }
 
@@ -50,7 +50,7 @@ class _NotePageState extends State<NotePage> {
     if (oldWidget.note.id != widget.note.id) {
       _titleController.text = widget.note.title;
       _contentController.text = widget.note.content;
-      _contentChanged = false;
+      _noteChanged = false;
     }
   }
 
@@ -78,11 +78,52 @@ class _NotePageState extends State<NotePage> {
 
     // _contentController.text = "lalala mutated";
     setState(() {
-      _contentChanged = false;
+      _noteChanged = false;
     });
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('Note saved')));
+  }
+
+  Future<void> _deleteNote(BuildContext ctx) async {
+    final shouldDelete =
+        await showDialog<bool>(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: Text('Delete note?'),
+                content: Text('Are you sure you want to delete this note?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: Text('No'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: Text('Yes'),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
+
+    if (shouldDelete) {
+      widget.repo.processEvent(NoteDeleted(widget.note.id), DateTime.now());
+      // prevent saving it
+      setState(() {
+        _noteChanged = false;
+      });
+      if (ctx.mounted) {
+        Navigator.of(ctx).pop();
+      }
+    }
+  }
+
+  void _onPopInvokedWithResult(bool didPop, _) async {
+    if (_noteChanged) {
+      print('autosaving note onPop, didPop: $didPop');
+      _saveNote();
+    }
   }
 
   @override
@@ -93,12 +134,6 @@ class _NotePageState extends State<NotePage> {
     _contentController.dispose();
 
     super.dispose();
-  }
-
-  void _onPopInvokedWithResult(bool didPop, _) async {
-    if (_contentChanged) {
-      _saveNote();
-    }
   }
 
   @override
@@ -112,11 +147,14 @@ class _NotePageState extends State<NotePage> {
           ),
           actions: [
             IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () => _deleteNote(context),
+            ),
+            IconButton(
               icon: Icon(Icons.save),
-              onPressed: _contentChanged ? _saveNote : null,
-              tooltip:
-                  _contentChanged ? 'Save changes' : 'All changes upto date',
-              disabledColor: _contentChanged ? null : Colors.red,
+              onPressed: _noteChanged ? _saveNote : null,
+              tooltip: _noteChanged ? 'Save changes' : 'All changes upto date',
+              disabledColor: _noteChanged ? null : Colors.red,
             ),
           ],
         ),
@@ -126,11 +164,11 @@ class _NotePageState extends State<NotePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Created: ${_formatDateTime(widget.note.createdAt)}',
+                'Created: ${formatDateTime(widget.note.createdAt)}',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               Text(
-                'Last updated: ${_formatDateTime(widget.note.updatedAt)}',
+                'Last updated: ${formatDateTime(widget.note.updatedAt)}',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               SizedBox(height: 16),
@@ -159,9 +197,5 @@ class _NotePageState extends State<NotePage> {
         ),
       ),
     );
-  }
-
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 }

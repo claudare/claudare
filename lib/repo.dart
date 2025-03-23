@@ -77,7 +77,8 @@ class NoteOrderData {
   List<Id> get items => _order;
 
   void add(Id id) {
-    _order.add(id);
+    // add to the beginning, this list is upside down
+    _order.insert(0, id);
     _notifyChange();
   }
 

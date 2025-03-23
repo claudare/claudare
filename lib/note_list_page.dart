@@ -44,6 +44,12 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
+  void _newNote() {
+    final id = Id.random();
+    _repo.processEvent(NoteCreated(id), DateTime.now());
+    _openNote(id);
+  }
+
   @override
   void dispose() {
     _repo.dispose();
@@ -53,7 +59,12 @@ class _NoteListPageState extends State<NoteListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Notes')),
+      appBar: AppBar(
+        title: Text('Notes'),
+        actions: [
+          IconButton(icon: Icon(Icons.add), onPressed: () => _newNote()),
+        ],
+      ),
       body: StreamBuilder<void>(
         stream: _repo.order.changes,
         builder: (context, snapshot) {
@@ -80,7 +91,7 @@ class _NoteListPageState extends State<NoteListPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     trailing: Text(
-                      _formatDate(note.updatedAt),
+                      formatDateTime(note.updatedAt),
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     onTap: () => _openNote(id),
@@ -92,9 +103,5 @@ class _NoteListPageState extends State<NoteListPage> {
         },
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }
