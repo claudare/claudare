@@ -30,7 +30,10 @@ void main() {
       final noteData = repo.getNote(noteId)!;
 
       expectLater(noteData.changes, emits(anything));
-      repo.processEvent(NoteBodyUpdated(noteId, 'Updated content'), timestamp);
+      repo.processEvent(
+        NoteContentUpdated(noteId, 'Updated content'),
+        timestamp,
+      );
 
       expect(order.items, equals([noteId]));
       expect(noteData.content, equals('Updated content'));
@@ -77,7 +80,7 @@ void main() {
 
         // Act - only update note1
         repo.processEvent(
-          NoteBodyUpdated(noteId1, 'Updated content'),
+          NoteContentUpdated(noteId1, 'Updated content'),
           DateTime.now(),
         );
 

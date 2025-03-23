@@ -56,6 +56,8 @@ class NoteData {
   }
 
   void _notifyChange() {
+    // snapshot wiriting to the database could happen here
+    // the NoteData class should have a reference to the storage.
     _changeController.add(null);
   }
 
@@ -129,14 +131,21 @@ class Repo {
 
   // Method for creating a new note
   void processEvent(NoteEvent event, DateTime timestamp) {
+    // writing of event to db should happen here
+    print('Processing event: $event');
     switch (event) {
       case NoteCreated event:
+        // saving of note and order can happen here
         _notes[event.id] = NoteData.emptyNew(event.id, timestamp);
         _order.add(event.id);
         break;
-      case NoteBodyUpdated event:
+      case NoteContentUpdated event:
         final note = _notes[event.id]!;
         note.updateContent(event.content, timestamp);
+        break;
+      case NoteTitleUpdated event:
+        final note = _notes[event.id]!;
+        note.updateTitle(event.title, timestamp);
         break;
       case NoteDeleted event:
         final note = _notes.remove(event.id);
@@ -158,19 +167,38 @@ class NoteCreated extends NoteEvent {
   final Id id;
 
   const NoteCreated(this.id);
+
+  @override
+  String toString() => 'NoteCreated(id: $id)';
 }
 
-class NoteBodyUpdated extends NoteEvent {
+class NoteContentUpdated extends NoteEvent {
   final Id id;
   final String content;
 
-  const NoteBodyUpdated(this.id, this.content);
+  const NoteContentUpdated(this.id, this.content);
+
+  @override
+  String toString() => 'NoteContentUpdated(id: $id, content: $content)';
+}
+
+class NoteTitleUpdated extends NoteEvent {
+  final Id id;
+  final String title;
+
+  const NoteTitleUpdated(this.id, this.title);
+
+  @override
+  String toString() => 'NoteTitleUpdated(id: $id, title: $title)';
 }
 
 class NoteDeleted extends NoteEvent {
   final Id id;
 
   const NoteDeleted(this.id);
+
+  @override
+  String toString() => 'NoteDeleted(id: $id)';
 }
 
 class NoteMoved extends NoteEvent {
@@ -178,4 +206,7 @@ class NoteMoved extends NoteEvent {
   final int toIndex;
 
   const NoteMoved(this.id, this.toIndex);
+
+  @override
+  String toString() => 'NoteMoved(id: $id, toIndex: $toIndex)';
 }

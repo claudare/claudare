@@ -22,7 +22,7 @@ class _NoteListPageState extends State<NoteListPage> {
     for (final id in exampleIds) {
       _repo.processEvent(NoteCreated(id), DateTime.now());
       _repo.processEvent(
-        NoteBodyUpdated(id, 'This is note #${id.value}'),
+        NoteContentUpdated(id, 'This is note #${id.value}'),
         DateTime.now(),
       );
     }
