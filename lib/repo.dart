@@ -216,8 +216,19 @@ class Repo {
         break;
       case NoteDeleted event:
         final note = _notes.remove(event.id);
-        note?.dispose();
+
+        if (note == null) {
+          throw Exception('Note ${event.id} not found');
+        }
+
+        note.dispose();
         _order.remove(event.id);
+
+        // remove all tags associated with the note
+        for (final tag in note.tags) {
+          tags.removeTag(event.id, tag);
+        }
+
         break;
       case NoteMoved event:
         _order.moveToIndex(event.id, event.toIndex);
