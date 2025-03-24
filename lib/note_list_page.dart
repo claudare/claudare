@@ -12,32 +12,26 @@ class NoteListPage extends StatefulWidget {
 
 class _NoteListPageState extends State<NoteListPage> {
   late final Repo _repo;
+  // TODO: show a splashscreen while loading...
+  bool loaded = false;
 
   _NoteListPageState() {
     // example notes notes are loaded here
     _repo = Repo.empty();
-
-    final List<Id> exampleIds = [Id('1'), Id('2')];
-    // Create two hardcoded notes
-    for (final id in exampleIds) {
-      _repo.processEvent(NoteCreated(id), DateTime.now());
-      _repo.processEvent(
-        NoteContentUpdated(id, 'This is note #${id.value}'),
-        DateTime.now(),
-      );
-      _repo.processEvent(TagAssigned(id, 'example'), DateTime.now());
-    }
   }
 
   @override
   void initState() {
     super.initState();
+
+    _repo.load().then((_) {
+      setState(() {
+        loaded = true;
+      });
+    });
   }
 
-  void _openNote(Id noteId) {
-    final note = _repo.getNote(noteId);
-    if (note == null) return;
-
+  void _openNote(NoteData note) async {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => NotePage(repo: _repo, note: note),
@@ -45,10 +39,16 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  void _newNote() {
+  Future<void> _newNote() async {
     final id = Id.random();
     _repo.processEvent(NoteCreated(id), DateTime.now());
-    _openNote(id);
+    // this is racy
+    final note = await _repo.getNote(id);
+    if (note == null) {
+      throw Exception('new note could not be loaded??');
+    }
+
+    _openNote(note);
   }
 
   @override
@@ -73,29 +73,36 @@ class _NoteListPageState extends State<NoteListPage> {
             itemCount: _repo.order.items.length,
             itemBuilder: (context, index) {
               final id = _repo.order.items[index];
-              final note = _repo.getNote(id);
-
-              if (note == null) {
-                return SizedBox.shrink();
-              }
-
-              return StreamBuilder<void>(
-                stream: note.changes,
+              return FutureBuilder(
+                future: _repo.getNote(id),
                 builder: (context, snapshot) {
-                  return ListTile(
-                    title: Text(note.title.isEmpty ? 'No title' : note.title),
-                    subtitle: Text(
-                      note.content.isEmpty
-                          ? 'No content'
-                          : note.getPreviewContent(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Text(
-                      formatDateTime(note.updatedAt),
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    onTap: () => _openNote(id),
+                  final note = snapshot.data;
+
+                  if (note == null) {
+                    return SizedBox.shrink();
+                  }
+
+                  return StreamBuilder<void>(
+                    stream: note.changes,
+                    builder: (context, snapshot) {
+                      return ListTile(
+                        title: Text(
+                          note.title.isEmpty ? 'No title' : note.title,
+                        ),
+                        subtitle: Text(
+                          note.content.isEmpty
+                              ? 'No content'
+                              : note.getPreviewContent(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Text(
+                          formatDateTime(note.updatedAt),
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                        onTap: () => _openNote(note),
+                      );
+                    },
                   );
                 },
               );

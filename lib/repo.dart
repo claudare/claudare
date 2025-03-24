@@ -14,7 +14,7 @@ class NoteData {
   // dont mutate these directly please
   String title;
   String content;
-  Set<String> _tags;
+  final Set<String> _tags;
 
   DateTime createdAt;
   DateTime updatedAt;
@@ -183,9 +183,30 @@ class Repo {
 
   Repo.empty() : _notes = {}, _order = NoteOrderData([]), _tags = TagsData({});
 
+  // load from the sqlite database
+  Future<void> load() async {
+    await Future.delayed(Duration(milliseconds: 1000));
+
+    final List<Id> exampleIds = [Id('1'), Id('2')];
+    // Create two hardcoded notes
+    for (final id in exampleIds) {
+      await processEvent(NoteCreated(id), DateTime.now());
+      await processEvent(
+        NoteContentUpdated(id, 'This is note #${id.value}'),
+        DateTime.now(),
+      );
+      await processEvent(TagAssigned(id, 'example'), DateTime.now());
+    }
+  }
+
   // Access methods that return the reactive objects
-  NoteData? getNote(Id id) => _notes[id];
+  // wrapped in the future to simulate using the database cache underneath
+  Future<NoteData?> getNote(Id id) =>
+      Future.delayed(Duration(milliseconds: 1), () => _notes[id]);
+
+  // order could be sync, loaded at application startup
   NoteOrderData get order => _order;
+  // tags could be sync, loaded at application startup
   TagsData get tags => _tags;
 
   void dispose() {
@@ -197,7 +218,7 @@ class Repo {
   }
 
   // Method for creating a new note
-  void processEvent(NoteEvent event, DateTime timestamp) {
+  Future<void> processEvent(NoteEvent event, DateTime timestamp) async {
     // writing of event to db should happen here
     print('Processing event: $event');
     switch (event) {
@@ -207,14 +228,20 @@ class Repo {
         _order.add(event.id);
         break;
       case NoteContentUpdated event:
-        final note = _notes[event.id]!;
-        note.updateContent(event.content, timestamp);
+        // the repo does not need to have everything loaded
+        final note = await getNote(event.id);
+        assert(note != null);
+        note!.updateContent(event.content, timestamp);
         break;
       case NoteTitleUpdated event:
-        final note = _notes[event.id]!;
-        note.updateTitle(event.title, timestamp);
+        final note = await getNote(event.id);
+        assert(note != null);
+        note!.updateTitle(event.title, timestamp);
         break;
       case NoteDeleted event:
+        // TODO: this should be async too? first need to check if note exists
+        // then it needs to be removed from the map
+        // then it needs to be removed from disk
         final note = _notes.remove(event.id);
 
         if (note == null) {
@@ -234,13 +261,15 @@ class Repo {
         _order.moveToIndex(event.id, event.toIndex);
         break;
       case TagAssigned event:
-        final note = _notes[event.noteId]!;
-        note.addTag(event.tagName, timestamp);
+        final note = await getNote(event.noteId);
+        assert(note != null);
+        note!.addTag(event.tagName, timestamp);
         tags.addTag(event.noteId, event.tagName);
         break;
       case TagUnassigned event:
-        final note = _notes[event.noteId]!;
-        note.removeTag(event.tagName, timestamp);
+        final note = await getNote(event.noteId);
+        assert(note != null);
+        note!.removeTag(event.tagName, timestamp);
         tags.removeTag(event.noteId, event.tagName);
         break;
     }

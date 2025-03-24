@@ -24,12 +24,12 @@ void main() {
       final timestamp = DateTime.fromMillisecondsSinceEpoch(1000);
 
       expectLater(order.changes, emits(anything));
-      repo.processEvent(NoteCreated(noteId), timestamp);
+      await repo.processEvent(NoteCreated(noteId), timestamp);
 
-      final noteData = repo.getNote(noteId)!;
+      final noteData = await repo.getNote(noteId);
 
-      expectLater(noteData.changes, emits(anything));
-      repo.processEvent(
+      expectLater(noteData!.changes, emits(anything));
+      await repo.processEvent(
         NoteContentUpdated(noteId, 'Updated content'),
         timestamp,
       );
@@ -39,23 +39,27 @@ void main() {
 
       // now check from the repo perspective
       expect(repo.order.items, equals([noteId]));
-      expect(repo.getNote(noteId)!.content, equals('Updated content'));
+      expect((await repo.getNote(noteId))!.content, equals('Updated content'));
     });
 
     test('Note ordering', () async {
       // Arrange
       final noteId1 = Id("1");
       final noteId2 = Id("2");
-      repo.processEvent(NoteCreated(noteId1), DateTime.now());
-      repo.processEvent(NoteCreated(noteId2), DateTime.now());
+      await repo.processEvent(NoteCreated(noteId1), DateTime.now());
+      await repo.processEvent(NoteCreated(noteId2), DateTime.now());
 
+      // notes are ordered in "reverse order"
       final order = repo.order;
-      expect(order.items, equals([noteId1, noteId2]));
+      expect(order.items, equals([noteId2, noteId1]));
 
       expectLater(order.changes, emits(anything));
-      repo.processEvent(NoteMoved(noteId2, 0), DateTime.now());
+      await repo.processEvent(
+        NoteMoved(noteId2, 1),
+        DateTime.now(),
+      ); // moved to end (aka one)
 
-      expect(order.items, equals([noteId2, noteId1]));
+      expect(order.items, equals([noteId1, noteId2]));
     });
 
     test(
@@ -65,20 +69,20 @@ void main() {
         final noteId1 = Id("1");
         final noteId2 = Id("2");
 
-        repo.processEvent(NoteCreated(noteId1), DateTime.now());
-        repo.processEvent(NoteCreated(noteId2), DateTime.now());
+        await repo.processEvent(NoteCreated(noteId1), DateTime.now());
+        await repo.processEvent(NoteCreated(noteId2), DateTime.now());
 
-        final _ = repo.getNote(noteId1)!;
-        final note2 = repo.getNote(noteId2)!;
+        final _ = await repo.getNote(noteId1);
+        final note2 = await repo.getNote(noteId2);
 
         // Set up a counter to track emissions
         var note2ChangeCount = 0;
-        final subscription = note2.changes.listen((_) {
+        final subscription = note2!.changes.listen((_) {
           note2ChangeCount++;
         });
 
         // Act - only update note1
-        repo.processEvent(
+        await repo.processEvent(
           NoteContentUpdated(noteId1, 'Updated content'),
           DateTime.now(),
         );
