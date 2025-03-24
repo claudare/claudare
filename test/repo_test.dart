@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes_app_v0/repo.dart';
 import 'package:notes_app_v0/common.dart';
@@ -69,7 +68,7 @@ void main() {
         repo.processEvent(NoteCreated(noteId1), DateTime.now());
         repo.processEvent(NoteCreated(noteId2), DateTime.now());
 
-        final note1 = repo.getNote(noteId1)!;
+        final _ = repo.getNote(noteId1)!;
         final note2 = repo.getNote(noteId2)!;
 
         // Set up a counter to track emissions
