@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/repo.dart';
+import 'package:notes_app_v0/tag_widget.dart';
+import 'package:notes_app_v0/tags_manager.dart';
 
 class NotePage extends StatefulWidget {
   final Repo repo;
@@ -24,23 +28,50 @@ class NotePage extends StatefulWidget {
 class _NotePageState extends State<NotePage> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
-  bool _noteChanged = false;
+  late StreamSubscription<void> _changesSubscription;
+  bool _textContentChanged = false;
 
   @override
   void initState() {
     super.initState();
 
     _titleController = TextEditingController(text: widget.note.title);
-    _titleController.addListener(_onNoteChanged);
+    _titleController.addListener(_onTextContentChanged);
     _contentController = TextEditingController(text: widget.note.content);
-    _contentController.addListener(_onNoteChanged);
+    _contentController.addListener(_onTextContentChanged);
+
+    final changes = widget.note.changes;
+    _changesSubscription = changes.listen((event) {
+      if (!context.mounted) {
+        throw Exception('Context was not mounted???');
+      }
+
+      _onTextContentChanged(); // forces full ui refresh
+
+      // do not update the text for now... in the future
+      // this will be an intelligent choice
+      // _titleController.text = widget.note.title;
+      // _contentController.text = widget.note.content;
+    });
   }
 
-  void _onNoteChanged() {
+  @override
+  void dispose() {
+    _titleController.removeListener(_onTextContentChanged);
+    _titleController.dispose();
+    _contentController.removeListener(_onTextContentChanged);
+    _contentController.dispose();
+
+    _changesSubscription.cancel();
+
+    super.dispose();
+  }
+
+  void _onTextContentChanged() {
     // print('Note changed');
     // TextEditingDelta(oldText: _titleController.text, selection: _titleController.selection, composing: _titleController.tex)
     setState(() {
-      _noteChanged = _didTitleChange() || _didContentChange();
+      _textContentChanged = _didTitleChange() || _didContentChange();
     });
   }
 
@@ -50,7 +81,7 @@ class _NotePageState extends State<NotePage> {
     if (oldWidget.note.id != widget.note.id) {
       _titleController.text = widget.note.title;
       _contentController.text = widget.note.content;
-      _noteChanged = false;
+      _textContentChanged = false;
     }
   }
 
@@ -62,7 +93,7 @@ class _NotePageState extends State<NotePage> {
     return _contentController.text != widget.note.content;
   }
 
-  void _saveNote() {
+  void _saveNote({bool updateState = true}) {
     if (_didTitleChange()) {
       widget.repo.processEvent(
         NoteTitleUpdated(widget.note.id, _titleController.text),
@@ -76,13 +107,14 @@ class _NotePageState extends State<NotePage> {
       );
     }
 
-    // _contentController.text = "lalala mutated";
-    setState(() {
-      _noteChanged = false;
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Note saved')));
+    if (updateState) {
+      setState(() {
+        _textContentChanged = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Note saved')));
+    }
   }
 
   Future<void> _deleteNote(BuildContext ctx) async {
@@ -109,9 +141,9 @@ class _NotePageState extends State<NotePage> {
 
     if (shouldDelete) {
       widget.repo.processEvent(NoteDeleted(widget.note.id), DateTime.now());
-      // prevent saving it
+      // prevent saving it ???
       setState(() {
-        _noteChanged = false;
+        _textContentChanged = false;
       });
       if (ctx.mounted) {
         Navigator.of(ctx).pop();
@@ -119,21 +151,40 @@ class _NotePageState extends State<NotePage> {
     }
   }
 
-  void _onPopInvokedWithResult(bool didPop, _) async {
-    if (_noteChanged) {
-      print('autosaving note onPop, didPop: $didPop');
-      _saveNote();
-    }
+  void _unassignTag(String tag) {
+    widget.repo.processEvent(
+      TagUnassigned(widget.note.id, tag),
+      DateTime.now(),
+    );
   }
 
-  @override
-  void dispose() {
-    _titleController.removeListener(_onNoteChanged);
-    _titleController.dispose();
-    _contentController.removeListener(_onNoteChanged);
-    _contentController.dispose();
+  Future<void> _onTagPressed(BuildContext context) async {
+    // this doesnt need await though?
+    await showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+      builder: (context) {
+        return TagsManager(repo: widget.repo, noteData: widget.note);
+      },
+    );
 
-    super.dispose();
+    // normal dialogs are out of my competence haha
+    // await showDialog(
+    //   context: context,
+    //   builder: (context) {
+    //     return AlertDialog(
+    //       title: Text('Manage Tags'),
+    //       content: TagsManager(repo: widget.repo, noteData: widget.note),
+    //     );
+    //   },
+    // );
+  }
+
+  void _onPopInvokedWithResult(bool didPop, _) async {
+    if (_textContentChanged) {
+      print('autosaving note onPop, didPop: $didPop');
+      _saveNote(updateState: false);
+    }
   }
 
   @override
@@ -147,14 +198,21 @@ class _NotePageState extends State<NotePage> {
           ),
           actions: [
             IconButton(
+              icon: Icon(Icons.tag),
+              onPressed: () => _onTagPressed(context),
+            ),
+            IconButton(
               icon: Icon(Icons.delete),
               onPressed: () => _deleteNote(context),
             ),
             IconButton(
               icon: Icon(Icons.save),
-              onPressed: _noteChanged ? _saveNote : null,
-              tooltip: _noteChanged ? 'Save changes' : 'All changes upto date',
-              disabledColor: _noteChanged ? null : Colors.red,
+              onPressed: _textContentChanged ? _saveNote : null,
+              tooltip:
+                  _textContentChanged
+                      ? 'Save changes'
+                      : 'All changes upto date',
+              disabledColor: _textContentChanged ? null : Colors.red,
             ),
           ],
         ),
@@ -171,7 +229,8 @@ class _NotePageState extends State<NotePage> {
                 'Last updated: ${formatDateTime(widget.note.updatedAt)}',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              SizedBox(height: 16),
+
+              SizedBox(height: 8),
               TextField(
                 controller: _titleController,
                 decoration: InputDecoration(
@@ -191,6 +250,19 @@ class _NotePageState extends State<NotePage> {
                   ),
                   textAlignVertical: TextAlignVertical.top,
                 ),
+              ),
+              // only show below if tags are present... what a wierd syntax
+              if (widget.note.tags.isNotEmpty) SizedBox(height: 8),
+              Wrap(
+                spacing: 4.0,
+                runSpacing: 4.0,
+                children:
+                    widget.note.tags.map((tagName) {
+                      return TagWidget(
+                        tagName: tagName,
+                        onRemove: _unassignTag,
+                      );
+                    }).toList(),
               ),
             ],
           ),

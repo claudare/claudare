@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/note_page.dart';
@@ -25,6 +27,7 @@ class _NoteListPageState extends State<NoteListPage> {
         NoteContentUpdated(id, 'This is note #${id.value}'),
         DateTime.now(),
       );
+      _repo.processEvent(TagAssigned(id, 'example'), DateTime.now());
     }
   }
 

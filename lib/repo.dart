@@ -14,6 +14,7 @@ class NoteData {
   // dont mutate these directly please
   String title;
   String content;
+  Set<String> _tags;
 
   DateTime createdAt;
   DateTime updatedAt;
@@ -21,13 +22,15 @@ class NoteData {
   final _changeController = StreamController<void>.broadcast(sync: true);
   Stream<void> get changes => _changeController.stream;
 
-  NoteData({
-    required this.id,
-    required this.title,
-    required this.content,
-    required this.createdAt,
-    required this.updatedAt,
-  });
+  // make unnamed paramters
+  NoteData(
+    this.id,
+    this.title,
+    this.content,
+    this._tags,
+    this.createdAt,
+    this.updatedAt,
+  );
 
   // getters
   String getPreviewContent() {
@@ -39,18 +42,33 @@ class NoteData {
   NoteData.emptyNew(this.id, DateTime time)
     : title = '',
       content = '',
+      _tags = {},
       createdAt = time,
       updatedAt = time;
 
-  // setters here
-  updateTitle(String value, DateTime timestamp) {
+  List<String> get tags => _tags.toList()..sort();
+
+  // mutators below
+  void updateTitle(String value, DateTime timestamp) {
     title = value;
     updatedAt = timestamp;
     _notifyChange();
   }
 
-  updateContent(String value, DateTime timestamp) {
+  void updateContent(String value, DateTime timestamp) {
     content = value;
+    updatedAt = timestamp;
+    _notifyChange();
+  }
+
+  void addTag(String tag, DateTime timestamp) {
+    _tags.add(tag);
+    updatedAt = timestamp;
+    _notifyChange();
+  }
+
+  void removeTag(String tag, DateTime timestamp) {
+    _tags.remove(tag);
     updatedAt = timestamp;
     _notifyChange();
   }
@@ -108,23 +126,71 @@ class NoteOrderData {
   }
 }
 
+class TagsData {
+  // association of tags to notes
+  final Map<String, List<Id>> _tags;
+
+  final _changeController = StreamController<void>.broadcast(sync: true);
+  Stream<void> get changes => _changeController.stream;
+
+  TagsData(this._tags);
+
+  void addTag(Id noteId, String tagName) {
+    _tags[tagName] ??= [];
+    _tags[tagName]!.add(noteId);
+
+    _notifyChange();
+  }
+
+  void removeTag(Id noteId, String tagName) {
+    final list = _tags[tagName];
+    if (list == null) {
+      throw Exception('Tag $tagName not found');
+    }
+
+    list.remove(noteId);
+    if (list.isEmpty) {
+      _tags.remove(tagName);
+    }
+
+    _notifyChange();
+  }
+
+  // get all tags sorted alphabetically
+  List<String> get values => _tags.keys.toList()..sort();
+
+  List<Id> getTagNodeIds(String tag) => _tags[tag] ?? [];
+
+  void _notifyChange() {
+    // snapshot wiriting to the database could happen here
+    // the NoteData class should have a reference to the storage.
+    _changeController.add(null);
+  }
+
+  void dispose() {
+    _changeController.close();
+  }
+}
+
 // this is like the full state of the application, but without flutter things.
 // Managed by dispatching events
 class Repo {
   final Map<Id, NoteData> _notes;
   final NoteOrderData _order;
+  final TagsData _tags;
 
-  Repo(this._notes, this._order);
+  Repo(this._notes, this._order, this._tags);
 
-  // Constructor for creating a new instance of Repo
-  Repo.empty() : _notes = {}, _order = NoteOrderData([]);
+  Repo.empty() : _notes = {}, _order = NoteOrderData([]), _tags = TagsData({});
 
   // Access methods that return the reactive objects
   NoteData? getNote(Id id) => _notes[id];
   NoteOrderData get order => _order;
+  TagsData get tags => _tags;
 
   void dispose() {
     _order.dispose();
+    _tags.dispose();
     for (final note in _notes.values) {
       note.dispose();
     }
@@ -155,6 +221,16 @@ class Repo {
         break;
       case NoteMoved event:
         _order.moveToIndex(event.id, event.toIndex);
+        break;
+      case TagAssigned event:
+        final note = _notes[event.noteId]!;
+        note.addTag(event.tagName, timestamp);
+        tags.addTag(event.noteId, event.tagName);
+        break;
+      case TagUnassigned event:
+        final note = _notes[event.noteId]!;
+        note.removeTag(event.tagName, timestamp);
+        tags.removeTag(event.noteId, event.tagName);
         break;
     }
   }
@@ -210,4 +286,26 @@ class NoteMoved extends NoteEvent {
 
   @override
   String toString() => 'NoteMoved(id: $id, toIndex: $toIndex)';
+}
+
+// tag events
+
+class TagAssigned extends NoteEvent {
+  final Id noteId;
+  final String tagName;
+
+  const TagAssigned(this.noteId, this.tagName);
+
+  @override
+  String toString() => 'TagAssigned(noteId: $noteId, tag: $tagName)';
+}
+
+class TagUnassigned extends NoteEvent {
+  final Id noteId;
+  final String tagName;
+
+  const TagUnassigned(this.noteId, this.tagName);
+
+  @override
+  String toString() => 'TagUnassigned(noteId: $noteId, tag: $tagName)';
 }

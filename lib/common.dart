@@ -5,7 +5,10 @@ class Id {
 
   Id(this.value);
 
-  Id.random() : this('${DateTime.now().toUtc()}+${Random().nextInt(1000000)}');
+  Id.random()
+    : this(
+        '${DateTime.now().millisecondsSinceEpoch}+${Random().nextInt(1000000).toString().padLeft(6, '0')}',
+      );
 
   @override
   String toString() => value;
