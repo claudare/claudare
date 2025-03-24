@@ -20,7 +20,7 @@ void main() {
     test('Individual note should emit changes when updated', () async {
       final order = repo.order;
 
-      final noteId = Id("1");
+      final noteId = Id('1');
       final timestamp = DateTime.fromMillisecondsSinceEpoch(1000);
 
       expectLater(order.changes, emits(anything));
@@ -44,8 +44,8 @@ void main() {
 
     test('Note ordering', () async {
       // Arrange
-      final noteId1 = Id("1");
-      final noteId2 = Id("2");
+      final noteId1 = Id('1');
+      final noteId2 = Id('2');
       await repo.processEvent(NoteCreated(noteId1), DateTime.now());
       await repo.processEvent(NoteCreated(noteId2), DateTime.now());
 
@@ -66,8 +66,8 @@ void main() {
       'Updates to one note should not trigger events for other notes',
       () async {
         // Arrange
-        final noteId1 = Id("1");
-        final noteId2 = Id("2");
+        final noteId1 = Id('1');
+        final noteId2 = Id('2');
 
         await repo.processEvent(NoteCreated(noteId1), DateTime.now());
         await repo.processEvent(NoteCreated(noteId2), DateTime.now());

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/note_list_page.dart';
-import 'package:notes_app_v0/repo.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
