@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:core/src/encryption/aes.dart';
+import 'package:core/src/encryption/aes256.dart';
 import 'package:core/src/encryption/base64.dart';
 
 import 'package:test/test.dart';

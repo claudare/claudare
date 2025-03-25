@@ -1,8 +1,3 @@
-// need a sort of enum/union to make everything work without concrete implemntations
-// there is a dart object called "key"
-// all encryption keys needed for unlocking the file are stored as strings.
-// they include a header, so that the algorithm can be identified from the key.
-
 import 'package:core/src/encryption/common.dart';
 import 'package:core/src/encryption/none.dart';
 import 'package:core/src/encryption/aes256.dart';
@@ -14,7 +9,7 @@ const _algos = {
   'aes256': AES256Encryption,
 };
 
-Encryption getEncryption(String name) {
+Encryption encryptionFromName(String name) {
   final algo = _algos[name];
 
   if (algo == null) {
@@ -22,4 +17,8 @@ Encryption getEncryption(String name) {
   }
 
   return algo as Encryption;
+}
+
+List<String> encryptionSupported() {
+  return _algos.keys.toList();
 }
