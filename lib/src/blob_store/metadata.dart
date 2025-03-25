@@ -26,6 +26,7 @@ class BlobMetadata {
 }
 
 /// [BlobStreamWithMetadata] packs and unpacks metadata from the decrypted stream
+/// encryption is added to here?
 class BlobStreamWithMetadata {
   final BlobMetadata metadata;
 
