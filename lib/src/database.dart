@@ -3,21 +3,19 @@ import 'dart:io';
 import 'package:sqlite_async/sqlite_async.dart';
 
 class Database {
-  late SqliteDatabase underlyingDb;
+  late SqliteDatabase db;
   String? _tempDir;
 
-  Database(String path) : underlyingDb = SqliteDatabase(path: path);
+  Database(String path) : db = SqliteDatabase(path: path);
 
   Database.temporary() {
     _tempDir = _getTempDir();
     final path = '$_tempDir/db';
-    underlyingDb = SqliteDatabase(path: path);
+    db = SqliteDatabase(path: path);
   }
 
-  Database.fromSqliteDatabase(this.underlyingDb);
-
   Future<void> deinit() async {
-    await underlyingDb.close();
+    await db.close();
 
     if (_tempDir != null) {
       await _tempDirCleanup(_tempDir!);

@@ -1,21 +1,48 @@
-/// unified way to deal with timestamps
-/// essentially, this is a unix timestamp
-class Timestamp implements Comparable<Timestamp> {
-  /// unix value of the timestamp
-  int value;
+import 'package:core/src/base58.dart';
 
-  Timestamp(this.value);
+const _stringLength = 11; // for u64
+
+/// [TimestampGenerator] will ensure that timestamps are created in an
+/// always increasing order. Same millisecond events will jump to the future by
+/// 1 millisecond. This seems like a terrible hack, but I think it will work well.
+class TimestampGenerator {
+  int _last = 0;
+
+  Timestamp next(Timestamp now) {
+    if (now.value > _last) {
+      _last = now.value;
+      return now;
+    }
+
+    // otherwise fake timestamp by going a bit into the future
+    _last++;
+
+    // the timestamp is off by a whole 1 second!
+    if (_last - now.value >= 1000) {
+      throw Exception(
+        'Timestamp ordering exhausted. Last $_last, now ${now.value}',
+      );
+    }
+
+    return Timestamp(_last);
+  }
+}
+
+/// A unified way to deal with timestamps.
+/// Essentially, this is a unix timestamp.
+class Timestamp implements Comparable<Timestamp> {
+  /// unix millisecond value
+  final int value;
+
+  const Timestamp(this.value);
 
   Timestamp.fromDateTime(DateTime dateTime)
     : value = dateTime.millisecondsSinceEpoch;
 
-  Timestamp.fromJson(String json) : value = int.parse(json);
+  Timestamp.now() : value = DateTime.now().millisecondsSinceEpoch;
 
-  String toJson() {
-    return value.toString();
-  }
-
-  // additional formattings go here
+  // Additional formatting helper.
+  // Only used for debugging pursposes.
   String toISO8601() {
     final DateTime dateTime =
         DateTime.fromMillisecondsSinceEpoch(value).toUtc();
@@ -41,6 +68,22 @@ class Timestamp implements Comparable<Timestamp> {
   @override
   int get hashCode => value.hashCode;
 
+  factory Timestamp.fromJson(String json) {
+    return Timestamp.fromString(json);
+  }
+
+  String toJson() {
+    return value.toString();
+  }
+
+  factory Timestamp.fromString(String str) {
+    if (str.length != _stringLength) {
+      throw FormatException('Timestamp is invalid, wrong length', str);
+    }
+
+    return Timestamp(Base58.fromString(str));
+  }
+
   @override
-  String toString() => 'Timestamp{value: $value}';
+  String toString() => Base58.toStringPadded(value, _stringLength);
 }

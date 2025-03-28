@@ -18,7 +18,7 @@ void main() {
           }),
         );
 
-      await _migrations.migrate(db.underlyingDb);
+      await _migrations.migrate(db.db);
 
       await db.deinit();
     });
