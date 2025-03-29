@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:core/src/base58.dart';
 
-class DeviceId {
+class DeviceId implements Comparable<DeviceId> {
   static const _strLenDevice = 3;
   static const int _maxDeviceIdValue = 0xFFFF; // u16
 
@@ -26,6 +26,16 @@ class DeviceId {
 
   @override
   int get hashCode => value.hashCode;
+
+  @override
+  int compareTo(DeviceId other) {
+    return value.compareTo(other.value);
+  }
+
+  bool operator >(DeviceId other) => value > other.value;
+  bool operator <(DeviceId other) => value < other.value;
+  bool operator >=(DeviceId other) => value >= other.value;
+  bool operator <=(DeviceId other) => value <= other.value;
 
   /// Creates a [DeviceId] from Base58 string representation
   DeviceId.fromString(String valueStr) : value = Base58.fromString(valueStr) {
