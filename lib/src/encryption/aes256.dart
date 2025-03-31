@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:convert/convert.dart';
 
 import 'package:async/async.dart';
 import 'package:pointycastle/export.dart';
@@ -24,6 +25,15 @@ class AES256Key {
     secureRandom.seed(KeyParameter(seed));
 
     final bytes = secureRandom.nextBytes(32);
+    return AES256Key(bytes);
+  }
+
+  String toHex() {
+    return hex.encode(bytes);
+  }
+
+  factory AES256Key.fromHex(String hexString) {
+    final bytes = Uint8List.fromList(hex.decode(hexString));
     return AES256Key(bytes);
   }
 }
