@@ -118,6 +118,6 @@ class EventStore extends Database {
     // }
     // return EventVectorClock(deviceTimestamp);
 
-    return EventVectorClock.fromEntries(eventIds);
+    return EventVectorClock.fromEventIds(eventIds);
   }
 }

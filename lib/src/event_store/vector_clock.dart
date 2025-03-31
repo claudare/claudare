@@ -7,7 +7,7 @@ class EventVectorClock implements Comparable<EventVectorClock> {
 
   const EventVectorClock(this._mapDeviceTimestamp);
 
-  factory EventVectorClock.fromEntries(List<EventId> values) {
+  factory EventVectorClock.fromEventIds(List<EventId> values) {
     final map = <DeviceId, Timestamp>{};
     for (final eventId in values) {
       map[eventId.deviceId] = eventId.timestamp;

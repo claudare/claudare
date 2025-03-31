@@ -12,13 +12,13 @@ void main() {
     final deviceC = DeviceId(3);
     final deviceD = DeviceId(4);
 
-    final from = EventVectorClock.fromEntries([
+    final from = EventVectorClock.fromEventIds([
       EventId(Timestamp(100), deviceA),
       EventId(Timestamp(500), deviceB),
       EventId(Timestamp(1000), deviceC),
     ]);
 
-    final to = EventVectorClock.fromEntries([
+    final to = EventVectorClock.fromEventIds([
       EventId(Timestamp(1000), deviceA),
       EventId(Timestamp(500), deviceB),
       EventId(Timestamp(100), deviceC),
@@ -41,7 +41,7 @@ void main() {
     test('advances the range', () {
       final range = EventVectorClockRange.betweenClocks(from, to);
 
-      final newClock = EventVectorClock.fromEntries([
+      final newClock = EventVectorClock.fromEventIds([
         EventId(Timestamp(1000), deviceA),
         EventId(Timestamp(25), deviceD),
       ]);
