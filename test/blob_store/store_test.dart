@@ -69,10 +69,25 @@ void main() {
       expect(stat, isNull);
     });
 
-    test('should handle non-existent blob read', () async {
+    test('should throw on non-existent blob read', () async {
       final id = BlobId('non_existent_test_blob');
       var stream = blobStore.read(id);
       expect(() => stream.first, throwsA(isA<PathNotFoundException>()));
+    });
+
+    test('should not allow overwrite', () async {
+      final id = BlobId('stat_test_blob');
+      final data = Stream.fromIterable([
+        [1, 2, 3],
+      ]);
+      await blobStore.write(id, data);
+
+      expect(await blobStore.has(id), isTrue);
+
+      final data2 = Stream.fromIterable([
+        [4, 5, 6],
+      ]);
+      expect(() => blobStore.write(id, data2), throwsException);
     });
   });
 }

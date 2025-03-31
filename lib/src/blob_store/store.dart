@@ -40,6 +40,9 @@ class BlobStore {
   Stream<List<int>> read(BlobId id, {Encryption? encryption}) {
     final file = _getFile(id);
 
+    // technically a "has" could be checked here and null returned
+    // but this can create a race condition
+
     final stream = file.openRead();
 
     return encryption != null ? encryption.decrypt(stream) : stream;
@@ -51,8 +54,13 @@ class BlobStore {
     Stream<List<int>> stream, {
     Encryption? encryption,
   }) async {
+    if (await has(id)) {
+      throw Exception('blob overwrite is not allowed');
+    }
+
     final file = _getFile(id);
-    final sink = file.openWrite();
+    // TODO: remove utf8 encoding?
+    final sink = file.openWrite(mode: FileMode.writeOnly);
 
     final outStream = encryption != null ? encryption.encrypt(stream) : stream;
 
