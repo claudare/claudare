@@ -1,9 +1,8 @@
 import 'dart:io';
 
+import 'package:core/encryption.dart';
 import 'package:core/src/blob_store/id.dart';
-import 'package:core/src/blob_store/metadata.dart';
 import 'package:core/src/blob_store/stat.dart';
-import 'package:core/src/blob_store/stream.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:path/path.dart' as path;
 
@@ -11,20 +10,20 @@ import 'package:path/path.dart' as path;
 // this is a local blob store, things are saved without encryption
 // when replicated to a remote server, encryption is applied
 class BlobStore {
-  final String basePath;
-  final bool temporary;
+  final String _basePath;
+  final bool _temporary;
 
-  BlobStore(this.basePath) : temporary = false;
+  BlobStore(this._basePath) : _temporary = false;
 
-  BlobStore.temporary() : basePath = _tempStorageDir(), temporary = true;
+  BlobStore.temporary() : _basePath = _tempStorageDir(), _temporary = true;
 
   Future<void> init() async {
-    await Directory(basePath).create(recursive: true);
+    await Directory(_basePath).create(recursive: true);
   }
 
   Future<void> deinit() async {
-    if (temporary) {
-      await _tempStorageCleanup(basePath);
+    if (_temporary) {
+      await _tempStorageCleanup(_basePath);
     }
   }
 
@@ -33,50 +32,34 @@ class BlobStore {
     return await file.exists();
   }
 
-  Future<BlobStreamWithMetadata?> get(BlobId id) async {
+  // TODO: add progress notification?
+  // TODO: seakable start
+  // TODO: slow/buffered read
+  // all these features need to know the filesizes, but its encrypted
+  // so many using crypto bytes
+  Stream<List<int>> read(BlobId id, {Encryption? encryption}) {
     final file = _getFile(id);
 
-    try {
-      final stream = file.openRead();
-      return await BlobStreamWithMetadata.fromRawStream(stream);
-    } catch (e) {
-      print('something went wrong. blob $id could not be loaded: $e');
-      // file was not found, but not 100% guarantee...
-      return null;
-    }
+    final stream = file.openRead();
+
+    return encryption != null ? encryption.decrypt(stream) : stream;
   }
 
-  Future<BlobStat?> getStat(BlobId id) async {
-    final file = _getFile(id);
-
-    final fileStat = await file.stat();
-
-    if (fileStat.type == FileSystemEntityType.notFound) {
-      return null;
-    }
-
-    return BlobStat(
-      fileStat.size,
-      Timestamp.fromDateTime(fileStat.modified),
-      Timestamp.fromDateTime(fileStat.accessed),
-    );
-  }
-
-  // would be nice to have a progress here... atleast by chunk count
-  Future<void> put(
+  // TODO: add progress notification
+  Future<void> write(
     BlobId id,
-    BlobMetadata metadata,
-    Stream<List<int>> content,
-  ) async {
-    // TODO: if file already exist we throw?
-    final wrappedStream = BlobStreamWithMetadata.wrapContent(metadata, content);
-
+    Stream<List<int>> stream, {
+    Encryption? encryption,
+  }) async {
     final file = _getFile(id);
     final sink = file.openWrite();
 
+    final outStream = encryption != null ? encryption.encrypt(stream) : stream;
+
     try {
-      // TODO: check that written amount is the same as in meta
-      await sink.addStream(wrappedStream);
+      await sink.addStream(outStream);
+      // TODO: does this need a flush?
+      await sink.flush();
     } catch (e) {
       rethrow;
     } finally {
@@ -95,21 +78,35 @@ class BlobStore {
     }
   }
 
-  Future<List<BlobId>> list() async {
-    final dir = Directory(basePath);
+  /// returns a list of all available blobs
+  /// WARNING: this is slow, dont use this
+  Stream<BlobId> list() {
+    final dir = Directory(_basePath);
 
-    final items =
-        await dir
-            .list(followLinks: false, recursive: false)
-            .where((event) => event.runtimeType == File)
-            .map((event) => BlobId(path.basename(event.path)))
-            .toList();
+    return dir
+        .list(followLinks: false, recursive: false)
+        .where((event) => event.runtimeType == File)
+        .map((event) => BlobId(path.basename(event.path)));
+  }
 
-    return items;
+  Future<BlobStat?> stat(BlobId id) async {
+    final file = _getFile(id);
+
+    final fileStat = await file.stat();
+
+    if (fileStat.type == FileSystemEntityType.notFound) {
+      return null;
+    }
+
+    return BlobStat(
+      fileStat.size,
+      Timestamp.fromDateTime(fileStat.modified),
+      Timestamp.fromDateTime(fileStat.accessed),
+    );
   }
 
   File _getFile(BlobId id) {
-    return File(path.join(basePath, id.value));
+    return File(path.join(_basePath, id.value));
   }
 }
 
