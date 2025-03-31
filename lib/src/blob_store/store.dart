@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:core/src/blob_store/id.dart';
 import 'package:core/src/blob_store/metadata.dart';
 import 'package:core/src/blob_store/stat.dart';
+import 'package:core/src/blob_store/stream.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:path/path.dart' as path;
 

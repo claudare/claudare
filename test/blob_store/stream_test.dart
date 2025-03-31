@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 
-import 'package:core/src/blob_store/metadata.dart';
 import 'package:test/test.dart';
+import 'package:core/src/blob_store/stream.dart';
+import 'package:core/src/blob_store/metadata.dart';
 
 void main() {
   group('BlobFile', () {

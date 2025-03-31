@@ -1,37 +1,22 @@
 // an event vector clock but instead holding a value, it holds a range of values
 
 import 'package:core/src/device_id.dart';
-import 'package:core/src/event_store/event_clock.dart';
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/vector_clock.dart';
+import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 
-class TimestampRange {
-  final Timestamp start;
-  final Timestamp end;
-
-  TimestampRange(this.start, this.end) : assert(end > start);
-
-  Map<String, dynamic> toJson() {
-    return {'start': start.toJson(), 'end': end.toJson()};
-  }
-
-  factory TimestampRange.fromJson(Map<String, dynamic> json) {
-    return TimestampRange(
-      Timestamp.fromJson(json['start']),
-      Timestamp.fromJson(json['end']),
-    );
-  }
-}
-
-class EventClockRange {
+class EventVectorClockRange {
   final Map<DeviceId, TimestampRange> ranges;
 
-  const EventClockRange(this.ranges);
+  const EventVectorClockRange(this.ranges);
 
   /// creates a range from clocks, inclusive of the start value
   /// this means that the start value must be skipped when querying.
   /// next timestamp will be assumed
-  factory EventClockRange.betweenClocks(EventClock from, EventClock to) {
+  factory EventVectorClockRange.betweenClocks(
+    EventVectorClock from,
+    EventVectorClock to,
+  ) {
     final Map<DeviceId, TimestampRange> ranges = {};
     // if from value is less or equal to to value, it does not get included
     // when to has a value which is missing from from, then it starts at 0
@@ -55,11 +40,11 @@ class EventClockRange {
       }
     }
 
-    return EventClockRange(ranges);
+    return EventVectorClockRange(ranges);
   }
 
-  factory EventClockRange.fromStart(EventClock to) {
-    return EventClockRange.betweenClocks(EventClock({}), to);
+  factory EventVectorClockRange.fromStart(EventVectorClock to) {
+    return EventVectorClockRange.betweenClocks(EventVectorClock({}), to);
   }
 
   TimestampRange? operator [](DeviceId deviceId) => ranges[deviceId];
@@ -90,21 +75,21 @@ class EventClockRange {
   }
 
   /// dont use this, instead advance by id after new events are added
-  void advanceByClock(EventClock to) {
+  void advanceByClock(EventVectorClock to) {
     for (final eventId in to.entries) {
       advanceById(eventId);
     }
   }
 
   // to from json
-  factory EventClockRange.fromJson(Map<String, dynamic> json) {
+  factory EventVectorClockRange.fromJson(Map<String, dynamic> json) {
     final Map<DeviceId, TimestampRange> ranges = {};
     for (final entry in json.entries) {
       final deviceId = DeviceId.fromString(entry.key);
       final rangeJson = entry.value as Map<String, dynamic>;
       ranges[deviceId] = TimestampRange.fromJson(rangeJson);
     }
-    return EventClockRange(ranges);
+    return EventVectorClockRange(ranges);
   }
 
   // to json

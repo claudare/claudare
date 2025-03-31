@@ -1,7 +1,7 @@
 import 'package:core/src/device_id.dart';
-import 'package:core/src/event_store/event_clock.dart';
-import 'package:core/src/event_store/event_clock_range.dart';
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/vector_clock.dart';
+import 'package:core/src/event_store/vector_clock_range.dart';
+import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:test/test.dart';
 
@@ -12,13 +12,13 @@ void main() {
     final deviceC = DeviceId(3);
     final deviceD = DeviceId(4);
 
-    final from = EventClock.fromEntries([
+    final from = EventVectorClock.fromEntries([
       EventId(Timestamp(100), deviceA),
       EventId(Timestamp(500), deviceB),
       EventId(Timestamp(1000), deviceC),
     ]);
 
-    final to = EventClock.fromEntries([
+    final to = EventVectorClock.fromEntries([
       EventId(Timestamp(1000), deviceA),
       EventId(Timestamp(500), deviceB),
       EventId(Timestamp(100), deviceC),
@@ -26,7 +26,7 @@ void main() {
     ]);
 
     test('creates from 2 vector clocks', () {
-      final range = EventClockRange.betweenClocks(from, to);
+      final range = EventVectorClockRange.betweenClocks(from, to);
 
       expect(range[deviceA]!.start, Timestamp(100));
       expect(range[deviceA]!.end, Timestamp(1000));
@@ -39,9 +39,9 @@ void main() {
     });
 
     test('advances the range', () {
-      final range = EventClockRange.betweenClocks(from, to);
+      final range = EventVectorClockRange.betweenClocks(from, to);
 
-      final newClock = EventClock.fromEntries([
+      final newClock = EventVectorClock.fromEntries([
         EventId(Timestamp(1000), deviceA),
         EventId(Timestamp(25), deviceD),
       ]);

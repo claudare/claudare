@@ -4,8 +4,8 @@
 
 import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
-import 'package:core/src/event_store/event_clock.dart';
-import 'package:core/src/event_store/event_clock_range.dart';
+import 'package:core/src/event_store/vector_clock.dart';
+import 'package:core/src/event_store/vector_clock_range.dart';
 
 typedef PaloadId = int;
 
@@ -124,7 +124,7 @@ class EventMessageClockQuery extends EventAnyMessage {
 class EventMessageClockValue extends EventAnyMessage {
   static const _type = 'clock_value';
 
-  final EventClock eventClock;
+  final EventVectorClock eventClock;
 
   const EventMessageClockValue(this.eventClock);
 
@@ -134,14 +134,16 @@ class EventMessageClockValue extends EventAnyMessage {
   }
 
   factory EventMessageClockValue.fromJson(Map<String, dynamic> json) {
-    return EventMessageClockValue(EventClock.fromJson(json['eventClock']));
+    return EventMessageClockValue(
+      EventVectorClock.fromJson(json['eventClock']),
+    );
   }
 }
 
 class EventMessageEventQuery extends EventAnyMessage {
   static const _type = 'event_query';
 
-  final EventClockRange cursor;
+  final EventVectorClockRange cursor;
   final int limit;
 
   const EventMessageEventQuery(this.cursor, this.limit);
@@ -153,7 +155,7 @@ class EventMessageEventQuery extends EventAnyMessage {
 
   factory EventMessageEventQuery.fromJson(Map<String, dynamic> json) {
     return EventMessageEventQuery(
-      EventClockRange.fromJson(json['cursor']),
+      EventVectorClockRange.fromJson(json['cursor']),
       json['limit'],
     );
   }

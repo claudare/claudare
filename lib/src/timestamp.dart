@@ -28,6 +28,24 @@ class TimestampGenerator {
   }
 }
 
+class TimestampRange {
+  final Timestamp start;
+  final Timestamp end;
+
+  TimestampRange(this.start, this.end) : assert(end > start);
+
+  Map<String, dynamic> toJson() {
+    return {'start': start.toJson(), 'end': end.toJson()};
+  }
+
+  factory TimestampRange.fromJson(Map<String, dynamic> json) {
+    return TimestampRange(
+      Timestamp.fromJson(json['start']),
+      Timestamp.fromJson(json['end']),
+    );
+  }
+}
+
 /// A unified way to deal with timestamps.
 /// Essentially, this is a unix timestamp.
 class Timestamp implements Comparable<Timestamp> {

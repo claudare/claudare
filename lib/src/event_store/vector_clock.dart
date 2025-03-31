@@ -1,18 +1,18 @@
 import 'package:core/src/device_id.dart';
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 
-class EventClock implements Comparable<EventClock> {
+class EventVectorClock implements Comparable<EventVectorClock> {
   final Map<DeviceId, Timestamp> _mapDeviceTimestamp;
 
-  const EventClock(this._mapDeviceTimestamp);
+  const EventVectorClock(this._mapDeviceTimestamp);
 
-  factory EventClock.fromEntries(List<EventId> values) {
+  factory EventVectorClock.fromEntries(List<EventId> values) {
     final map = <DeviceId, Timestamp>{};
     for (final eventId in values) {
       map[eventId.deviceId] = eventId.timestamp;
     }
-    return EventClock(map);
+    return EventVectorClock(map);
   }
 
   EventId? operator [](DeviceId deviceId) {
@@ -48,16 +48,16 @@ class EventClock implements Comparable<EventClock> {
     _mapDeviceTimestamp[id.deviceId] = id.timestamp;
   }
 
-  EventClock copyWith(Map<DeviceId, Timestamp> map) {
+  EventVectorClock copyWith(Map<DeviceId, Timestamp> map) {
     // merge the new map into the existing one
     // make sure to actually copy everything, as to not get shot by mutability
     final newMap = Map<DeviceId, Timestamp>.from(_mapDeviceTimestamp);
     newMap.addAll(map);
-    return EventClock(newMap);
+    return EventVectorClock(newMap);
   }
 
   @override
-  int compareTo(EventClock other) {
+  int compareTo(EventVectorClock other) {
     if (_mapDeviceTimestamp.length != other._mapDeviceTimestamp.length) {
       // vector clock with more devices is newer
       return _mapDeviceTimestamp.length.compareTo(
@@ -83,7 +83,7 @@ class EventClock implements Comparable<EventClock> {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is EventClock && compareTo(other) == 0;
+    return other is EventVectorClock && compareTo(other) == 0;
   }
 
   @override
@@ -100,7 +100,7 @@ class EventClock implements Comparable<EventClock> {
     return out;
   }
 
-  factory EventClock.fromJson(Map<String, dynamic> json) {
+  factory EventVectorClock.fromJson(Map<String, dynamic> json) {
     // iterate over the json and assign keys and values
     final out = <DeviceId, Timestamp>{};
 
@@ -108,7 +108,7 @@ class EventClock implements Comparable<EventClock> {
       out[DeviceId.fromString(entry.key)] = Timestamp.fromJson(entry.value);
     }
 
-    return EventClock(out);
+    return EventVectorClock(out);
   }
 
   @override

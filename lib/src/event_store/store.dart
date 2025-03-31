@@ -1,9 +1,9 @@
 import 'package:core/src/database.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
-import 'package:core/src/event_store/event_clock.dart';
-import 'package:core/src/event_store/event_clock_range.dart';
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/vector_clock.dart';
+import 'package:core/src/event_store/vector_clock_range.dart';
+import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
@@ -30,7 +30,7 @@ class EventStore extends Database {
   EventStore(super.path);
   EventStore.temporary() : super.temporary();
 
-  late EventClock _vectorClock;
+  late EventVectorClock _vectorClock;
 
   Future<void> initialize() async {
     await _migrations.migrate(db);
@@ -38,11 +38,14 @@ class EventStore extends Database {
     _vectorClock = await _loadVectorClock();
   }
 
-  EventClock get vectorClock => _vectorClock;
+  EventVectorClock get vectorClock => _vectorClock;
 
   /// returns an iterator of events from the given event clock
   /// TODO: should this be a stream, or just a list?
-  Stream<StoredEvent> getEvents(EventClockRange cursor, int limit) async* {
+  Stream<StoredEvent> getEvents(
+    EventVectorClockRange cursor,
+    int limit,
+  ) async* {
     if (cursor.isEmpty) {
       throw Exception('cursor should never be empty.');
     }
@@ -97,16 +100,24 @@ class EventStore extends Database {
     );
   }
 
-  Future<EventClock> _loadVectorClock() async {
+  Future<EventVectorClock> _loadVectorClock() async {
     final rows = await db.execute('''
       SELECT device_id, MAX(timestamp) as timestamp
       FROM event
       GROUP BY device_id;
     ''');
-    final deviceTimestamp = <DeviceId, Timestamp>{};
-    for (final row in rows) {
-      deviceTimestamp[DeviceId(row['device_id'])] = Timestamp(row['timestamp']);
-    }
-    return EventClock(deviceTimestamp);
+    final eventIds = List<EventId>.from(
+      rows.map(
+        (row) =>
+            EventId(Timestamp(row['timestamp']), DeviceId(row['deviceId'])),
+      ),
+    );
+    // final deviceTimestamp = <DeviceId, Timestamp>{};
+    // for (final row in rows) {
+    //   deviceTimestamp[DeviceId(row['device_id'])] = Timestamp(row['timestamp']);
+    // }
+    // return EventVectorClock(deviceTimestamp);
+
+    return EventVectorClock.fromEntries(eventIds);
   }
 }

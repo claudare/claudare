@@ -1,10 +1,10 @@
+import 'package:core/src/event_store/id.dart';
+import 'package:core/src/event_store/vector_clock_range.dart';
 import 'package:test/test.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/timestamp.dart';
-import 'package:core/src/event_store/event_clock_range.dart';
 import 'package:core/src/event_store/stored_event.dart';
-import 'package:core/src/event_store/event_store.dart';
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/store.dart';
 
 void main() {
   group('EventStore', () {
@@ -33,7 +33,7 @@ void main() {
 
     test('insert and query events', () async {
       // Query events
-      final cursor = EventClockRange.fromStart(eventStore.vectorClock);
+      final cursor = EventVectorClockRange.fromStart(eventStore.vectorClock);
       final eventStream = eventStore.getEvents(cursor, 2);
 
       final events = await eventStream.toList();
@@ -63,7 +63,7 @@ void main() {
       await eventStore.storeEvent(StoredEvent(eventId, 'third'));
 
       // construct first event range
-      final range = EventClockRange.fromStart(eventStore.vectorClock);
+      final range = EventVectorClockRange.fromStart(eventStore.vectorClock);
 
       final [first] = await eventStore.getEvents(range, 1).toList();
       range.advanceById(first.id);

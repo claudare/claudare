@@ -1,4 +1,4 @@
-import 'package:core/src/event_store/event_id.dart';
+import 'package:core/src/event_store/id.dart';
 
 class StoredEvent {
   final EventId id;
