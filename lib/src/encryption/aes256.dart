@@ -1,26 +1,19 @@
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:async/async.dart';
-// import 'package:chunked_stream/chunked_stream.dart';
-
-import 'package:core/src/encryption/common.dart';
 import 'package:pointycastle/export.dart';
+import 'package:core/src/encryption/common.dart';
 
-/// WARNING: I have no idea what I am doing.
-/// this code is entirely AI generated
-/// do not use until its validated to be correct!
-class AES256Encryption implements Encryption {
-  final Uint8List key;
-  static const int ivLength = 16; // AES block size
+class AES256Key {
+  final Uint8List bytes;
 
-  /// Creates an AES-256 encryption instance with the given 32-byte key
-  AES256Encryption(this.key) {
-    if (key.length != 32) {
+  AES256Key(this.bytes) {
+    if (bytes.length != 32) {
       throw ArgumentError('AES-256 requires a 32-byte key');
     }
   }
-
-  static Uint8List getRandomKey() {
+  factory AES256Key.secureRandom() {
     final random = Random.secure();
     final seed = Uint8List(32);
     for (var i = 0; i < 32; i++) {
@@ -30,9 +23,20 @@ class AES256Encryption implements Encryption {
     final secureRandom = FortunaRandom();
     secureRandom.seed(KeyParameter(seed));
 
-    final key = secureRandom.nextBytes(32);
-    return key;
+    final bytes = secureRandom.nextBytes(32);
+    return AES256Key(bytes);
   }
+}
+
+/// WARNING: I have no idea what I am doing.
+/// the encrpyion choices and implementation is entirely AI generated
+/// do not use until its validated to be correct!
+class AES256Encryption implements Encryption {
+  final AES256Key key;
+  static const int ivLength = 16; // AES block size
+
+  /// Creates an AES-256 encryption instance with the given 32-byte key
+  AES256Encryption(this.key);
 
   /// Generate secure random IV
   Uint8List _generateIV() {
@@ -51,7 +55,7 @@ class AES256Encryption implements Encryption {
   // Helper method to create CBC cipher
   BlockCipher _createCipher(bool forEncryption, Uint8List iv) {
     final cipher = CBCBlockCipher(AESEngine());
-    final params = ParametersWithIV<KeyParameter>(KeyParameter(key), iv);
+    final params = ParametersWithIV<KeyParameter>(KeyParameter(key.bytes), iv);
     cipher.init(forEncryption, params);
     return cipher;
   }

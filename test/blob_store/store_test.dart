@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:core/blob_store.dart';
 import 'package:test/test.dart';
-import 'package:path/path.dart' as path;
 
 void main() {
   group('BlobStore', () {

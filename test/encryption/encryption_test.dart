@@ -9,7 +9,7 @@ import '../test_helpers.dart';
 
 void main() {
   group('Encryption table tests', () {
-    final aesKey = AES256Encryption.getRandomKey();
+    final aesKey = AES256Key.secureRandom();
     final algoBase64 = Base64Encoding();
     final algoAes265 = AES256Encryption(aesKey);
     final algos = [('base64', 64, algoBase64), ('aes256', 16, algoAes265)];
