@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:core/blob_store.dart';
 import 'package:test/test.dart';
 
@@ -66,6 +67,12 @@ void main() {
       final id = BlobId('non_existent_test_blob');
       var stat = await blobStore.stat(id);
       expect(stat, isNull);
+    });
+
+    test('should handle non-existent blob read', () async {
+      final id = BlobId('non_existent_test_blob');
+      var stream = blobStore.read(id);
+      expect(() => stream.first, throwsA(isA<PathNotFoundException>()));
     });
   });
 }
