@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 import 'package:core/src/event_store/event_clock.dart';
 import 'package:core/src/device_id.dart';
-import 'package:core/src/event_store/id.dart';
+import 'package:core/src/event_store/event_id.dart';
 import 'package:core/src/timestamp.dart';
 
 void main() {

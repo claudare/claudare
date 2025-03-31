@@ -36,6 +36,8 @@ class Timestamp implements Comparable<Timestamp> {
 
   const Timestamp(this.value);
 
+  const Timestamp.zero() : value = 0;
+
   Timestamp.fromDateTime(DateTime dateTime)
     : value = dateTime.millisecondsSinceEpoch;
 
@@ -67,6 +69,9 @@ class Timestamp implements Comparable<Timestamp> {
 
   @override
   int get hashCode => value.hashCode;
+
+  Timestamp operator +(Timestamp other) => Timestamp(value + other.value);
+  Timestamp operator -(Timestamp other) => Timestamp(value - other.value);
 
   factory Timestamp.fromJson(String json) {
     return Timestamp.fromString(json);
