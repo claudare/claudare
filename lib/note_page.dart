@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
+import 'package:notes_app_v0/services.dart';
 import 'package:notes_app_v0/repo.dart';
 import 'package:notes_app_v0/tag_widget.dart';
 import 'package:notes_app_v0/tags_manager.dart';
 
 class NotePage extends StatefulWidget {
-  final Repo repo;
   final NoteData note;
 
-  const NotePage({super.key, required this.repo, required this.note});
+  const NotePage({super.key, required this.note});
 
   @override
   State<NotePage> createState() => _NotePageState();
@@ -27,6 +27,8 @@ class NotePage extends StatefulWidget {
 // maybe find an alternative library that supports granular updates or implements
 // custom logic to handle text changes efficiently.
 class _NotePageState extends State<NotePage> {
+  final _repo = Services().repo;
+
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late StreamSubscription<void> _changesSubscription;
@@ -96,12 +98,12 @@ class _NotePageState extends State<NotePage> {
 
   void _saveNote({bool updateState = true}) {
     if (_didTitleChange()) {
-      widget.repo.submitEvent(
+      _repo.submitEvent(
         NoteTitleUpdated(widget.note.id, _titleController.text),
       );
     }
     if (_didContentChange()) {
-      widget.repo.submitEvent(
+      _repo.submitEvent(
         NoteContentUpdated(widget.note.id, _contentController.text),
       );
     }
@@ -139,7 +141,7 @@ class _NotePageState extends State<NotePage> {
         false;
 
     if (shouldDelete) {
-      widget.repo.submitEvent(NoteDeleted(widget.note.id));
+      _repo.submitEvent(NoteDeleted(widget.note.id));
       // prevent saving it ???
       setState(() {
         _textContentChanged = false;
@@ -151,7 +153,7 @@ class _NotePageState extends State<NotePage> {
   }
 
   void _unassignTag(String tag) {
-    widget.repo.submitEvent(TagUnassigned(widget.note.id, tag));
+    _repo.submitEvent(TagUnassigned(widget.note.id, tag));
   }
 
   Future<void> _onTagPressed(BuildContext context) async {
@@ -160,7 +162,7 @@ class _NotePageState extends State<NotePage> {
       context: context,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
       builder: (context) {
-        return TagsManager(repo: widget.repo, noteData: widget.note);
+        return TagsManager(noteData: widget.note);
       },
     );
 

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
+import 'package:notes_app_v0/services.dart';
 
 class TagsManager extends StatefulWidget {
-  final Repo repo;
   final NoteData noteData;
 
-  const TagsManager({super.key, required this.repo, required this.noteData});
+  const TagsManager({super.key, required this.noteData});
 
   @override
   _TagsManagerState createState() => _TagsManagerState();
@@ -20,6 +20,7 @@ class _TagState {
 }
 
 class _TagsManagerState extends State<TagsManager> {
+  final _repo = Services().repo;
   List<_TagState> tags = [];
 
   late TextEditingController _newTagController;
@@ -30,7 +31,7 @@ class _TagsManagerState extends State<TagsManager> {
 
     _newTagController = TextEditingController();
 
-    tags = widget.repo.tags.values.map((tag) => _TagState(tag, false)).toList();
+    tags = _repo.tags.values.map((tag) => _TagState(tag, false)).toList();
     for (final tag in widget.noteData.tags) {
       tags.firstWhere((element) => element.tag == tag).selected = true;
     }
@@ -44,7 +45,7 @@ class _TagsManagerState extends State<TagsManager> {
 
   void _assignTag(String tag) {
     // emit the event
-    widget.repo.submitEvent(TagAssigned(widget.noteData.id, tag));
+    _repo.submitEvent(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -62,7 +63,7 @@ class _TagsManagerState extends State<TagsManager> {
 
   void _unassignTag(String tag) {
     // emit the event
-    widget.repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
+    _repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
 
     // local state mutation
     setState(() {

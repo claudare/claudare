@@ -13,7 +13,6 @@ const _previewLength = 100;
 class NoteData {
   final GenericId id;
 
-  // dont mutate these directly please
   String title;
   String content;
   final Set<String> _tags;
@@ -177,6 +176,8 @@ class TagsData {
 // this is like the full state of the application, but without flutter things.
 // Managed by dispatching events
 class Repo {
+  // repo should load thisDeviceId from storage...
+  // from auth or something like that
   final DeviceId thisDeviceId;
   final GenericIdGenerator _genericIdGen;
   final EventIdGenerator _eventIdGen;
@@ -189,8 +190,9 @@ class Repo {
     : _genericIdGen = GenericIdGenerator.seeded(thisDeviceId),
       _eventIdGen = EventIdGenerator(thisDeviceId);
 
-  factory Repo.empty(DeviceId thisDeviceId) {
-    return Repo(thisDeviceId, {}, NoteOrderData([]), TagsData({}));
+  factory Repo.empty() {
+    final emptyDeviceId = DeviceId(0);
+    return Repo(emptyDeviceId, {}, NoteOrderData([]), TagsData({}));
   }
 
   // helper methods to get the ids for current timestamp
@@ -204,8 +206,8 @@ class Repo {
   }
 
   // load from the sqlite database
-  Future<void> load() async {
-    await Future.delayed(Duration(milliseconds: 1000));
+  Future<void> init() async {
+    await Future.delayed(Duration(milliseconds: 100));
 
     final List<GenericId> exampleIds = [
       newGenericId('note'),

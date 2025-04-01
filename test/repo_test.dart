@@ -16,7 +16,7 @@ void main() {
     late Repo repo;
 
     setUp(() {
-      repo = Repo.empty(DeviceId(0));
+      repo = Repo.empty();
     });
 
     tearDown(() {

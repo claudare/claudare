@@ -1,10 +1,11 @@
-import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/note_page.dart';
 import 'package:notes_app_v0/repo.dart';
+import 'package:notes_app_v0/services.dart';
 
+// does this really need to be Stateful?
 class NoteListPage extends StatefulWidget {
   const NoteListPage({super.key});
 
@@ -13,34 +14,14 @@ class NoteListPage extends StatefulWidget {
 }
 
 class _NoteListPageState extends State<NoteListPage> {
-  late final Repo _repo;
-  // TODO: show a splashscreen while loading...
-  bool loaded = false;
+  final _repo = Services().repo;
 
-  _NoteListPageState() {
-    final deviceId = DeviceId(0);
-
-    // example notes notes are loaded here
-    _repo = Repo.empty(deviceId);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    _repo.load().then((_) {
-      setState(() {
-        loaded = true;
-      });
-    });
-  }
+  _NoteListPageState();
 
   void _openNote(NoteData note) async {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => NotePage(repo: _repo, note: note),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => NotePage(note: note)));
   }
 
   Future<void> _newNote() async {
