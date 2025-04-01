@@ -96,15 +96,13 @@ class _NotePageState extends State<NotePage> {
 
   void _saveNote({bool updateState = true}) {
     if (_didTitleChange()) {
-      widget.repo.processEvent(
+      widget.repo.submitEvent(
         NoteTitleUpdated(widget.note.id, _titleController.text),
-        DateTime.now(),
       );
     }
     if (_didContentChange()) {
-      widget.repo.processEvent(
+      widget.repo.submitEvent(
         NoteContentUpdated(widget.note.id, _contentController.text),
-        DateTime.now(),
       );
     }
 
@@ -141,7 +139,7 @@ class _NotePageState extends State<NotePage> {
         false;
 
     if (shouldDelete) {
-      widget.repo.processEvent(NoteDeleted(widget.note.id), DateTime.now());
+      widget.repo.submitEvent(NoteDeleted(widget.note.id));
       // prevent saving it ???
       setState(() {
         _textContentChanged = false;
@@ -153,10 +151,7 @@ class _NotePageState extends State<NotePage> {
   }
 
   void _unassignTag(String tag) {
-    widget.repo.processEvent(
-      TagUnassigned(widget.note.id, tag),
-      DateTime.now(),
-    );
+    widget.repo.submitEvent(TagUnassigned(widget.note.id, tag));
   }
 
   Future<void> _onTagPressed(BuildContext context) async {
@@ -223,11 +218,11 @@ class _NotePageState extends State<NotePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Created: ${formatDateTime(widget.note.createdAt)}',
+                'Created: ${formatDateTime(widget.note.createdAt.toDateTime())}',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               Text(
-                'Last updated: ${formatDateTime(widget.note.updatedAt)}',
+                'Last updated: ${formatDateTime(widget.note.updatedAt.toDateTime())}',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
 

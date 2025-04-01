@@ -1,3 +1,4 @@
+import 'package:core/core.dart';
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
@@ -17,8 +18,10 @@ class _NoteListPageState extends State<NoteListPage> {
   bool loaded = false;
 
   _NoteListPageState() {
+    final deviceId = DeviceId(0);
+
     // example notes notes are loaded here
-    _repo = Repo.empty();
+    _repo = Repo.empty(deviceId);
   }
 
   @override
@@ -41,10 +44,11 @@ class _NoteListPageState extends State<NoteListPage> {
   }
 
   Future<void> _newNote() async {
-    final id = Id.random();
-    _repo.processEvent(NoteCreated(id), DateTime.now());
+    final eventId = _repo.eventIdGen.next(Timestamp.now());
+    final noteId = _repo.genericIdGen.next('note', eventId.timestamp);
+    _repo.processEvent(eventId, NoteCreated(noteId));
     // this is racy
-    final note = await _repo.getNote(id);
+    final note = await _repo.getNote(noteId);
     if (note == null) {
       throw Exception('new note could not be loaded??');
     }
@@ -98,7 +102,7 @@ class _NoteListPageState extends State<NoteListPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         trailing: Text(
-                          formatDateTime(note.updatedAt),
+                          formatDateTime(note.updatedAt.toDateTime()),
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                         onTap: () => _openNote(note),

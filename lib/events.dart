@@ -1,11 +1,11 @@
-import 'package:notes_app_v0/common.dart';
+import 'package:core/core.dart';
 
 sealed class NoteEvent {
   const NoteEvent();
 }
 
 class NoteCreated extends NoteEvent {
-  final Id id;
+  final GenericId id;
 
   const NoteCreated(this.id);
 
@@ -14,7 +14,7 @@ class NoteCreated extends NoteEvent {
 }
 
 class NoteContentUpdated extends NoteEvent {
-  final Id id;
+  final GenericId id;
   final String content;
 
   const NoteContentUpdated(this.id, this.content);
@@ -24,7 +24,7 @@ class NoteContentUpdated extends NoteEvent {
 }
 
 class NoteTitleUpdated extends NoteEvent {
-  final Id id;
+  final GenericId id;
   final String title;
 
   const NoteTitleUpdated(this.id, this.title);
@@ -34,7 +34,7 @@ class NoteTitleUpdated extends NoteEvent {
 }
 
 class NoteDeleted extends NoteEvent {
-  final Id id;
+  final GenericId id;
 
   const NoteDeleted(this.id);
 
@@ -43,7 +43,7 @@ class NoteDeleted extends NoteEvent {
 }
 
 class NoteMoved extends NoteEvent {
-  final Id id;
+  final GenericId id;
   final int toIndex;
 
   const NoteMoved(this.id, this.toIndex);
@@ -55,7 +55,7 @@ class NoteMoved extends NoteEvent {
 // tag events
 
 class TagAssigned extends NoteEvent {
-  final Id noteId;
+  final GenericId noteId;
   final String tagName;
 
   const TagAssigned(this.noteId, this.tagName);
@@ -65,7 +65,7 @@ class TagAssigned extends NoteEvent {
 }
 
 class TagUnassigned extends NoteEvent {
-  final Id noteId;
+  final GenericId noteId;
   final String tagName;
 
   const TagUnassigned(this.noteId, this.tagName);

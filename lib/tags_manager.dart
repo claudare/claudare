@@ -44,10 +44,7 @@ class _TagsManagerState extends State<TagsManager> {
 
   void _assignTag(String tag) {
     // emit the event
-    widget.repo.processEvent(
-      TagAssigned(widget.noteData.id, tag),
-      DateTime.now(),
-    );
+    widget.repo.submitEvent(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -65,10 +62,7 @@ class _TagsManagerState extends State<TagsManager> {
 
   void _unassignTag(String tag) {
     // emit the event
-    widget.repo.processEvent(
-      TagUnassigned(widget.noteData.id, tag),
-      DateTime.now(),
-    );
+    widget.repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
 
     // local state mutation
     setState(() {

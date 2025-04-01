@@ -4,21 +4,23 @@
 
 import 'dart:async';
 
+import 'package:core/core.dart';
+import 'package:core/event_store.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
 
 const _previewLength = 100;
 
 class NoteData {
-  final Id id;
+  final GenericId id;
 
   // dont mutate these directly please
   String title;
   String content;
   final Set<String> _tags;
 
-  DateTime createdAt;
-  DateTime updatedAt;
+  Timestamp createdAt;
+  Timestamp updatedAt;
 
   final _changeController = StreamController<void>.broadcast(sync: true);
   Stream<void> get changes => _changeController.stream;
@@ -40,35 +42,35 @@ class NoteData {
         : content;
   }
 
-  NoteData.emptyNew(this.id, DateTime time)
+  NoteData.emptyNew(this.id)
     : title = '',
       content = '',
       _tags = {},
-      createdAt = time,
-      updatedAt = time;
+      createdAt = id.timestamp,
+      updatedAt = id.timestamp;
 
   List<String> get tags => _tags.toList()..sort();
 
   // mutators below
-  void updateTitle(String value, DateTime timestamp) {
+  void updateTitle(String value, Timestamp timestamp) {
     title = value;
     updatedAt = timestamp;
     _notifyChange();
   }
 
-  void updateContent(String value, DateTime timestamp) {
+  void updateContent(String value, Timestamp timestamp) {
     content = value;
     updatedAt = timestamp;
     _notifyChange();
   }
 
-  void addTag(String tag, DateTime timestamp) {
+  void addTag(String tag, Timestamp timestamp) {
     _tags.add(tag);
     updatedAt = timestamp;
     _notifyChange();
   }
 
-  void removeTag(String tag, DateTime timestamp) {
+  void removeTag(String tag, Timestamp timestamp) {
     _tags.remove(tag);
     updatedAt = timestamp;
     _notifyChange();
@@ -86,22 +88,22 @@ class NoteData {
 }
 
 class NoteOrderData {
-  final List<Id> _order;
+  final List<GenericId> _order;
 
   final _changeController = StreamController<void>.broadcast(sync: true);
   Stream<void> get changes => _changeController.stream;
 
   NoteOrderData(this._order);
 
-  List<Id> get items => _order;
+  List<GenericId> get items => _order;
 
-  void add(Id id) {
+  void add(GenericId id) {
     // add to the beginning, this list is upside down
     _order.insert(0, id);
     _notifyChange();
   }
 
-  void moveToIndex(Id id, int index) {
+  void moveToIndex(GenericId id, int index) {
     final current = _order.indexOf(id);
 
     if (current == -1) throw ArgumentError('Note not found $id');
@@ -113,7 +115,7 @@ class NoteOrderData {
     _notifyChange();
   }
 
-  void remove(Id id) {
+  void remove(GenericId id) {
     _order.remove(id);
     _notifyChange();
   }
@@ -129,21 +131,21 @@ class NoteOrderData {
 
 class TagsData {
   // association of tags to notes
-  final Map<String, List<Id>> _tags;
+  final Map<String, List<GenericId>> _tags;
 
   final _changeController = StreamController<void>.broadcast(sync: true);
   Stream<void> get changes => _changeController.stream;
 
   TagsData(this._tags);
 
-  void addTag(Id noteId, String tagName) {
+  void addTag(GenericId noteId, String tagName) {
     _tags[tagName] ??= [];
     _tags[tagName]!.add(noteId);
 
     _notifyChange();
   }
 
-  void removeTag(Id noteId, String tagName) {
+  void removeTag(GenericId noteId, String tagName) {
     final list = _tags[tagName];
     if (list == null) {
       throw Exception('Tag $tagName not found');
@@ -160,7 +162,7 @@ class TagsData {
   // get all tags sorted alphabetically
   List<String> get values => _tags.keys.toList()..sort();
 
-  List<Id> getTagNodeIds(String tag) => _tags[tag] ?? [];
+  List<GenericId> getTagNodeIds(String tag) => _tags[tag] ?? [];
 
   void _notifyChange() {
     // snapshot wiriting to the database could happen here
@@ -176,34 +178,48 @@ class TagsData {
 // this is like the full state of the application, but without flutter things.
 // Managed by dispatching events
 class Repo {
-  final Map<Id, NoteData> _notes;
+  final DeviceId thisDeviceId;
+  final GenericIdGenerator genericIdGen;
+  final EventIdGenerator eventIdGen;
+
+  final Map<GenericId, NoteData> _notes;
   final NoteOrderData _order;
   final TagsData _tags;
 
-  Repo(this._notes, this._order, this._tags);
+  Repo(this.thisDeviceId, this._notes, this._order, this._tags)
+    : genericIdGen = GenericIdGenerator.seeded(thisDeviceId),
+      eventIdGen = EventIdGenerator(thisDeviceId);
 
-  Repo.empty() : _notes = {}, _order = NoteOrderData([]), _tags = TagsData({});
+  factory Repo.empty(DeviceId thisDeviceId) {
+    return Repo(thisDeviceId, {}, NoteOrderData([]), TagsData({}));
+  }
 
   // load from the sqlite database
   Future<void> load() async {
     await Future.delayed(Duration(milliseconds: 1000));
 
-    final List<Id> exampleIds = [Id('1'), Id('2')];
+    final List<GenericId> exampleIds = [
+      genericIdGen.next('note', Timestamp.now()),
+      genericIdGen.next('note', Timestamp.now()),
+    ];
     // Create two hardcoded notes
-    for (final id in exampleIds) {
-      await processEvent(NoteCreated(id), DateTime.now());
+    for (final noteId in exampleIds) {
+      await processEvent(eventIdGen.next(Timestamp.now()), NoteCreated(noteId));
       await processEvent(
-        NoteContentUpdated(id, 'This is note #${id.value}'),
-        DateTime.now(),
+        eventIdGen.next(Timestamp.now()),
+        NoteContentUpdated(noteId, 'This is note #$noteId'),
       );
-      await processEvent(TagAssigned(id, 'example'), DateTime.now());
+      await processEvent(
+        eventIdGen.next(Timestamp.now()),
+        TagAssigned(noteId, 'example'),
+      );
     }
   }
 
   // Access methods that return the reactive objects
   // wrapped in the future to simulate using the database cache underneath
-  Future<NoteData?> getNote(Id id) =>
-      Future.delayed(Duration(milliseconds: 1), () => _notes[id]);
+  Future<NoteData?> getNote(GenericId id) =>
+      Future.delayed(Duration(milliseconds: 10), () => _notes[id]);
 
   // order could be sync, loaded at application startup
   NoteOrderData get order => _order;
@@ -218,26 +234,32 @@ class Repo {
     }
   }
 
+  Future<void> submitEvent(NoteEvent event) async {
+    // "now will be used"
+    final eventId = eventIdGen.next(Timestamp.now());
+    await processEvent(eventId, event);
+  }
+
   // Method for creating a new note
-  Future<void> processEvent(NoteEvent event, DateTime timestamp) async {
+  Future<void> processEvent(EventId id, NoteEvent event) async {
     // writing of event to db should happen here
     print('Processing event: $event');
     switch (event) {
       case NoteCreated event:
         // saving of note and order can happen here
-        _notes[event.id] = NoteData.emptyNew(event.id, timestamp);
+        _notes[event.id] = NoteData.emptyNew(event.id);
         _order.add(event.id);
         break;
       case NoteContentUpdated event:
         // the repo does not need to have everything loaded
         final note = await getNote(event.id);
         assert(note != null);
-        note!.updateContent(event.content, timestamp);
+        note!.updateContent(event.content, id.timestamp);
         break;
       case NoteTitleUpdated event:
         final note = await getNote(event.id);
         assert(note != null);
-        note!.updateTitle(event.title, timestamp);
+        note!.updateTitle(event.title, id.timestamp);
         break;
       case NoteDeleted event:
         // TODO: this should be async too? first need to check if note exists
@@ -264,13 +286,13 @@ class Repo {
       case TagAssigned event:
         final note = await getNote(event.noteId);
         assert(note != null);
-        note!.addTag(event.tagName, timestamp);
+        note!.addTag(event.tagName, id.timestamp);
         tags.addTag(event.noteId, event.tagName);
         break;
       case TagUnassigned event:
         final note = await getNote(event.noteId);
         assert(note != null);
-        note!.removeTag(event.tagName, timestamp);
+        note!.removeTag(event.tagName, id.timestamp);
         tags.removeTag(event.noteId, event.tagName);
         break;
     }
