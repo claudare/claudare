@@ -95,14 +95,17 @@ class _NotePageState extends State<NotePage> {
     return _contentController.text != widget.note.content;
   }
 
-  void _saveNote(Controller controller, {bool updateState = true}) {
+  Future<void> _saveNote(
+    Controller controller, {
+    bool updateState = true,
+  }) async {
     if (_didTitleChange()) {
-      controller.localEventSubmit(
+      await controller.localEventSubmit(
         NoteTitleUpdated(widget.note.id, _titleController.text),
       );
     }
     if (_didContentChange()) {
-      controller.localEventSubmit(
+      await controller.localEventSubmit(
         NoteContentUpdated(widget.note.id, _contentController.text),
       );
     }
@@ -111,9 +114,11 @@ class _NotePageState extends State<NotePage> {
       setState(() {
         _textContentChanged = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Note saved')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Note saved'), duration: Duration(seconds: 1)),
+        );
+      }
     }
   }
 
@@ -140,7 +145,7 @@ class _NotePageState extends State<NotePage> {
         false;
 
     if (shouldDelete) {
-      controller.localEventSubmit(NoteDeleted(widget.note.id));
+      await controller.localEventSubmit(NoteDeleted(widget.note.id));
       // prevent saving it ???
       setState(() {
         _textContentChanged = false;
@@ -151,8 +156,8 @@ class _NotePageState extends State<NotePage> {
     }
   }
 
-  void _unassignTag(Controller controller, String tag) {
-    controller.localEventSubmit(TagUnassigned(widget.note.id, tag));
+  Future<void> _unassignTag(Controller controller, String tag) async {
+    await controller.localEventSubmit(TagUnassigned(widget.note.id, tag));
   }
 
   Future<void> _onTagPressed(BuildContext context) async {

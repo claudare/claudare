@@ -34,7 +34,7 @@ class Controller {
   Future<void> initTemporary() async {
     _eventStore = EventStore.temporary();
     _appStore = AppStore.temporary();
-    repo = Repo.empty();
+    repo = Repo.empty(_appStore);
   }
 
   Future<void> initPersisted() async {
@@ -43,31 +43,35 @@ class Controller {
       await docDir.create(recursive: true);
     }
 
+    print('using docDir $docDir');
     // load device id from somewhere...
     // maybe its part of the system database/repo?
 
     _eventStore = EventStore(path.join(docDir.path, 'event_store.db'));
     _appStore = AppStore(path.join(docDir.path, 'app_store.db'));
-    repo = Repo.empty();
+    repo = Repo.empty(_appStore);
   }
 
   Future<void> loadRepo() async {
     await _eventStore.init();
     await _appStore.init();
+    await repo.loadFromAppStore();
 
-    final finalVectorClock = _eventStore.vectorClock.copyWith({});
-    final range = EventVectorClockRange.fromStart(finalVectorClock);
+    // reload all events like so:
+    // this is a pretty elegant solution in my opinion
+    // final finalVectorClock = _eventStore.vectorClock.copyWith({});
+    // final range = EventVectorClockRange.fromStart(finalVectorClock);
 
-    while (!range.isEmpty) {
-      final stream = _eventStore.getEvents(range, 10);
-      await for (final eventRaw in stream) {
-        final eventId = eventRaw.id;
-        final eventParsed = NoteEvent.anyFromJson(jsonDecode(eventRaw.data));
+    // while (!range.isEmpty) {
+    //   final stream = _eventStore.getEvents(range, 10);
+    //   await for (final eventRaw in stream) {
+    //     final eventId = eventRaw.id;
+    //     final eventParsed = NoteEvent.anyFromJson(jsonDecode(eventRaw.data));
 
-        await repo.processEvent(eventId, eventParsed);
-        range.advanceById(eventId);
-      }
-    }
+    //     await repo.processEvent(eventId, eventParsed);
+    //     range.advanceById(eventId);
+    //   }
+    // }
   }
 
   void deinit() async {

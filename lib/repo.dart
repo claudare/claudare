@@ -1,11 +1,8 @@
-// this is a virtual database that stores notes with thier content and
-// also stores their order
-// this uses no flutter things, only dart code
-
 import 'dart:async';
 
 import 'package:core/core.dart';
 import 'package:core/event_store.dart';
+import 'package:notes_app_v0/app_store.dart';
 import 'package:notes_app_v0/events.dart';
 
 const _previewLength = 100;
@@ -52,25 +49,25 @@ class NoteData {
   // mutators below
   void updateTitle(String value, Timestamp timestamp) {
     title = value;
-    updatedAt = timestamp;
+    updatedAt = timestamp.max(updatedAt);
     _notifyChange();
   }
 
   void updateContent(String value, Timestamp timestamp) {
     content = value;
-    updatedAt = timestamp;
+    updatedAt = timestamp.max(updatedAt);
     _notifyChange();
   }
 
   void addTag(String tag, Timestamp timestamp) {
     _tags.add(tag);
-    updatedAt = timestamp;
+    updatedAt = timestamp.max(updatedAt);
     _notifyChange();
   }
 
   void removeTag(String tag, Timestamp timestamp) {
     _tags.remove(tag);
-    updatedAt = timestamp;
+    updatedAt = timestamp.max(updatedAt);
     _notifyChange();
   }
 
@@ -156,7 +153,11 @@ class NoteOrderData {
   }
 
   factory NoteOrderData.fromJson(Map<String, dynamic> json) {
-    final order = json['order'].map((id) => GenericId.fromString(id)).toList();
+    final List<GenericId> order =
+        (json['order'] as List<dynamic>)
+            .map((id) => GenericId.fromString(id.toString()))
+            .toList();
+
     return NoteOrderData(order);
   }
 }
@@ -169,8 +170,15 @@ class TagData {
 
   const TagData(this.name, this.value);
 
-  factory TagData.fromJsonValue(String name, List<String> jsonValue) {
-    return TagData(name, jsonValue.map(GenericId.fromString).toList());
+  List<String> toJsonValue() {
+    return value.map((id) => id.toString()).toList();
+  }
+
+  factory TagData.fromJsonValue(String name, List<dynamic> jsonValue) {
+    return TagData(
+      name,
+      jsonValue.map((id) => GenericId.fromString(id)).toList(),
+    );
   }
 }
 
@@ -185,23 +193,23 @@ class TagsData {
   TagsData.fromTagDataList(List<TagData> tags)
     : _tags = {for (var tag in tags) tag.name: tag.value};
 
-  TagValue addTag(GenericId noteId, String tagName) {
+  TagData addTag(GenericId noteId, String tagName) {
     _tags[tagName] ??= [];
     final tagValue = _tags[tagName]!;
 
     // dont add duplicate tags!
     if (tagValue.contains(noteId)) {
-      return tagValue;
+      return TagData(tagName, tagValue);
     }
 
-    tagValue.add(noteId);
+    _tags[tagName]!.add(noteId);
 
     _notifyChange();
-    return tagValue;
+    return TagData(tagName, _tags[tagName]!);
   }
 
   // null return value means that the tag should be deleted
-  TagValue? removeTag(GenericId noteId, String tagName) {
+  TagData? removeTag(GenericId noteId, String tagName) {
     final list = _tags[tagName];
     if (list == null) {
       throw Exception('Tag $tagName not found');
@@ -214,7 +222,7 @@ class TagsData {
     }
 
     _notifyChange();
-    return _tags[tagName]!;
+    return TagData(tagName, _tags[tagName]!);
   }
 
   // get all tags sorted alphabetically
@@ -234,14 +242,17 @@ class TagsData {
 // this is like the full state of the application, but without flutter things.
 // Managed by dispatching events
 class Repo {
+  final AppStore _appStore;
   final Map<GenericId, NoteData> _notes;
-  final NoteOrderData _order;
-  final TagsData _tags;
 
-  const Repo(this._notes, this._order, this._tags);
+  // these are loaded right away
+  late NoteOrderData _order;
+  late TagsData _tags;
 
-  factory Repo.empty() {
-    return Repo({}, NoteOrderData([]), TagsData({}));
+  Repo(this._appStore, this._notes, this._order, this._tags);
+
+  factory Repo.empty(AppStore appStore) {
+    return Repo(appStore, {}, NoteOrderData([]), TagsData({}));
   }
 
   // or init with actual event data
@@ -254,10 +265,29 @@ class Repo {
     }
   }
 
+  Future<void> loadFromAppStore() async {
+    _order = await _appStore.noteOrderGet();
+    _tags = await _appStore.tagsGet();
+  }
+
   // Access methods that return the reactive objects
-  // wrapped in the future to simulate using the database cache underneath
-  Future<NoteData?> getNote(GenericId id) =>
-      Future.delayed(Duration(milliseconds: 10), () => _notes[id]);
+  // TODO: the map needs to be cleaned up eventually...
+  Future<NoteData?> getNote(GenericId id) async {
+    final mapValue = _notes[id];
+
+    if (mapValue != null) {
+      return mapValue;
+    }
+
+    final maybeValue = await _appStore.noteGet(id);
+
+    if (maybeValue == null) {
+      return null;
+    }
+
+    _notes[id] = maybeValue;
+    return maybeValue;
+  }
 
   // order could be sync, loaded at application startup
   NoteOrderData get order => _order;
@@ -281,9 +311,9 @@ class Repo {
       case NoteCreated event:
         _notes[event.id] = NoteData.emptyNew(event.id);
         _order.add(event.id);
-        // saving of note and order to storage can happen here
-        // it can actually be done outside the async event loop to speed up
-        // event resolution?
+
+        await _appStore.noteSave(_notes[event.id]!);
+        await _appStore.noteOrderSave(_order);
 
         break;
       case NoteContentUpdated event:
@@ -291,11 +321,17 @@ class Repo {
         final note = await getNote(event.id);
         assert(note != null);
         note!.updateContent(event.content, id.timestamp);
+
+        await _appStore.noteSave(_notes[event.id]!);
+
         break;
       case NoteTitleUpdated event:
         final note = await getNote(event.id);
         assert(note != null);
         note!.updateTitle(event.title, id.timestamp);
+
+        await _appStore.noteSave(_notes[event.id]!);
+
         break;
       case NoteDeleted event:
         // TODO: this should be async too? first need to check if note exists
@@ -310,26 +346,49 @@ class Repo {
         note.dispose();
         _order.remove(event.id);
 
+        await _appStore.noteDelete(event.id);
+        await _appStore.noteOrderSave(_order);
+
         // remove all tags associated with the note
-        for (final tag in note.tags) {
-          tags.removeTag(event.id, tag);
+        for (final tagName in note.tags) {
+          final tagState = tags.removeTag(event.id, tagName);
+
+          if (tagState == null) {
+            await _appStore.tagDelete(tagName);
+          } else {
+            await _appStore.tagSave(tagState);
+          }
         }
 
         break;
       case NoteMoved event:
         _order.moveToIndex(event.id, event.toIndex);
+        await _appStore.noteOrderSave(_order);
+
         break;
       case TagAssigned event:
         final note = await getNote(event.noteId);
         assert(note != null);
         note!.addTag(event.tagName, id.timestamp);
-        tags.addTag(event.noteId, event.tagName);
+        final tagData = tags.addTag(event.noteId, event.tagName);
+
+        await _appStore.noteSave(note);
+        await _appStore.tagSave(tagData);
+
         break;
       case TagUnassigned event:
         final note = await getNote(event.noteId);
         assert(note != null);
         note!.removeTag(event.tagName, id.timestamp);
-        tags.removeTag(event.noteId, event.tagName);
+        final tagData = tags.removeTag(event.noteId, event.tagName);
+
+        await _appStore.noteSave(note);
+        if (tagData == null) {
+          await _appStore.tagDelete(event.tagName);
+        } else {
+          await _appStore.tagSave(tagData);
+        }
+
         break;
     }
   }

@@ -1,4 +1,4 @@
-// database implementation of the state of the application
+// database implementation of the application
 
 import 'dart:convert';
 
@@ -37,8 +37,16 @@ class AppStore extends DatabaseBase {
   AppStore(super.path);
   AppStore.temporary() : super.temporary();
 
+  @override
   Future<void> init() async {
+    await super.init();
+
     await _migrations.migrate(db);
+
+    // insert empty order if none exists
+    await db.execute('INSERT OR IGNORE INTO note_order (value) VALUES (?);', [
+      json.encode(NoteOrderData([]).toJson()),
+    ]);
   }
 
   Future<NoteData?> noteGet(GenericId id) async {
@@ -94,7 +102,7 @@ class AppStore extends DatabaseBase {
   Future<void> tagSave(TagData tag) async {
     await db.execute('INSERT OR REPLACE INTO tag (name, data) VALUES (?, ?);', [
       tag.name,
-      jsonEncode(tag.value),
+      jsonEncode(tag.toJsonValue()),
     ]);
   }
 

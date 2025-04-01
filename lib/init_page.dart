@@ -18,8 +18,12 @@ class _InitPageState extends State<InitPage> {
     setState(() {
       _error = error.toString();
     });
+
+    throw error;
   }
 
+  // this must only be ran once
+  // TODO: if something breaks here, thats because of dependency changes...
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();

@@ -29,19 +29,31 @@ class _TagsManagerState extends State<TagsManager> {
     super.initState();
 
     _newTagController = TextEditingController();
-  }
 
-  // this is confusing, but it does work...
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+    // workaround for didChangeDependencies being called multiple times
+    // Future.delayed(Duration.zero, () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        throw Exception('TagsManager was disposed before initialization');
+      }
 
-    final repo = ControllerProvider.of(context).repo;
+      final repo = ControllerProvider.of(context).repo;
 
-    tags = repo.tags.values.map((tag) => _TagState(tag, false)).toList();
-    for (final tag in widget.noteData.tags) {
-      tags.firstWhere((element) => element.tag == tag).selected = true;
-    }
+      setState(() {
+        tags = repo.tags.values.map((tag) => _TagState(tag, false)).toList();
+
+        // note data is not being updated as things change
+        // spagetti for now
+        for (final tag in widget.noteData.tags) {
+          // this will fail!
+          try {
+            tags.firstWhere((element) => element.tag == tag).selected = true;
+          } catch (_) {
+            // ignore
+          }
+        }
+      });
+    });
   }
 
   @override
@@ -52,8 +64,6 @@ class _TagsManagerState extends State<TagsManager> {
 
   Future<void> _assignTag(BuildContext context, String tag) async {
     final controller = ControllerProvider.of(context);
-
-    await controller.localEventSubmit(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -67,6 +77,8 @@ class _TagsManagerState extends State<TagsManager> {
         tags.firstWhere((element) => element.tag == tag).selected = true;
       });
     }
+
+    await controller.localEventSubmit(TagAssigned(widget.noteData.id, tag));
   }
 
   Future<void> _unassignTag(BuildContext context, String tag) async {
