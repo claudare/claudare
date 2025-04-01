@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
 
 class TagsManager extends StatefulWidget {

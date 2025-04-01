@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
+import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
 import 'package:notes_app_v0/tag_widget.dart';
 import 'package:notes_app_v0/tags_manager.dart';

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
 import 'package:notes_app_v0/common.dart';
 
