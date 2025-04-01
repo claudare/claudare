@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/services.dart';
+import 'package:notes_app_v0/repo.dart';
+import 'package:notes_app_v0/service_provider.dart';
 import 'package:notes_app_v0/init_page.dart';
 
 void main() {
   // ensure services are initialized
-  Services();
-  runApp(const MyApp());
+  // wrap services provider
+  runApp(ServiceProvider(repo: Repo.empty(), child: const MyApp()));
 }
 
 class MyApp extends StatelessWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/services.dart';
+import 'package:notes_app_v0/service_provider.dart';
 import 'package:notes_app_v0/note_list_page.dart';
 
 // this will show the loading screen while the appplication is initializing
@@ -15,10 +15,12 @@ class _InitPageState extends State<InitPage> {
   bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
 
-    Services().repo
+    final services = ServiceProvider.of(context);
+
+    services.repo
         .initFromDisk()
         .then((_) {
           setState(() {

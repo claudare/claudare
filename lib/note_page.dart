@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
-import 'package:notes_app_v0/services.dart';
 import 'package:notes_app_v0/repo.dart';
+import 'package:notes_app_v0/service_provider.dart';
 import 'package:notes_app_v0/tag_widget.dart';
 import 'package:notes_app_v0/tags_manager.dart';
 
@@ -27,8 +27,6 @@ class NotePage extends StatefulWidget {
 // maybe find an alternative library that supports granular updates or implements
 // custom logic to handle text changes efficiently.
 class _NotePageState extends State<NotePage> {
-  final _repo = Services().repo;
-
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   late StreamSubscription<void> _changesSubscription;
@@ -96,14 +94,12 @@ class _NotePageState extends State<NotePage> {
     return _contentController.text != widget.note.content;
   }
 
-  void _saveNote({bool updateState = true}) {
+  void _saveNote(Repo repo, {bool updateState = true}) {
     if (_didTitleChange()) {
-      _repo.submitEvent(
-        NoteTitleUpdated(widget.note.id, _titleController.text),
-      );
+      repo.submitEvent(NoteTitleUpdated(widget.note.id, _titleController.text));
     }
     if (_didContentChange()) {
-      _repo.submitEvent(
+      repo.submitEvent(
         NoteContentUpdated(widget.note.id, _contentController.text),
       );
     }
@@ -119,6 +115,8 @@ class _NotePageState extends State<NotePage> {
   }
 
   Future<void> _deleteNote(BuildContext ctx) async {
+    final repo = ServiceProvider.of(ctx).repo;
+
     final shouldDelete =
         await showDialog<bool>(
           context: context,
@@ -141,7 +139,7 @@ class _NotePageState extends State<NotePage> {
         false;
 
     if (shouldDelete) {
-      _repo.submitEvent(NoteDeleted(widget.note.id));
+      repo.submitEvent(NoteDeleted(widget.note.id));
       // prevent saving it ???
       setState(() {
         _textContentChanged = false;
@@ -152,8 +150,8 @@ class _NotePageState extends State<NotePage> {
     }
   }
 
-  void _unassignTag(String tag) {
-    _repo.submitEvent(TagUnassigned(widget.note.id, tag));
+  void _unassignTag(Repo repo, String tag) {
+    repo.submitEvent(TagUnassigned(widget.note.id, tag));
   }
 
   Future<void> _onTagPressed(BuildContext context) async {
@@ -178,17 +176,19 @@ class _NotePageState extends State<NotePage> {
     // );
   }
 
-  void _onPopInvokedWithResult(bool didPop, _) async {
+  void _onPopInvokedWithResult(Repo repo, bool didPop) async {
     if (_textContentChanged) {
       print('autosaving note onPop, didPop: $didPop');
-      _saveNote(updateState: false);
+      _saveNote(repo, updateState: false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final repo = ServiceProvider.of(context).repo;
     return PopScope(
-      onPopInvokedWithResult: _onPopInvokedWithResult,
+      onPopInvokedWithResult:
+          (didPop, _) => _onPopInvokedWithResult(repo, didPop),
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -205,7 +205,10 @@ class _NotePageState extends State<NotePage> {
             ),
             IconButton(
               icon: Icon(Icons.save),
-              onPressed: _textContentChanged ? _saveNote : null,
+              onPressed:
+                  _textContentChanged
+                      ? () => _saveNote(repo, updateState: true)
+                      : null,
               tooltip:
                   _textContentChanged
                       ? 'Save changes'
@@ -258,7 +261,7 @@ class _NotePageState extends State<NotePage> {
                     widget.note.tags.map((tagName) {
                       return TagWidget(
                         tagName: tagName,
-                        onRemove: _unassignTag,
+                        onRemove: (value) => _unassignTag(repo, value),
                       );
                     }).toList(),
               ),

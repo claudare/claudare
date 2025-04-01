@@ -3,63 +3,53 @@ import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/note_page.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:notes_app_v0/services.dart';
+import 'package:notes_app_v0/service_provider.dart';
 
 // does this really need to be Stateful?
-class NoteListPage extends StatefulWidget {
+class NoteListPage extends StatelessWidget {
   const NoteListPage({super.key});
 
-  @override
-  State<NoteListPage> createState() => _NoteListPageState();
-}
-
-class _NoteListPageState extends State<NoteListPage> {
-  final _repo = Services().repo;
-
-  _NoteListPageState();
-
-  void _openNote(NoteData note) async {
+  void _openNote(BuildContext context, NoteData note) async {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => NotePage(note: note)));
   }
 
-  Future<void> _newNote() async {
-    final noteId = _repo.newGenericId('note');
-    _repo.processEvent(_repo.newEventId(), NoteCreated(noteId));
+  Future<void> _newNote(BuildContext context) async {
+    final repo = ServiceProvider.of(context).repo;
+    final noteId = repo.newGenericId('note');
+    repo.processEvent(repo.newEventId(), NoteCreated(noteId));
     // this is racy
-    final note = await _repo.getNote(noteId);
+    final note = await repo.getNote(noteId);
     if (note == null) {
       throw Exception('new note could not be loaded??');
     }
 
-    _openNote(note);
-  }
-
-  @override
-  void dispose() {
-    _repo.dispose();
-    super.dispose();
+    if (context.mounted) {
+      _openNote(context, note);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final repo = ServiceProvider.of(context).repo;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Notes'),
         actions: [
-          IconButton(icon: Icon(Icons.add), onPressed: () => _newNote()),
+          IconButton(icon: Icon(Icons.add), onPressed: () => _newNote(context)),
         ],
       ),
       body: StreamBuilder<void>(
-        stream: _repo.order.changes,
+        stream: repo.order.changes,
         builder: (context, snapshot) {
           return ListView.builder(
-            itemCount: _repo.order.items.length,
+            itemCount: repo.order.items.length,
             itemBuilder: (context, index) {
-              final id = _repo.order.items[index];
+              final id = repo.order.items[index];
               return FutureBuilder(
-                future: _repo.getNote(id),
+                future: repo.getNote(id),
                 builder: (context, snapshot) {
                   final note = snapshot.data;
 
@@ -85,7 +75,7 @@ class _NoteListPageState extends State<NoteListPage> {
                           formatDateTime(note.updatedAt.toDateTime()),
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
-                        onTap: () => _openNote(note),
+                        onTap: () => _openNote(context, note),
                       );
                     },
                   );

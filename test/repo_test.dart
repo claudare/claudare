@@ -1,4 +1,5 @@
 import 'package:core/core.dart';
+import 'package:core/event_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
@@ -21,6 +22,21 @@ void main() {
 
     tearDown(() {
       repo.dispose();
+    });
+
+    test('Can init from events', () async {
+      await repo.initFromEvents([
+        (
+          EventId(Timestamp(1000), DeviceId(0)),
+          NoteCreated(repo.newGenericId('note', timestamp: Timestamp(1000))),
+        ),
+        (
+          EventId(Timestamp(1001), DeviceId(0)),
+          NoteCreated(repo.newGenericId('note', timestamp: Timestamp(1001))),
+        ),
+      ]);
+
+      expect(repo.order.items.length, equals(2));
     });
 
     test('Individual note should emit changes when updated', () async {

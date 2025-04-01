@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:notes_app_v0/services.dart';
+import 'package:notes_app_v0/service_provider.dart';
 
 class TagsManager extends StatefulWidget {
   final NoteData noteData;
@@ -20,7 +20,6 @@ class _TagState {
 }
 
 class _TagsManagerState extends State<TagsManager> {
-  final _repo = Services().repo;
   List<_TagState> tags = [];
 
   late TextEditingController _newTagController;
@@ -30,8 +29,16 @@ class _TagsManagerState extends State<TagsManager> {
     super.initState();
 
     _newTagController = TextEditingController();
+  }
 
-    tags = _repo.tags.values.map((tag) => _TagState(tag, false)).toList();
+  // this is confusing, but it does work...
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final repo = ServiceProvider.of(context).repo;
+
+    tags = repo.tags.values.map((tag) => _TagState(tag, false)).toList();
     for (final tag in widget.noteData.tags) {
       tags.firstWhere((element) => element.tag == tag).selected = true;
     }
@@ -43,9 +50,10 @@ class _TagsManagerState extends State<TagsManager> {
     super.dispose();
   }
 
-  void _assignTag(String tag) {
-    // emit the event
-    _repo.submitEvent(TagAssigned(widget.noteData.id, tag));
+  void _assignTag(BuildContext context, String tag) {
+    final repo = ServiceProvider.of(context).repo;
+
+    repo.submitEvent(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -61,9 +69,10 @@ class _TagsManagerState extends State<TagsManager> {
     }
   }
 
-  void _unassignTag(String tag) {
-    // emit the event
-    _repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
+  void _unassignTag(BuildContext context, String tag) {
+    final repo = ServiceProvider.of(context).repo;
+
+    repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
 
     // local state mutation
     setState(() {
@@ -83,7 +92,7 @@ class _TagsManagerState extends State<TagsManager> {
             decoration: InputDecoration(labelText: 'Add a new tag'),
             onSubmitted: (value) {
               if (value.isNotEmpty) {
-                _assignTag(value);
+                _assignTag(context, value);
 
                 _newTagController.text = '';
                 FocusScope.of(context).unfocus();
@@ -100,9 +109,9 @@ class _TagsManagerState extends State<TagsManager> {
                 value: tags[index].selected,
                 onChanged: (newValue) {
                   if (newValue != null && newValue) {
-                    _assignTag(tags[index].tag);
+                    _assignTag(context, tags[index].tag);
                   } else {
-                    _unassignTag(tags[index].tag);
+                    _unassignTag(context, tags[index].tag);
                   }
                 },
               );
