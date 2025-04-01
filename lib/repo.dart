@@ -195,18 +195,18 @@ class Repo {
     return Repo(emptyDeviceId, {}, NoteOrderData([]), TagsData({}));
   }
 
-  // helper methods to get the ids for current timestamp
-  // be very careful not to make testing a nightmare
-  EventId newEventId({Timestamp? timestamp}) {
-    return _eventIdGen.next(timestamp ?? Timestamp.now());
-  }
+  // or init with actual event data
+  // this is only used for tests
+  Future<void> initFromEvents(List<(EventId, NoteEvent)> events) async {
+    // expand the names in for loop
 
-  GenericId newGenericId(String scope, {Timestamp? timestamp}) {
-    return _genericIdGen.next(scope, timestamp ?? Timestamp.now());
+    for (final (eventId, event) in events) {
+      await processEvent(eventId, event);
+    }
   }
 
   // load from the sqlite database
-  Future<void> init() async {
+  Future<void> initFromDisk() async {
     await Future.delayed(Duration(milliseconds: 100));
 
     final List<GenericId> exampleIds = [
@@ -222,6 +222,16 @@ class Repo {
       );
       await processEvent(newEventId(), TagAssigned(noteId, 'example'));
     }
+  }
+
+  // helper methods to get the ids for current timestamp
+  // be very careful not to make testing a nightmare
+  EventId newEventId({Timestamp? timestamp}) {
+    return _eventIdGen.next(timestamp ?? Timestamp.now());
+  }
+
+  GenericId newGenericId(String scope, {Timestamp? timestamp}) {
+    return _genericIdGen.next(scope, timestamp ?? Timestamp.now());
   }
 
   // Access methods that return the reactive objects

@@ -19,7 +19,7 @@ class _InitPageState extends State<InitPage> {
     super.initState();
 
     Services().repo
-        .init()
+        .initFromDisk()
         .then((_) {
           setState(() {
             _initialized = true;

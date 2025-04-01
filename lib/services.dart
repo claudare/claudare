@@ -4,6 +4,7 @@ import 'package:notes_app_v0/repo.dart';
 /// initialized in the main function, loading can be mocked in the tests?
 /// I dont like singleton pattern, but I think its the best way to manage the
 /// global dependencies
+/// https://pub.dev/packages/get_it could be used for easier testing?
 class Services {
   final Repo repo;
 
