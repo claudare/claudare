@@ -2,12 +2,16 @@ import 'package:core/src/database.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 import 'package:test/test.dart';
 
-void main() {
-  group('database', () {
-    test('create temporary', () async {
-      final db = Database.temporary();
+class _TestDb extends DatabaseBase {
+  _TestDb.temporary() : super.temporary();
+}
 
-      final _migrations = SqliteMigrations(migrationTable: 'app_migrations')
+void main() {
+  group('DatabaseBase', () {
+    test('create temporary', () async {
+      final db = _TestDb.temporary();
+
+      final migrations = SqliteMigrations(migrationTable: 'app_migrations')
         ..add(
           SqliteMigration(1, (tx) async {
             await tx.execute('''
@@ -18,7 +22,7 @@ void main() {
           }),
         );
 
-      await _migrations.migrate(db.db);
+      await migrations.migrate(db.db);
 
       await db.deinit();
     });

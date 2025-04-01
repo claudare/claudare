@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:sqlite_async/sqlite_async.dart';
 
-class Database {
+abstract class DatabaseBase {
   late SqliteDatabase db;
   String? _tempDir;
 
-  Database(String path) : db = SqliteDatabase(path: path);
+  DatabaseBase(String path) : db = SqliteDatabase(path: path);
 
-  Database.temporary() {
+  DatabaseBase.temporary() {
     _tempDir = _getTempDir();
     final path = '$_tempDir/db';
     db = SqliteDatabase(path: path);

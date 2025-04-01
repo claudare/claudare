@@ -26,7 +26,7 @@ final _migrations = SqliteMigrations(
   }),
 );
 
-class EventStore extends Database {
+class EventStore extends DatabaseBase {
   EventStore(super.path);
   EventStore.temporary() : super.temporary();
 
