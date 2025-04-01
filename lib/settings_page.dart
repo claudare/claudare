@@ -6,38 +6,49 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = ControllerProvider.of(context);
+
     return Scaffold(
       appBar: AppBar(title: Text('Settings')),
       body: ListView(
         children: [
-          SettingsItem(
-            icon: Icons.brightness_4,
-            title: Text('Theme'),
-            trailing: DropdownButton<String>(
-              value: 'Light',
-              items:
-                  ['Light', 'Dark'].map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-              onChanged: (String? newValue) {
-                // Handle theme change
-              },
+          // SettingsItem(
+          //   icon: Icons.brightness_4,
+          //   title: Text('Theme'),
+          //   trailing: DropdownButton<String>(
+          //     value: 'Light',
+          //     items:
+          //         ['Light', 'Dark'].map((String value) {
+          //           return DropdownMenuItem<String>(
+          //             value: value,
+          //             child: Text(value),
+          //           );
+          //         }).toList(),
+          //     onChanged: (String? newValue) {
+          //       // Handle theme change
+          //     },
+          //   ),
+          // ),
+          AsyncTile(
+            icon: Icons.event_note,
+            title: Text('Events stored'),
+            future: controller.eventCount().then(
+              (value) => Text(value.toString()),
             ),
           ),
-          // place a button to reset app
-          SettingsItem(
-            icon: Icons.restart_alt,
-            title: Text('Delete all data and restart'),
-            trailing: IconButton(
-              icon: Icon(Icons.arrow_forward),
-              onPressed: () {
-                final controller = ControllerProvider.of(context);
-                controller.deleteAllDataAndRestart();
-              },
+          AsyncTile(
+            icon: Icons.storage,
+            title: Text('Database size'),
+            future: controller.allDatabaseSizes().then(
+              (value) => Text(value.toString()),
             ),
+          ),
+          ListTile(
+            leading: Icon(Icons.delete),
+            title: Text('Delete all data and restart'),
+            onTap: () {
+              controller.deleteAllDataAndRestart();
+            },
           ),
         ],
       ),
@@ -60,5 +71,38 @@ class SettingsItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(leading: Icon(icon), title: title, trailing: trailing);
+  }
+}
+
+class AsyncTile extends StatelessWidget {
+  const AsyncTile({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.future,
+  });
+
+  final IconData icon;
+  final Widget title;
+  final Future<Widget> future;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon),
+      title: title,
+      trailing: FutureBuilder<Widget>(
+        future: future,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return snapshot.data!;
+          } else if (snapshot.hasError) {
+            return Text('Error. ${snapshot.error.toString()}');
+          } else {
+            return CircularProgressIndicator();
+          }
+        },
+      ),
+    );
   }
 }

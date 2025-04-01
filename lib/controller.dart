@@ -1,14 +1,16 @@
 import 'dart:convert';
 
+import 'package:core/utils.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:restart_app/restart_app.dart';
+
 import 'package:core/core.dart';
 import 'package:core/database.dart';
 import 'package:core/event_store.dart';
 import 'package:notes_app_v0/app_store.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as path;
-import 'package:restart_app/restart_app.dart';
 
 // [Controller] (real name btd) glues all services together
 // network layer should be managed here
@@ -88,6 +90,17 @@ class Controller {
 
     await _eventStore.storeEvent(envelope);
     await repo.processEvent(eventId, event);
+  }
+
+  Future<FileSize> allDatabaseSizes() async {
+    final eventStoreSize = await databaseGetSizeBytes(_eventStore);
+    final appStoreSize = await databaseGetSizeBytes(_appStore);
+
+    return FileSize(eventStoreSize + appStoreSize);
+  }
+
+  Future<int> eventCount() async {
+    return await _eventStore.eventCount();
   }
 
   Future<void> deleteAllDataAndRestart() async {
