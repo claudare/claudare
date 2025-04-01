@@ -102,6 +102,12 @@ class EventStore extends DatabaseBase {
     );
   }
 
+  Future<int> eventCount() async {
+    return await db
+        .get('SELECT COUNT(*) FROM event')
+        .then((row) => row['COUNT(*)'] as int);
+  }
+
   Future<EventVectorClock> _loadVectorClock() async {
     final rows = await db.execute('''
       SELECT device_id, MAX(timestamp) as timestamp
