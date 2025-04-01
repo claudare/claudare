@@ -19,10 +19,10 @@ abstract class DatabaseBase {
   }
 }
 
-Future<int> databaseGetSize(DatabaseBase anyDb) async {
+Future<int> databaseGetSizeBytes(DatabaseBase anyDb) async {
   final path = anyDb._path;
-  final size = await File(path).length();
-  return size;
+  final bytes = await File(path).length();
+  return bytes;
 }
 
 Future<void> databaseDELETE(DatabaseBase anyDb) async {
