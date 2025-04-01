@@ -7,14 +7,26 @@ import 'package:notes_app_v0/repo.dart';
 // run only non-flutter tests with
 // flutter test --exclude-tags=flutter
 
-// TODO: all timestamps can be omitted from this testing
-// as they are irrelevant to functionality of the app
-// the tests should work with automatic timestamp generation
-// timestamps should only be used when conflicts are tested for.
-
+// this needs a lot more testing, especially when the AppStorage is used
 void main() {
   group('Repo Granular Reactivity', () {
     late Repo repo;
+    final eventId1 = EventId(Timestamp(1000), DeviceId(0));
+    final eventId2 = EventId(Timestamp(1001), DeviceId(0));
+    final eventId3 = EventId(Timestamp(1002), DeviceId(0));
+
+    final noteId1 = GenericId(
+      'note',
+      Timestamp(1000),
+      Counter16(0),
+      DeviceId(0),
+    );
+    final noteId2 = GenericId(
+      'note',
+      Timestamp(1001),
+      Counter16(1),
+      DeviceId(0),
+    );
 
     setUp(() {
       repo = Repo.empty();
@@ -26,14 +38,8 @@ void main() {
 
     test('Can init from events', () async {
       await repo.loadFromEvents([
-        (
-          EventId(Timestamp(1000), DeviceId(0)),
-          NoteCreated(repo.newGenericId('note', timestamp: Timestamp(1000))),
-        ),
-        (
-          EventId(Timestamp(1001), DeviceId(0)),
-          NoteCreated(repo.newGenericId('note', timestamp: Timestamp(1001))),
-        ),
+        (eventId1, NoteCreated(noteId1)),
+        (eventId2, NoteCreated(noteId2)),
       ]);
 
       expect(repo.order.items.length, equals(2));
@@ -42,36 +48,28 @@ void main() {
     test('Individual note should emit changes when updated', () async {
       final order = repo.order;
 
-      final noteId = repo.newGenericId('note', timestamp: Timestamp(1000));
-
       expectLater(order.changes, emits(anything));
-      await repo.processEvent(
-        repo.newEventId(timestamp: Timestamp(1000)),
-        NoteCreated(noteId),
-      );
+      await repo.processEvent(eventId1, NoteCreated(noteId1));
 
-      final noteData = await repo.getNote(noteId);
+      final noteData = await repo.getNote(noteId1);
 
       expectLater(noteData!.changes, emits(anything));
       await repo.processEvent(
-        repo.newEventId(timestamp: Timestamp(1000)),
-        NoteContentUpdated(noteId, 'Updated content'),
+        eventId2,
+        NoteContentUpdated(noteId1, 'Updated content'),
       );
 
-      expect(order.items, equals([noteId]));
+      expect(order.items, equals([noteId1]));
       expect(noteData.content, equals('Updated content'));
 
       // now check from the repo perspective
-      expect(repo.order.items, equals([noteId]));
-      expect((await repo.getNote(noteId))!.content, equals('Updated content'));
+      expect(repo.order.items, equals([noteId1]));
+      expect((await repo.getNote(noteId1))!.content, equals('Updated content'));
     });
 
     test('Note ordering', () async {
-      // Arrange
-      final noteId1 = repo.newGenericId('note', timestamp: Timestamp(1000));
-      final noteId2 = repo.newGenericId('note', timestamp: Timestamp(1000));
-      await repo.processEvent(repo.newEventId(), NoteCreated(noteId1));
-      await repo.processEvent(repo.newEventId(), NoteCreated(noteId2));
+      await repo.processEvent(eventId1, NoteCreated(noteId1));
+      await repo.processEvent(eventId2, NoteCreated(noteId2));
 
       // notes are ordered in "reverse order"
       final order = repo.order;
@@ -79,7 +77,7 @@ void main() {
 
       expectLater(order.changes, emits(anything));
       await repo.processEvent(
-        repo.newEventId(),
+        eventId3,
         NoteMoved(noteId2, 1),
       ); // moved to end (aka one)
 
@@ -89,17 +87,8 @@ void main() {
     test(
       'Updates to one note should not trigger events for other notes',
       () async {
-        final noteId1 = repo.newGenericId('note', timestamp: Timestamp(1000));
-        final noteId2 = repo.newGenericId('note', timestamp: Timestamp(1000));
-
-        await repo.processEvent(
-          repo.newEventId(timestamp: Timestamp(1000)),
-          NoteCreated(noteId1),
-        );
-        await repo.processEvent(
-          repo.newEventId(timestamp: Timestamp(1000)),
-          NoteCreated(noteId2),
-        );
+        await repo.processEvent(eventId1, NoteCreated(noteId1));
+        await repo.processEvent(eventId2, NoteCreated(noteId2));
 
         final _ = await repo.getNote(noteId1);
         final note2 = await repo.getNote(noteId2);
@@ -112,7 +101,7 @@ void main() {
 
         // Act - only update note1
         await repo.processEvent(
-          repo.newEventId(timestamp: Timestamp(2000)),
+          eventId3,
           NoteContentUpdated(noteId1, 'Updated content'),
         );
 

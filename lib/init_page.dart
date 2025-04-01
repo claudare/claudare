@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/service_provider.dart';
+import 'package:notes_app_v0/controller_provider.dart';
 import 'package:notes_app_v0/note_list_page.dart';
 
 // this will show the loading screen while the appplication is initializing
@@ -18,17 +18,21 @@ class _InitPageState extends State<InitPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final services = ServiceProvider.of(context);
+    // final services = ServiceProvider.of(context);
+    final controller = ControllerProvider.of(context);
 
-    services.repo
-        .loadFromDisk()
+    controller
+        .initPersisted()
+        // .initTemporary()
         .then((_) {
-          setState(() {
-            _initialized = true;
+          controller.loadRepo().then((_) {
+            setState(() {
+              _initialized = true;
 
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const NoteListPage()),
-            );
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const NoteListPage()),
+              );
+            });
           });
         })
         .catchError((err) {

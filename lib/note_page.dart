@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
+import 'package:notes_app_v0/controller.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:notes_app_v0/service_provider.dart';
+import 'package:notes_app_v0/controller_provider.dart';
 import 'package:notes_app_v0/tag_widget.dart';
 import 'package:notes_app_v0/tags_manager.dart';
 
@@ -94,12 +95,14 @@ class _NotePageState extends State<NotePage> {
     return _contentController.text != widget.note.content;
   }
 
-  void _saveNote(Repo repo, {bool updateState = true}) {
+  void _saveNote(Controller controller, {bool updateState = true}) {
     if (_didTitleChange()) {
-      repo.submitEvent(NoteTitleUpdated(widget.note.id, _titleController.text));
+      controller.localEventSubmit(
+        NoteTitleUpdated(widget.note.id, _titleController.text),
+      );
     }
     if (_didContentChange()) {
-      repo.submitEvent(
+      controller.localEventSubmit(
         NoteContentUpdated(widget.note.id, _contentController.text),
       );
     }
@@ -114,9 +117,7 @@ class _NotePageState extends State<NotePage> {
     }
   }
 
-  Future<void> _deleteNote(BuildContext ctx) async {
-    final repo = ServiceProvider.of(ctx).repo;
-
+  Future<void> _deleteNote(BuildContext ctx, Controller controller) async {
     final shouldDelete =
         await showDialog<bool>(
           context: context,
@@ -139,7 +140,7 @@ class _NotePageState extends State<NotePage> {
         false;
 
     if (shouldDelete) {
-      repo.submitEvent(NoteDeleted(widget.note.id));
+      controller.localEventSubmit(NoteDeleted(widget.note.id));
       // prevent saving it ???
       setState(() {
         _textContentChanged = false;
@@ -150,8 +151,8 @@ class _NotePageState extends State<NotePage> {
     }
   }
 
-  void _unassignTag(Repo repo, String tag) {
-    repo.submitEvent(TagUnassigned(widget.note.id, tag));
+  void _unassignTag(Controller controller, String tag) {
+    controller.localEventSubmit(TagUnassigned(widget.note.id, tag));
   }
 
   Future<void> _onTagPressed(BuildContext context) async {
@@ -176,19 +177,19 @@ class _NotePageState extends State<NotePage> {
     // );
   }
 
-  void _onPopInvokedWithResult(Repo repo, bool didPop) async {
+  void _onPopInvokedWithResult(Controller controller, bool didPop) async {
     if (_textContentChanged) {
       print('autosaving note onPop, didPop: $didPop');
-      _saveNote(repo, updateState: false);
+      _saveNote(controller, updateState: false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final repo = ServiceProvider.of(context).repo;
+    final controller = ControllerProvider.of(context);
     return PopScope(
       onPopInvokedWithResult:
-          (didPop, _) => _onPopInvokedWithResult(repo, didPop),
+          (didPop, _) => _onPopInvokedWithResult(controller, didPop),
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -201,13 +202,13 @@ class _NotePageState extends State<NotePage> {
             ),
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () => _deleteNote(context),
+              onPressed: () => _deleteNote(context, controller),
             ),
             IconButton(
               icon: Icon(Icons.save),
               onPressed:
                   _textContentChanged
-                      ? () => _saveNote(repo, updateState: true)
+                      ? () => _saveNote(controller, updateState: true)
                       : null,
               tooltip:
                   _textContentChanged
@@ -261,7 +262,7 @@ class _NotePageState extends State<NotePage> {
                     widget.note.tags.map((tagName) {
                       return TagWidget(
                         tagName: tagName,
-                        onRemove: (value) => _unassignTag(repo, value),
+                        onRemove: (value) => _unassignTag(controller, value),
                       );
                     }).toList(),
               ),

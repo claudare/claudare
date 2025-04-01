@@ -3,11 +3,18 @@ import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/note_page.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:notes_app_v0/service_provider.dart';
+import 'package:notes_app_v0/controller_provider.dart';
+import 'package:notes_app_v0/settings_page.dart';
 
 // does this really need to be Stateful?
 class NoteListPage extends StatelessWidget {
   const NoteListPage({super.key});
+
+  void _openSettings(BuildContext context) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const SettingsPage()));
+  }
 
   void _openNote(BuildContext context, NoteData note) async {
     Navigator.of(
@@ -16,11 +23,13 @@ class NoteListPage extends StatelessWidget {
   }
 
   Future<void> _newNote(BuildContext context) async {
-    final repo = ServiceProvider.of(context).repo;
-    final noteId = repo.newGenericId('note');
-    repo.processEvent(repo.newEventId(), NoteCreated(noteId));
-    // this is racy
-    final note = await repo.getNote(noteId);
+    final controller = ControllerProvider.of(context);
+
+    final noteId = controller.newGenericId('note');
+    await controller.localEventSubmit(NoteCreated(noteId));
+
+    // this could be racy
+    final note = await controller.repo.getNote(noteId);
     if (note == null) {
       throw Exception('new note could not be loaded??');
     }
@@ -32,12 +41,16 @@ class NoteListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = ServiceProvider.of(context).repo;
+    final repo = ControllerProvider.of(context).repo;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Notes'),
         actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () => _openSettings(context),
+          ),
           IconButton(icon: Icon(Icons.add), onPressed: () => _newNote(context)),
         ],
       ),

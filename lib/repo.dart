@@ -83,6 +83,30 @@ class NoteData {
   void dispose() {
     _changeController.close();
   }
+
+  // serialization to json
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id.toString(),
+      'title': title,
+      'content': content,
+      'tags': tags,
+      'createdAt': createdAt.toString(),
+      'updatedAt': updatedAt.toString(),
+    };
+  }
+
+  // from json
+  factory NoteData.fromJson(Map<String, dynamic> json) {
+    return NoteData(
+      GenericId.fromString(json['id']),
+      json['title'],
+      json['content'],
+      Set<String>.from(json['tags']),
+      Timestamp.fromString(json['createdAt']),
+      Timestamp.fromString(json['updatedAt']),
+    );
+  }
 }
 
 class NoteOrderData {
@@ -125,25 +149,52 @@ class NoteOrderData {
   void dispose() {
     _changeController.close();
   }
+
+  // json
+  Map<String, dynamic> toJson() {
+    return {'order': _order.map((id) => id.toString()).toList()};
+  }
+
+  factory NoteOrderData.fromJson(Map<String, dynamic> json) {
+    final order = json['order'].map((id) => GenericId.fromString(id)).toList();
+    return NoteOrderData(order);
+  }
+}
+
+typedef TagValue = List<GenericId>;
+
+class TagData {
+  final String name;
+  final TagValue value;
+
+  const TagData(this.name, this.value);
+
+  factory TagData.fromJsonValue(String name, List<String> jsonValue) {
+    return TagData(name, jsonValue.map(GenericId.fromString).toList());
+  }
 }
 
 class TagsData {
   // association of tags to notes
-  final Map<String, List<GenericId>> _tags;
+  final Map<String, TagValue> _tags;
 
   final _changeController = StreamController<void>.broadcast(sync: true);
   Stream<void> get changes => _changeController.stream;
 
   TagsData(this._tags);
+  TagsData.fromTagDataList(List<TagData> tags)
+    : _tags = {for (var tag in tags) tag.name: tag.value};
 
-  void addTag(GenericId noteId, String tagName) {
+  TagValue addTag(GenericId noteId, String tagName) {
     _tags[tagName] ??= [];
     _tags[tagName]!.add(noteId);
 
     _notifyChange();
+    return _tags[tagName]!;
   }
 
-  void removeTag(GenericId noteId, String tagName) {
+  // null return value means that the tag should be deleted
+  TagValue? removeTag(GenericId noteId, String tagName) {
     final list = _tags[tagName];
     if (list == null) {
       throw Exception('Tag $tagName not found');
@@ -152,9 +203,11 @@ class TagsData {
     list.remove(noteId);
     if (list.isEmpty) {
       _tags.remove(tagName);
+      return null;
     }
 
     _notifyChange();
+    return _tags[tagName]!;
   }
 
   // get all tags sorted alphabetically
@@ -163,8 +216,6 @@ class TagsData {
   List<GenericId> getTagNodeIds(String tag) => _tags[tag] ?? [];
 
   void _notifyChange() {
-    // snapshot wiriting to the database could happen here
-    // the NoteData class should have a reference to the storage.
     _changeController.add(null);
   }
 
@@ -176,23 +227,14 @@ class TagsData {
 // this is like the full state of the application, but without flutter things.
 // Managed by dispatching events
 class Repo {
-  // repo should load thisDeviceId from storage...
-  // from auth or something like that
-  final DeviceId thisDeviceId;
-  final GenericIdGenerator _genericIdGen;
-  final EventIdGenerator _eventIdGen;
-
   final Map<GenericId, NoteData> _notes;
   final NoteOrderData _order;
   final TagsData _tags;
 
-  Repo(this.thisDeviceId, this._notes, this._order, this._tags)
-    : _genericIdGen = GenericIdGenerator.seeded(thisDeviceId),
-      _eventIdGen = EventIdGenerator(thisDeviceId);
+  const Repo(this._notes, this._order, this._tags);
 
   factory Repo.empty() {
-    final emptyDeviceId = DeviceId(0);
-    return Repo(emptyDeviceId, {}, NoteOrderData([]), TagsData({}));
+    return Repo({}, NoteOrderData([]), TagsData({}));
   }
 
   // or init with actual event data
@@ -203,35 +245,6 @@ class Repo {
     for (final (eventId, event) in events) {
       await processEvent(eventId, event);
     }
-  }
-
-  // load from the sqlite database
-  Future<void> loadFromDisk() async {
-    await Future.delayed(Duration(milliseconds: 100));
-
-    final List<GenericId> exampleIds = [
-      newGenericId('note'),
-      newGenericId('note'),
-    ];
-    // Create two hardcoded notes
-    for (final noteId in exampleIds) {
-      await processEvent(newEventId(), NoteCreated(noteId));
-      await processEvent(
-        newEventId(),
-        NoteContentUpdated(noteId, 'This is note #$noteId'),
-      );
-      await processEvent(newEventId(), TagAssigned(noteId, 'example'));
-    }
-  }
-
-  // helper methods to get the ids for current timestamp
-  // be very careful not to make testing a nightmare
-  EventId newEventId({Timestamp? timestamp}) {
-    return _eventIdGen.next(timestamp ?? Timestamp.now());
-  }
-
-  GenericId newGenericId(String scope, {Timestamp? timestamp}) {
-    return _genericIdGen.next(scope, timestamp ?? Timestamp.now());
   }
 
   // Access methods that return the reactive objects
@@ -252,20 +265,19 @@ class Repo {
     }
   }
 
-  Future<void> submitEvent(NoteEvent event, {Timestamp? timestamp}) async {
-    final eventId = _eventIdGen.next(timestamp ?? Timestamp.now());
-    await processEvent(eventId, event);
-  }
-
-  // Method for creating a new note
+  /// NEVER CALL FROM APPLICATION CODE
+  /// only used inside the controller
   Future<void> processEvent(EventId id, NoteEvent event) async {
     // writing of event to db should happen here
     print('Processing event: $event');
     switch (event) {
       case NoteCreated event:
-        // saving of note and order can happen here
         _notes[event.id] = NoteData.emptyNew(event.id);
         _order.add(event.id);
+        // saving of note and order to storage can happen here
+        // it can actually be done outside the async event loop to speed up
+        // event resolution?
+
         break;
       case NoteContentUpdated event:
         // the repo does not need to have everything loaded

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/events.dart';
 import 'package:notes_app_v0/repo.dart';
-import 'package:notes_app_v0/service_provider.dart';
+import 'package:notes_app_v0/controller_provider.dart';
 
 class TagsManager extends StatefulWidget {
   final NoteData noteData;
@@ -36,7 +36,7 @@ class _TagsManagerState extends State<TagsManager> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final repo = ServiceProvider.of(context).repo;
+    final repo = ControllerProvider.of(context).repo;
 
     tags = repo.tags.values.map((tag) => _TagState(tag, false)).toList();
     for (final tag in widget.noteData.tags) {
@@ -51,9 +51,9 @@ class _TagsManagerState extends State<TagsManager> {
   }
 
   void _assignTag(BuildContext context, String tag) {
-    final repo = ServiceProvider.of(context).repo;
+    final controller = ControllerProvider.of(context);
 
-    repo.submitEvent(TagAssigned(widget.noteData.id, tag));
+    controller.localEventSubmit(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -70,9 +70,9 @@ class _TagsManagerState extends State<TagsManager> {
   }
 
   void _unassignTag(BuildContext context, String tag) {
-    final repo = ServiceProvider.of(context).repo;
+    final controller = ControllerProvider.of(context);
 
-    repo.submitEvent(TagUnassigned(widget.noteData.id, tag));
+    controller.localEventSubmit(TagUnassigned(widget.noteData.id, tag));
 
     // local state mutation
     setState(() {
