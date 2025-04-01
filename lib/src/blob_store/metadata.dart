@@ -1,16 +1,29 @@
-/// [BlobMetadata] is for the client side, stored in the system's event store
+import 'package:core/src/encryption/scheme.dart';
+
+/// [BlobMetadata] is for the client side only,
+/// Its stored in the system's event store
 /// Holds needed context for the application, when it needs to read this
+/// Each blob has its own encryption key.
 class BlobMetadata {
+  final AnyEncryptionScheme encryptionScheme;
   final int plaintextLengthBytes; // for UI
   final String mimeType; // for internal app functinality
 
-  const BlobMetadata(this.plaintextLengthBytes, this.mimeType);
+  const BlobMetadata(
+    this.encryptionScheme,
+    this.plaintextLengthBytes,
+    this.mimeType,
+  );
 
-  factory BlobMetadata.fromJson(Map<String, dynamic> json) {
-    return BlobMetadata(json['plaintextSizeBytes'], json['mimeType']);
-  }
+  BlobMetadata.fromJson(Map<String, dynamic> json)
+    : encryptionScheme = AnyEncryptionScheme.anyFromJson(
+        json['encryptionScheme'],
+      ),
+      plaintextLengthBytes = json['plaintextSizeBytes'],
+      mimeType = json['mimeType'];
 
   Map<String, dynamic> toJson() => {
+    'encryptionScheme': encryptionScheme.toJson(),
     'plaintextSizeBytes': plaintextLengthBytes,
     'mimeType': mimeType,
   };
