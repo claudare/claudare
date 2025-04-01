@@ -87,6 +87,8 @@ class EventStore extends DatabaseBase {
   }
 
   Future<void> storeEvent(StoredEvent envelope) async {
+    // vector clock update ensures that we are not storing events in the past
+    // of the vector clock. This is really important to allow getEvents to work
     _vectorClock.update(envelope.id);
 
     final id = envelope.id;

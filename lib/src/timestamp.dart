@@ -64,9 +64,15 @@ class Timestamp implements Comparable<Timestamp> {
   // Additional formatting helper.
   // Only used for debugging pursposes.
   String toISO8601() {
-    final DateTime dateTime =
-        DateTime.fromMillisecondsSinceEpoch(value).toUtc();
+    final dateTime = toDateTime();
     return dateTime.toIso8601String();
+  }
+
+  /// An easy-on-the-eyes string representation.
+  /// Use for debug/logging
+  String toPrettyString() {
+    final dateTime = toDateTime();
+    return '${dateTime.year}-${dateTime.month}-${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}:${dateTime.second.toString().padLeft(2, '0')}';
   }
 
   DateTime toDateTime() {

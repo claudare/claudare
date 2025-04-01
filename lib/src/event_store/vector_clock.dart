@@ -41,7 +41,7 @@ class EventVectorClock implements Comparable<EventVectorClock> {
 
     if (currentTs != null && id.timestamp <= currentTs) {
       throw Exception(
-        'New event is behind the latest known event. Latest ${id.timestamp.toISO8601()}, got ${currentTs.toISO8601()} instead.',
+        'New event is behind the latest known event. Latest ${id.timestamp.toPrettyString()}, got ${currentTs.toPrettyString()} instead.',
       );
     }
 
