@@ -15,7 +15,7 @@ void main() {
 
     setUp(() async {
       eventStore = EventStore.temporary();
-      await eventStore.initialize();
+      await eventStore.init();
 
       final firstEventId = EventId(Timestamp(1000), deviceA);
       final secondEventId = EventId(Timestamp(2000), deviceB);
