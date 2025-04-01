@@ -44,9 +44,8 @@ class _NoteListPageState extends State<NoteListPage> {
   }
 
   Future<void> _newNote() async {
-    final eventId = _repo.eventIdGen.next(Timestamp.now());
-    final noteId = _repo.genericIdGen.next('note', eventId.timestamp);
-    _repo.processEvent(eventId, NoteCreated(noteId));
+    final noteId = _repo.newGenericId('note');
+    _repo.processEvent(_repo.newEventId(), NoteCreated(noteId));
     // this is racy
     final note = await _repo.getNote(noteId);
     if (note == null) {

@@ -6,7 +6,6 @@ import 'dart:async';
 
 import 'package:core/core.dart';
 import 'package:core/event_store.dart';
-import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/events.dart';
 
 const _previewLength = 100;
@@ -179,19 +178,29 @@ class TagsData {
 // Managed by dispatching events
 class Repo {
   final DeviceId thisDeviceId;
-  final GenericIdGenerator genericIdGen;
-  final EventIdGenerator eventIdGen;
+  final GenericIdGenerator _genericIdGen;
+  final EventIdGenerator _eventIdGen;
 
   final Map<GenericId, NoteData> _notes;
   final NoteOrderData _order;
   final TagsData _tags;
 
   Repo(this.thisDeviceId, this._notes, this._order, this._tags)
-    : genericIdGen = GenericIdGenerator.seeded(thisDeviceId),
-      eventIdGen = EventIdGenerator(thisDeviceId);
+    : _genericIdGen = GenericIdGenerator.seeded(thisDeviceId),
+      _eventIdGen = EventIdGenerator(thisDeviceId);
 
   factory Repo.empty(DeviceId thisDeviceId) {
     return Repo(thisDeviceId, {}, NoteOrderData([]), TagsData({}));
+  }
+
+  // helper methods to get the ids for current timestamp
+  // be very careful not to make testing a nightmare
+  EventId newEventId({Timestamp? timestamp}) {
+    return _eventIdGen.next(timestamp ?? Timestamp.now());
+  }
+
+  GenericId newGenericId(String scope, {Timestamp? timestamp}) {
+    return _genericIdGen.next(scope, timestamp ?? Timestamp.now());
   }
 
   // load from the sqlite database
@@ -199,20 +208,17 @@ class Repo {
     await Future.delayed(Duration(milliseconds: 1000));
 
     final List<GenericId> exampleIds = [
-      genericIdGen.next('note', Timestamp.now()),
-      genericIdGen.next('note', Timestamp.now()),
+      newGenericId('note'),
+      newGenericId('note'),
     ];
     // Create two hardcoded notes
     for (final noteId in exampleIds) {
-      await processEvent(eventIdGen.next(Timestamp.now()), NoteCreated(noteId));
+      await processEvent(newEventId(), NoteCreated(noteId));
       await processEvent(
-        eventIdGen.next(Timestamp.now()),
+        newEventId(),
         NoteContentUpdated(noteId, 'This is note #$noteId'),
       );
-      await processEvent(
-        eventIdGen.next(Timestamp.now()),
-        TagAssigned(noteId, 'example'),
-      );
+      await processEvent(newEventId(), TagAssigned(noteId, 'example'));
     }
   }
 
@@ -234,9 +240,8 @@ class Repo {
     }
   }
 
-  Future<void> submitEvent(NoteEvent event) async {
-    // "now will be used"
-    final eventId = eventIdGen.next(Timestamp.now());
+  Future<void> submitEvent(NoteEvent event, {Timestamp? timestamp}) async {
+    final eventId = _eventIdGen.next(timestamp ?? Timestamp.now());
     await processEvent(eventId, event);
   }
 
