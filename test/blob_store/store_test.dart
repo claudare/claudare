@@ -12,11 +12,7 @@ void main() {
       await blobStore.init();
     });
 
-    tearDownAll(() async {
-      await blobStore.deinit();
-    });
-
-    test('should init and deinit the store', () async {
+    tearDown(() async {
       await blobStore.deinit();
     });
 

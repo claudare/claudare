@@ -1,3 +1,4 @@
+import 'package:core/src/database.dart';
 import 'package:core/src/event_store/id.dart';
 import 'package:core/src/event_store/vector_clock_range.dart';
 import 'package:test/test.dart';
@@ -29,6 +30,7 @@ void main() {
 
     tearDown(() async {
       await eventStore.deinit();
+      await databaseDELETE(eventStore);
     });
 
     test('insert and query events', () async {

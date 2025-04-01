@@ -117,17 +117,4 @@ class EventStore extends DatabaseBase {
 
     return EventVectorClock.fromEventIds(eventIds);
   }
-
-  // will drop all the tables and re-migrate the database
-  Future<void> nuke() async {
-    // alternatively can delete the file and re-initialize?
-    // there is also this scary command:
-    // await db.execute(
-    //   "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';",
-    // );
-    await db.execute('DROP TABLE IF EXISTS event;');
-    await db.execute('DROP TABLE IF EXISTS migrations_event_store;');
-
-    await initialize();
-  }
 }

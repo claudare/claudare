@@ -25,6 +25,7 @@ void main() {
       await migrations.migrate(db.db);
 
       await db.deinit();
+      await databaseDELETE(db);
     });
   });
 }
