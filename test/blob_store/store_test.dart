@@ -63,6 +63,20 @@ void main() {
       expect(stat!.ciphertextLengthBytes, equals(3));
     });
 
+    test('should get blob list', () async {
+      final id = BlobId('list_test_blob');
+      final data = Stream<List<int>>.fromIterable([
+        [1, 2, 3],
+      ]);
+      await blobStore.write(id, data);
+
+      expect(await blobStore.has(id), isTrue);
+
+      var list = await blobStore.list().toList();
+      expect(list.length, 1);
+      expect(list[0], id);
+    });
+
     test('should handle non-existent blob stats', () async {
       final id = BlobId('non_existent_test_blob');
       var stat = await blobStore.stat(id);

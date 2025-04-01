@@ -93,7 +93,7 @@ class BlobStore {
 
     return dir
         .list(followLinks: false, recursive: false)
-        .where((event) => event.runtimeType == File)
+        .where((event) => event is File)
         .map((event) => BlobId(path.basename(event.path)));
   }
 

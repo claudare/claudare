@@ -19,4 +19,14 @@ class BlobId {
 
     return BlobId(strValue);
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! BlobId) return false;
+    return value == other.value;
+  }
+
+  @override
+  int get hashCode => value.hashCode;
 }
