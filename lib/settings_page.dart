@@ -30,12 +30,12 @@ class SettingsPage extends StatelessWidget {
           // place a button to reset app
           SettingsItem(
             icon: Icons.restart_alt,
-            title: Text('Reset App'),
+            title: Text('Delete all data and restart'),
             trailing: IconButton(
               icon: Icon(Icons.arrow_forward),
               onPressed: () {
                 final controller = ControllerProvider.of(context);
-                controller.resetApp();
+                controller.deleteAllDataAndRestart();
               },
             ),
           ),

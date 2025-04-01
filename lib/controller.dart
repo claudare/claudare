@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:core/core.dart';
+import 'package:core/database.dart';
 import 'package:core/event_store.dart';
 import 'package:notes_app_v0/app_store.dart';
 import 'package:notes_app_v0/events.dart';
@@ -49,7 +50,7 @@ class Controller {
   }
 
   Future<void> loadRepo() async {
-    await _eventStore.initialize();
+    await _eventStore.init();
     await _appStore.init();
 
     final finalVectorClock = _eventStore.vectorClock.copyWith({});
@@ -73,7 +74,7 @@ class Controller {
     repo.dispose();
   }
 
-  EventId newEventId({Timestamp? timestamp}) {
+  EventId _newEventId({Timestamp? timestamp}) {
     return _eventIdGen.next(timestamp ?? Timestamp.now());
   }
 
@@ -82,15 +83,16 @@ class Controller {
   }
 
   Future<void> localEventSubmit(NoteEvent event) async {
-    final eventId = newEventId();
+    final eventId = _newEventId();
     final envelope = StoredEvent(eventId, jsonEncode(event.toJson()));
 
     await _eventStore.storeEvent(envelope);
     await repo.processEvent(eventId, event);
   }
 
-  Future<void> resetApp() async {
-    await _eventStore.nuke();
+  Future<void> deleteAllDataAndRestart() async {
+    await databaseDELETE(_eventStore);
+    await databaseDELETE(_appStore);
     repo.dispose();
 
     Restart.restartApp();
