@@ -10,7 +10,7 @@ class Counter16Generator {
 
   factory Counter16Generator.seeded(int? value) {
     if (value == null) {
-      return Counter16Generator(Random.secure().nextInt(Counter16._maxValue));
+      return Counter16Generator(Counter16.random().value);
     }
 
     return Counter16Generator(value);
@@ -30,6 +30,8 @@ class Counter16 {
   final int _value;
 
   const Counter16(this._value) : assert(_value >= 0 && _value <= _maxValue);
+
+  Counter16.random() : _value = Random.secure().nextInt(_maxValue);
 
   factory Counter16.fromString(String str) {
     if (str.length != _strLen) {

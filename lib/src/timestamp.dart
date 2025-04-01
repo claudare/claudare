@@ -35,13 +35,13 @@ class TimestampRange {
   TimestampRange(this.start, this.end) : assert(end > start);
 
   Map<String, dynamic> toJson() {
-    return {'start': start.toJson(), 'end': end.toJson()};
+    return {'start': start.toString(), 'end': end.toString()};
   }
 
   factory TimestampRange.fromJson(Map<String, dynamic> json) {
     return TimestampRange(
-      Timestamp.fromJson(json['start']),
-      Timestamp.fromJson(json['end']),
+      Timestamp.fromString(json['start']),
+      Timestamp.fromString(json['end']),
     );
   }
 }
@@ -69,6 +69,10 @@ class Timestamp implements Comparable<Timestamp> {
     return dateTime.toIso8601String();
   }
 
+  DateTime toDateTime() {
+    return DateTime.fromMillisecondsSinceEpoch(value).toUtc();
+  }
+
   @override
   int compareTo(Timestamp other) {
     return value.compareTo(other.value);
@@ -90,14 +94,6 @@ class Timestamp implements Comparable<Timestamp> {
 
   Timestamp operator +(Timestamp other) => Timestamp(value + other.value);
   Timestamp operator -(Timestamp other) => Timestamp(value - other.value);
-
-  factory Timestamp.fromJson(String json) {
-    return Timestamp.fromString(json);
-  }
-
-  String toJson() {
-    return value.toString();
-  }
 
   factory Timestamp.fromString(String str) {
     if (str.length != _stringLength) {

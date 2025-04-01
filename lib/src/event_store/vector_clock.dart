@@ -94,7 +94,7 @@ class EventVectorClock implements Comparable<EventVectorClock> {
     final out = <String, String>{};
 
     for (final entry in _mapDeviceTimestamp.entries) {
-      out[entry.key.toString()] = entry.value.toJson();
+      out[entry.key.toString()] = entry.value.toString();
     }
 
     return out;
@@ -105,7 +105,7 @@ class EventVectorClock implements Comparable<EventVectorClock> {
     final out = <DeviceId, Timestamp>{};
 
     for (final entry in json.entries) {
-      out[DeviceId.fromString(entry.key)] = Timestamp.fromJson(entry.value);
+      out[DeviceId.fromString(entry.key)] = Timestamp.fromString(entry.value);
     }
 
     return EventVectorClock(out);

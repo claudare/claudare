@@ -50,6 +50,15 @@ class GenericId {
     return GenericId(scope, timestamp, counter, deviceId);
   }
 
+  /// a completely random generic id
+  /// not recommended to use, as to avoid collisions
+  /// use [GenericIdGenerator] instead!
+  factory GenericId.completelyRandom(String scope, Timestamp timestamp) {
+    final counter = Counter16.random();
+    final deviceId = DeviceId.random();
+    return GenericId(scope, timestamp, counter, deviceId);
+  }
+
   @override
   String toString() => '$scope-$timestamp-$counter-$deviceId';
 
