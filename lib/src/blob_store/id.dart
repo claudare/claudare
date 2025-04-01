@@ -1,5 +1,5 @@
-import 'package:core/src/base58.dart';
-import 'package:core/src/random.dart';
+import 'package:core/src/utils/base58.dart';
+import 'package:core/src/utils/random.dart';
 
 /// Each blob is identified by a random value endoded with Base58
 /// no need to use hashes, random values are enough

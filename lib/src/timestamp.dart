@@ -1,4 +1,4 @@
-import 'package:core/src/base58.dart';
+import 'package:core/src/utils/base58.dart';
 
 const _stringLength = 11; // for u64
 

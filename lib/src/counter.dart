@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:core/src/base58.dart';
+import 'package:core/src/utils/base58.dart';
 
 class Counter16Generator {
   int _value;
