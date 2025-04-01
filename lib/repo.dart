@@ -187,10 +187,17 @@ class TagsData {
 
   TagValue addTag(GenericId noteId, String tagName) {
     _tags[tagName] ??= [];
-    _tags[tagName]!.add(noteId);
+    final tagValue = _tags[tagName]!;
+
+    // dont add duplicate tags!
+    if (tagValue.contains(noteId)) {
+      return tagValue;
+    }
+
+    tagValue.add(noteId);
 
     _notifyChange();
-    return _tags[tagName]!;
+    return tagValue;
   }
 
   // null return value means that the tag should be deleted
@@ -269,7 +276,7 @@ class Repo {
   /// only used inside the controller
   Future<void> processEvent(EventId id, NoteEvent event) async {
     // writing of event to db should happen here
-    print('Processing event: $event');
+    print('Processing event: [$id] $event');
     switch (event) {
       case NoteCreated event:
         _notes[event.id] = NoteData.emptyNew(event.id);

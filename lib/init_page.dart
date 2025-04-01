@@ -14,6 +14,12 @@ class _InitPageState extends State<InitPage> {
   String _error = '';
   bool _initialized = false;
 
+  void _onError(dynamic error) {
+    setState(() {
+      _error = error.toString();
+    });
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -25,20 +31,25 @@ class _InitPageState extends State<InitPage> {
         .initPersisted()
         // .initTemporary()
         .then((_) {
-          controller.loadRepo().then((_) {
-            setState(() {
-              _initialized = true;
+          controller
+              .loadRepo()
+              .then((_) {
+                setState(() {
+                  _initialized = true;
 
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => const NoteListPage()),
-              );
-            });
-          });
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => const NoteListPage(),
+                    ),
+                  );
+                });
+              })
+              .catchError((err) {
+                _onError(err);
+              });
         })
         .catchError((err) {
-          setState(() {
-            _error = err.toString();
-          });
+          _onError(err);
         });
   }
 

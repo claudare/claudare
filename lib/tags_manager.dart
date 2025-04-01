@@ -50,10 +50,10 @@ class _TagsManagerState extends State<TagsManager> {
     super.dispose();
   }
 
-  void _assignTag(BuildContext context, String tag) {
+  Future<void> _assignTag(BuildContext context, String tag) async {
     final controller = ControllerProvider.of(context);
 
-    controller.localEventSubmit(TagAssigned(widget.noteData.id, tag));
+    await controller.localEventSubmit(TagAssigned(widget.noteData.id, tag));
 
     // local state mutation
     if (!tags.any((element) => element.tag == tag)) {
@@ -69,10 +69,10 @@ class _TagsManagerState extends State<TagsManager> {
     }
   }
 
-  void _unassignTag(BuildContext context, String tag) {
+  Future<void> _unassignTag(BuildContext context, String tag) async {
     final controller = ControllerProvider.of(context);
 
-    controller.localEventSubmit(TagUnassigned(widget.noteData.id, tag));
+    await controller.localEventSubmit(TagUnassigned(widget.noteData.id, tag));
 
     // local state mutation
     setState(() {
