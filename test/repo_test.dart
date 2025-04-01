@@ -25,7 +25,7 @@ void main() {
     });
 
     test('Can init from events', () async {
-      await repo.initFromEvents([
+      await repo.loadFromEvents([
         (
           EventId(Timestamp(1000), DeviceId(0)),
           NoteCreated(repo.newGenericId('note', timestamp: Timestamp(1000))),

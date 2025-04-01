@@ -21,7 +21,7 @@ class _InitPageState extends State<InitPage> {
     final services = ServiceProvider.of(context);
 
     services.repo
-        .initFromDisk()
+        .loadFromDisk()
         .then((_) {
           setState(() {
             _initialized = true;

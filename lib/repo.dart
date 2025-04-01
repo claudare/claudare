@@ -197,7 +197,7 @@ class Repo {
 
   // or init with actual event data
   // this is only used for tests
-  Future<void> initFromEvents(List<(EventId, NoteEvent)> events) async {
+  Future<void> loadFromEvents(List<(EventId, NoteEvent)> events) async {
     // expand the names in for loop
 
     for (final (eventId, event) in events) {
@@ -206,7 +206,7 @@ class Repo {
   }
 
   // load from the sqlite database
-  Future<void> initFromDisk() async {
+  Future<void> loadFromDisk() async {
     await Future.delayed(Duration(milliseconds: 100));
 
     final List<GenericId> exampleIds = [
