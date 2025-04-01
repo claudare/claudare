@@ -101,6 +101,10 @@ class Timestamp implements Comparable<Timestamp> {
   Timestamp operator +(Timestamp other) => Timestamp(value + other.value);
   Timestamp operator -(Timestamp other) => Timestamp(value - other.value);
 
+  Timestamp max(Timestamp other) {
+    return value > other.value ? this : other;
+  }
+
   factory Timestamp.fromString(String str) {
     if (str.length != _stringLength) {
       throw FormatException('Timestamp is invalid, wrong length', str);

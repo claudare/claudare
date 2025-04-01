@@ -32,7 +32,10 @@ class EventStore extends DatabaseBase {
 
   late EventVectorClock _vectorClock;
 
+  @override
   Future<void> init() async {
+    await super.init();
+
     await _migrations.migrate(db);
 
     _vectorClock = await _loadVectorClock();

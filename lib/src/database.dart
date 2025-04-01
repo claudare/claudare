@@ -6,12 +6,21 @@ abstract class DatabaseBase {
   late SqliteDatabase db;
   String _path;
 
-  DatabaseBase(this._path) : db = SqliteDatabase(path: _path);
+  DatabaseBase(this._path)
+    : db = SqliteDatabase(path: _path, options: const SqliteOptions());
 
   DatabaseBase.temporary() : _path = '' {
     final tempDir = _getTempDir();
     _path = '$tempDir/db';
     db = SqliteDatabase(path: _path);
+  }
+
+  Future<void> init() async {
+    await db.initialize();
+    // since its really hard to gracefully shutdown the application,
+    // im going to do this for now.
+    await db.execute('PRAGMA wal_checkpoint(TRUNCATE);');
+    // await db.execute('PRAGMA wal_autocheckpoint = 1000');
   }
 
   Future<void> deinit() async {
