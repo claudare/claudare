@@ -8,6 +8,9 @@ class GenericIdGenerator {
 
   const GenericIdGenerator(this._deviceId, this._counterGen);
 
+  GenericIdGenerator.withCounter(this._deviceId, Counter16 counter)
+    : _counterGen = Counter16Generator(counter.value);
+
   GenericIdGenerator.seeded(this._deviceId, {int? counter})
     : _counterGen = Counter16Generator.seeded(counter);
 
