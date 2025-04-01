@@ -41,12 +41,12 @@ class AES256Key {
 /// WARNING: I have no idea what I am doing.
 /// the encrpyion choices and implementation is entirely AI generated
 /// do not use until its validated to be correct!
-class AES256Encryption implements Encryption {
+class EncryptorAES256 implements Encryptor {
   final AES256Key key;
   static const int ivLength = 16; // AES block size
 
   /// Creates an AES-256 encryption instance with the given 32-byte key
-  AES256Encryption(this.key);
+  EncryptorAES256(this.key);
 
   /// Generate secure random IV
   Uint8List _generateIV() {

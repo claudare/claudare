@@ -37,7 +37,7 @@ class BlobStore {
   // TODO: slow/buffered read
   // all these features need to know the filesizes, but its encrypted
   // so many using crypto bytes
-  Stream<List<int>> read(BlobId id, {Encryption? encryption}) {
+  Stream<List<int>> read(BlobId id, {Encryptor? encryptor}) {
     final file = _getFile(id);
 
     // technically a "has" could be checked here and null returned
@@ -45,14 +45,14 @@ class BlobStore {
 
     final stream = file.openRead();
 
-    return encryption != null ? encryption.decrypt(stream) : stream;
+    return encryptor != null ? encryptor.decrypt(stream) : stream;
   }
 
   // TODO: add progress notification
   Future<void> write(
     BlobId id,
     Stream<List<int>> stream, {
-    Encryption? encryption,
+    Encryptor? encryptor,
   }) async {
     if (await has(id)) {
       throw Exception('blob overwrite is not allowed');
@@ -62,7 +62,7 @@ class BlobStore {
     // TODO: remove utf8 encoding?
     final sink = file.openWrite(mode: FileMode.writeOnly);
 
-    final outStream = encryption != null ? encryption.encrypt(stream) : stream;
+    final outStream = encryptor != null ? encryptor.encrypt(stream) : stream;
 
     try {
       await sink.addStream(outStream);

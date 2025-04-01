@@ -5,7 +5,9 @@ import 'package:async/async.dart';
 
 import 'package:core/src/encryption/common.dart';
 
-class Base64Encoding implements Encryption {
+/// base64 will be used for testing. At first its okay to pretend like things
+/// are encrypted
+class EncryptorBase64 implements Encryptor {
   static const int chunkSize = 24 * 4; // Process 96 bytes at a time
 
   @override

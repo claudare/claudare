@@ -5,7 +5,7 @@ import 'package:core/src/encryption/base64.dart';
 sealed class AnyEncryptionScheme {
   const AnyEncryptionScheme();
 
-  Encryption get encryption;
+  Encryptor get encryption;
 
   Map<String, dynamic> toJson();
   AnyEncryptionScheme.fromJson(Map<String, dynamic> json);
@@ -26,10 +26,10 @@ sealed class AnyEncryptionScheme {
 
 class EncryptionSchemeBase64 extends AnyEncryptionScheme {
   static const type = 'base64';
-  static const blockSize = Base64Encoding.chunkSize;
+  static const blockSize = EncryptorBase64.chunkSize;
 
   @override
-  Encryption get encryption => Base64Encoding();
+  Encryptor get encryption => EncryptorBase64();
 
   @override
   Map<String, dynamic> toJson() {
@@ -41,14 +41,14 @@ class EncryptionSchemeBase64 extends AnyEncryptionScheme {
 
 class EncryptionSchemeAES256 extends AnyEncryptionScheme {
   static const type = 'aes256';
-  static const blockSize = AES256Encryption.ivLength;
+  static const blockSize = EncryptorAES256.ivLength;
 
-  final AES256Encryption _instance;
+  final EncryptorAES256 _instance;
 
   const EncryptionSchemeAES256(this._instance);
 
   @override
-  Encryption get encryption => _instance;
+  Encryptor get encryption => _instance;
 
   @override
   Map<String, dynamic> toJson() {
@@ -57,7 +57,7 @@ class EncryptionSchemeAES256 extends AnyEncryptionScheme {
 
   factory EncryptionSchemeAES256.fromJson(Map<String, dynamic> json) {
     final key = AES256Key.fromHex(json['key']);
-    final instance = AES256Encryption(key);
+    final instance = EncryptorAES256(key);
     return EncryptionSchemeAES256(instance);
   }
 }

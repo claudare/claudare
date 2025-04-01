@@ -1,4 +1,4 @@
-abstract class Encryption {
+abstract class Encryptor {
   Stream<List<int>> encrypt(Stream<List<int>> inputStream);
   Stream<List<int>> decrypt(Stream<List<int>> inputStream);
 }
