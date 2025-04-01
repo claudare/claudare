@@ -12,21 +12,11 @@ class SettingsPage extends StatelessWidget {
       appBar: AppBar(title: Text('Settings')),
       body: ListView(
         children: [
-          // SettingsItem(
-          //   icon: Icons.brightness_4,
-          //   title: Text('Theme'),
-          //   trailing: DropdownButton<String>(
-          //     value: 'Light',
-          //     items:
-          //         ['Light', 'Dark'].map((String value) {
-          //           return DropdownMenuItem<String>(
-          //             value: value,
-          //             child: Text(value),
-          //           );
-          //         }).toList(),
-          //     onChanged: (String? newValue) {
-          //       // Handle theme change
-          //     },
+          // AsyncTile(
+          //   icon: Icons.folder,
+          //   title: Text('Documents folder'),
+          //   future: getApplicationDocumentsDirectory().then(
+          //     (value) => Text(value.path),
           //   ),
           // ),
           AsyncTile(
