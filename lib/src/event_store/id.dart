@@ -14,7 +14,10 @@ class EventIdGenerator {
   }
 }
 
-// id is 11 + 1 + 3 long... 15 chars, rounded up to 16
+/// [EventId] is the most common form of an id. Whenever an id for whatever
+/// internal logic is needed, this implementation is used
+/// it has advantage of always carying the timestamp, but the counter is missing here
+/// Stringified it is 11 + 1 + 3 long... 15 chars, rounded up to 16 for storage
 class EventId implements Comparable<EventId> {
   final Timestamp timestamp;
   final DeviceId deviceId;

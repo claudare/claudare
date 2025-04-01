@@ -13,16 +13,16 @@ final _migrations = SqliteMigrations(
   SqliteMigration(1, (tx) async {
     // table event should have a composite primary key of device_id and timestamp
     await tx.execute('''
-        CREATE TABLE event (
-          device_id INT NOT NULL,
-          timestamp INT NOT NULL,
-          data BLOB NOT NULL,
-          PRIMARY KEY (device_id, timestamp)
-        );
-      ''');
+      CREATE TABLE event (
+        device_id INT NOT NULL,
+        timestamp INT NOT NULL,
+        data BLOB NOT NULL,
+        PRIMARY KEY (device_id, timestamp)
+      );
+    ''');
     await tx.execute('''
-        CREATE INDEX idx_event_timestamp ON event(timestamp);
-      ''');
+      CREATE INDEX idx_event_timestamp ON event(timestamp);
+    ''');
   }),
 );
 
