@@ -33,7 +33,7 @@ void main() {
     });
 
     tearDown(() {
-      repo.dispose();
+      repo.deinit();
     });
 
     test('Can init from events', () async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/controller_provider.dart';
+import 'package:notes_app_v0/init_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -34,10 +35,24 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           ListTile(
+            leading: Icon(Icons.refresh),
+            title: Text('Force rebuild projections'),
+            onTap: () {
+              controller.rebuildFromStart();
+              // redirect to init page
+              // Navigator.of(context).pushReplacement(
+              //   MaterialPageRoute(builder: (context) => const InitPage()),
+              // );
+            },
+          ),
+          ListTile(
             leading: Icon(Icons.delete),
             title: Text('Delete all data and restart'),
             onTap: () {
               controller.deleteAllDataAndRestart();
+              // Navigator.of(context).pushReplacement(
+              //   MaterialPageRoute(builder: (context) => const InitPage()),
+              // );
             },
           ),
         ],

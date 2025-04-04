@@ -19,6 +19,9 @@ class ControllerProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ControllerProvider oldWidget) {
-    return false;
+    print(
+      'should ControllerProvider notify? ${controller != oldWidget.controller}',
+    );
+    return controller != oldWidget.controller;
   }
 }

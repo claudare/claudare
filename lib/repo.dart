@@ -322,7 +322,8 @@ class Repo {
     _searchOrder._notifyChange();
   }
 
-  void dispose() {
+  // TODO: actually cleanup the memory
+  void deinit() {
     _order.dispose();
     _searchOrder.dispose();
     _tags.dispose();

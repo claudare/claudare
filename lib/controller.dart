@@ -17,7 +17,6 @@ import 'package:notes_app_v0/repo.dart';
 // because of the inheritedWidget and path_provider, all of this has to be late
 class Controller {
   late EventStore _eventStore;
-  // app store is not used yet
   late AppStore _appStore;
   late Repo repo;
 
@@ -56,28 +55,37 @@ class Controller {
     await _eventStore.init();
     await _appStore.init();
     await repo.loadFromAppStore();
-
-    // reload all events like so:
-    // this is a pretty elegant solution in my opinion
-    // final finalVectorClock = _eventStore.vectorClock.copyWith({});
-    // final range = EventVectorClockRange.fromStart(finalVectorClock);
-
-    // while (!range.isEmpty) {
-    //   final stream = _eventStore.getEvents(range, 10);
-    //   await for (final eventRaw in stream) {
-    //     final eventId = eventRaw.id;
-    //     final eventParsed = NoteEvent.anyFromJson(jsonDecode(eventRaw.data));
-
-    //     await repo.processEvent(eventId, eventParsed);
-    //     range.advanceById(eventId);
-    //   }
-    // }
   }
 
-  void deinit() async {
-    await _eventStore.deinit();
+  Future<void> deinit() async {
+    repo.deinit();
     await _appStore.deinit();
-    repo.dispose();
+    await _eventStore.deinit();
+  }
+
+  Future<void> applyEventsFromClock(EventVectorClock fromClock) async {
+    // reload all events like so:
+    // this is a pretty elegant solution in my opinion
+    final finalVectorClock = _eventStore.vectorClock.copyWith({});
+    final range = EventVectorClockRange.betweenClocks(
+      fromClock,
+      finalVectorClock,
+    );
+
+    while (!range.isEmpty) {
+      final stream = _eventStore.getEvents(range, 10);
+      await for (final eventRaw in stream) {
+        final eventId = eventRaw.id;
+        final eventParsed = NoteEvent.anyFromJson(jsonDecode(eventRaw.data));
+
+        await repo.processEvent(eventId, eventParsed);
+        range.advanceById(eventId);
+      }
+    }
+  }
+
+  Future<void> applyEventsFromStart() async {
+    await applyEventsFromClock(EventVectorClock.empty());
   }
 
   EventId _newEventId({Timestamp? timestamp}) {
@@ -107,11 +115,32 @@ class Controller {
     return await _eventStore.eventCount();
   }
 
+  Future<void> rebuildFromStart() async {
+    // await deinit();
+
+    await databaseDELETE(_appStore);
+
+    await initPersisted();
+    await loadRepo();
+
+    await applyEventsFromStart();
+  }
+
   Future<void> deleteAllDataAndRestart() async {
+    await deinit();
+
     await databaseDELETE(_eventStore);
     await databaseDELETE(_appStore);
-    repo.dispose();
 
     Restart.restartApp();
   }
+
+  // used for controller provider notifier
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other);
+  }
+
+  @override
+  int get hashCode => Object.hash(_eventStore, _appStore, repo);
 }
