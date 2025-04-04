@@ -345,6 +345,8 @@ class Repo {
         await _appStore.noteSave(_notes[event.id]!);
         await _appStore.noteOrderSave(_order);
 
+        await _appStore.noteSearchInit(event.id);
+
         break;
       case NoteContentUpdated event:
         // the repo does not need to have everything loaded
@@ -353,7 +355,7 @@ class Repo {
         note!.updateContent(event.content, id.timestamp);
 
         await _appStore.noteSave(_notes[event.id]!);
-        await _appStore.noteSearchSaveContent(event.id, note.content);
+        await _appStore.noteSearchUpdate(event.id, content: note.content);
 
         break;
       case NoteTitleUpdated event:
@@ -362,7 +364,7 @@ class Repo {
         note!.updateTitle(event.title, id.timestamp);
 
         await _appStore.noteSave(_notes[event.id]!);
-        await _appStore.noteSearchSaveTitle(event.id, note.title);
+        await _appStore.noteSearchUpdate(event.id, title: note.title);
 
         break;
       case NoteDeleted event:
@@ -409,6 +411,12 @@ class Repo {
         await _appStore.noteSave(note);
         await _appStore.tagSave(tagData);
 
+        print('saving tags: ${note.tags.join(' ')}');
+        await _appStore.noteSearchUpdate(
+          event.noteId,
+          tags: note.tags.join(' '),
+        );
+
         break;
       case TagUnassigned event:
         final note = await getNote(event.noteId);
@@ -422,6 +430,11 @@ class Repo {
         } else {
           await _appStore.tagSave(tagData);
         }
+
+        await _appStore.noteSearchUpdate(
+          event.noteId,
+          tags: note.tags.join(' '),
+        );
 
         break;
     }

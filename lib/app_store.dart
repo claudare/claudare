@@ -26,7 +26,7 @@ final _migrations = SqliteMigrations(migrationTable: 'migrations_app_store')
       // characters, FTS5 falls back to a linear scan of the entire table.
       await tx.execute('''
         CREATE VIRTUAL TABLE note_fts
-        USING fts5(id UNINDEXED, title, content, tokenize="trigram");
+        USING fts5(id UNINDEXED, title, content, tags, tokenize="trigram");
       ''');
 
       // yep, noSQL life
@@ -98,52 +98,34 @@ class AppStore extends DatabaseBase {
     }
   }
 
-  Future<void> noteSearchSaveTitle(GenericId id, String title) async {
-    // await db.execute(
-    //   'INSERT OR REPLACE INTO note_fts (id, title) VALUES (?, ?);',
-    //   [id.toString(), title],
-    // );
-
-    // method four. I don't know how bad this is for the database?
-    await db.execute('DELETE FROM note_fts WHERE id = ?', [id.toString()]);
-    await db.execute('INSERT INTO note_fts (id, title) VALUES (?, ?);', [
-      id.toString(),
-      title,
-    ]);
+  Future<void> noteSearchInit(GenericId id) async {
+    await db.execute(
+      'INSERT INTO note_fts (id, title, content) VALUES (?, ?, ?);',
+      [id.toString(), '', ''],
+    );
   }
 
-  Future<void> noteSearchSaveContent(GenericId id, String content) async {
-    // method one. does not work as it treats id/content as unique thing
-    // await db.execute(
-    //   'INSERT OR REPLACE INTO note_fts (id, content) VALUES (?, ?);',
-    //   [id.toString(), content],
-    // );
-    //
-    // method two. no support for UPSERT in fts5
-    // await db.execute(
-    //   '''INSERT INTO note_fts (id, content)
-    //   VALUES (?, ?)
-    //   ON CONFLICT(id)
-    //   DO UPDATE
-    //   SET content = EXCLUDED.content;''',
-    //   [id.toString(), content],
-    // );
-
-    // method three. this is really slow and inefficient...
-    // but it works
-    final maybeId = await db.getOptional(
-      'SELECT id FROM note_fts WHERE id = ?',
-      [id.toString()],
-    );
-
-    if (maybeId == null) {
-      await db.execute('INSERT INTO note_fts (id, content) VALUES (?, ?);', [
+  Future<void> noteSearchUpdate(
+    GenericId id, {
+    String? title,
+    String? content,
+    String? tags,
+  }) async {
+    if (title != null) {
+      await db.execute('UPDATE note_fts SET title = ? WHERE id = ?;', [
+        title,
         id.toString(),
-        content,
       ]);
-    } else {
-      await db.execute('UPDATE note_fts SET content = ? WHERE id = ?', [
+    }
+    if (content != null) {
+      await db.execute('UPDATE note_fts SET content = ? WHERE id = ?;', [
         content,
+        id.toString(),
+      ]);
+    }
+    if (tags != null) {
+      await db.execute('UPDATE note_fts SET tags = ? WHERE id = ?;', [
+        tags,
         id.toString(),
       ]);
     }
@@ -155,9 +137,10 @@ class AppStore extends DatabaseBase {
 
   Future<List<GenericId>> noteSearchQuery(String query) async {
     // final rows = await db.getAll('SELECT * FROM note_fts(?);', [query]);
+    final likeQuery = '%$query%';
     final rows = await db.getAll(
-      'SELECT * FROM note_fts WHERE title LIKE ? OR content LIKE ?;',
-      ['%$query%', '%$query%'],
+      'SELECT id FROM note_fts WHERE title LIKE ? OR content LIKE ? OR tags LIKE ?;',
+      [likeQuery, likeQuery, likeQuery],
     );
 
     // print('search rows $rows');
