@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/controller_provider.dart';
-import 'package:notes_app_v0/init_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

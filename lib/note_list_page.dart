@@ -11,7 +11,7 @@ class NoteListPage extends StatefulWidget {
   const NoteListPage({super.key});
 
   @override
-  _NoteListPageState createState() => _NoteListPageState();
+  State<NoteListPage> createState() => _NoteListPageState();
 }
 
 // does this really need to be Stateful?
