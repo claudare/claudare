@@ -17,6 +17,18 @@ final _migrations = SqliteMigrations(migrationTable: 'migrations_app_store')
         );
       ''');
 
+      // full text search with sqlite
+      // https://www.sqlite.org/fts5.html#the_trigram_tokenizer
+      // issue is short search terms. As per docs:
+      // Substrings consisting of fewer than 3 unicode characters do not match
+      // any rows when used with a full-text query. If a LIKE or GLOB pattern
+      // does not contain at least one sequence of non-wildcard unicode
+      // characters, FTS5 falls back to a linear scan of the entire table.
+      await tx.execute('''
+        CREATE VIRTUAL TABLE note_fts
+        USING fts5(id UNINDEXED, title, content, tokenize="trigram");
+      ''');
+
       // yep, noSQL life
       await tx.execute('''
         CREATE TABLE tag (
@@ -47,6 +59,9 @@ class AppStore extends DatabaseBase {
     await db.execute('INSERT OR IGNORE INTO note_order (value) VALUES (?);', [
       json.encode(NoteOrderData([]).toJson()),
     ]);
+
+    // optimize full text search
+    await db.execute("INSERT INTO note_fts(note_fts) VALUES('optimize');");
   }
 
   Future<NoteData?> noteGet(GenericId id) async {
@@ -81,6 +96,76 @@ class AppStore extends DatabaseBase {
       print('NOTE NOTE FOUND: ${id.toString()}!!!');
       // throw ItemNotFoundException(id.toString());
     }
+  }
+
+  Future<void> noteSearchSaveTitle(GenericId id, String title) async {
+    // await db.execute(
+    //   'INSERT OR REPLACE INTO note_fts (id, title) VALUES (?, ?);',
+    //   [id.toString(), title],
+    // );
+
+    // method four. I don't know how bad this is for the database?
+    await db.execute('DELETE FROM note_fts WHERE id = ?', [id.toString()]);
+    await db.execute('INSERT INTO note_fts (id, title) VALUES (?, ?);', [
+      id.toString(),
+      title,
+    ]);
+  }
+
+  Future<void> noteSearchSaveContent(GenericId id, String content) async {
+    // method one. does not work as it treats id/content as unique thing
+    // await db.execute(
+    //   'INSERT OR REPLACE INTO note_fts (id, content) VALUES (?, ?);',
+    //   [id.toString(), content],
+    // );
+    //
+    // method two. no support for UPSERT in fts5
+    // await db.execute(
+    //   '''INSERT INTO note_fts (id, content)
+    //   VALUES (?, ?)
+    //   ON CONFLICT(id)
+    //   DO UPDATE
+    //   SET content = EXCLUDED.content;''',
+    //   [id.toString(), content],
+    // );
+
+    // method three. this is really slow and inefficient...
+    // but it works
+    final maybeId = await db.getOptional(
+      'SELECT id FROM note_fts WHERE id = ?',
+      [id.toString()],
+    );
+
+    if (maybeId == null) {
+      await db.execute('INSERT INTO note_fts (id, content) VALUES (?, ?);', [
+        id.toString(),
+        content,
+      ]);
+    } else {
+      await db.execute('UPDATE note_fts SET content = ? WHERE id = ?', [
+        content,
+        id.toString(),
+      ]);
+    }
+  }
+
+  Future<void> noteSearchDelete(GenericId id) async {
+    await db.execute('DELETE FROM note_fts WHERE id = ?;', [id.toString()]);
+  }
+
+  Future<List<GenericId>> noteSearchQuery(String query) async {
+    // final rows = await db.getAll('SELECT * FROM note_fts(?);', [query]);
+    final rows = await db.getAll(
+      'SELECT * FROM note_fts WHERE title LIKE ? OR content LIKE ?;',
+      ['%$query%', '%$query%'],
+    );
+
+    // print('search rows $rows');
+
+    if (rows.isEmpty) {
+      return [];
+    }
+    return rows.map((row) => GenericId.fromString(row['id'])).toList();
   }
 
   /// gets the complete list of tags

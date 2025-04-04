@@ -139,6 +139,11 @@ class NoteOrderData {
     _notifyChange();
   }
 
+  void clear() {
+    _order.clear();
+    _notifyChange();
+  }
+
   void _notifyChange() {
     _changeController.add(null);
   }
@@ -247,12 +252,19 @@ class Repo {
 
   // these are loaded right away
   late NoteOrderData _order;
+  NoteOrderData _searchOrder;
   late TagsData _tags;
 
-  Repo(this._appStore, this._notes, this._order, this._tags);
+  Repo(this._appStore, this._notes, this._order, this._searchOrder, this._tags);
 
   factory Repo.empty(AppStore appStore) {
-    return Repo(appStore, {}, NoteOrderData([]), TagsData({}));
+    return Repo(
+      appStore,
+      {},
+      NoteOrderData([]),
+      NoteOrderData([]),
+      TagsData({}),
+    );
   }
 
   // or init with actual event data
@@ -291,11 +303,28 @@ class Repo {
 
   // order could be sync, loaded at application startup
   NoteOrderData get order => _order;
+  NoteOrderData get searchOrder => _searchOrder;
   // tags could be sync, loaded at application startup
   TagsData get tags => _tags;
 
+  Future<void> searchNote(String query) async {
+    if (query.isEmpty) {
+      _searchOrder.items.clear();
+      _searchOrder._notifyChange();
+      return;
+    }
+
+    final ids = await _appStore.noteSearchQuery(query);
+
+    _searchOrder.items.clear();
+    _searchOrder.items.addAll(ids);
+    // notify of change once
+    _searchOrder._notifyChange();
+  }
+
   void dispose() {
     _order.dispose();
+    _searchOrder.dispose();
     _tags.dispose();
     for (final note in _notes.values) {
       note.dispose();
@@ -312,6 +341,7 @@ class Repo {
         _notes[event.id] = NoteData.emptyNew(event.id);
         _order.add(event.id);
 
+        // ugly autoincrement
         await _appStore.noteSave(_notes[event.id]!);
         await _appStore.noteOrderSave(_order);
 
@@ -323,6 +353,7 @@ class Repo {
         note!.updateContent(event.content, id.timestamp);
 
         await _appStore.noteSave(_notes[event.id]!);
+        await _appStore.noteSearchSaveContent(event.id, note.content);
 
         break;
       case NoteTitleUpdated event:
@@ -331,6 +362,7 @@ class Repo {
         note!.updateTitle(event.title, id.timestamp);
 
         await _appStore.noteSave(_notes[event.id]!);
+        await _appStore.noteSearchSaveTitle(event.id, note.title);
 
         break;
       case NoteDeleted event:
@@ -348,6 +380,8 @@ class Repo {
 
         await _appStore.noteDelete(event.id);
         await _appStore.noteOrderSave(_order);
+
+        await _appStore.noteSearchDelete(event.id);
 
         // remove all tags associated with the note
         for (final tagName in note.tags) {
