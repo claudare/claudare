@@ -14,6 +14,7 @@ dependencies:
   sqlite_async: ^0.11.4
   path: ^1.9.1
   convert: ^3.1.2
+  messagepack: ^0.2.1
   # path: ^1.8.0
 
 dev_dependencies:

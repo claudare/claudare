@@ -1,6 +1,7 @@
 import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
+import 'package:messagepack/messagepack.dart';
 
 class EventVectorClock implements Comparable<EventVectorClock> {
   final Map<DeviceId, Timestamp> _mapDeviceTimestamp;
@@ -14,6 +15,8 @@ class EventVectorClock implements Comparable<EventVectorClock> {
     }
     return EventVectorClock(map);
   }
+
+  EventVectorClock.empty() : _mapDeviceTimestamp = {};
 
   EventId? operator [](DeviceId deviceId) {
     final ts = _mapDeviceTimestamp[deviceId];
@@ -114,5 +117,24 @@ class EventVectorClock implements Comparable<EventVectorClock> {
   @override
   String toString() {
     return 'EventVectorClock{${_mapDeviceTimestamp.entries.map((e) => '${e.key}: ${e.value.toISO8601()}').join(', ')}}';
+  }
+
+  void pack(Packer p) {
+    p.packMapLength(_mapDeviceTimestamp.length);
+    _mapDeviceTimestamp.forEach((key, value) {
+      key.pack(p);
+      value.pack(p);
+    });
+  }
+
+  factory EventVectorClock.unpack(Unpacker u) {
+    final out = <DeviceId, Timestamp>{};
+
+    final len = u.unpackMapLength();
+    for (int i = 0; i < len; i++) {
+      out[DeviceId.unpack(u)] = Timestamp.unpack(u);
+    }
+
+    return EventVectorClock(out);
   }
 }

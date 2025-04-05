@@ -1,4 +1,5 @@
 import 'package:core/src/utils/base58.dart';
+import 'package:messagepack/messagepack.dart';
 
 const _stringLength = 11; // for u64
 
@@ -112,6 +113,12 @@ class Timestamp implements Comparable<Timestamp> {
 
     return Timestamp(Base58.fromString(str));
   }
+
+  void pack(Packer p) {
+    p.packInt(value);
+  }
+
+  Timestamp.unpack(Unpacker u) : value = u.unpackInt()!;
 
   @override
   String toString() => Base58.toStringPadded(value, _stringLength);

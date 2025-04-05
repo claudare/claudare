@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:core/src/utils/base58.dart';
+import 'package:messagepack/messagepack.dart';
 
 class DeviceId implements Comparable<DeviceId> {
   static const _strLenDevice = 3;
@@ -45,6 +46,12 @@ class DeviceId implements Comparable<DeviceId> {
       );
     }
   }
+
+  void pack(Packer p) {
+    p.packInt(value);
+  }
+
+  DeviceId.unpack(Unpacker u) : value = u.unpackInt()!;
 
   /// Converts the [DeviceId] to Base58 string representation
   @override
