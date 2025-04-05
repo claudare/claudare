@@ -1,5 +1,6 @@
 import 'package:core/src/device_id.dart';
 import 'package:core/src/timestamp.dart';
+import 'package:messagepack/messagepack.dart';
 
 class EventIdGenerator {
   final DeviceId _deviceId;
@@ -36,9 +37,6 @@ class EventId implements Comparable<EventId> {
   }
 
   @override
-  String toString() => '$timestamp-$deviceId';
-
-  @override
   int compareTo(EventId other) {
     if (timestamp != other.timestamp) {
       return timestamp.compareTo(other.timestamp);
@@ -60,4 +58,17 @@ class EventId implements Comparable<EventId> {
 
   @override
   int get hashCode => timestamp.hashCode ^ deviceId.hashCode;
+
+  void pack(Packer p) {
+    timestamp.pack(p);
+    deviceId.pack(p);
+  }
+
+  // hopefully this is done in a correct order
+  EventId.unpack(Unpacker u)
+    : timestamp = Timestamp.unpack(u),
+      deviceId = DeviceId.unpack(u);
+
+  @override
+  String toString() => '$timestamp-$deviceId';
 }
