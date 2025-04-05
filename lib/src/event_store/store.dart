@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:core/src/database.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
@@ -83,7 +85,7 @@ class EventStore extends DatabaseBase {
       final deviceId = DeviceId(row['device_id']);
       final eventId = EventId(timestamp, deviceId);
 
-      final data = row['data'] as String;
+      final data = row['data'] as Uint8List;
 
       yield StoredEvent(eventId, data);
     }
@@ -95,7 +97,7 @@ class EventStore extends DatabaseBase {
     _vectorClock.update(envelope.id);
 
     final id = envelope.id;
-    final data = envelope.data;
+    final data = envelope.bytes;
     await db.execute(
       '''
       INSERT INTO event (device_id, timestamp, data)

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:core/src/database.dart';
 import 'package:core/src/event_store/id.dart';
 import 'package:core/src/event_store/vector_clock_range.dart';
@@ -20,8 +23,8 @@ void main() {
       final firstEventId = EventId(Timestamp(1000), deviceA);
       final secondEventId = EventId(Timestamp(2000), deviceB);
 
-      final eventData1 = 'first';
-      final eventData2 = 'second';
+      final eventData1 = utf8.encode('first');
+      final eventData2 = utf8.encode('second');
 
       // Insert events
       await eventStore.storeEvent(StoredEvent(firstEventId, eventData1));
@@ -42,15 +45,15 @@ void main() {
 
       expect(events.length, equals(2));
       expect(events[0].id, EventId(Timestamp(1000), deviceA));
-      expect(events[0].data, 'first');
+      expect(events[0].bytes, equals(utf8.encode('first')));
       expect(events[1].id, EventId(Timestamp(2000), deviceB));
-      expect(events[1].data, 'second');
+      expect(events[1].bytes, equals(utf8.encode('second')));
     });
 
     test('vector clock updates with new events', () async {
       final eventId = EventId(Timestamp(3000), deviceA);
 
-      await eventStore.storeEvent(StoredEvent(eventId, 'third'));
+      await eventStore.storeEvent(StoredEvent(eventId, utf8.encode('third')));
 
       // Check vector clock update
       expect(eventStore.vectorClock[deviceA], equals(eventId));
@@ -62,7 +65,7 @@ void main() {
         deviceA,
       ); // device A should be returned second
 
-      await eventStore.storeEvent(StoredEvent(eventId, 'third'));
+      await eventStore.storeEvent(StoredEvent(eventId, utf8.encode('third')));
 
       // construct first event range
       final range = EventVectorClockRange.fromStart(eventStore.vectorClock);
