@@ -1,20 +1,20 @@
 import 'package:core/src/device_id.dart';
 import 'package:messagepack/messagepack.dart';
 
-sealed class ProtoEventAnyHeader {
-  const ProtoEventAnyHeader();
+sealed class ProtoAnyHeader {
+  const ProtoAnyHeader();
 
   void pack(Packer p);
-  ProtoEventAnyHeader.unpack(Unpacker u);
+  // ProtoAnyHeader.unpack(Unpacker u);
 
-  static final Map<int, ProtoEventAnyHeader Function(Unpacker)> _unpackers = {
-    ProtoEventHeaderAuth._type: (u) => ProtoEventHeaderAuth.unpack(u),
-    ProtoEventHeaderAckAsk._type: ProtoEventHeaderAckAsk.unpack,
-    ProtoEventHeaderAckOk._type: ProtoEventHeaderAckOk.unpack,
-    ProtoEventHeaderAckError._type: ProtoEventHeaderAckError.unpack,
+  static const Map<int, ProtoAnyHeader Function(Unpacker)> _unpackers = {
+    ProtoHeaderAuth._type: ProtoHeaderAuth.unpack,
+    ProtoHeaderAckAsk._type: ProtoHeaderAckAsk.unpack,
+    ProtoHeaderAckOk._type: ProtoHeaderAckOk.unpack,
+    ProtoHeaderAckError._type: ProtoHeaderAckError.unpack,
   };
 
-  static ProtoEventAnyHeader anyUnpack(Unpacker u) {
+  static ProtoAnyHeader anyUnpack(Unpacker u) {
     final type = u.unpackInt();
 
     if (type == null || type == 0) {
@@ -28,7 +28,7 @@ sealed class ProtoEventAnyHeader {
   }
 }
 
-class ProtoEventHeaderEmpty extends ProtoEventAnyHeader {
+class ProtoEventHeaderEmpty extends ProtoAnyHeader {
   // static const _type = 0;
 
   const ProtoEventHeaderEmpty();
@@ -39,14 +39,14 @@ class ProtoEventHeaderEmpty extends ProtoEventAnyHeader {
   }
 }
 
-/// [ProtoEventHeaderAuth] provides a way for devices to authenticate with each
+/// [ProtoHeaderAuth] provides a way for devices to authenticate with each
 /// other. For now, they siply send their DeviceId and it is trusted
-class ProtoEventHeaderAuth extends ProtoEventAnyHeader {
+class ProtoHeaderAuth extends ProtoAnyHeader {
   static const _type = 1; // unique index to each one
 
   final DeviceId deviceId;
 
-  const ProtoEventHeaderAuth(this.deviceId);
+  const ProtoHeaderAuth(this.deviceId);
 
   @override
   void pack(Packer p) {
@@ -55,21 +55,21 @@ class ProtoEventHeaderAuth extends ProtoEventAnyHeader {
     p.packInt(deviceId.value);
   }
 
-  factory ProtoEventHeaderAuth.unpack(Unpacker p) {
+  factory ProtoHeaderAuth.unpack(Unpacker p) {
     final deviceInt = p.unpackInt();
-    return ProtoEventHeaderAuth(DeviceId(deviceInt!));
+    return ProtoHeaderAuth(DeviceId(deviceInt!));
   }
 }
 
-/// [ProtoEventHeaderAckAsk] requests the responder to confirm on this whole
+/// [ProtoHeaderAckAsk] requests the responder to confirm on this whole
 /// payload. Possible answers come in later in headers as
-/// [ProtoEventHeaderAckOk] and [ProtoEventHeaderAckError]
-class ProtoEventHeaderAckAsk extends ProtoEventAnyHeader {
+/// [ProtoHeaderAckOk] and [ProtoHeaderAckError]
+class ProtoHeaderAckAsk extends ProtoAnyHeader {
   static const _type = 10;
 
   final int payloadId;
 
-  const ProtoEventHeaderAckAsk(this.payloadId);
+  const ProtoHeaderAckAsk(this.payloadId);
 
   @override
   void pack(Packer p) {
@@ -78,18 +78,18 @@ class ProtoEventHeaderAckAsk extends ProtoEventAnyHeader {
     p.packInt(payloadId);
   }
 
-  factory ProtoEventHeaderAckAsk.unpack(Unpacker p) {
+  factory ProtoHeaderAckAsk.unpack(Unpacker p) {
     final payloadId = p.unpackInt();
-    return ProtoEventHeaderAckAsk(payloadId!);
+    return ProtoHeaderAckAsk(payloadId!);
   }
 }
 
-class ProtoEventHeaderAckOk extends ProtoEventAnyHeader {
+class ProtoHeaderAckOk extends ProtoAnyHeader {
   static const _type = 11;
 
   final int payloadId;
 
-  const ProtoEventHeaderAckOk(this.payloadId);
+  const ProtoHeaderAckOk(this.payloadId);
 
   @override
   void pack(Packer p) {
@@ -98,20 +98,20 @@ class ProtoEventHeaderAckOk extends ProtoEventAnyHeader {
     p.packInt(payloadId);
   }
 
-  factory ProtoEventHeaderAckOk.unpack(Unpacker p) {
+  factory ProtoHeaderAckOk.unpack(Unpacker p) {
     final payloadId = p.unpackInt();
-    return ProtoEventHeaderAckOk(payloadId!);
+    return ProtoHeaderAckOk(payloadId!);
   }
 }
 
-class ProtoEventHeaderAckError extends ProtoEventAnyHeader {
+class ProtoHeaderAckError extends ProtoAnyHeader {
   static const _type = 12;
 
   final int payloadId;
   // string is used for now
   final String message;
 
-  const ProtoEventHeaderAckError(this.payloadId, this.message);
+  const ProtoHeaderAckError(this.payloadId, this.message);
 
   @override
   void pack(Packer p) {
@@ -121,9 +121,9 @@ class ProtoEventHeaderAckError extends ProtoEventAnyHeader {
     p.packString(message);
   }
 
-  factory ProtoEventHeaderAckError.unpack(Unpacker p) {
+  factory ProtoHeaderAckError.unpack(Unpacker p) {
     final payloadId = p.unpackInt()!;
     final message = p.unpackString()!;
-    return ProtoEventHeaderAckError(payloadId, message);
+    return ProtoHeaderAckError(payloadId, message);
   }
 }

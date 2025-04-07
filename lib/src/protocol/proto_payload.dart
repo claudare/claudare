@@ -4,17 +4,17 @@
 
 import 'dart:typed_data';
 
-import 'package:core/src/protocol/proto_event_headers.dart';
-import 'package:core/src/protocol/proto_event_messages.dart';
+import 'package:core/src/protocol/proto_headers.dart';
+import 'package:core/src/protocol/proto_messages.dart';
 import 'package:messagepack/messagepack.dart';
 
-class ProtoEventPayload {
+class ProtoPayload {
   int version;
   // the headers must be stored by the type ids?
-  List<ProtoEventAnyHeader> headers;
-  List<ProtoEventAnyMessage> messages;
+  List<ProtoAnyHeader> headers;
+  List<ProtoAnyMessage> messages;
 
-  ProtoEventPayload(this.headers, this.messages, {this.version = 0});
+  ProtoPayload(this.headers, this.messages, {this.version = 0});
 
   Uint8List pack() {
     final p = Packer();
@@ -37,7 +37,7 @@ class ProtoEventPayload {
 
   // TODO: maybe add an unpack method which will provide header check function
   // this way, the rest of the messages can be ignored if headers are not good
-  factory ProtoEventPayload.unpack(Uint8List bytes) {
+  factory ProtoPayload.unpack(Uint8List bytes) {
     final u = Unpacker(bytes);
     final version = u.unpackInt();
     if (version == null || version != 0) {
@@ -46,26 +46,26 @@ class ProtoEventPayload {
 
     // headers
     final headerLen = u.unpackListLength();
-    final headers = List<ProtoEventAnyHeader>.filled(
+    final headers = List<ProtoAnyHeader>.filled(
       headerLen,
       ProtoEventHeaderEmpty(),
       growable: false,
     );
     for (int i = 0; i < headerLen; i++) {
-      headers[i] = ProtoEventAnyHeader.anyUnpack(u);
+      headers[i] = ProtoAnyHeader.anyUnpack(u);
     }
 
     // messages
     final messageLen = u.unpackListLength();
-    final messages = List<ProtoEventAnyMessage>.filled(
+    final messages = List<ProtoAnyMessage>.filled(
       messageLen,
-      ProtoEventMessageEmpty(),
+      ProtoMessageEmpty(),
       growable: false,
     );
     for (int i = 0; i < messageLen; i++) {
-      messages[i] = ProtoEventAnyMessage.anyUnpack(u);
+      messages[i] = ProtoAnyMessage.anyUnpack(u);
     }
 
-    return ProtoEventPayload(headers, messages, version: version);
+    return ProtoPayload(headers, messages, version: version);
   }
 }
