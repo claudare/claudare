@@ -8,15 +8,18 @@ import 'package:core/core.dart';
 import 'package:core/src/encryption/common.dart';
 
 /// fake encryption key, becomes 24 characters after "encrpytion"
-class FakecryptionKey {
+class EncryptionKeyFake {
   final Uint8List bytes;
 
-  FakecryptionKey(this.bytes) {
+  EncryptionKeyFake(this.bytes) {
     if (bytes.length != 24) {
       throw ArgumentError('Fakecryption must be 18-bytes');
     }
   }
-  FakecryptionKey.notSoRandom(DeviceId deviceId, {Timestamp? timestamp})
+
+  Encryptor get encryptor => EncryptorFake(this);
+
+  EncryptionKeyFake.notSoRandom(DeviceId deviceId, {Timestamp? timestamp})
     : bytes = Uint8List(24) {
     final deviceStr = deviceId.toString();
     assert(deviceStr.length == 3);
@@ -41,9 +44,9 @@ class FakecryptionKey {
     return hex.encode(bytes);
   }
 
-  factory FakecryptionKey.fromHex(String hexString) {
+  factory EncryptionKeyFake.fromHex(String hexString) {
     final bytes = Uint8List.fromList(hex.decode(hexString));
-    return FakecryptionKey(bytes);
+    return EncryptionKeyFake(bytes);
   }
 
   static bool areTheSame(Uint8List bytes1, Uint8List bytes2) {
@@ -61,18 +64,18 @@ class FakecryptionKey {
 
   @override
   String toString() {
-    return 'FakecryptionKey{bytes: $bytes}';
+    return 'FakecryptionKey{bytes: ${bytes.toString()}}';
   }
 }
 
 /// Fake encryption algorithm. Uses base64 and cleartext keys to make sure
 /// that the key can decrypt the payload.
-class Fakecryptor implements Encryptor {
+class EncryptorFake implements Encryptor {
   static const int chunkSize = 24 * 4; // Process 96 bytes at a time
 
-  final FakecryptionKey key;
+  final EncryptionKeyFake key;
 
-  Fakecryptor(this.key);
+  EncryptorFake(this.key);
 
   @override
   Stream<List<int>> encrypt(Stream<List<int>> inputStream) async* {
@@ -109,7 +112,7 @@ class Fakecryptor implements Encryptor {
 
     final embeddedKey = Uint8List.fromList(await reader.readChunk(24));
 
-    if (!FakecryptionKey.areTheSame(key.bytes, embeddedKey)) {
+    if (!EncryptionKeyFake.areTheSame(key.bytes, embeddedKey)) {
       throw Exception('Cannot fakedecrypt as keys dont match.');
     }
 

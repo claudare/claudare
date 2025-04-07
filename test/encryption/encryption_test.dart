@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:core/src/encryption/aes256.dart';
-import 'package:core/src/encryption/fakecryption.dart';
+import 'package:core/src/encryption/fake.dart';
 
 import 'package:test/test.dart';
 
@@ -10,10 +10,10 @@ import '../test_helpers.dart';
 
 void main() {
   group('Encryption table tests', () {
-    final fakeKey = FakecryptionKey.notSoRandom(DeviceId(0));
-    final aesKey = AES256Key.secureRandom();
-    final algoBase64 = Fakecryptor(fakeKey);
-    final algoAes265 = EncryptorAES256(aesKey);
+    final fakeKey = EncryptionKeyFake.notSoRandom(DeviceId(0));
+    final aesKey = EncryptionKeyAes256.secureRandom();
+    final algoBase64 = EncryptorFake(fakeKey);
+    final algoAes265 = EncryptorAes256(aesKey);
     final algos = [('fake', 64, algoBase64), ('aes256', 16, algoAes265)];
 
     for (final (name, blockSize, algo) in algos) {

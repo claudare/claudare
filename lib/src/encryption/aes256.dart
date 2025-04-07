@@ -6,15 +6,15 @@ import 'package:async/async.dart';
 import 'package:pointycastle/export.dart';
 import 'package:core/src/encryption/common.dart';
 
-class AES256Key {
+class EncryptionKeyAes256 {
   final Uint8List bytes;
 
-  AES256Key(this.bytes) {
+  EncryptionKeyAes256(this.bytes) {
     if (bytes.length != 32) {
       throw ArgumentError('AES-256 requires a 32-byte key');
     }
   }
-  factory AES256Key.secureRandom() {
+  factory EncryptionKeyAes256.secureRandom() {
     final random = Random.secure();
     final seed = Uint8List(32);
     for (var i = 0; i < 32; i++) {
@@ -25,28 +25,30 @@ class AES256Key {
     secureRandom.seed(KeyParameter(seed));
 
     final bytes = secureRandom.nextBytes(32);
-    return AES256Key(bytes);
+    return EncryptionKeyAes256(bytes);
   }
+
+  Encryptor get encryptor => EncryptorAes256(this);
 
   String toHex() {
     return hex.encode(bytes);
   }
 
-  factory AES256Key.fromHex(String hexString) {
+  factory EncryptionKeyAes256.fromHex(String hexString) {
     final bytes = Uint8List.fromList(hex.decode(hexString));
-    return AES256Key(bytes);
+    return EncryptionKeyAes256(bytes);
   }
 }
 
 /// WARNING: I have no idea what I am doing.
 /// the encrpyion choices and implementation is entirely AI generated
 /// do not use until its validated to be correct!
-class EncryptorAES256 implements Encryptor {
-  final AES256Key key;
+class EncryptorAes256 implements Encryptor {
   static const int ivLength = 16; // AES block size
+  final EncryptionKeyAes256 key;
 
   /// Creates an AES-256 encryption instance with the given 32-byte key
-  EncryptorAES256(this.key);
+  EncryptorAes256(this.key);
 
   /// Generate secure random IV
   Uint8List _generateIV() {

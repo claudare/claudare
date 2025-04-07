@@ -1,5 +1,4 @@
-# block encryption implementation
-
+# blob and event encryption implementation
 
 Uses [pointycastle library](https://pub.dev/packages/pointycastle)
 
@@ -9,3 +8,6 @@ It does seem wrong to send encrypted encryption keys over the network, but I
 think its better then just using a single key for all operations?
 The "keychain" store is replicated though events, similarly to how the application
 works normally. The keychain changes are blended into the normal operation.
+
+For now this uses symmetric encryption, only for data stored on disk.
+Communications will be done via pub/priv key cryptography.
