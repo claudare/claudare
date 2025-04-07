@@ -14,7 +14,7 @@ sealed class ProtoAnyHeader {
     ProtoHeaderAckError._type: ProtoHeaderAckError.unpack,
   };
 
-  static ProtoAnyHeader anyUnpack(Unpacker u) {
+  static ProtoAnyHeader unpack(Unpacker u) {
     final type = u.unpackInt();
 
     if (type == null || type == 0) {
@@ -25,17 +25,6 @@ sealed class ProtoAnyHeader {
     }
 
     return _unpackers[type]!(u);
-  }
-}
-
-class ProtoEventHeaderEmpty extends ProtoAnyHeader {
-  // static const _type = 0;
-
-  const ProtoEventHeaderEmpty();
-
-  @override
-  void pack(Packer p) {
-    throw Exception("empty header is not packable");
   }
 }
 

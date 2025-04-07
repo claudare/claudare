@@ -46,25 +46,19 @@ class ProtoPayload {
 
     // headers
     final headerLen = u.unpackListLength();
-    final headers = List<ProtoAnyHeader>.filled(
+    final headers = List<ProtoAnyHeader>.generate(
       headerLen,
-      ProtoEventHeaderEmpty(),
+      (_) => ProtoAnyHeader.unpack(u),
       growable: false,
     );
-    for (int i = 0; i < headerLen; i++) {
-      headers[i] = ProtoAnyHeader.anyUnpack(u);
-    }
 
     // messages
     final messageLen = u.unpackListLength();
-    final messages = List<ProtoAnyMessage>.filled(
+    final messages = List<ProtoAnyMessage>.generate(
       messageLen,
-      ProtoMessageEmpty(),
+      (_) => ProtoAnyMessage.unpack(u),
       growable: false,
     );
-    for (int i = 0; i < messageLen; i++) {
-      messages[i] = ProtoAnyMessage.anyUnpack(u);
-    }
 
     return ProtoPayload(headers, messages, version: version);
   }

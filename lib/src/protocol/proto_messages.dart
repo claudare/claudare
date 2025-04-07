@@ -17,7 +17,7 @@ sealed class ProtoAnyMessage {
     ProtoMessageEventValue._type: ProtoMessageEventValue.unpack,
   };
 
-  static ProtoAnyMessage anyUnpack(Unpacker u) {
+  static ProtoAnyMessage unpack(Unpacker u) {
     final type = u.unpackInt();
 
     if (type == null || type == 0) {
@@ -28,19 +28,6 @@ sealed class ProtoAnyMessage {
     }
 
     return _unpackers[type]!(u);
-  }
-}
-
-class ProtoMessageEmpty extends ProtoAnyMessage {
-  const ProtoMessageEmpty();
-
-  factory ProtoMessageEmpty.unpack(Unpacker u) {
-    return ProtoMessageEmpty();
-  }
-
-  @override
-  void pack(Packer p) {
-    throw Exception("empty message is not packable");
   }
 }
 
