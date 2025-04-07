@@ -10,7 +10,7 @@ void main() {
   group('ProtoPayload', () {
     test(' serialization', () {
       final payload = ProtoPayload(
-        [ProtoHeaderAuth(DeviceId(0))],
+        {ProtoHeaderAuth.staticType: ProtoHeaderAuth(DeviceId(0))},
         [
           ProtoMessageClockValue(
             EventVectorClock({DeviceId(0): Timestamp(2000)}),
@@ -23,14 +23,13 @@ void main() {
       final out = ProtoPayload.unpack(bin);
 
       expect(out.version, equals(0));
-      expect(
-        (payload.headers.first as ProtoHeaderAuth).deviceId,
-        equals(DeviceId(0)),
-      );
+      expect(payload.getAuth()!.deviceId, equals(DeviceId(0)));
       expect(
         (payload.messages.first as ProtoMessageClockValue).eventClock,
         equals(EventVectorClock({DeviceId(0): Timestamp(2000)})),
       );
+
+      expect(payload.getAck(), isNull);
     });
   });
 }

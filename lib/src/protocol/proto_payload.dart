@@ -9,12 +9,33 @@ import 'package:core/src/protocol/proto_messages.dart';
 import 'package:messagepack/messagepack.dart';
 
 class ProtoPayload {
-  int version;
-  // the headers must be stored by the type ids?
-  List<ProtoAnyHeader> headers;
-  List<ProtoAnyMessage> messages;
+  final int version;
+  final Map<int, ProtoAnyHeader> headers;
+  final List<ProtoAnyMessage> messages;
 
-  ProtoPayload(this.headers, this.messages, {this.version = 0});
+  const ProtoPayload(this.headers, this.messages, {this.version = 0});
+
+  ProtoHeaderAuth? getAuth() {
+    if (headers.isEmpty) {
+      return null;
+    }
+    final header = headers[ProtoHeaderAuth.staticType];
+    if (header == null) {
+      return null;
+    }
+    return header as ProtoHeaderAuth;
+  }
+
+  ProtoHeaderAck? getAck() {
+    if (headers.isEmpty) {
+      return null;
+    }
+    final header = headers[ProtoHeaderAck.staticType];
+    if (header == null) {
+      return null;
+    }
+    return header as ProtoHeaderAck;
+  }
 
   Uint8List pack() {
     final p = Packer();
@@ -22,8 +43,8 @@ class ProtoPayload {
     // TODO: append magic
     p.packInt(version);
 
-    p.packListLength(headers.length);
-    for (final header in headers) {
+    p.packMapLength(headers.length);
+    for (final header in headers.values) {
       header.pack(p);
     }
 
@@ -45,14 +66,13 @@ class ProtoPayload {
     }
 
     // headers
-    final headerLen = u.unpackListLength();
-    final headers = List<ProtoAnyHeader>.generate(
-      headerLen,
-      (_) => ProtoAnyHeader.unpack(u),
-      growable: false,
-    );
+    final headerLen = u.unpackMapLength();
+    final headers = <int, ProtoAnyHeader>{};
+    for (var i = 0; i < headerLen; i++) {
+      final val = ProtoAnyHeader.unpack(u);
+      headers[val.type] = val;
+    }
 
-    // messages
     final messageLen = u.unpackListLength();
     final messages = List<ProtoAnyMessage>.generate(
       messageLen,
