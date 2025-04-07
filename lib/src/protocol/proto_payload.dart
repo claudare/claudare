@@ -11,30 +11,37 @@ import 'package:messagepack/messagepack.dart';
 class ProtoPayload {
   final int version;
   final Map<int, ProtoAnyHeader> headers;
-  final List<ProtoAnyMessage> messages;
+  final ProtoAnyMessage data;
 
-  const ProtoPayload(this.headers, this.messages, {this.version = 0});
+  const ProtoPayload(this.headers, this.data, {this.version = 0});
 
-  ProtoHeaderAuth? getAuth() {
+  void setHeader(ProtoAnyHeader header) {
+    if (header is ProtoHeaderAuth) {
+      headers[ProtoHeaderAuth.staticType] = header;
+    } else if (header is ProtoHeaderAck) {
+      headers[ProtoHeaderAck.staticType] = header;
+    } else {
+      throw Exception("Unknown header $header");
+    }
+  }
+
+  T? _getHeader<T extends ProtoAnyHeader>(int value) {
     if (headers.isEmpty) {
       return null;
     }
-    final header = headers[ProtoHeaderAuth.staticType];
+    final header = headers[value];
     if (header == null) {
       return null;
     }
-    return header as ProtoHeaderAuth;
+    return header as T;
+  }
+
+  ProtoHeaderAuth? getAuth() {
+    return _getHeader<ProtoHeaderAuth>(ProtoHeaderAuth.staticType);
   }
 
   ProtoHeaderAck? getAck() {
-    if (headers.isEmpty) {
-      return null;
-    }
-    final header = headers[ProtoHeaderAck.staticType];
-    if (header == null) {
-      return null;
-    }
-    return header as ProtoHeaderAck;
+    return _getHeader<ProtoHeaderAck>(ProtoHeaderAck.staticType);
   }
 
   Uint8List pack() {
@@ -48,10 +55,7 @@ class ProtoPayload {
       header.pack(p);
     }
 
-    p.packListLength(messages.length);
-    for (final message in messages) {
-      message.pack(p);
-    }
+    data.pack(p);
 
     return p.takeBytes();
   }
@@ -73,13 +77,8 @@ class ProtoPayload {
       headers[val.type] = val;
     }
 
-    final messageLen = u.unpackListLength();
-    final messages = List<ProtoAnyMessage>.generate(
-      messageLen,
-      (_) => ProtoAnyMessage.unpack(u),
-      growable: false,
-    );
+    final data = ProtoAnyMessage.unpack(u);
 
-    return ProtoPayload(headers, messages, version: version);
+    return ProtoPayload(headers, data, version: version);
   }
 }
