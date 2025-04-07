@@ -45,6 +45,20 @@ class TimestampRange {
       Timestamp.fromString(json['end']),
     );
   }
+
+  void pack(Packer p) {
+    start.pack(p);
+    end.pack(p);
+  }
+
+  TimestampRange.unpack(Unpacker u)
+    : start = Timestamp.unpack(u),
+      end = Timestamp.unpack(u);
+
+  @override
+  String toString() {
+    return 'TimestampRange{start: ${start.toPrettyString}, end: ${end.toPrettyString()}}';
+  }
 }
 
 /// A unified way to deal with timestamps.

@@ -4,6 +4,7 @@ import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/vector_clock.dart';
 import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
+import 'package:messagepack/messagepack.dart';
 
 class EventVectorClockRange {
   final Map<DeviceId, TimestampRange> ranges;
@@ -99,5 +100,24 @@ class EventVectorClockRange {
       json[entry.key.toString()] = entry.value.toJson();
     }
     return json;
+  }
+
+  void pack(Packer p) {
+    p.packMapLength(ranges.length);
+    for (final entry in ranges.entries) {
+      entry.key.pack(p);
+      entry.value.pack(p);
+    }
+  }
+
+  factory EventVectorClockRange.unpack(Unpacker u) {
+    final length = u.unpackMapLength();
+    final ranges = <DeviceId, TimestampRange>{};
+    for (var i = 0; i < length; i++) {
+      final deviceId = DeviceId.unpack(u);
+      final range = TimestampRange.unpack(u);
+      ranges[deviceId] = range;
+    }
+    return EventVectorClockRange(ranges);
   }
 }

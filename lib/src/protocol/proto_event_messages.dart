@@ -14,8 +14,10 @@ sealed class ProtoEventAnyMessage {
         (up) => ProtoEventMessageClockQuery.unpack(up),
     ProtoEventMessageClockValue._type:
         (up) => ProtoEventMessageClockValue.unpack(up),
-    // EventMessageEventQuery._type: (up) => EventMessageEventQuery.unpack(up),
-    // EventMessageEventValue._type: (up) => EventMessageEventValue.unpack(up),
+    ProtoEventMessageEventQuery._type:
+        (up) => ProtoEventMessageEventQuery.unpack(up),
+    ProtoEventMessageEventValue._type:
+        (up) => ProtoEventMessageEventValue.unpack(up),
   };
 
   static ProtoEventAnyMessage anyUnpack(Unpacker u) {
@@ -80,48 +82,60 @@ class ProtoEventMessageClockValue extends ProtoEventAnyMessage {
     eventClock.pack(p);
   }
 }
-// TODO all thouse too
-// class EventMessageEventQuery extends ProtoEventAnyMessage {
-//   static const _type = 'event_query';
 
-//   final EventVectorClockRange cursor;
-//   final int limit;
+// conver to use a pack method
+class ProtoEventMessageEventQuery extends ProtoEventAnyMessage {
+  static const _type = 3;
 
-//   const EventMessageEventQuery(this.cursor, this.limit);
+  final EventVectorClockRange cursor;
+  final int limit;
 
-//   @override
-//   Map<String, dynamic> toJson() {
-//     return {'_type': _type, 'cursor': cursor.toJson(), 'limit': limit};
-//   }
+  const ProtoEventMessageEventQuery(this.cursor, this.limit);
 
-//   factory EventMessageEventQuery.pack(Map<String, dynamic> json) {
-//     return EventMessageEventQuery(
-//       EventVectorClockRange.pack(json['cursor']),
-//       json['limit'],
-//     );
-//   }
-// }
+  // hello??
+  @override
+  void pack(Packer p) {
+    p.packInt(_type);
+    cursor.pack(p);
+    p.packInt(limit);
+  }
 
-// /// [EventMessageEventValue] is used to send a list of events.
-// /// either sent by the server in response to a [EventMessageEventQuery].
-// /// or is sent by client to "upload" events to another server.
-// class EventMessageEventValue extends ProtoEventAnyMessage {
-//   static const _type = 'event_value';
+  factory ProtoEventMessageEventQuery.unpack(Unpacker u) {
+    return ProtoEventMessageEventQuery(
+      EventVectorClockRange.unpack(u),
+      u.unpackInt()!,
+    );
+  }
+}
 
-//   final List<StoredEvent> events;
+/// [ProtoEventMessageEventValue] is used to send a list of events.
+/// either sent by the server in response to a [EventMessageEventQuery].
+/// or is sent by client to "upload" events to another server.
+class ProtoEventMessageEventValue extends ProtoEventAnyMessage {
+  static const _type = 4;
 
-//   const EventMessageEventValue(this.events);
+  final List<StoredEvent> events;
 
-//   @override
-//   Map<String, dynamic> toJson() {
-//     return {'_type': _type, 'events': events.map((e) => e.toJson()).toList()};
-//   }
+  const ProtoEventMessageEventValue(this.events);
 
-//   factory EventMessageEventValue.pack(Map<String, dynamic> json) {
-//     return EventMessageEventValue(
-//       (json['events'] as List<dynamic>)
-//           .map((e) => StoredEvent.pack(e))
-//           .toList(),
-//     );
-//   }
-// }
+  @override
+  void pack(Packer p) {
+    p.packInt(_type);
+    p.packListLength(events.length);
+    for (final event in events) {
+      event.pack(p);
+    }
+  }
+
+  factory ProtoEventMessageEventValue.unpack(Unpacker u) {
+    final len = u.unpackListLength();
+
+    final out = List<StoredEvent>.generate(
+      len,
+      (_) => StoredEvent.unpack(u),
+      growable: false,
+    );
+
+    return ProtoEventMessageEventValue(out);
+  }
+}
