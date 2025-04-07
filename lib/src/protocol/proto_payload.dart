@@ -15,6 +15,22 @@ class ProtoPayload {
 
   const ProtoPayload(this.headers, this.data, {this.version = 0});
 
+  factory ProtoPayload.errorResponse(
+    ProtoHeaderAck requestAck,
+    String error, {
+    required ProtoHeaderAuth auth,
+  }) {
+    final payload = ProtoPayload({}, ProtoMessageEmpty());
+
+    final responseAck = ProtoHeaderAck(requestAck.payloadId, error);
+
+    // auth is also needed
+    payload.setHeader(auth);
+    payload.setHeader(responseAck);
+
+    return payload;
+  }
+
   void setHeader(ProtoAnyHeader header) {
     if (header is ProtoHeaderAuth) {
       headers[ProtoHeaderAuth.staticType] = header;
@@ -36,8 +52,14 @@ class ProtoPayload {
     return header as T;
   }
 
-  ProtoHeaderAuth? getAuth() {
-    return _getHeader<ProtoHeaderAuth>(ProtoHeaderAuth.staticType);
+  ProtoHeaderAuth getAuth() {
+    final result = _getHeader<ProtoHeaderAuth>(ProtoHeaderAuth.staticType);
+
+    if (result == null) {
+      throw Exception('ProtoPayload is missing auth');
+    }
+
+    return result;
   }
 
   ProtoHeaderAck? getAck() {
@@ -80,5 +102,10 @@ class ProtoPayload {
     final data = ProtoAnyMessage.unpack(u);
 
     return ProtoPayload(headers, data, version: version);
+  }
+
+  @override
+  String toString() {
+    return 'ProtoPayload{headers: $headers, body: $data}';
   }
 }

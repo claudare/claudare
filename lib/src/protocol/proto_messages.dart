@@ -6,21 +6,24 @@ import 'package:messagepack/messagepack.dart';
 sealed class ProtoAnyMessage {
   const ProtoAnyMessage();
 
+  int get type;
   void pack(Packer p);
   // cant enforce a factory method...
   // ProtoAnyMessage.unpack(Unpacker u);
 
   static const Map<int, ProtoAnyMessage Function(Unpacker)> _unpackers = {
-    ProtoMessageClockQuery._type: ProtoMessageClockQuery.unpack,
-    ProtoMessageClockValue._type: ProtoMessageClockValue.unpack,
-    ProtoMessageEventQuery._type: ProtoMessageEventQuery.unpack,
-    ProtoMessageEventValue._type: ProtoMessageEventValue.unpack,
+    ProtoMessageEmpty.staticType: ProtoMessageEmpty.unpack,
+    ProtoMessagePing.staticType: ProtoMessagePing.unpack,
+    ProtoMessageClockQuery.staticType: ProtoMessageClockQuery.unpack,
+    ProtoMessageClockValue.staticType: ProtoMessageClockValue.unpack,
+    ProtoMessageEventQuery.staticType: ProtoMessageEventQuery.unpack,
+    ProtoMessageEventValue.staticType: ProtoMessageEventValue.unpack,
   };
 
   static ProtoAnyMessage unpack(Unpacker u) {
     final type = u.unpackInt();
 
-    if (type == null || type == 0) {
+    if (type == null) {
       throw Exception('bad packed type field: $type');
     }
     if (!_unpackers.containsKey(type)) {
@@ -31,46 +34,88 @@ sealed class ProtoAnyMessage {
   }
 }
 
-/// asking for the latest vector clock
-class ProtoMessageClockQuery extends ProtoAnyMessage {
-  static const _type = 1;
+class ProtoMessageEmpty extends ProtoAnyMessage {
+  static const staticType = 0;
 
-  const ProtoMessageClockQuery();
+  const ProtoMessageEmpty();
 
-  factory ProtoMessageClockQuery.unpack(Unpacker u) {
-    return ProtoMessageClockQuery();
-  }
+  @override
+  int get type => staticType;
 
   @override
   void pack(Packer p) {
-    p.packInt(_type);
+    p.packInt(staticType);
+  }
+
+  factory ProtoMessageEmpty.unpack(Unpacker u) {
+    return ProtoMessageEmpty();
+  }
+}
+
+class ProtoMessagePing extends ProtoAnyMessage {
+  static const staticType = 127;
+
+  const ProtoMessagePing();
+
+  @override
+  int get type => staticType;
+
+  @override
+  void pack(Packer p) {
+    p.packInt(staticType);
+  }
+
+  factory ProtoMessagePing.unpack(Unpacker u) {
+    return ProtoMessagePing();
+  }
+}
+
+/// asking for the latest vector clock
+class ProtoMessageClockQuery extends ProtoAnyMessage {
+  static const staticType = 1;
+
+  const ProtoMessageClockQuery();
+
+  @override
+  int get type => staticType;
+
+  @override
+  void pack(Packer p) {
+    p.packInt(staticType);
+  }
+
+  factory ProtoMessageClockQuery.unpack(Unpacker u) {
+    return ProtoMessageClockQuery();
   }
 }
 
 /// [ProtoMessageClockValue] is used for a device to send its latest vector clock.
 /// this should include the device id...
 class ProtoMessageClockValue extends ProtoAnyMessage {
-  static const _type = 2;
+  static const staticType = 2;
 
   final EventVectorClock eventClock;
 
   const ProtoMessageClockValue(this.eventClock);
 
-  factory ProtoMessageClockValue.unpack(Unpacker u) {
-    return ProtoMessageClockValue(EventVectorClock.unpack(u));
-  }
+  @override
+  int get type => staticType;
 
   @override
   void pack(Packer p) {
-    p.packInt(_type);
+    p.packInt(staticType);
     eventClock.pack(p);
+  }
+
+  factory ProtoMessageClockValue.unpack(Unpacker u) {
+    return ProtoMessageClockValue(EventVectorClock.unpack(u));
   }
 }
 
 /// [ProtoMessageEventQuery] asks another device for the events given a
 /// cursor and a limit. Reply with type [ProtoMessageEventValue] is expected.
 class ProtoMessageEventQuery extends ProtoAnyMessage {
-  static const _type = 3;
+  static const staticType = 3;
 
   final EventVectorClockRange cursor;
   final int limit;
@@ -78,8 +123,11 @@ class ProtoMessageEventQuery extends ProtoAnyMessage {
   const ProtoMessageEventQuery(this.cursor, this.limit);
 
   @override
+  int get type => staticType;
+
+  @override
   void pack(Packer p) {
-    p.packInt(_type);
+    p.packInt(staticType);
     cursor.pack(p);
     p.packInt(limit);
   }
@@ -96,15 +144,18 @@ class ProtoMessageEventQuery extends ProtoAnyMessage {
 /// either sent by the server in response to a [EventMessageEventQuery].
 /// or is sent by client to "upload" events to another server.
 class ProtoMessageEventValue extends ProtoAnyMessage {
-  static const _type = 4;
+  static const staticType = 4;
 
   final List<StoredEvent> events;
 
   const ProtoMessageEventValue(this.events);
 
   @override
+  int get type => staticType;
+
+  @override
   void pack(Packer p) {
-    p.packInt(_type);
+    p.packInt(staticType);
     p.packListLength(events.length);
     for (final event in events) {
       event.pack(p);
