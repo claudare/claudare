@@ -1,17 +1,14 @@
 import 'package:core/core.dart';
+import 'package:core/event_store.dart';
+import 'package:core/src/blob_store/store.dart';
 import 'package:core/src/protocol/proto_messages.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
 
-typedef ServerHandlerFn =
-    Future<ProtoAnyMessage?> Function(
-      ProtoAnyMessage req,
-      RequestContext reqCtx,
-    );
-
 class ServerContext {
-  // EventStore
-  // BlobStore
-  // Other things too
+  EventStore eventStore;
+  BlobStore blobStore;
+
+  ServerContext(this.eventStore, this.blobStore);
 }
 
 /// information about the requester
@@ -22,7 +19,7 @@ class RequestContext {
   RequestContext(this.deviceId);
 }
 
-class RpcServerHandler extends RpcServerEventHandlers {
+class RpcServerHandler {
   final ServerContext ctx;
 
   RpcServerHandler(this.ctx);
@@ -43,49 +40,40 @@ class RpcServerHandler extends RpcServerEventHandlers {
           await onEventValue(data);
           return null;
         default:
-          throw RpcException('request type ${req.runtimeType} not supported');
+          throw Exception('request type ${req.runtimeType} not supported');
       }
-    } on RpcException catch (e) {
-      print('rpc server handler soft failure. $e');
-
-      rethrow;
     } catch (e) {
-      print('rpc server handler hard failure. $e');
+      // print('rpc server handler failure. $e; stack: $stackTrace');
 
-      // TODO: should this also be wrapped as the rpc exeption?
       throw RpcException(e.toString());
     }
   }
 
   // client wants the event clock
   // throw when error happens
-  @override
   Future<ProtoMessageClockValue> onClockQuery(
     ProtoMessageClockQuery req,
   ) async {
-    throw UnimplementedError('TODO');
+    final vectorClock = ctx.eventStore.vectorClock;
+
+    return ProtoMessageClockValue(vectorClock);
   }
 
   // client wants events
-  @override
   Future<ProtoMessageEventValue> onEventQuery(
     ProtoMessageEventQuery req,
   ) async {
-    throw UnimplementedError('TODO');
+    final eventStream = ctx.eventStore.getEvents(req.cursor, req.limit);
+    final eventList = await eventStream.toList();
+
+    return ProtoMessageEventValue(eventList);
   }
 
   // client is uploading events
-  @override
   Future<void> onEventValue(ProtoMessageEventValue req) async {
-    throw UnimplementedError('TODO');
-  }
-}
-
-// no need to do this? mocks are done directly
-abstract class RpcServerEventHandlers {
-  Future<ProtoMessageClockValue> onClockQuery(ProtoMessageClockQuery req);
-  Future<ProtoMessageEventValue> onEventQuery(ProtoMessageEventQuery req);
-  Future<void> onEventValue(ProtoMessageEventValue req) async {
-    throw UnimplementedError('TODO');
+    for (final eventRaw in req.events) {
+      // TODO: store many events at a time, while checking the clock?
+      await ctx.eventStore.storeEvent(eventRaw);
+    }
   }
 }

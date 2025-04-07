@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:core/src/protocol/proto_headers.dart';
 import 'package:core/src/protocol/proto_messages.dart';
+import 'package:core/src/rpc_client/exceptions.dart';
 import 'package:messagepack/messagepack.dart';
 
 class ProtoPayload {
@@ -56,7 +57,7 @@ class ProtoPayload {
     final result = _getHeader<ProtoHeaderAuth>(ProtoHeaderAuth.staticType);
 
     if (result == null) {
-      throw Exception('ProtoPayload is missing auth');
+      throw RpcException('ProtoPayload is missing auth');
     }
 
     return result;

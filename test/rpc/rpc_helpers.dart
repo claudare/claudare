@@ -1,6 +1,5 @@
 import 'package:core/src/rpc_client/rpc_client.dart';
 import 'package:core/src/rpc_client/transport.dart';
-import 'package:core/src/rpc_server/handler.dart';
 import 'package:core/src/rpc_server/rpc_server.dart';
 import 'package:core/src/rpc_server/transport.dart';
 

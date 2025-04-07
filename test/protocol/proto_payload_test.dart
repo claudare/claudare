@@ -22,7 +22,7 @@ void main() {
       final out = ProtoPayload.unpack(bin);
 
       expect(out.version, equals(0));
-      expect(payload.getAuth()!.deviceId, equals(DeviceId(0)));
+      expect(payload.getAuth().deviceId, equals(DeviceId(0)));
       expect(
         (payload.data as ProtoMessageClockValue).eventClock,
         equals(EventVectorClock({DeviceId(0): Timestamp(2000)})),

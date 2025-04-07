@@ -5,6 +5,12 @@ import 'package:core/protocol.dart';
 import 'package:core/src/rpc_server/handler.dart';
 import 'package:core/src/rpc_server/transport.dart';
 
+typedef ServerHandlerFn =
+    Future<ProtoAnyMessage?> Function(
+      ProtoAnyMessage req,
+      RequestContext reqCtx,
+    );
+
 class RpcServer {
   final RpcServerTransport transport;
   final ServerHandlerFn serverHandler;
