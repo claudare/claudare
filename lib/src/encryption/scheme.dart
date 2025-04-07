@@ -1,6 +1,6 @@
 import 'package:core/src/encryption/common.dart';
 import 'package:core/src/encryption/aes256.dart';
-import 'package:core/src/encryption/base64.dart';
+import 'package:core/src/encryption/fakecryption.dart';
 
 sealed class AnyEncryptionScheme {
   const AnyEncryptionScheme();
@@ -12,7 +12,7 @@ sealed class AnyEncryptionScheme {
 
   static final Map<String, AnyEncryptionScheme Function(Map<String, dynamic>)>
   _parsers = {
-    EncryptionSchemeBase64.type: EncryptionSchemeBase64.fromJson,
+    EncryptionSchemeFake.type: EncryptionSchemeFake.fromJson,
     EncryptionSchemeAES256.type: EncryptionSchemeAES256.fromJson,
   };
 
@@ -24,19 +24,27 @@ sealed class AnyEncryptionScheme {
   }
 }
 
-class EncryptionSchemeBase64 extends AnyEncryptionScheme {
-  static const type = 'base64';
-  static const blockSize = EncryptorBase64.chunkSize;
+class EncryptionSchemeFake extends AnyEncryptionScheme {
+  static const type = 'fake';
+  static const blockSize = Fakecryptor.chunkSize;
+
+  final Fakecryptor _instance;
+
+  const EncryptionSchemeFake(this._instance);
 
   @override
-  Encryptor get encryption => EncryptorBase64();
+  Encryptor get encryption => _instance;
 
   @override
   Map<String, dynamic> toJson() {
-    return {'type': type};
+    return {'type': type, 'key': _instance.key.toHex()};
   }
 
-  const EncryptionSchemeBase64.fromJson(Map<String, dynamic> json);
+  factory EncryptionSchemeFake.fromJson(Map<String, dynamic> json) {
+    final key = FakecryptionKey.fromHex(json['key']);
+    final instance = Fakecryptor(key);
+    return EncryptionSchemeFake(instance);
+  }
 }
 
 class EncryptionSchemeAES256 extends AnyEncryptionScheme {

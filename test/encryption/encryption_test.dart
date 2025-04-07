@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 
+import 'package:core/core.dart';
 import 'package:core/src/encryption/aes256.dart';
-import 'package:core/src/encryption/base64.dart';
+import 'package:core/src/encryption/fakecryption.dart';
 
 import 'package:test/test.dart';
 
@@ -9,10 +10,11 @@ import '../test_helpers.dart';
 
 void main() {
   group('Encryption table tests', () {
+    final fakeKey = FakecryptionKey.notSoRandom(DeviceId(0));
     final aesKey = AES256Key.secureRandom();
-    final algoBase64 = EncryptorBase64();
+    final algoBase64 = Fakecryptor(fakeKey);
     final algoAes265 = EncryptorAES256(aesKey);
-    final algos = [('base64', 64, algoBase64), ('aes256', 16, algoAes265)];
+    final algos = [('fake', 64, algoBase64), ('aes256', 16, algoAes265)];
 
     for (final (name, blockSize, algo) in algos) {
       test('round-trip at block size - $name', () async {
@@ -24,13 +26,13 @@ void main() {
         final encryptionStream = algo.encrypt(cleartextStream);
 
         final encryptedData = await streamToUint8List(encryptionStream);
-        expect(cleartextData, isNot(equals(encryptedData)));
+        expect(encryptedData, isNot(equals(cleartextData)));
 
         final encryptedStream = Stream.fromIterable([encryptedData]);
         final decryptedStream = algo.decrypt(encryptedStream);
         final decryptedData = await streamToUint8List(decryptedStream);
 
-        expect(cleartextData, equals(decryptedData));
+        expect(decryptedData, equals(cleartextData));
       });
 
       test('round-trip shorter then block - $name', () async {
