@@ -1,3 +1,5 @@
+// TODO: use https://pub.dev/packages/stack_trace for debug output
+
 class RpcException implements Exception {
   String message;
   RpcException(this.message);

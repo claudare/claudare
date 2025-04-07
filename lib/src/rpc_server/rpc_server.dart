@@ -27,6 +27,8 @@ class RpcServer {
     await transport.stop();
   }
 
+  // serialization errors are sent as unstructured insside the transport...
+  // not very streamlined, but okay for now.
   Future<Uint8List> _handler(Uint8List rawReq) async {
     final requestPayload = ProtoPayload.unpack(rawReq);
     final handled = await handlePayload(requestPayload);
@@ -45,13 +47,15 @@ class RpcServer {
   Future<ProtoPayload?> handlePayload(ProtoPayload req) async {
     // TODO: server auth
     final thisServerDeviceId = DeviceId(10000);
-
-    final auth = req.getAuth();
     final ack = req.getAck();
 
-    final reqCtx = RequestContext(auth.deviceId);
-
     try {
+      // get auth can also fail
+      // or auth validation...
+      final auth = req.getAuth();
+
+      final reqCtx = RequestContext(auth.deviceId);
+
       final resData = await serverHandler(req.data, reqCtx);
 
       if (ack == null) {
@@ -65,16 +69,18 @@ class RpcServer {
 
       return res;
     } catch (e, stackTrace) {
-      print('request error $e; $stackTrace');
+      // TODO: use a logger instead
+      print('request error $e; stack: \n$stackTrace');
 
       if (ack == null) {
         return null;
       }
 
       // for now always send full errors back
-      return ProtoPayload.errorResponse(
+      return ProtoPayload.errorResponseWithStack(
         ack,
-        '$e; $stackTrace',
+        e,
+        stackTrace,
         auth: ProtoHeaderAuth(thisServerDeviceId),
       );
     }

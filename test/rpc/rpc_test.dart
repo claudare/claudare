@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:core/event_store.dart';
+import 'package:core/src/rpc_client/exceptions.dart';
 import 'package:test/test.dart';
 
 import 'package:core/protocol.dart';
@@ -33,6 +34,10 @@ void main() {
           ]);
         }
 
+        if (req is ProtoMessageClockQuery) {
+          throw Exception('expected error');
+        }
+
         throw Exception('not tested yet');
       },
     );
@@ -61,6 +66,17 @@ void main() {
         equals(DeviceId(999)), // hardcoded
       );
       expect(response.events.first.bytes[0], equals(42));
+    });
+
+    test('errors', () async {
+      expect(
+        () => rpc.client.queryClock(),
+        throwsA(
+          predicate(
+            (x) => x is RpcException && x.toString().contains('expected error'),
+          ),
+        ),
+      );
     });
   });
 }

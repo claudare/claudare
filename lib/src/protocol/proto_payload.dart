@@ -32,6 +32,17 @@ class ProtoPayload {
     return payload;
   }
 
+  factory ProtoPayload.errorResponseWithStack(
+    ProtoHeaderAck requestAck,
+    Object originalError,
+    StackTrace stackTrace, {
+    required ProtoHeaderAuth auth,
+  }) {
+    final message = '$originalError; stack: \n$stackTrace';
+
+    return ProtoPayload.errorResponse(requestAck, message, auth: auth);
+  }
+
   void setHeader(ProtoAnyHeader header) {
     if (header is ProtoHeaderAuth) {
       headers[ProtoHeaderAuth.staticType] = header;

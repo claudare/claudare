@@ -121,8 +121,10 @@ class RpcClient {
     await _sendWithResponse<ProtoMessageEmpty>(data);
   }
 
-  Future<ProtoMessageClockValue> queryClock(ProtoMessageClockQuery data) async {
-    return await _sendWithResponse<ProtoMessageClockValue>(data);
+  Future<ProtoMessageClockValue> queryClock() async {
+    return await _sendWithResponse<ProtoMessageClockValue>(
+      ProtoMessageClockQuery(),
+    );
   }
 
   Future<ProtoMessageEventValue> queryEvents(
