@@ -4,7 +4,7 @@ import 'package:core/core.dart';
 import 'package:core/device_keychain.dart';
 import 'package:core/protocol.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
-import 'package:core/src/rpc_server/handler.dart';
+import 'package:core/src/rpc_server/context.dart';
 import 'package:core/src/rpc_server/transport.dart';
 
 typedef ServerHandlerFn =

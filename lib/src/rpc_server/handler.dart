@@ -1,27 +1,6 @@
-import 'package:core/core.dart';
-import 'package:core/device_keychain.dart';
-import 'package:core/event_store.dart';
-import 'package:core/src/blob_store/store.dart';
 import 'package:core/src/protocol/proto_messages.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
-
-class ServerContext {
-  final DeviceKeychain deviceKeychain;
-
-  final EventStore eventStore;
-  final BlobStore blobStore;
-  // this needs to have access to network send/recieve primitives
-
-  const ServerContext(this.deviceKeychain, this.eventStore, this.blobStore);
-}
-
-/// information about the requester
-/// may not be needed?
-class RequestContext {
-  DeviceId deviceId;
-
-  RequestContext(this.deviceId);
-}
+import 'package:core/src/rpc_server/context.dart';
 
 class RpcServerHandler {
   final ServerContext ctx;

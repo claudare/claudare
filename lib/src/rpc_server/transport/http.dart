@@ -27,7 +27,7 @@ class RpcServerTransportHttp extends RpcServerTransport {
   // internet address is always 0.0.0.0? port used is 80 here, always
 
   @override
-  Future<void> start(Uri listenUri, RpcServerHandler handler) async {
+  Future<void> start(Uri listenUri, RpcServerTransportHandlerFn handler) async {
     if (_server != null) {
       throw Exception('Server is already started');
     }
@@ -55,7 +55,7 @@ class RpcServerTransportHttp extends RpcServerTransport {
 
   void Function(HttpRequest) _requestHandler(
     String handlerPath,
-    RpcServerHandler handler,
+    RpcServerTransportHandlerFn handler,
   ) {
     return (HttpRequest request) async {
       // check header type
