@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:core/src/database.dart';
 import 'package:core/src/event_store/id.dart';

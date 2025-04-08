@@ -3,11 +3,11 @@ import 'dart:typed_data';
 import 'package:core/core.dart';
 import 'package:core/event_store.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
+import 'package:core/src/rpc_server/context.dart';
 import 'package:test/test.dart';
 
 import 'package:core/protocol.dart';
 import 'package:core/src/rpc_client/transport/http.dart';
-import 'package:core/src/rpc_server/handler.dart';
 import 'package:core/src/rpc_server/transport/http.dart';
 
 import 'rpc_helpers.dart';
