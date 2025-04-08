@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:core/core.dart';
+import 'package:core/device_keychain.dart';
 import 'package:core/protocol.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
 import 'package:core/src/rpc_client/transport.dart';
@@ -8,16 +9,19 @@ import 'package:core/src/rpc_client/transport.dart';
 
 /// [RpcClient] will perform network calls to [RpcServer]
 /// In the future this will implement various pluggable transports such as
-/// http, http2, websocket, etcetc... this is abtracted to the stream channel
+/// http, http2, websocket, etcetc...
+/// TODO: this needs management of connection to various devices... for now its
+/// only the server though
 class RpcClient {
   // PluggableTransport is StreamChannel<Uint8List>
   final RpcClientTransport _transport;
+  final DeviceKeychain _deviceKeychain;
   final Map<int, Completer<ProtoPayload>> _pendingRequests;
 
   // not thread safe!
   int _lastReqId = 0;
 
-  RpcClient(this._transport) : _pendingRequests = {};
+  RpcClient(this._transport, this._deviceKeychain) : _pendingRequests = {};
 
   // this will connect (or reconnect) the transport to the server
   // TODO: this needs lots of work to deal with broken sockets and timeouts of
@@ -61,15 +65,19 @@ class RpcClient {
     await _transport.disconnect();
   }
 
-  void _send(
+  DeviceId serverDeviceId() {
+    return _deviceKeychain.firstServerId();
+  }
+
+  Future<void> _send(
+    DeviceId deviceId,
     ProtoAnyMessage data, {
     Completer<ProtoPayload>? responseCompleter,
-  }) {
-    // TODO: auth
-    final thisClientDeviceId = DeviceId(999);
+  }) async {
     final payload = ProtoPayload({}, data);
 
-    payload.setHeader(ProtoHeaderAuth(thisClientDeviceId));
+    final authClaim = await _deviceKeychain.makeClaim(deviceId);
+    payload.setHeader(ProtoHeaderAuth(authClaim));
 
     if (responseCompleter == null) {
       // just push the value out
@@ -90,11 +98,12 @@ class RpcClient {
   }
 
   Future<T> _sendWithResponse<T extends ProtoAnyMessage>(
+    DeviceId deviceId,
     ProtoAnyMessage data,
   ) async {
     final completer = Completer<ProtoPayload>();
 
-    _send(data, responseCompleter: completer);
+    await _send(deviceId, data, responseCompleter: completer);
 
     final response = await completer.future;
 
@@ -113,23 +122,28 @@ class RpcClient {
     return response.data as T;
   }
 
-  Future<void> ping() async {
-    await _sendWithResponse<ProtoMessageEmpty>(ProtoMessagePing());
+  Future<void> ping(DeviceId deviceId) async {
+    await _sendWithResponse<ProtoMessageEmpty>(deviceId, ProtoMessagePing());
   }
 
-  Future<void> uploadEvents(ProtoMessageEventValue data) async {
-    await _sendWithResponse<ProtoMessageEmpty>(data);
+  Future<void> uploadEvents(
+    DeviceId deviceId,
+    ProtoMessageEventValue data,
+  ) async {
+    await _sendWithResponse<ProtoMessageEmpty>(deviceId, data);
   }
 
-  Future<ProtoMessageClockValue> queryClock() async {
+  Future<ProtoMessageClockValue> queryClock(DeviceId deviceId) async {
     return await _sendWithResponse<ProtoMessageClockValue>(
+      deviceId,
       ProtoMessageClockQuery(),
     );
   }
 
   Future<ProtoMessageEventValue> queryEvents(
+    DeviceId deviceId,
     ProtoMessageEventQuery data,
   ) async {
-    return await _sendWithResponse<ProtoMessageEventValue>(data);
+    return await _sendWithResponse<ProtoMessageEventValue>(deviceId, data);
   }
 }

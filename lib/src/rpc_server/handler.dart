@@ -1,14 +1,18 @@
 import 'package:core/core.dart';
+import 'package:core/device_keychain.dart';
 import 'package:core/event_store.dart';
 import 'package:core/src/blob_store/store.dart';
 import 'package:core/src/protocol/proto_messages.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
 
 class ServerContext {
-  EventStore eventStore;
-  BlobStore blobStore;
+  final DeviceKeychain deviceKeychain;
 
-  ServerContext(this.eventStore, this.blobStore);
+  final EventStore eventStore;
+  final BlobStore blobStore;
+  // this needs to have access to network send/recieve primitives
+
+  const ServerContext(this.deviceKeychain, this.eventStore, this.blobStore);
 }
 
 /// information about the requester
@@ -39,8 +43,14 @@ class RpcServerHandler {
         case ProtoMessageEventValue data:
           await onEventValue(data);
           return null;
+        case ProtoMessageForwardData data:
+          // this will need to save the forward content if possible
+          // or send it in realtime if device is online
+          // This requires lots of dependencies I have not developed yet
+          // This also needs access to the header forward
+          throw UnimplementedError('Forwarding not implemented yet');
         default:
-          throw Exception('request type ${req.runtimeType} not supported');
+          throw Exception('Request type ${req.runtimeType} is invalid');
       }
     } catch (e) {
       // print('rpc server handler failure. $e; stack: $stackTrace');

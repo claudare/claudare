@@ -13,7 +13,7 @@ import 'package:core/src/rpc_server/transport/http.dart';
 import 'rpc_helpers.dart';
 
 void main() {
-  late MockRpc rpc;
+  late TestRpc rpc;
 
   setUp(() async {
     rpc = await mockHttpHandlers(
@@ -27,7 +27,7 @@ void main() {
         if (req is ProtoMessageEventQuery) {
           return ProtoMessageEventValue([
             StoredEvent(
-              // client deviceId is hardcoded to 999 for now
+              // client deviceId comes from the auth
               EventId(Timestamp(1000), reqCtx.deviceId),
               Uint8List.fromList([req.limit]),
             ),
@@ -49,11 +49,12 @@ void main() {
 
   group('rpc', () {
     test('ping', () async {
-      await rpc.client.ping();
+      await rpc.client.ping(rpc.client.serverDeviceId());
     });
 
     test('data stuff (temporary)', () async {
       final response = await rpc.client.queryEvents(
+        rpc.client.serverDeviceId(),
         ProtoMessageEventQuery(
           EventVectorClockRange.fromStart(EventVectorClock.empty()),
           42,
@@ -63,14 +64,14 @@ void main() {
       expect(response.events.length, equals(1));
       expect(
         response.events.first.id.deviceId,
-        equals(DeviceId(999)), // hardcoded
+        equals(rpc.keychains.client.thisDeviceId),
       );
       expect(response.events.first.bytes[0], equals(42));
     });
 
     test('errors', () async {
       expect(
-        () => rpc.client.queryClock(),
+        () => rpc.client.queryClock(rpc.client.serverDeviceId()),
         throwsA(
           predicate(
             (x) => x is RpcException && x.toString().contains('expected error'),

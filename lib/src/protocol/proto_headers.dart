@@ -1,3 +1,4 @@
+import 'package:core/device_keychain.dart';
 import 'package:core/src/device_id.dart';
 import 'package:messagepack/messagepack.dart';
 
@@ -42,9 +43,9 @@ sealed class ProtoAnyHeader {
 class ProtoHeaderAuth extends ProtoAnyHeader {
   static const staticType = 1; // unique index to each one
 
-  final DeviceId deviceId;
+  final DeviceClaim claim;
 
-  const ProtoHeaderAuth(this.deviceId);
+  const ProtoHeaderAuth(this.claim);
 
   @override
   int get type => staticType;
@@ -52,12 +53,12 @@ class ProtoHeaderAuth extends ProtoAnyHeader {
   @override
   void pack(Packer p) {
     p.packInt(staticType);
-    deviceId.pack(p);
+    claim.pack(p);
   }
 
-  factory ProtoHeaderAuth.unpack(Unpacker p) {
-    final deviceInt = p.unpackInt();
-    return ProtoHeaderAuth(DeviceId(deviceInt!));
+  factory ProtoHeaderAuth.unpack(Unpacker u) {
+    final claim = DeviceClaim.unpack(u);
+    return ProtoHeaderAuth(claim);
   }
 }
 

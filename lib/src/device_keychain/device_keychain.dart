@@ -1,4 +1,5 @@
 import 'package:core/core.dart';
+import 'package:messagepack/messagepack.dart';
 
 /// [DeviceClaim] is the data attached to communications which is used to
 /// prove devices identity for authentication. Authorization is not done here.
@@ -9,6 +10,15 @@ class DeviceClaim {
   final DeviceId forDeviceId;
 
   const DeviceClaim(this.fromDeviceId, this.forDeviceId);
+
+  void pack(Packer p) {
+    fromDeviceId.pack(p);
+    forDeviceId.pack(p);
+  }
+
+  DeviceClaim.unpack(Unpacker u)
+    : fromDeviceId = DeviceId.unpack(u),
+      forDeviceId = DeviceId.unpack(u);
 }
 
 class DeviceEnrollment {
@@ -44,7 +54,17 @@ class DeviceKeychain {
 
   const DeviceKeychain(this._ownDevice, this._devices);
 
+  factory DeviceKeychain.empty(DeviceId thisDeviceId) {
+    return DeviceKeychain(OwnDevice(thisDeviceId), {});
+  }
+
   DeviceId get thisDeviceId => _ownDevice.ownEnrollment.deviceId;
+
+  DeviceId firstServerId() {
+    return _devices.entries
+        .firstWhere((entry) => entry.value.isServer == true)
+        .key;
+  }
 
   void enroll(DeviceEnrollment enrollment) {
     _devices[enrollment.deviceId] = enrollment;

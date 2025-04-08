@@ -1,7 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:core/device_keychain.dart';
 import 'package:core/protocol.dart';
+import 'package:core/src/rpc_client/exceptions.dart';
 import 'package:core/src/rpc_server/handler.dart';
 import 'package:core/src/rpc_server/transport.dart';
 
@@ -12,19 +14,20 @@ typedef ServerHandlerFn =
     );
 
 class RpcServer {
-  final RpcServerTransport transport;
-  final ServerHandlerFn serverHandler;
+  final RpcServerTransport _transport;
+  final DeviceKeychain _deviceKeychain;
+  final ServerHandlerFn _serverHandler;
 
-  const RpcServer(this.transport, this.serverHandler);
+  const RpcServer(this._transport, this._deviceKeychain, this._serverHandler);
 
   // int get serverPort => transport.port;
 
   Future<void> start(Uri listtenUri) async {
-    await transport.start(listtenUri, _handler);
+    await _transport.start(listtenUri, _handler);
   }
 
   Future<void> stop() async {
-    await transport.stop();
+    await _transport.stop();
   }
 
   // serialization errors are sent as unstructured insside the transport...
@@ -45,18 +48,24 @@ class RpcServer {
   /// but this needs access to some sort of context like EventStore and BlobStore
   /// Also, this will throw on errors, and it must be routed accordingly
   Future<ProtoPayload?> handlePayload(ProtoPayload req) async {
-    // TODO: server auth
-    final thisServerDeviceId = DeviceId(10000);
-    final ack = req.getAck();
+    DeviceId senderId;
+    DeviceClaim resClaim;
 
     try {
-      // get auth can also fail
-      // or auth validation...
+      // validate the auth. these throw when something is not right
       final auth = req.getAuth();
+      final device = await _deviceKeychain.checkClaim(auth.claim);
+      senderId = device.deviceId;
+      resClaim = await _deviceKeychain.makeClaim(senderId);
+    } catch (e) {
+      throw RpcException('Auth failed: $e');
+    }
 
-      final reqCtx = RequestContext(auth.deviceId);
+    final ack = req.getAck();
+    final reqCtx = RequestContext(senderId);
 
-      final resData = await serverHandler(req.data, reqCtx);
+    try {
+      final resData = await _serverHandler(req.data, reqCtx);
 
       if (ack == null) {
         return null;
@@ -64,7 +73,7 @@ class RpcServer {
 
       final res = ProtoPayload({}, resData ?? ProtoMessageEmpty());
 
-      res.setHeader(ProtoHeaderAuth(thisServerDeviceId));
+      res.setHeader(ProtoHeaderAuth(resClaim));
       res.setHeader(ProtoHeaderAck(ack.payloadId, ""));
 
       return res;
@@ -81,7 +90,7 @@ class RpcServer {
         ack,
         e,
         stackTrace,
-        auth: ProtoHeaderAuth(thisServerDeviceId),
+        auth: ProtoHeaderAuth(resClaim), // still sign on failures?
       );
     }
   }
