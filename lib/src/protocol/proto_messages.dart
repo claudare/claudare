@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:core/src/event_store/stored_event.dart';
 import 'package:core/src/event_store/vector_clock.dart';
 import 'package:core/src/event_store/vector_clock_range.dart';
@@ -172,6 +174,33 @@ class ProtoMessageEventValue extends ProtoAnyMessage {
     );
 
     return ProtoMessageEventValue(out);
+  }
+}
+
+/// [ProtoMessageForwardData] encapsulates an encrypted message that is sent
+/// to another device. The header specify which device it does to, or uses a
+/// boardcast. Server is responsible to release these in the same order as the
+/// timestamps on the events/blobs. This event type is usually used for
+/// bootstrapping new devices. The payloads are encrypted for each other device
+/// public key. No broadcast is possible, as communication is private to
+/// every other device.
+class ProtoMessageForwardData extends ProtoAnyMessage {
+  static const staticType = 4;
+  final Uint8List ciphertext;
+
+  const ProtoMessageForwardData(this.ciphertext);
+
+  @override
+  int get type => staticType;
+
+  @override
+  void pack(Packer p) {
+    p.packInt(staticType);
+    p.packBinary(ciphertext);
+  }
+
+  factory ProtoMessageForwardData.unpack(Unpacker u) {
+    return ProtoMessageForwardData(Uint8List.fromList(u.unpackBinary()));
   }
 }
 

@@ -16,11 +16,11 @@ sealed class ProtoAnyHeader {
 
   void pack(Packer p);
   int get type;
-  // ProtoAnyHeader.unpack(Unpacker u);
 
   static const Map<int, ProtoAnyHeader Function(Unpacker)> _unpackers = {
     ProtoHeaderAuth.staticType: ProtoHeaderAuth.unpack,
     ProtoHeaderAck.staticType: ProtoHeaderAck.unpack,
+    ProtoHeaderForward.staticType: ProtoHeaderForward.unpack,
   };
 
   static ProtoAnyHeader unpack(Unpacker u) {
@@ -87,5 +87,29 @@ class ProtoHeaderAck extends ProtoAnyHeader {
     final payloadId = p.unpackInt();
     final error = p.unpackString() ?? "";
     return ProtoHeaderAck(payloadId!, error);
+  }
+}
+
+/// [ProtoHeaderForward] specifies that the content of this payload must be
+/// proxied to another device. Works in conjunction with [ProtoMessageForwardData]
+class ProtoHeaderForward extends ProtoAnyHeader {
+  static const staticType = 11;
+
+  final DeviceId deviceId;
+
+  const ProtoHeaderForward(this.deviceId);
+
+  @override
+  int get type => staticType;
+
+  @override
+  void pack(Packer p) {
+    p.packInt(staticType);
+    deviceId.pack(p);
+  }
+
+  factory ProtoHeaderForward.unpack(Unpacker u) {
+    final deviceId = DeviceId.unpack(u);
+    return ProtoHeaderForward(deviceId);
   }
 }

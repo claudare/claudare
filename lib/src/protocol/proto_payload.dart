@@ -78,6 +78,10 @@ class ProtoPayload {
     return _getHeader<ProtoHeaderAck>(ProtoHeaderAck.staticType);
   }
 
+  ProtoHeaderForward? getForward() {
+    return _getHeader<ProtoHeaderForward>(ProtoHeaderForward.staticType);
+  }
+
   Uint8List pack() {
     final p = Packer();
 
