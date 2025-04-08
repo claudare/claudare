@@ -1,27 +1,34 @@
+import 'dart:typed_data';
+
 import 'package:core/core.dart';
+import 'package:messagepack/messagepack.dart';
 
 sealed class NoteEvent {
   const NoteEvent();
 
-  Map<String, dynamic> toJson();
+  void pack(Packer p);
   NoteEvent.fromJson(Map<String, dynamic> json);
 
-  static final Map<String, NoteEvent Function(Map<String, dynamic>)> _parsers =
-      {
-        NoteCreated._type: (json) => NoteCreated.fromJson(json),
-        NoteContentUpdated._type: (json) => NoteContentUpdated.fromJson(json),
-        NoteTitleUpdated._type: (json) => NoteTitleUpdated.fromJson(json),
-        NoteDeleted._type: (json) => NoteDeleted.fromJson(json),
-        NoteMoved._type: (json) => NoteMoved.fromJson(json),
-        TagAssigned._type: (json) => TagAssigned.fromJson(json),
-        TagUnassigned._type: (json) => TagUnassigned.fromJson(json),
-      };
+  static final Map<String, NoteEvent Function(Unpacker)> _parsers = {
+    NoteCreated._type: NoteCreated.unpack,
+    NoteContentUpdated._type: NoteContentUpdated.unpack,
+    NoteTitleUpdated._type: NoteTitleUpdated.unpack,
+    NoteDeleted._type: NoteDeleted.unpack,
+    NoteMoved._type: NoteMoved.unpack,
+    TagAssigned._type: TagAssigned.unpack,
+    TagUnassigned._type: TagUnassigned.unpack,
+  };
 
-  static NoteEvent anyFromJson(Map<String, dynamic> json) {
-    if (_parsers.containsKey(json['_type'])) {
-      return _parsers[json['_type']]!(json);
+  static NoteEvent unpackBytes(Uint8List bytes) {
+    final u = Unpacker(bytes);
+
+    final type = u.unpackString()!;
+
+    if (!_parsers.containsKey(type)) {
+      throw Exception('Unknown note event type $type');
     }
-    throw Exception('Unknown note event type: ${json['_type']}');
+
+    return _parsers[type]!(u);
   }
 }
 
@@ -32,13 +39,12 @@ class NoteCreated extends NoteEvent {
   const NoteCreated(this.id);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'id': id.toString()};
+  void pack(Packer p) {
+    p.packString(_type);
+    id.pack(p);
   }
 
-  factory NoteCreated.fromJson(Map<String, dynamic> json) {
-    return NoteCreated(GenericId.fromString(json['id']));
-  }
+  NoteCreated.unpack(Unpacker u) : id = GenericId.unpack(u);
 
   @override
   String toString() => 'NoteCreated(id: $id)';
@@ -52,16 +58,15 @@ class NoteContentUpdated extends NoteEvent {
   const NoteContentUpdated(this.id, this.content);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'id': id.toString(), 'content': content};
+  void pack(Packer p) {
+    p.packString(_type);
+    id.pack(p);
+    p.packString(content);
   }
 
-  factory NoteContentUpdated.fromJson(Map<String, dynamic> json) {
-    return NoteContentUpdated(
-      GenericId.fromString(json['id']),
-      json['content'],
-    );
-  }
+  NoteContentUpdated.unpack(Unpacker u)
+    : id = GenericId.unpack(u),
+      content = u.unpackString()!;
 
   @override
   String toString() => 'NoteContentUpdated(id: $id, content: $content)';
@@ -75,13 +80,15 @@ class NoteTitleUpdated extends NoteEvent {
   const NoteTitleUpdated(this.id, this.title);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'id': id.toString(), 'title': title};
+  void pack(Packer p) {
+    p.packString(_type);
+    id.pack(p);
+    p.packString(title);
   }
 
-  factory NoteTitleUpdated.fromJson(Map<String, dynamic> json) {
-    return NoteTitleUpdated(GenericId.fromString(json['id']), json['title']);
-  }
+  NoteTitleUpdated.unpack(Unpacker u)
+    : id = GenericId.unpack(u),
+      title = u.unpackString()!;
 
   @override
   String toString() => 'NoteTitleUpdated(id: $id, title: $title)';
@@ -94,13 +101,11 @@ class NoteDeleted extends NoteEvent {
   const NoteDeleted(this.id);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'id': id.toString()};
+  void pack(Packer p) {
+    id.pack(p);
   }
 
-  factory NoteDeleted.fromJson(Map<String, dynamic> json) {
-    return NoteDeleted(GenericId.fromString(json['id']));
-  }
+  NoteDeleted.unpack(Unpacker u) : id = GenericId.unpack(u);
 
   @override
   String toString() => 'NoteDeleted(id: $id)';
@@ -114,13 +119,15 @@ class NoteMoved extends NoteEvent {
   const NoteMoved(this.id, this.toIndex);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'id': id.toString(), 'toIndex': toIndex};
+  void pack(Packer p) {
+    p.packString(_type);
+    id.pack(p);
+    p.packInt(toIndex);
   }
 
-  factory NoteMoved.fromJson(Map<String, dynamic> json) {
-    return NoteMoved(GenericId.fromString(json['id']), json['toIndex']);
-  }
+  NoteMoved.unpack(Unpacker u)
+    : id = GenericId.unpack(u),
+      toIndex = u.unpackInt()!;
 
   @override
   String toString() => 'NoteMoved(id: $id, toIndex: $toIndex)';
@@ -134,13 +141,15 @@ class TagAssigned extends NoteEvent {
   const TagAssigned(this.noteId, this.tagName);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'noteId': noteId.toString(), 'tagName': tagName};
+  void pack(Packer p) {
+    p.packString(_type);
+    noteId.pack(p);
+    p.packString(tagName);
   }
 
-  factory TagAssigned.fromJson(Map<String, dynamic> json) {
-    return TagAssigned(GenericId.fromString(json['noteId']), json['tagName']);
-  }
+  TagAssigned.unpack(Unpacker u)
+    : noteId = GenericId.unpack(u),
+      tagName = u.unpackString()!;
 
   @override
   String toString() => 'TagAssigned(noteId: $noteId, tag: $tagName)';
@@ -154,13 +163,15 @@ class TagUnassigned extends NoteEvent {
   const TagUnassigned(this.noteId, this.tagName);
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'_type': _type, 'noteId': noteId.toString(), 'tagName': tagName};
+  void pack(Packer p) {
+    p.packString(_type);
+    noteId.pack(p);
+    p.packString(tagName);
   }
 
-  factory TagUnassigned.fromJson(Map<String, dynamic> json) {
-    return TagUnassigned(GenericId.fromString(json['noteId']), json['tagName']);
-  }
+  TagUnassigned.unpack(Unpacker u)
+    : noteId = GenericId.unpack(u),
+      tagName = u.unpackString()!;
 
   @override
   String toString() => 'TagUnassigned(noteId: $noteId, tag: $tagName)';

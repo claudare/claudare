@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:core/utils.dart';
+import 'package:messagepack/messagepack.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:restart_app/restart_app.dart';
@@ -76,7 +77,8 @@ class Controller {
       final stream = _eventStore.getEvents(range, 10);
       await for (final eventRaw in stream) {
         final eventId = eventRaw.id;
-        final eventParsed = NoteEvent.anyFromJson(jsonDecode(eventRaw.data));
+
+        final eventParsed = NoteEvent.unpackBytes(eventRaw.bytes);
 
         await repo.processEvent(eventId, eventParsed);
         range.advanceById(eventId);
@@ -98,7 +100,9 @@ class Controller {
 
   Future<void> localEventSubmit(NoteEvent event) async {
     final eventId = _newEventId();
-    final envelope = StoredEvent(eventId, jsonEncode(event.toJson()));
+    final p = Packer();
+    event.pack(p);
+    final envelope = StoredEvent(eventId, p.takeBytes());
 
     await _eventStore.storeEvent(envelope);
     await repo.processEvent(eventId, event);
