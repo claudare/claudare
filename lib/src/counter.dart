@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:core/src/utils/base58.dart';
+import 'package:messagepack/messagepack.dart';
 
 class Counter16Generator {
   int _value;
@@ -62,4 +63,10 @@ class Counter16 {
 
   @override
   int get hashCode => value.hashCode;
+
+  void pack(Packer p) {
+    p.packInt(_value);
+  }
+
+  Counter16.unpack(Unpacker u) : _value = u.unpackInt()!;
 }

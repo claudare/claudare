@@ -1,6 +1,7 @@
 import 'package:core/src/counter.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/timestamp.dart';
+import 'package:messagepack/messagepack.dart';
 
 class GenericIdGenerator {
   final DeviceId _deviceId;
@@ -81,4 +82,19 @@ class GenericId {
       timestamp.hashCode ^
       counter.hashCode ^
       deviceId.hashCode;
+
+  void pack(Packer p) {
+    p.packString(scope);
+    timestamp.pack(p);
+    counter.pack(p);
+    deviceId.pack(p);
+  }
+
+  factory GenericId.unpack(Unpacker u) {
+    final scope = u.unpackString()!;
+    final timestamp = Timestamp.unpack(u);
+    final counter = Counter16.unpack(u);
+    final deviceId = DeviceId.unpack(u);
+    return GenericId(scope, timestamp, counter, deviceId);
+  }
 }
