@@ -6,8 +6,9 @@ enum RpcClientConnectionStatus { disconnected, connecting, connected }
 
 abstract class RpcClientTransport extends StreamChannelMixin<Uint8List>
     implements StreamChannel<Uint8List> {
-  // TODO: also a stream of statses
-  RpcClientConnectionStatus status();
+  RpcClientConnectionStatus get connectionStatus;
+  Stream<RpcClientConnectionStatus> get connectionStatusStream;
+
   Future<void> connect(Uri uri);
   Future<void> disconnect();
 }

@@ -53,6 +53,7 @@ class EventVectorClockRange {
   int get length => ranges.length;
 
   bool get isEmpty => ranges.isEmpty;
+  bool get isNotEmpty => ranges.isNotEmpty;
 
   void advanceById(EventId id) {
     final deviceId = id.deviceId;

@@ -150,7 +150,7 @@ class ProtoMessageEventValue extends ProtoAnyMessage {
 
   final List<StoredEvent> events;
 
-  const ProtoMessageEventValue(this.events);
+  const ProtoMessageEventValue(this.events) : assert(events.length > 0);
 
   @override
   int get type => staticType;
@@ -166,6 +166,10 @@ class ProtoMessageEventValue extends ProtoAnyMessage {
 
   factory ProtoMessageEventValue.unpack(Unpacker u) {
     final len = u.unpackListLength();
+
+    if (len == 0) {
+      throw Exception('ProtoMessageEventValue cant be empty');
+    }
 
     final out = List<StoredEvent>.generate(
       len,

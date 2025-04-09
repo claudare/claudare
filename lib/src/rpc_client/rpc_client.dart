@@ -1,33 +1,43 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:core/device_keychain.dart';
 import 'package:core/protocol.dart';
 import 'package:core/src/rpc_client/exceptions.dart';
 import 'package:core/src/rpc_client/transport.dart';
-// import 'package:core/src/rpc_client/connection_status.dart';
+import 'package:core/src/utils/retry_strategy.dart';
 
 /// [RpcClient] will perform network calls to [RpcServer]
 /// In the future this will implement various pluggable transports such as
 /// http, http2, websocket, etcetc...
-/// TODO: this needs management of connection to various devices... for now its
-/// only the server though
+/// TODO: needs lots of work to deal with broken sockets and ping/pong
+/// TODO: transport can break at any time. Need automatic reconnection and
+/// a separate notification of failures
+/// TODO: management of connection to multiple devices. for now its
+/// only a single connection to the sync server
 class RpcClient {
+  static const int _maxRetries = 3;
+
   // PluggableTransport is StreamChannel<Uint8List>
   final RpcClientTransport _transport;
   final DeviceKeychain _deviceKeychain;
   final Map<int, Completer<ProtoPayload>> _pendingRequests;
+
+  final RetryStrategy _retryStrategy = RetryStrategyConstantBackoff(
+    duration: Duration(seconds: 3),
+  );
 
   // not thread safe!
   int _lastReqId = 0;
 
   RpcClient(this._transport, this._deviceKeychain) : _pendingRequests = {};
 
-  // this will connect (or reconnect) the transport to the server
-  // TODO: this needs lots of work to deal with broken sockets and timeouts of
-  // ping/pong
+  // [RpcClient] will keep connection status as connected until it fails
+  // to reconnect a couple times
+
   Future<void> connect(Uri uri) async {
-    await _transport.connect(uri);
+    await _tryConnect(uri);
 
     _transport.stream.listen(
       (data) {
@@ -61,9 +71,46 @@ class RpcClient {
     );
   }
 
+  Future<void> _tryConnect(Uri uri) async {
+    int attemptIndex = 0; // Example: allow 3 attempts
+
+    while (true) {
+      try {
+        final timeout = _retryStrategy.getTimeout(attemptIndex);
+        await Future.delayed(timeout);
+
+        if (_transport.connectionStatus !=
+            RpcClientConnectionStatus.disconnected) {
+          throw Exception(
+            'Cannot start connection as status is ${_transport.connectionStatus}',
+          );
+        }
+        await _transport.connect(uri);
+        return;
+      } catch (e) {
+        print(
+          'connection could be established. Try $attemptIndex, max $_maxRetries: $e',
+        );
+        attemptIndex++;
+        if (attemptIndex > _maxRetries) {
+          throw Exception('failed to connect to $uri: $e');
+        }
+      }
+    }
+  }
+
   Future<void> disconnect() async {
+    if (_transport.connectionStatus == RpcClientConnectionStatus.disconnected) {
+      throw Exception('Cannot disconnect as already disconnected');
+    }
+
     await _transport.disconnect();
   }
+
+  RpcClientConnectionStatus get connectionStatus => _transport.connectionStatus;
+
+  Stream<RpcClientConnectionStatus> get connectionStatusStream =>
+      _transport.connectionStatusStream;
 
   DeviceId serverDeviceId() {
     return _deviceKeychain.firstServerId();
@@ -126,13 +173,6 @@ class RpcClient {
     await _sendWithResponse<ProtoMessageEmpty>(deviceId, ProtoMessagePing());
   }
 
-  Future<void> uploadEvents(
-    DeviceId deviceId,
-    ProtoMessageEventValue data,
-  ) async {
-    await _sendWithResponse<ProtoMessageEmpty>(deviceId, data);
-  }
-
   Future<ProtoMessageClockValue> queryClock(DeviceId deviceId) async {
     return await _sendWithResponse<ProtoMessageClockValue>(
       deviceId,
@@ -145,5 +185,12 @@ class RpcClient {
     ProtoMessageEventQuery data,
   ) async {
     return await _sendWithResponse<ProtoMessageEventValue>(deviceId, data);
+  }
+
+  Future<void> uploadEvents(
+    DeviceId deviceId,
+    ProtoMessageEventValue data,
+  ) async {
+    await _sendWithResponse<ProtoMessageEmpty>(deviceId, data);
   }
 }
