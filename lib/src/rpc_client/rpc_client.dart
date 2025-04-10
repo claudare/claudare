@@ -61,7 +61,9 @@ class RpcClient {
         _pendingRequests.remove(resId);
       },
       onError: (err, stack) {
-        // TODO
+        // this is where errors are propogated
+        // when error happens, the pending requests will grow and "leak" memory
+        // this is what is called when the connection cannot be established
         print('transport stream threw error $err');
         print(stack);
       },

@@ -17,14 +17,16 @@ class RpcClientTransportHttp extends RpcClientTransport {
 
   RpcClientTransportHttp();
 
-  Future<void> _handleOutgoingMessage(Uint8List data) async {
+  Future<void> _handleOutgoingMessage(Uint8List requestData) async {
     try {
       final response = await _client.post(
         _endpoint,
-        body: data,
+        body: requestData,
         headers: {'Content-Type': 'application/octet-stream'},
       );
 
+      // this also means there is an internal error
+      // everything must be 200, even the nacks!
       if (response.statusCode != 200) {
         final debugMsg = utf8.decode(response.bodyBytes);
         _inputController.addError(
@@ -37,6 +39,8 @@ class RpcClientTransportHttp extends RpcClientTransport {
         _inputController.add(response.bodyBytes);
       }
     } catch (e) {
+      // try to clear the nack?
+
       _inputController.addError(e);
     }
   }

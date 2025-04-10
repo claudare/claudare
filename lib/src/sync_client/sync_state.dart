@@ -18,10 +18,11 @@ class SyncStateManager {
     _statusController.close();
   }
 
-  Stream<SyncState> get statusStream => _statusController.stream;
+  Stream<SyncState> get stream => _statusController.stream;
 
   bool get isUploading => _isUploading;
   bool get isDownloading => _isDownloading;
+  bool get isConnected => _isConnected;
 
   SyncState get status {
     if (!_isConnected) return SyncState.disconnected;
