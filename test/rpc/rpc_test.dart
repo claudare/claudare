@@ -10,7 +10,7 @@ import 'package:core/protocol.dart';
 import 'package:core/src/rpc_client/transport/http.dart';
 import 'package:core/src/rpc_server/transport/http.dart';
 
-import 'rpc_helpers.dart';
+import '../rpc_helpers.dart';
 
 void main() {
   late TestRpc rpc;

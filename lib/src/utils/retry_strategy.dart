@@ -11,6 +11,9 @@ class RetryStrategyConstantBackoff extends RetryStrategy {
 
   @override
   Duration getTimeout(int attemptIndex) {
+    if (attemptIndex == 0) {
+      return Duration.zero;
+    }
     return duration;
   }
 }

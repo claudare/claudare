@@ -74,7 +74,7 @@ class RpcClient {
   }
 
   Future<void> _tryConnect(Uri uri) async {
-    int attemptIndex = 0; // Example: allow 3 attempts
+    int attemptIndex = 0;
 
     while (true) {
       try {
@@ -106,7 +106,16 @@ class RpcClient {
       throw Exception('Cannot disconnect as already disconnected');
     }
 
-    await _transport.disconnect();
+    try {
+      await _transport.disconnect();
+    } finally {
+      // cleanup pending requests
+      // TODO: this needs testing
+      for (final completer in _pendingRequests.values) {
+        completer.completeError(Exception('client disconnected'));
+      }
+      _pendingRequests.clear();
+    }
   }
 
   RpcClientConnectionStatus get connectionStatus => _transport.connectionStatus;
@@ -171,12 +180,12 @@ class RpcClient {
     return response.data as T;
   }
 
-  Future<void> ping(DeviceId deviceId) async {
-    await _sendWithResponse<ProtoMessageEmpty>(deviceId, ProtoMessagePing());
+  Future<void> ping(DeviceId deviceId) {
+    return _sendWithResponse<ProtoMessageEmpty>(deviceId, ProtoMessagePing());
   }
 
-  Future<ProtoMessageClockValue> queryClock(DeviceId deviceId) async {
-    return await _sendWithResponse<ProtoMessageClockValue>(
+  Future<ProtoMessageClockValue> queryClock(DeviceId deviceId) {
+    return _sendWithResponse<ProtoMessageClockValue>(
       deviceId,
       ProtoMessageClockQuery(),
     );
@@ -185,14 +194,11 @@ class RpcClient {
   Future<ProtoMessageEventValue> queryEvents(
     DeviceId deviceId,
     ProtoMessageEventQuery data,
-  ) async {
-    return await _sendWithResponse<ProtoMessageEventValue>(deviceId, data);
+  ) {
+    return _sendWithResponse<ProtoMessageEventValue>(deviceId, data);
   }
 
-  Future<void> uploadEvents(
-    DeviceId deviceId,
-    ProtoMessageEventValue data,
-  ) async {
-    await _sendWithResponse<ProtoMessageEmpty>(deviceId, data);
+  Future<void> uploadEvents(DeviceId deviceId, ProtoMessageEventValue data) {
+    return _sendWithResponse<ProtoMessageEmpty>(deviceId, data);
   }
 }
