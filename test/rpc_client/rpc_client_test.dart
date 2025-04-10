@@ -13,17 +13,28 @@ void main() {
       DeviceId(0),
     );
     test('happy path', () async {
-      //
       final transport = RpcClientTransportMock();
 
       final rpcClient = RpcClient(transport, deviceKeychain.client);
 
-      await rpcClient.connect(Uri());
+      expectLater(
+        rpcClient.connectionStatusStream,
+        emitsInOrder([
+          RpcClientConnectionStatus.connected,
+          RpcClientConnectionStatus.disconnected,
+        ]),
+      );
 
-      // this is a useless assert...
+      await rpcClient.connect(Uri());
       expect(
         transport.connectionStatus,
         equals(RpcClientConnectionStatus.connected),
+      );
+
+      await rpcClient.disconnect();
+      expect(
+        transport.connectionStatus,
+        equals(RpcClientConnectionStatus.disconnected),
       );
     });
   });
