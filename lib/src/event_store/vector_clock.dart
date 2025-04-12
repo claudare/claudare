@@ -1,75 +1,115 @@
 import 'package:core/src/device_id.dart';
+import 'package:core/src/event_store/event_clock.dart';
 import 'package:core/src/event_store/id.dart';
-import 'package:core/src/timestamp.dart';
 import 'package:messagepack/messagepack.dart';
 
+/// Vector clock per device
 class EventVectorClock implements Comparable<EventVectorClock> {
-  final Map<DeviceId, Timestamp> _mapDeviceTimestamp;
+  final Map<DeviceId, EventClock> _map;
 
-  const EventVectorClock(this._mapDeviceTimestamp);
+  const EventVectorClock(this._map);
 
   factory EventVectorClock.fromEventIds(List<EventId> values) {
-    final map = <DeviceId, Timestamp>{};
+    final map = <DeviceId, EventClock>{};
     for (final eventId in values) {
-      map[eventId.deviceId] = eventId.timestamp;
+      map[eventId.deviceId] = EventClock.fromEventId(eventId);
     }
     return EventVectorClock(map);
   }
 
-  EventVectorClock.empty() : _mapDeviceTimestamp = {};
+  /// Returns a diff of the clocks. A new range is just a clock
+  factory EventVectorClock.diff(EventVectorClock from, EventVectorClock to) {
+    final out = <DeviceId, EventClock>{};
+
+    for (final toEntry in to._map.entries) {
+      final deviceId = toEntry.key;
+      final toEventClock = toEntry.value;
+
+      final fromEventClock = from._map[deviceId];
+
+      if (fromEventClock == null) {
+        // clock needs to start at zero
+        out[deviceId] = EventClock.zero();
+        continue;
+      }
+
+      if (fromEventClock.compareTo(toEventClock) < 0) {
+        // if our clock is less, we must use it
+        out[deviceId] = fromEventClock;
+      }
+    }
+
+    return EventVectorClock(out);
+  }
+
+  EventVectorClock.empty() : _map = {};
 
   EventId? operator [](DeviceId deviceId) {
-    final ts = _mapDeviceTimestamp[deviceId];
+    final eventClock = _map[deviceId];
 
-    if (ts == null) {
+    if (eventClock == null) {
       return null;
     }
 
-    return EventId(ts, deviceId);
+    return EventId(eventClock.timestamp, eventClock.sequence, deviceId);
   }
 
   // Iterable<MapEntry<DeviceId, Timestamp>> get mapEntries =>
   //     UnmodifiableMapView(_mapDeviceTimestamp).entries;
 
-  Iterable<EventId> get entries => _mapDeviceTimestamp.entries.map(
-    (entry) => EventId(entry.value, entry.key),
+  Iterable<EventId> get entries => _map.entries.map(
+    (entry) => EventId(entry.value.timestamp, entry.value.sequence, entry.key),
   );
 
-  int get length => _mapDeviceTimestamp.length;
+  int get length => _map.length;
 
   void update(EventId id) {
     // must check that older events are never inserted.
     // replication is strict from old to new
-    final currentTs = _mapDeviceTimestamp[id.deviceId];
+    final currentEventClock = _map[id.deviceId];
 
-    if (currentTs != null && id.timestamp <= currentTs) {
+    if (currentEventClock != null &&
+        id.timestamp < currentEventClock.timestamp) {
       throw Exception(
-        'New event is behind the latest known event. Latest ${id.timestamp.toPrettyString()}, got ${currentTs.toPrettyString()} instead.',
+        'New event timestamp is behind the latest known event. Latest ${currentEventClock.timestamp.toPrettyString()}, got  ${id.timestamp.toPrettyString()} instead.',
       );
     }
 
-    _mapDeviceTimestamp[id.deviceId] = id.timestamp;
+    if (currentEventClock != null &&
+        id.sequence != currentEventClock.sequence + 1) {
+      throw Exception(
+        'New event sequence is out of order. Latest ${currentEventClock.sequence}, got ${id.sequence} instead.',
+      );
+    }
+
+    // check that order is correct
+
+    _map[id.deviceId] = EventClock.fromEventId(id);
   }
 
-  EventVectorClock copyWith(Map<DeviceId, Timestamp> map) {
+  @Deprecated('do not use, it does not work as intended')
+  EventVectorClock copyWith(Map<DeviceId, EventClock> map) {
     // merge the new map into the existing one
     // make sure to actually copy everything, as to not get shot by mutability
-    final newMap = Map<DeviceId, Timestamp>.from(_mapDeviceTimestamp);
+    final newMap = Map<DeviceId, EventClock>.from(_map);
     newMap.addAll(map);
     return EventVectorClock(newMap);
   }
 
+  EventVectorClock clone() {
+    final copy = Map<DeviceId, EventClock>.from(_map);
+    return EventVectorClock(copy);
+  }
+
   @override
   int compareTo(EventVectorClock other) {
-    if (_mapDeviceTimestamp.length != other._mapDeviceTimestamp.length) {
+    if (_map.length != other._map.length) {
       // vector clock with more devices is newer
-      return _mapDeviceTimestamp.length.compareTo(
-        other._mapDeviceTimestamp.length,
-      );
+      return _map.length.compareTo(other._map.length);
     }
 
-    for (final entry in _mapDeviceTimestamp.entries) {
-      final otherTs = other._mapDeviceTimestamp[entry.key];
+    for (final entry in _map.entries) {
+      final otherTs = other._map[entry.key];
       if (otherTs == null) {
         return 1;
       }
@@ -90,49 +130,49 @@ class EventVectorClock implements Comparable<EventVectorClock> {
   }
 
   @override
-  int get hashCode => _mapDeviceTimestamp.hashCode;
+  int get hashCode => _map.hashCode;
 
   // return a map with device ids as keys and timestamps as values
-  Map<String, dynamic> toJson() {
-    final out = <String, String>{};
+  // Map<String, dynamic> toJson() {
+  //   final out = <String, String>{};
 
-    for (final entry in _mapDeviceTimestamp.entries) {
-      out[entry.key.toString()] = entry.value.toString();
-    }
+  //   for (final entry in _map.entries) {
+  //     out[entry.key.toString()] = entry.value.toString();
+  //   }
 
-    return out;
-  }
+  //   return out;
+  // }
 
-  factory EventVectorClock.fromJson(Map<String, dynamic> json) {
-    // iterate over the json and assign keys and values
-    final out = <DeviceId, Timestamp>{};
+  // factory EventVectorClock.fromJson(Map<String, dynamic> json) {
+  //   // iterate over the json and assign keys and values
+  //   final out = <DeviceId, Timestamp>{};
 
-    for (final entry in json.entries) {
-      out[DeviceId.fromString(entry.key)] = Timestamp.fromString(entry.value);
-    }
+  //   for (final entry in json.entries) {
+  //     out[DeviceId.fromString(entry.key)] = Timestamp.fromString(entry.value);
+  //   }
 
-    return EventVectorClock(out);
-  }
+  //   return EventVectorClock(out);
+  // }
 
-  @override
-  String toString() {
-    return 'EventVectorClock{${_mapDeviceTimestamp.entries.map((e) => '${e.key}: ${e.value.toISO8601()}').join(', ')}}';
-  }
+  // @override
+  // String toString() {
+  //   return 'EventVectorClock{${_map.entries.map((e) => '${e.key}: ${e.value.toISO8601()}').join(', ')}}';
+  // }
 
   void pack(Packer p) {
-    p.packMapLength(_mapDeviceTimestamp.length);
-    _mapDeviceTimestamp.forEach((key, value) {
+    p.packMapLength(_map.length);
+    _map.forEach((key, value) {
       key.pack(p);
       value.pack(p);
     });
   }
 
   factory EventVectorClock.unpack(Unpacker u) {
-    final out = <DeviceId, Timestamp>{};
+    final out = <DeviceId, EventClock>{};
 
     final len = u.unpackMapLength();
     for (int i = 0; i < len; i++) {
-      out[DeviceId.unpack(u)] = Timestamp.unpack(u);
+      out[DeviceId.unpack(u)] = EventClock.unpack(u);
     }
 
     return EventVectorClock(out);

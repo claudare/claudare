@@ -19,6 +19,11 @@ class DeviceClaim {
   DeviceClaim.unpack(Unpacker u)
     : fromDeviceId = DeviceId.unpack(u),
       forDeviceId = DeviceId.unpack(u);
+
+  @override
+  String toString() {
+    return 'DeviceClaim{fromDeviceId: $fromDeviceId, forDeviceId: $forDeviceId}';
+  }
 }
 
 class DeviceEnrollment {

@@ -4,29 +4,28 @@ import 'package:core/src/database.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
 import 'package:core/src/event_store/vector_clock.dart';
-import 'package:core/src/event_store/vector_clock_range.dart';
 import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:sqlite_async/sqlite_async.dart';
 
-final _migrations = SqliteMigrations(
-  migrationTable: 'migrations_event_store',
-)..add(
-  SqliteMigration(1, (tx) async {
-    // table event should have a composite primary key of device_id and timestamp
-    await tx.execute('''
+final _migrations = SqliteMigrations(migrationTable: 'migrations_event_store')
+  ..add(
+    SqliteMigration(1, (tx) async {
+      // composite primary key as this is how data is queried
+      await tx.execute('''
       CREATE TABLE event (
-        device_id INT NOT NULL,
         timestamp INT NOT NULL,
+        sequence INT NOT NULL,
+        device_id INT NOT NULL,
         data BLOB NOT NULL,
-        PRIMARY KEY (device_id, timestamp)
+        PRIMARY KEY (timestamp, sequence, device_id)
       );
     ''');
-    await tx.execute('''
-      CREATE INDEX idx_event_timestamp ON event(timestamp);
-    ''');
-  }),
-);
+      // await tx.execute('''
+      //   CREATE INDEX idx_event_timestamp ON event(timestamp);
+      // ''');
+    }),
+  );
 
 class EventStore extends DatabaseBase {
   EventStore(super.path);
@@ -47,43 +46,41 @@ class EventStore extends DatabaseBase {
 
   /// returns an iterator of events from the given event clock
   /// TODO: should this be a stream, or just a list?
-  Stream<StoredEvent> getEvents(
-    EventVectorClockRange cursor,
-    int limit,
-  ) async* {
-    if (cursor.isEmpty) {
-      throw Exception('cursor should never be empty.');
+  Stream<StoredEvent> getEvents(EventVectorClock cursor, int limit) async* {
+    // ohhh, cant have an empty one
+    if (cursor.length == 0) {
+      throw Exception('Cannot query events by an empty cursor');
     }
 
     final args = List<int>.empty(growable: true);
-    // final args = List<int>.filled(cursor.length * 2, 0);
     final whereClause = List<String>.filled(
       cursor.length,
-      '(device_id = ? AND timestamp > ? AND timestamp <= ?)',
+      '(device_id = ? AND timestamp > ? AND sequence > ?)',
     ).join(' OR ');
 
     // iterate
-    for (final entry in cursor.ranges.entries) {
-      final deviceId = entry.key.value;
-      final timestampStart = entry.value.start.value;
-      final timestampEnd = entry.value.end.value;
-      args.addAll([deviceId, timestampStart, timestampEnd]);
+    for (final eventId in cursor.entries) {
+      final deviceId = eventId.deviceId.value;
+      final timestamp = eventId.timestamp.value;
+      final sequence = eventId.sequence;
+      args.addAll([deviceId, timestamp, sequence]);
     }
-
     args.add(limit);
 
-    final rows = await db.execute('''
-      SELECT device_id, timestamp, data
+    final sql = '''
+      SELECT timestamp, sequence, device_id, data
       FROM event
       WHERE $whereClause
-      ORDER BY timestamp ASC, device_id ASC
+      ORDER BY timestamp ASC, sequence ASC, device_id ASC
       LIMIT ?;
-    ''', args);
+    ''';
+    final rows = await db.execute(sql, args);
 
     for (final row in rows) {
       final timestamp = Timestamp(row['timestamp']);
+      final sequence = row['sequence'] as int;
       final deviceId = DeviceId(row['device_id']);
-      final eventId = EventId(timestamp, deviceId);
+      final eventId = EventId(timestamp, sequence, deviceId);
 
       final data = row['data'] as Uint8List;
 
@@ -100,10 +97,10 @@ class EventStore extends DatabaseBase {
     final data = envelope.bytes;
     await db.execute(
       '''
-      INSERT INTO event (device_id, timestamp, data)
-      VALUES (?, ?, ?);
+      INSERT INTO event (device_id, timestamp, sequence, data)
+      VALUES (?, ?, ?, ?);
     ''',
-      [id.deviceId.value, id.timestamp.value, data],
+      [id.deviceId.value, id.timestamp.value, id.sequence, data],
     );
   }
 
@@ -115,14 +112,17 @@ class EventStore extends DatabaseBase {
 
   Future<EventVectorClock> _loadVectorClock() async {
     final rows = await db.execute('''
-      SELECT device_id, MAX(timestamp) as timestamp
+      SELECT device_id, MAX(timestamp) as timestamp, MAX(sequence) as sequence
       FROM event
       GROUP BY device_id;
     ''');
     final eventIds = List<EventId>.from(
       rows.map(
-        (row) =>
-            EventId(Timestamp(row['timestamp']), DeviceId(row['device_id'])),
+        (row) => EventId(
+          Timestamp(row['timestamp']),
+          int.parse(row['sequence']),
+          DeviceId(row['device_id']),
+        ),
       ),
     );
 

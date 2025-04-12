@@ -1,7 +1,7 @@
 import 'dart:async';
 
 // TODO: would be nice to see connecting state too
-enum SyncState { synced, uploading, downloading, disconnected }
+enum SyncState { synced, uploading, downloading, offline }
 
 class SyncStateManager {
   bool _isUploading = false;
@@ -25,7 +25,7 @@ class SyncStateManager {
   bool get isConnected => _isConnected;
 
   SyncState get status {
-    if (!_isConnected) return SyncState.disconnected;
+    if (!_isConnected) return SyncState.offline;
     if (_isUploading) return SyncState.uploading;
     if (_isDownloading) return SyncState.downloading;
     return SyncState.synced;

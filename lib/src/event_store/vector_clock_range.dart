@@ -6,6 +6,7 @@ import 'package:core/src/event_store/id.dart';
 import 'package:core/src/timestamp.dart';
 import 'package:messagepack/messagepack.dart';
 
+@Deprecated('no use anymore')
 class EventVectorClockRange {
   final Map<DeviceId, TimestampRange> ranges;
 

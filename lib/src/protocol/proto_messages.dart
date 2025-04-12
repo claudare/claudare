@@ -1,8 +1,7 @@
-import 'dart:typed_data';
-
+import 'package:core/src/device_keychain/device_keychain.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
 import 'package:core/src/event_store/vector_clock.dart';
-import 'package:core/src/event_store/vector_clock_range.dart';
 import 'package:messagepack/messagepack.dart';
 
 sealed class ProtoAnyMessage {
@@ -14,11 +13,10 @@ sealed class ProtoAnyMessage {
   // ProtoAnyMessage.unpack(Unpacker u);
 
   static const Map<int, ProtoAnyMessage Function(Unpacker)> _unpackers = {
-    ProtoMessageEmpty.staticType: ProtoMessageEmpty.unpack,
     ProtoMessagePing.staticType: ProtoMessagePing.unpack,
-    ProtoMessageClockQuery.staticType: ProtoMessageClockQuery.unpack,
+    ProtoMessageAck.staticType: ProtoMessageAck.unpack,
+    ProtoMessageAuth.staticType: ProtoMessageAuth.unpack,
     ProtoMessageClockValue.staticType: ProtoMessageClockValue.unpack,
-    ProtoMessageEventQuery.staticType: ProtoMessageEventQuery.unpack,
     ProtoMessageEventValue.staticType: ProtoMessageEventValue.unpack,
   };
 
@@ -36,26 +34,8 @@ sealed class ProtoAnyMessage {
   }
 }
 
-class ProtoMessageEmpty extends ProtoAnyMessage {
-  static const staticType = 0;
-
-  const ProtoMessageEmpty();
-
-  @override
-  int get type => staticType;
-
-  @override
-  void pack(Packer p) {
-    p.packInt(staticType);
-  }
-
-  factory ProtoMessageEmpty.unpack(Unpacker u) {
-    return ProtoMessageEmpty();
-  }
-}
-
 class ProtoMessagePing extends ProtoAnyMessage {
-  static const staticType = 127;
+  static const staticType = 0;
 
   const ProtoMessagePing();
 
@@ -70,13 +50,21 @@ class ProtoMessagePing extends ProtoAnyMessage {
   factory ProtoMessagePing.unpack(Unpacker u) {
     return ProtoMessagePing();
   }
+
+  @override
+  String toString() {
+    return 'ProtoMessagePing{}';
+  }
 }
 
-/// asking for the latest vector clock
-class ProtoMessageClockQuery extends ProtoAnyMessage {
+/// [ProtoMessageAuth] provides a way for devices to authenticate with each
+/// other. For now, they siply send their DeviceId and it is trusted
+class ProtoMessageAuth extends ProtoAnyMessage {
   static const staticType = 1;
 
-  const ProtoMessageClockQuery();
+  final DeviceClaim claim;
+
+  const ProtoMessageAuth(this.claim);
 
   @override
   int get type => staticType;
@@ -84,17 +72,58 @@ class ProtoMessageClockQuery extends ProtoAnyMessage {
   @override
   void pack(Packer p) {
     p.packInt(staticType);
+    claim.pack(p);
   }
 
-  factory ProtoMessageClockQuery.unpack(Unpacker u) {
-    return ProtoMessageClockQuery();
+  factory ProtoMessageAuth.unpack(Unpacker u) {
+    final claim = DeviceClaim.unpack(u);
+    return ProtoMessageAuth(claim);
+  }
+
+  @override
+  String toString() {
+    return 'ProtoMessageAuth{claim: $claim}';
+  }
+}
+
+/// [ProtoMessageAck] requests the responder to confirm on this whole
+/// payload. Ack is sent with the same id back to conform deny. Optional
+/// error can be attached, throwing the requester.
+class ProtoMessageAck extends ProtoAnyMessage {
+  static const staticType = 2;
+
+  final int payloadId;
+  final String error;
+
+  const ProtoMessageAck(this.payloadId, this.error);
+
+  @override
+  int get type => staticType;
+
+  @override
+  void pack(Packer p) {
+    // cheat for now and dont use the packing methods on the DeviceId
+    p.packInt(staticType);
+    p.packInt(payloadId);
+    p.packString(error.isEmpty ? null : error);
+  }
+
+  factory ProtoMessageAck.unpack(Unpacker p) {
+    final payloadId = p.unpackInt();
+    final error = p.unpackString() ?? "";
+    return ProtoMessageAck(payloadId!, error);
+  }
+
+  @override
+  String toString() {
+    return 'ProtoMessageAck{payloadId: $payloadId, error: "$error"}';
   }
 }
 
 /// [ProtoMessageClockValue] is used for a device to send its latest vector clock.
 /// this should include the device id...
 class ProtoMessageClockValue extends ProtoAnyMessage {
-  static const staticType = 2;
+  static const staticType = 3;
 
   final EventVectorClock eventClock;
 
@@ -112,33 +141,10 @@ class ProtoMessageClockValue extends ProtoAnyMessage {
   factory ProtoMessageClockValue.unpack(Unpacker u) {
     return ProtoMessageClockValue(EventVectorClock.unpack(u));
   }
-}
-
-/// [ProtoMessageEventQuery] asks another device for the events given a
-/// cursor and a limit. Reply with type [ProtoMessageEventValue] is expected.
-class ProtoMessageEventQuery extends ProtoAnyMessage {
-  static const staticType = 3;
-
-  final EventVectorClockRange cursor;
-  final int limit;
-
-  const ProtoMessageEventQuery(this.cursor, this.limit);
 
   @override
-  int get type => staticType;
-
-  @override
-  void pack(Packer p) {
-    p.packInt(staticType);
-    cursor.pack(p);
-    p.packInt(limit);
-  }
-
-  factory ProtoMessageEventQuery.unpack(Unpacker u) {
-    return ProtoMessageEventQuery(
-      EventVectorClockRange.unpack(u),
-      u.unpackInt()!,
-    );
+  String toString() {
+    return 'ProtoMessageClockValue{eventClock: $eventClock}';
   }
 }
 
@@ -148,9 +154,9 @@ class ProtoMessageEventQuery extends ProtoAnyMessage {
 class ProtoMessageEventValue extends ProtoAnyMessage {
   static const staticType = 4;
 
-  final List<StoredEvent> events;
+  final StoredEvent event;
 
-  const ProtoMessageEventValue(this.events) : assert(events.length > 0);
+  const ProtoMessageEventValue(this.event);
 
   @override
   int get type => staticType;
@@ -158,53 +164,16 @@ class ProtoMessageEventValue extends ProtoAnyMessage {
   @override
   void pack(Packer p) {
     p.packInt(staticType);
-    p.packListLength(events.length);
-    for (final event in events) {
-      event.pack(p);
-    }
+    event.pack(p);
   }
 
   factory ProtoMessageEventValue.unpack(Unpacker u) {
-    final len = u.unpackListLength();
-
-    if (len == 0) {
-      throw Exception('ProtoMessageEventValue cant be empty');
-    }
-
-    final out = List<StoredEvent>.generate(
-      len,
-      (_) => StoredEvent.unpack(u),
-      growable: false,
-    );
-
-    return ProtoMessageEventValue(out);
-  }
-}
-
-/// [ProtoMessageForwardData] encapsulates an encrypted message that is sent
-/// to another device. The header specify which device it does to, or uses a
-/// boardcast. Server is responsible to release these in the same order as the
-/// timestamps on the events/blobs. This event type is usually used for
-/// bootstrapping new devices. The payloads are encrypted for each other device
-/// public key. No broadcast is possible, as communication is private to
-/// every other device.
-class ProtoMessageForwardData extends ProtoAnyMessage {
-  static const staticType = 4;
-  final Uint8List ciphertext;
-
-  const ProtoMessageForwardData(this.ciphertext);
-
-  @override
-  int get type => staticType;
-
-  @override
-  void pack(Packer p) {
-    p.packInt(staticType);
-    p.packBinary(ciphertext);
+    return ProtoMessageEventValue(StoredEvent.unpack(u));
   }
 
-  factory ProtoMessageForwardData.unpack(Unpacker u) {
-    return ProtoMessageForwardData(Uint8List.fromList(u.unpackBinary()));
+  @override
+  String toString() {
+    return 'ProtoMessageEventValue{event: $event}';
   }
 }
 
