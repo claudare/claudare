@@ -55,7 +55,7 @@ void main() {
       // ack successfully
       connection.onPayload((payload) {
         if (payload.data is! ProtoMessageAck) {
-          connection.addPayloadMessage(ProtoMessageAck(payload.id, ""));
+          connection.addPayloadMessage(ProtoMessageAck(payload.id));
         }
       });
 

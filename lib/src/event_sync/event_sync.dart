@@ -46,7 +46,7 @@ class _MirroredExchange<T extends ProtoAnyMessage> {
           'Failed to mirror exchange ${T.runtimeType}: expected ack $ackId, got ${message.payloadId}',
         );
       }
-      if (message.error.isNotEmpty) {
+      if (message.error != null) {
         throw Exception(
           'Failed to mirror exchange ${T.runtimeType}: ack error: ${message.error}',
         );
@@ -163,7 +163,7 @@ class EventSync {
           }
 
           if (payload.data is ProtoMessagePing) {
-            _sendMessage(ProtoMessageAck(payload.id, ""));
+            _sendMessage(ProtoMessageAck(payload.id));
             return;
           }
 
@@ -198,11 +198,11 @@ class EventSync {
           .saveLocalEvent(message.event)
           .then((_) {
             // ack on success
-            _sendMessage(ProtoMessageAck(payload.id, ""));
+            _sendMessage(ProtoMessageAck(payload.id));
           })
           .catchError((err) {
             // ack error on error
-            _sendMessage(ProtoMessageAck(payload.id, err.toString()));
+            _sendMessage(ProtoMessageAck(payload.id, error: err.toString()));
             throw Exception('what will this do?');
           });
     } else {
@@ -212,7 +212,7 @@ class EventSync {
 
   Future<void> _checkAuth(int payloadId, ProtoMessageAuth message) async {
     await deviceKeychain.checkClaim(message.claim);
-    _sendMessage(ProtoMessageAck(payloadId, ""));
+    _sendMessage(ProtoMessageAck(payloadId));
   }
 
   Future<void> _clockExchangeDo(
@@ -220,7 +220,7 @@ class EventSync {
     ProtoMessageClockValue message,
   ) async {
     peerVC = message.eventClock;
-    _sendMessage(ProtoMessageAck(payloadId, ""));
+    _sendMessage(ProtoMessageAck(payloadId));
   }
 
   int _sendMessage(ProtoAnyMessage data) {

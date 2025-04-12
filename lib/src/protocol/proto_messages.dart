@@ -1,5 +1,4 @@
 import 'package:core/src/device_keychain/device_keychain.dart';
-import 'package:core/src/device_id.dart';
 import 'package:core/src/event_store/stored_event.dart';
 import 'package:core/src/event_store/vector_clock.dart';
 import 'package:messagepack/messagepack.dart';
@@ -93,9 +92,9 @@ class ProtoMessageAck extends ProtoAnyMessage {
   static const staticType = 2;
 
   final int payloadId;
-  final String error;
+  final String? error;
 
-  const ProtoMessageAck(this.payloadId, this.error);
+  const ProtoMessageAck(this.payloadId, {this.error});
 
   @override
   int get type => staticType;
@@ -105,13 +104,13 @@ class ProtoMessageAck extends ProtoAnyMessage {
     // cheat for now and dont use the packing methods on the DeviceId
     p.packInt(staticType);
     p.packInt(payloadId);
-    p.packString(error.isEmpty ? null : error);
+    p.packString(error);
   }
 
   factory ProtoMessageAck.unpack(Unpacker p) {
     final payloadId = p.unpackInt();
-    final error = p.unpackString() ?? "";
-    return ProtoMessageAck(payloadId!, error);
+    final error = p.unpackString();
+    return ProtoMessageAck(payloadId!, error: error);
   }
 
   @override
