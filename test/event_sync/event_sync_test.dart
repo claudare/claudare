@@ -4,6 +4,7 @@ import 'package:core/protocol.dart';
 import 'package:core/src/client_transport/connection/stub.dart';
 import 'package:core/src/event_store/event_clock.dart';
 import 'package:core/src/event_sync/event_sync.dart';
+import 'package:pointycastle/api.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -34,8 +35,9 @@ void main() {
       registerFallbackValue(Uri());
     });
 
-    setUp(() {
+    setUp(() async {
       connection = NetConnectionStub();
+      await connection.connect(Uri());
       context = MockEventSyncContext();
 
       eventSync = EventSync(
@@ -62,7 +64,8 @@ void main() {
       final serverClaim = await keychainPairs.server.makeClaim(clientDeviceId);
       expect(eventSync.authExchange.done, isFalse);
 
-      expectLater(eventSync.start(), completes);
+      expectLater(eventSync.init(), completes);
+      expectLater(eventSync.lifetime, completes);
 
       // send own auth
       connection.addPayloadMessage(ProtoMessageAuth(serverClaim));
@@ -102,6 +105,35 @@ void main() {
 
       // print(connection.ingresValuesPayload);
       // print(connection.exgresValuesPayload);
+
+      expect(connection.isConnected, isTrue);
+
+      await eventSync.stop();
+
+      expect(connection.isConnected, isFalse);
+    });
+
+    test('handles ack errors', () async {
+      expect(connection.isConnected, isTrue);
+      connection.onPayload((payload) {
+        if (payload.data is! ProtoMessageAck) {
+          connection.addPayloadMessage(
+            ProtoMessageAck(payload.id, error: 'expected'),
+          );
+        }
+      });
+
+      expectLater(eventSync.lifetime, throwsException);
+      expect(
+        () => eventSync.init(),
+        throwsA(
+          predicate((x) => x is Exception && x.toString().contains('expected')),
+        ),
+      );
+      // TODO: this could be replaced with waitFor function, that works the same
+      // way as in vitest. Just keep on trying until it succeds
+      await Future.delayed(Duration(milliseconds: 100));
+      expect(connection.isConnected, isFalse);
     });
   });
 }

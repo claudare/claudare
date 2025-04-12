@@ -83,7 +83,8 @@ class EventSync {
 
   int _nextPayloadId = 0;
 
-  final _readyCompleter = Completer<void>();
+  final _initCompleter = Completer<void>();
+  final _lifetimeCompleter = Completer<void>();
 
   // internal testing for robustness
   late _MirroredExchange<ProtoMessageAuth> authExchange;
@@ -101,11 +102,24 @@ class EventSync {
     required this.isClient,
     required this.deviceKeychain,
     required this.peerDeviceId,
-    // ensure a COPY of the clock is passed
+    // a copy of the clock will be made
     required EventVectorClock localVC,
   }) : localVC = localVC.clone() {
-    authExchange = _MirroredExchange<ProtoMessageAuth>(_checkAuth);
-    clockExchange = _MirroredExchange<ProtoMessageClockValue>(_clockExchangeDo);
+    authExchange = _MirroredExchange<ProtoMessageAuth>(_handleAuth);
+    clockExchange = _MirroredExchange<ProtoMessageClockValue>(_handleClock);
+  }
+
+  Future<void> get lifetime => _lifetimeCompleter.future;
+
+  /// Gracefully shutdowns the operation
+  /// TODO: should init throw or exit with success?
+  Future<void> stop() async {
+    if (!authExchange.done || !clockExchange.done) {
+      _initCompleter.complete();
+    }
+
+    await connection.disconnect();
+    _lifetimeCompleter.complete();
   }
 
   void newEvent(StoredEvent event) {
@@ -128,7 +142,7 @@ class EventSync {
   }
 
   // start needs to be called, it will return when initialization is complte
-  Future<void> start() {
+  Future<void> init() {
     deviceKeychain
         .makeClaim(peerDeviceId)
         .then((claim) {
@@ -137,7 +151,7 @@ class EventSync {
         })
         .catchError((err) {
           print('Failed to make claim: $err');
-          // close the connection somehow...
+          _initCompleter.completeError(err);
         });
 
     connection.stream.listen(
@@ -157,7 +171,7 @@ class EventSync {
           } else if (!clockExchange.done) {
             final done = await clockExchange.handle(payload);
             if (done) {
-              _readyCompleter.complete();
+              _initCompleter.complete();
             }
             return;
           }
@@ -167,25 +181,33 @@ class EventSync {
             return;
           }
 
-          _doEventHandling(payload);
+          _handleEvents(payload);
         } catch (err) {
-          print('Error processing data: $err');
-          rethrow;
+          _handleError(err);
         }
       },
       onError: (err) {
-        if (!authExchange.done || !clockExchange.done) {
-          _readyCompleter.completeError(err);
-        }
-
-        print('EventSync processing failure: $err');
+        _handleError(err);
+      },
+      onDone: () {
+        // cleanup if needed
       },
     );
 
-    return _readyCompleter.future;
+    return _initCompleter.future;
   }
 
-  void _doEventHandling(ProtoPayload payload) {
+  void _handleError(Object err) {
+    if (!authExchange.done || !clockExchange.done) {
+      _initCompleter.completeError(err);
+    }
+    _lifetimeCompleter.completeError(err);
+    // terminate the connection, specify if its error or not?
+    // send a termination message?
+    connection.disconnect();
+  }
+
+  void _handleEvents(ProtoPayload payload) {
     assert(peerVC != null);
 
     final message = payload.data;
@@ -210,12 +232,12 @@ class EventSync {
     }
   }
 
-  Future<void> _checkAuth(int payloadId, ProtoMessageAuth message) async {
+  Future<void> _handleAuth(int payloadId, ProtoMessageAuth message) async {
     await deviceKeychain.checkClaim(message.claim);
     _sendMessage(ProtoMessageAck(payloadId));
   }
 
-  Future<void> _clockExchangeDo(
+  Future<void> _handleClock(
     int payloadId,
     ProtoMessageClockValue message,
   ) async {

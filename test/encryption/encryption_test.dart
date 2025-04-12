@@ -73,6 +73,7 @@ void main() {
         expect(cleartextData, equals(decryptedData.sublist(5, 10)));
       });
 
+      // FIXME: sometimes this test never completes
       test('round-trip 64kb chunks - $name', () async {
         final cleartextData = generateLargeData(100 * 1024); // 100kb
 
@@ -91,7 +92,7 @@ void main() {
         final decryptedData = await streamToUint8List(decryptedStream);
 
         expect(cleartextData, equals(decryptedData));
-      });
+      }, skip: false);
     }
   });
 }

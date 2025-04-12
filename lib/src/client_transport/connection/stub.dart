@@ -14,6 +14,8 @@ class NetConnectionStub extends NetConnection {
   late StreamController<Uint8List> _inputController;
   late StreamController<Uint8List> _outputController;
 
+  bool isConnected = false;
+
   NetConnectionStub() {
     _inputController = StreamController<Uint8List>.broadcast();
     _outputController = StreamController<Uint8List>.broadcast();
@@ -32,13 +34,16 @@ class NetConnectionStub extends NetConnection {
   Future<void> connect(Uri endpoint) async {
     // Simulate connection, nothing is stubbed yet
     // in future can do failing connections
+    isConnected = true;
   }
 
+  // duplicates are okay in the stub
   @override
   Future<void> disconnect() async {
     // await _outputSubscription?.cancel();
     await _inputController.close();
     await _outputController.close();
+    isConnected = false;
   }
 
   void add(Uint8List value) {
