@@ -1,3 +1,4 @@
+import 'package:core/src/cqrs/event/live_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/command/command.dart';
 
@@ -6,11 +7,10 @@ class CommandExecuter {
 
   const CommandExecuter(this.eventStore);
 
-  // TODO: live event is returned
-  Future<void> executeThrowable<TInput>(
+  Future<List<LiveEventFull>> executeThrowable<TInput>(
     Command<TInput> command,
     TInput input,
   ) async {
-    //
+    return [];
   }
 }

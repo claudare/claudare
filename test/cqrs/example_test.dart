@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executer.dart';
 import 'package:core/src/cqrs/event/event_pack.dart';
-import 'package:core/src/cqrs/event_store/event_store_mock.dart';
+import 'package:core/src/cqrs/event_store/event_store_memory.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
-import 'package:core/src/cqrs/stream_id.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
+import 'package:test/test.dart';
 
 sealed class _ExampleEvent {
   _ExampleEvent();
@@ -33,28 +34,9 @@ class _ExampleEventSubtract extends _ExampleEvent {
       _ExampleEventSubtract(valueSub: json['value'] as int);
 }
 
-class _ExampleStreamIdData {
-  final String id;
+final _exampleStreamId = StreamIdPatternWildcard("example/*");
 
-  _ExampleStreamIdData({required this.id});
-}
-
-class _ExampleStreamId extends StreamId<_ExampleStreamIdData> {
-  _ExampleStreamId()
-    : super(
-        pattern: 'example/*',
-        parse:
-            (path) =>
-                _ExampleStreamIdData(id: path.replaceFirst("example/", "")),
-        toStr: (data) => "example/${data.id}",
-      );
-}
-
-// reuse the streamIds for performance and ease of use
-final _exampleStreamId = _ExampleStreamId();
-
-class _ExampleEventPack
-    implements EventPack<_ExampleEvent, _ExampleStreamIdData> {
+class _ExampleEventPack implements EventPack<_ExampleEvent, String> {
   const _ExampleEventPack();
 
   @override
@@ -87,10 +69,10 @@ class _ExampleEventPack
   }
 
   @override
-  get streamId => _exampleStreamId;
+  get streamIdPattern => _exampleStreamId;
 }
 
-// instance must be used
+// instance sshould be used
 const _exampleEventPack = _ExampleEventPack();
 
 class _ExampleCommandInput {
@@ -135,10 +117,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       return;
     }
 
-    final streamSource = ctx.stream(
-      _exampleEventPack,
-      _ExampleStreamIdData(id: "source"),
-    );
+    final streamSource = ctx.stream(_exampleEventPack, "source");
 
     final iter = streamSource.iterator();
 
@@ -155,10 +134,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       }
     }
 
-    final streamSink = ctx.stream(
-      _exampleEventPack,
-      _ExampleStreamIdData(id: "sink"),
-    );
+    final streamSink = ctx.stream(_exampleEventPack, "sink");
 
     await streamSink.lock();
 
@@ -166,15 +142,21 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
   }
 }
 
-execute() async {
-  final eventStore = EventStoreMock();
-  final executer = CommandExecuter(eventStore);
+void main() {
+  group('CQRS Example', () {
+    test('full usage', () async {
+      final eventStore = EventStoreMemory(
+        getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
+      );
+      final executer = CommandExecuter(eventStore);
 
-  final cmdDep = _ExampleDep();
-  final cmd = _ExampleCommand(cmdDep);
+      final cmdDep = _ExampleDep();
+      final cmd = _ExampleCommand(cmdDep);
 
-  final res = await executer.executeThrowable(
-    cmd,
-    _ExampleCommandInput(value: 123),
-  );
+      final res = await executer.executeThrowable(
+        cmd,
+        _ExampleCommandInput(value: 123),
+      );
+    });
+  });
 }

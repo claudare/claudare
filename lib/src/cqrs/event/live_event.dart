@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/event/event_pack.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class LiveEventMin {
   final String streamIdStr;
@@ -6,7 +6,7 @@ class LiveEventMin {
 
   /// momento is not needed here. event is already something in memory decoded.
   /// anothe reason to move it out
-  final EventPack eventPack;
+  final StreamIdPattern streamIdPattern;
   final dynamic event;
   final dynamic metadata;
   final DateTime createdAt;
@@ -14,7 +14,7 @@ class LiveEventMin {
   const LiveEventMin({
     required this.streamIdStr,
     required this.streamIdData,
-    required this.eventPack,
+    required this.streamIdPattern,
     required this.event,
     required this.metadata,
     required this.createdAt,
@@ -31,7 +31,7 @@ class LiveEventFull extends LiveEventMin {
   const LiveEventFull({
     required super.streamIdStr,
     required super.streamIdData,
-    required super.eventPack,
+    required super.streamIdPattern,
     required super.event,
     required super.metadata,
     required super.createdAt,
