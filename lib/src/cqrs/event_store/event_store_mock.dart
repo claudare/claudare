@@ -1,4 +1,5 @@
 import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
@@ -23,7 +24,8 @@ class EventStoreMock implements EventStoreCommand, EventStoreProjection {
   }
 
   @override
-  Future<void> saveLocalAppends(
+  Future<StreamAppendResult> multiAppendEvents(
+    DeviceId deviceId,
     StoredCommandWrite command,
     StreamAppends appends,
   ) {

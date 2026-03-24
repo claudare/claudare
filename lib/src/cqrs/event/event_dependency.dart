@@ -1,13 +1,21 @@
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 
+/// [EventDependency] keeps track of the events that must be replicated before
+/// new events are applied. This is a key on keeping correct order during sync.
+/// A vector is used and stored.
 class EventDependency {
   final Map<DeviceId, int> _vector = {};
 
-  void add(DeviceId deviceId, int causalSequence) {
-    if (causalSequence > (_vector[deviceId] ?? 0)) {
-      _vector[deviceId] = causalSequence;
+  void add(DeviceIdSequencePair causalSequence) {
+    if (causalSequence.sequence > (_vector[causalSequence.deviceId] ?? 0)) {
+      _vector[causalSequence.deviceId] = causalSequence.sequence;
     }
   }
+
+  int value(DeviceId deviceId) => _vector[deviceId] ?? 0;
+
+  Map<DeviceId, int> get vector => _vector;
 
   // serialize as entries
   List<List<dynamic>> toJson() =>

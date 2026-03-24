@@ -1,4 +1,5 @@
 import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
@@ -15,19 +16,22 @@ class GetStreamEventsResult {
 
 class GetStreamMinimalResult {
   final int totalCount;
-  final int? originatingId; // not needed, as it will be equal to totalCount
+  final int originatingVersion; // not needed, as it will be equal to totalCount
 
   const GetStreamMinimalResult({
     required this.totalCount,
-    required this.originatingId,
+    required this.originatingVersion,
   });
 }
 
 class StreamLock {
-  final String streamId;
+  final String streamIdStr;
   final int originatingVersion;
 
-  const StreamLock({required this.streamId, required this.originatingVersion});
+  const StreamLock({
+    required this.streamIdStr,
+    required this.originatingVersion,
+  });
 }
 
 class StreamAppends {
@@ -35,6 +39,19 @@ class StreamAppends {
   final List<StoredEventCommandWrite> events; // could be dynamic?
 
   StreamAppends({required this.locks, required this.events});
+}
+
+class StreamAppendOrder {
+  final int localSequence;
+  final int version; // useless?
+
+  const StreamAppendOrder({required this.localSequence, required this.version});
+}
+
+class StreamAppendResult {
+  final List<StreamAppendOrder> orders;
+
+  const StreamAppendResult({required this.orders});
 }
 
 abstract class EventStoreCommand {
@@ -49,7 +66,11 @@ abstract class EventStoreCommand {
   // this could be split into a separate count and originating id
   Future<GetStreamMinimalResult> getStreamMinimal(String streamId);
 
-  Future<void> saveLocalAppends(
+  // This is a local command insertion
+  // deviceId should be passed here either in the write or as a parameter
+  // the database should have no idea whats its deviceId
+  Future<StreamAppendResult> multiAppendEvents(
+    DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
   );

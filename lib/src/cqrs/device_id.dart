@@ -9,9 +9,13 @@ class DeviceId implements Comparable<DeviceId> {
         'incorrect deviceId $value, expected a value in 0-${_maxDeviceIdValue - 1} range',
       );
 
-  /// Creates a DeviceId with zero value. That is how offline mode is
-  /// when sync is enabled, ID must be 1...u16
+  /// Creates a DeviceId with zero value. That means there is no device
+  /// equivalent to a "null device".
   DeviceId.zero() : value = 0;
+
+  /// Special kind to unassigned device. When sync is enabled it must be in the
+  /// range of  1...u16-1.
+  DeviceId.unassigned() : value = 0xFFFF - 1;
 
   toJson() {
     return value;

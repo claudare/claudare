@@ -1,4 +1,4 @@
-import 'package:core/src/device_id.dart';
+import 'package:core/src/cqrs/device_id.dart';
 
 /// events to write to the database from commands
 class StoredEventCommandWrite {
