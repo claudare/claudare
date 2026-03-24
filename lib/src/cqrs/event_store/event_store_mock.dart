@@ -1,6 +1,11 @@
-import 'event_store.dart';
+import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/event_store/event_store_projection.dart';
+import 'package:core/src/cqrs/pattern_filter.dart';
 
-class EventStoreMock implements EventStore {
+import 'event_store_command.dart';
+
+class EventStoreMock implements EventStoreCommand, EventStoreProjection {
+  // --- command
   @override
   Future<GetStreamEventsResult> getStreamEventsCursor(
     String streamId,
@@ -18,8 +23,22 @@ class EventStoreMock implements EventStore {
   }
 
   @override
-  Future<void> saveLocalAppends(AppendLocalEvents change) {
+  Future<void> saveLocalAppends(
+    StoredCommandWrite command,
+    StreamAppends appends,
+  ) {
     // TODO: implement saveLocalAppends
+    throw UnimplementedError();
+  }
+
+  // --- projection
+  @override
+  Future<GetGlobalEventsResult> getGlobalEvents(
+    int sequenceNumber,
+    List<PatternFilter> aggregateFilters,
+    int count,
+  ) {
+    // TODO: implement getGlobalEvents
     throw UnimplementedError();
   }
 }

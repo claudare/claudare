@@ -11,6 +11,7 @@ class EventIdMin {
 /// syncing in order, and ordering inside the Streams.
 /// This weak causality is important for offline-first operation.
 /// As for all Ids (except for unassigned device), zero is a null value
+/// For now this is not used
 class EventId {
   /// auto incrementing sequence for the view of global events on this device
   /// (localSequence)
@@ -25,20 +26,15 @@ class EventId {
   final int deviceSequence;
 
   /// globally consistent ordering like lamport clock
-  /// for reliable replays???
+  /// for reliable replays??? This is not really needed?
   /// (casualSequence + deviceId)
   final int causalSequence;
-
-  /// just to know when it happened locally. Could be used as HLC
-  /// (causalSequence + deviceId + timestamp)
-  final Timestamp timestamp;
 
   const EventId({
     required this.localSequence,
     required this.deviceId,
     required this.deviceSequence,
     required this.causalSequence,
-    required this.timestamp,
   }) : assert(localSequence > 0),
        assert(deviceSequence > 0),
        assert(causalSequence > 0);
@@ -46,8 +42,7 @@ class EventId {
   EventId.first(this.deviceId, Timestamp? timestamp)
     : localSequence = 1,
       deviceSequence = 1,
-      causalSequence = 1,
-      timestamp = timestamp ?? Timestamp.now();
+      causalSequence = 1;
 
   toJson() {
     return {
@@ -55,7 +50,6 @@ class EventId {
       'deviceId': deviceId.toJson(),
       'deviceSequence': deviceSequence,
       'causalSequence': causalSequence,
-      'timestamp': timestamp.toJson(),
     };
   }
 
@@ -63,6 +57,5 @@ class EventId {
     : localSequence = json['localSequence'],
       deviceId = DeviceId.fromJson(json['deviceId']),
       deviceSequence = json['deviceSequence'],
-      causalSequence = json['causalSequence'],
-      timestamp = Timestamp.fromJson(json['timestamp']);
+      causalSequence = json['causalSequence'];
 }

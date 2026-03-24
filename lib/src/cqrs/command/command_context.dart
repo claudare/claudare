@@ -1,5 +1,5 @@
 import 'package:core/src/cqrs/command/command_stream.dart';
-import 'package:core/src/cqrs/event_pack.dart';
+import 'package:core/src/cqrs/event/event_pack.dart';
 
 class CommandContext {
   CommandStream<TEvents> stream<TEvents, TData>(

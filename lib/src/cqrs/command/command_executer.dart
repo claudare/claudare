@@ -1,8 +1,8 @@
-import 'package:core/src/cqrs/event_store/event_store.dart';
+import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/command/command.dart';
 
 class CommandExecuter {
-  final EventStore eventStore;
+  final EventStoreCommand eventStore;
 
   const CommandExecuter(this.eventStore);
 

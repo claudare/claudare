@@ -1,41 +1,19 @@
-import 'package:core/event_store.dart';
+import 'package:core/src/cqrs/event/event_dependency.dart';
 
-class StoredCommandFull {
-  // minimum serialized data
-  final String kind;
-  final String detail;
-  final DateTime completedAt;
-
-  // result
-  final String? nackReason;
-  final Exception? exception;
-
-  // all id stuffs. This replaces the uuid and sequence number in js implementation
-  final EventId commandId;
-
-  const StoredCommandFull({
-    required this.kind,
-    required this.detail,
-    required this.completedAt,
-    required this.nackReason,
-    required this.exception,
-    required this.commandId,
-  });
-}
-
-// this is sent to the database to insert
-// the database knows the
-class StoredCommandMin {
+/// TODO: this needs to have dependencies?
+class StoredCommandWrite {
   final String kind;
   final String detail;
   final DateTime startedAt;
   final DateTime completedAt;
+  final EventDependency dependencies;
 
-  const StoredCommandMin({
+  const StoredCommandWrite({
     required this.kind,
     required this.detail,
     required this.startedAt,
     required this.completedAt,
+    required this.dependencies,
   });
 }
 
@@ -47,4 +25,31 @@ class StoredCommandResult {
     required this.nackReason,
     required this.exception,
   });
+}
+
+/// [StoredCommandRead] includes everything... probably should be flat
+/// this is not gonna be used for a while
+class StoredCommandRead {
+  final String kind;
+  final String detail;
+  final DateTime startedAt;
+  final DateTime completedAt;
+  final EventDependency dependencies;
+
+  final String? nackReason;
+  final Exception? exception; // can this be error too... this is any failure
+
+  const StoredCommandRead({
+    required this.kind,
+    required this.detail,
+    required this.startedAt,
+    required this.completedAt,
+    required this.dependencies,
+
+    required this.nackReason,
+    required this.exception,
+  });
+
+  StoredCommandResult get result =>
+      StoredCommandResult(nackReason: nackReason, exception: exception);
 }

@@ -1,11 +1,10 @@
 import 'dart:convert';
 
 import 'package:core/src/cqrs/command/command.dart';
-import 'package:core/src/cqrs/command/command_context.dart';
 import 'package:core/src/cqrs/command/command_executer.dart';
-import 'package:core/src/cqrs/event_pack.dart';
+import 'package:core/src/cqrs/event/event_pack.dart';
 import 'package:core/src/cqrs/event_store/event_store_mock.dart';
-import 'package:core/src/cqrs/stored_event.dart';
+import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/stream_id.dart';
 
 sealed class _ExampleEvent {
@@ -51,8 +50,13 @@ class _ExampleStreamId extends StreamId<_ExampleStreamIdData> {
       );
 }
 
+// reuse the streamIds for performance and ease of use
+final _exampleStreamId = _ExampleStreamId();
+
 class _ExampleEventPack
     implements EventPack<_ExampleEvent, _ExampleStreamIdData> {
+  const _ExampleEventPack();
+
   @override
   EncodedEvent encode(value) {
     switch (value) {
@@ -83,10 +87,11 @@ class _ExampleEventPack
   }
 
   @override
-  get streamId => _ExampleStreamId();
+  get streamId => _exampleStreamId;
 }
 
-final evPack = _ExampleEventPack();
+// instance must be used
+const _exampleEventPack = _ExampleEventPack();
 
 class _ExampleCommandInput {
   final int value;
@@ -130,7 +135,10 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       return;
     }
 
-    final streamSource = ctx.stream(evPack, _ExampleStreamIdData(id: "source"));
+    final streamSource = ctx.stream(
+      _exampleEventPack,
+      _ExampleStreamIdData(id: "source"),
+    );
 
     final iter = streamSource.iterator();
 
@@ -147,7 +155,10 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       }
     }
 
-    final streamSink = ctx.stream(evPack, _ExampleStreamIdData(id: "sink"));
+    final streamSink = ctx.stream(
+      _exampleEventPack,
+      _ExampleStreamIdData(id: "sink"),
+    );
 
     await streamSink.lock();
 

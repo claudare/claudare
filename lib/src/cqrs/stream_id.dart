@@ -1,5 +1,7 @@
 import 'package:core/src/cqrs/pattern_filter.dart';
 
+// TODO: rename to StreamPath or something like this...
+// StreamLocation, ... ?
 class StreamId<TData> {
   final String pattern;
   final PatternFilter filter;

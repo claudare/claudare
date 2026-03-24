@@ -1,6 +1,6 @@
 abstract class Memento<T> {
   const Memento();
 
-  String Function(T) stringify();
+  String stringify(T value);
   T parse(String str);
 }
