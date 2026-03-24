@@ -38,7 +38,10 @@ class StreamAppends {
   final List<StreamLock> locks;
   final List<StoredEventCommandWrite> events; // could be dynamic?
 
-  StreamAppends({required this.locks, required this.events});
+  const StreamAppends({required this.locks, required this.events})
+    : assert(locks.length > 0),
+      assert(events.length > 0),
+      assert(events.length >= locks.length);
 }
 
 class StreamAppendOrder {
@@ -64,7 +67,7 @@ abstract class EventStoreCommand {
   );
 
   // this could be split into a separate count and originating id
-  Future<GetStreamMinimalResult> getStreamMinimal(String streamId);
+  Future<GetStreamMinimalResult> getStreamInfo(String streamId);
 
   // This is a local command insertion
   // deviceId should be passed here either in the write or as a parameter

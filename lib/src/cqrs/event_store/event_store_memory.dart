@@ -44,9 +44,19 @@ class _MemoryEvent {
     metadata: metadata,
     createdAt: createdAt,
   );
+
+  StoredEventProjectionRead get asStoredEventProjectionRead =>
+      StoredEventProjectionRead(
+        streamId: streamId,
+        kind: kind,
+        detail: detail,
+        metadata: metadata,
+        createdAt: createdAt,
+        localSequence: localSequence,
+      );
 }
 
-class _MemoryEventInsert {
+class MemoryEventInsert {
   final DeviceId deviceId;
   final String streamId;
   final String kind;
@@ -55,7 +65,7 @@ class _MemoryEventInsert {
   final int? version;
   final DateTime? createdAt;
 
-  const _MemoryEventInsert({
+  const MemoryEventInsert({
     required this.deviceId,
     required this.streamId,
     required this.kind,
@@ -89,43 +99,70 @@ class _MemoryCommand {
     required this.startedAt,
     required this.completedAt,
     required this.dependencies,
-    this.nackReason,
-    this.exception,
+    required this.nackReason,
+    required this.exception,
+  });
+}
+
+class MemoryCommandInsert {
+  final DeviceId deviceId;
+
+  final String kind;
+  final String detail;
+  final DateTime startedAt;
+  final DateTime completedAt;
+  final EventDependency dependencies;
+
+  final String? nackReason;
+  final Exception? exception;
+
+  const MemoryCommandInsert({
+    required this.deviceId,
+    required this.kind,
+    required this.detail,
+    required this.startedAt,
+    required this.completedAt,
+    required this.dependencies,
+    required this.nackReason,
+    required this.exception,
   });
 }
 
 class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
-  final List<_MemoryEvent> events = [];
-  final List<_MemoryCommand> commands = [];
+  final List<_MemoryEvent> _events = [];
+  final List<_MemoryCommand> _commands = [];
+  final CausalSequence _causalSequence = CausalSequence();
+  final DeviceSequences _commandDeviceSequences = DeviceSequences();
+  final DeviceSequences _eventDeviceSequences = DeviceSequences();
 
-  final CausalSequence causalSequence = CausalSequence();
-  final DeviceSequences commandDeviceSequences = DeviceSequences();
-  final DeviceSequences eventDeviceSequences = DeviceSequences();
+  final DateTime Function() _getTime;
+  final void Function()? _onChange;
 
-  final DateTime Function() getTime;
-  final void Function()? onChange;
-
-  EventStoreMemory({required this.getTime, this.onChange});
+  EventStoreMemory({
+    required DateTime Function() getTime,
+    void Function()? onChange,
+  }) : _onChange = onChange,
+       _getTime = getTime;
 
   void _emitChange() {
-    onChange?.call();
+    _onChange?.call();
   }
 
   List<_MemoryEvent> _getSteamEvents(String streamIdStr) {
-    return events.where((e) => e.streamId == streamIdStr).toList();
+    return _events.where((e) => e.streamId == streamIdStr).toList();
   }
 
   int _getStreamEventsCount(String streamIdStr) {
-    return events.where((e) => e.streamId == streamIdStr).length;
+    return _events.where((e) => e.streamId == streamIdStr).length;
   }
 
-  _MemoryEvent _insertEvent(_MemoryEventInsert value) {
-    final nextLocalSequence = events.length + 1; // no zeros!
+  _MemoryEvent _insertEvent(MemoryEventInsert value) {
+    final nextLocalSequence = _events.length + 1; // no zeros!
 
-    final nextDeviceSequence = eventDeviceSequences.nextSequence(
+    final nextDeviceSequence = _eventDeviceSequences.nextSequence(
       value.deviceId,
     );
-    final nextCausalSequence = causalSequence.nextSequence(value.deviceId);
+    final nextCausalSequence = _causalSequence.nextSequence(value.deviceId);
     final version = value.version ?? _getStreamEventsCount(value.streamId) + 1;
 
     final event = _MemoryEvent(
@@ -138,12 +175,37 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
       kind: value.kind,
       detail: value.detail,
       metadata: value.metadata,
-      createdAt: value.createdAt ?? getTime(),
+      createdAt: value.createdAt ?? _getTime(),
     );
 
-    events.add(event);
+    _events.add(event);
 
     return event;
+  }
+
+  _MemoryCommand _insertCommand(MemoryCommandInsert value) {
+    final nextLocalSequence = _commands.length + 1; // no zeros!
+
+    final nextDeviceSequence = _commandDeviceSequences.nextSequence(
+      value.deviceId,
+    );
+
+    final command = _MemoryCommand(
+      deviceId: value.deviceId,
+      deviceSequence: nextDeviceSequence,
+      localSequence: nextLocalSequence,
+      kind: value.kind,
+      detail: value.detail,
+      startedAt: value.startedAt,
+      completedAt: value.completedAt,
+      dependencies: value.dependencies,
+      exception: null,
+      nackReason: null,
+    );
+
+    _commands.add(command);
+
+    return command;
   }
 
   // --- command
@@ -168,7 +230,7 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
   }
 
   @override
-  Future<GetStreamMinimalResult> getStreamMinimal(String streamId) {
+  Future<GetStreamMinimalResult> getStreamInfo(String streamId) {
     final count = _getStreamEventsCount(streamId);
 
     return Future.value(
@@ -182,15 +244,15 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
-    final memoryCommand = _MemoryCommand(
-      deviceId: thisDeviceId, // TODO: get rid of me
-      deviceSequence: commandDeviceSequences.nextSequence(thisDeviceId),
-      localSequence: commands.length + 1,
+    final memoryCommand = MemoryCommandInsert(
+      deviceId: thisDeviceId,
       kind: command.kind,
       detail: command.detail,
       startedAt: command.startedAt,
       completedAt: command.completedAt,
       dependencies: command.dependencies,
+      exception: null,
+      nackReason: null,
     );
 
     final result = StreamAppendResult(orders: []);
@@ -200,7 +262,7 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
 
     // check consistency
     for (final lock in appends.locks) {
-      final info = await getStreamMinimal(lock.streamIdStr);
+      final info = await getStreamInfo(lock.streamIdStr);
 
       streams[lock.streamIdStr] = info.originatingVersion;
 
@@ -219,14 +281,14 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
       final version = prevVersion + 1;
 
       final ins = _insertEvent(
-        _MemoryEventInsert(
+        MemoryEventInsert(
           deviceId: thisDeviceId,
           streamId: streamIdStr,
           kind: event.kind,
           detail: event.detail,
           metadata: event.metadata,
           version: version,
-          createdAt: getTime(),
+          createdAt: _getTime(),
         ),
       );
 
@@ -237,7 +299,11 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
       streams[streamIdStr] = version;
     }
 
+    _insertCommand(memoryCommand);
+
     _emitChange();
+
+    assert(result.orders.length == appends.events.length);
 
     return result;
   }
@@ -249,8 +315,17 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
     int sequenceNumber,
     List<PatternFilter> aggregateFilters,
     int count,
-  ) {
-    // TODO: implement getGlobalEvents
-    throw UnimplementedError();
+  ) async {
+    // TODO: pagination
+    final answer =
+        _events
+            .sublist(sequenceNumber)
+            .where(
+              (e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)),
+            )
+            .map((e) => e.asStoredEventProjectionRead)
+            .toList();
+
+    return GetGlobalEventsResult(events: answer, sequenceNumberCursor: null);
   }
 }

@@ -18,7 +18,7 @@ class EventStoreMock implements EventStoreCommand, EventStoreProjection {
   }
 
   @override
-  Future<GetStreamMinimalResult> getStreamMinimal(String streamId) {
+  Future<GetStreamMinimalResult> getStreamInfo(String streamId) {
     // TODO: implement getStreamMinimal
     throw UnimplementedError();
   }
