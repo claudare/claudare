@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
@@ -14,13 +15,15 @@ class GetStreamEventsResult {
   });
 }
 
-class GetStreamMinimalResult {
-  final int totalCount;
-  final int originatingVersion; // not needed, as it will be equal to totalCount
+class GetStreamInfoResult {
+  final int totalEventCount; // event count is originating version
+  final DeviceIdSequencePair? firstCausalSequencePair;
+  final DeviceIdSequencePair? lastCausalSequencePair;
 
-  const GetStreamMinimalResult({
-    required this.totalCount,
-    required this.originatingVersion,
+  const GetStreamInfoResult({
+    required this.totalEventCount,
+    required this.firstCausalSequencePair,
+    required this.lastCausalSequencePair,
   });
 }
 
@@ -67,7 +70,7 @@ abstract class EventStoreCommand {
   );
 
   // this could be split into a separate count and originating id
-  Future<GetStreamMinimalResult> getStreamInfo(String streamId);
+  Future<GetStreamInfoResult> getStreamInfo(String streamId);
 
   // This is a local command insertion
   // deviceId should be passed here either in the write or as a parameter

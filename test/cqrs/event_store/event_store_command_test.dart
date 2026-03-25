@@ -45,10 +45,14 @@ void main() {
       test("get empty stream info", () async {
         final res = await store.getStreamInfo("non-existing");
 
-        expect(res.totalCount, equals(0));
+        expect(res.totalEventCount, equals(0));
+        expect(res.firstCausalSequencePair, equals(null));
+        expect(res.lastCausalSequencePair, equals(null));
       });
 
       test("single insertion and retrieval", () async {
+        final streamId = "test";
+
         final insertRes = await store.multiAppendEvents(
           DeviceId(1),
           StoredCommandWrite(
@@ -59,10 +63,10 @@ void main() {
             dependencies: EventDependency(),
           ),
           StreamAppends(
-            locks: [StreamLock(streamIdStr: "test", originatingVersion: 0)],
+            locks: [StreamLock(streamIdStr: streamId, originatingVersion: 0)],
             events: [
               StoredEventCommandWrite(
-                streamId: 'test',
+                streamId: streamId,
                 kind: 'test',
                 detail: '{}',
                 metadata: '{}',
@@ -75,6 +79,23 @@ void main() {
         expect(insertRes.orders.length, equals(1));
         expect(insertRes.orders.first.localSequence, equals(1));
         expect(insertRes.orders.first.version, equals(1));
+
+        final retrieveRes = await store.getStreamEventsCursor(
+          streamId,
+          10,
+          null,
+        );
+
+        expect(retrieveRes.events.length, equals(1));
+        expect(retrieveRes.events.first.deviceId, equals(DeviceId(1)));
+        expect(retrieveRes.events.first.causalSequence, equals(1));
+        expect(retrieveRes.events.first.kind, equals('test'));
+        expect(retrieveRes.events.first.detail, equals('{}'));
+        expect(retrieveRes.events.first.metadata, equals('{}'));
+        expect(
+          retrieveRes.events.first.createdAt,
+          equals(DateTime.fromMillisecondsSinceEpoch(2000)),
+        );
       });
     });
   });

@@ -1,6 +1,7 @@
 import 'package:core/src/cqrs/causal_sequence.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/device_sequences.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
@@ -148,12 +149,8 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
     _onChange?.call();
   }
 
-  List<_MemoryEvent> _getSteamEvents(String streamIdStr) {
+  List<_MemoryEvent> _getStreamEvents(String streamIdStr) {
     return _events.where((e) => e.streamId == streamIdStr).toList();
-  }
-
-  int _getStreamEventsCount(String streamIdStr) {
-    return _events.where((e) => e.streamId == streamIdStr).length;
   }
 
   _MemoryEvent _insertEvent(MemoryEventInsert value) {
@@ -163,7 +160,8 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
       value.deviceId,
     );
     final nextCausalSequence = _causalSequence.nextSequence(value.deviceId);
-    final version = value.version ?? _getStreamEventsCount(value.streamId) + 1;
+    final version =
+        value.version ?? _getStreamEvents(value.streamId).length + 1;
 
     final event = _MemoryEvent(
       deviceId: value.deviceId,
@@ -216,7 +214,7 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
     int count,
     int? versionCursor,
   ) {
-    final events = _getSteamEvents(streamIdStr);
+    final events = _getStreamEvents(streamIdStr);
 
     // TODO: paginate
 
@@ -230,11 +228,30 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
   }
 
   @override
-  Future<GetStreamMinimalResult> getStreamInfo(String streamId) {
-    final count = _getStreamEventsCount(streamId);
+  Future<GetStreamInfoResult> getStreamInfo(String streamId) {
+    final events = _getStreamEvents(streamId);
+    final count = events.length;
+    final firstCausalSequencePair =
+        events.isNotEmpty
+            ? DeviceIdSequencePair(
+              events.first.deviceId,
+              events.first.causalSequence,
+            )
+            : null;
+    final lastCausalSequencePair =
+        events.isNotEmpty
+            ? DeviceIdSequencePair(
+              events.last.deviceId,
+              events.last.causalSequence,
+            )
+            : null;
 
     return Future.value(
-      GetStreamMinimalResult(totalCount: count, originatingVersion: count),
+      GetStreamInfoResult(
+        totalEventCount: count,
+        firstCausalSequencePair: firstCausalSequencePair,
+        lastCausalSequencePair: lastCausalSequencePair,
+      ),
     );
   }
 
@@ -264,9 +281,11 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
     for (final lock in appends.locks) {
       final info = await getStreamInfo(lock.streamIdStr);
 
-      streams[lock.streamIdStr] = info.originatingVersion;
+      final originatingVersion = info.totalEventCount;
 
-      if (info.originatingVersion != lock.originatingVersion) {
+      streams[lock.streamIdStr] = originatingVersion;
+
+      if (originatingVersion != lock.originatingVersion) {
         throw ConcurrencyProblem();
       }
     }
@@ -288,7 +307,7 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
           detail: event.detail,
           metadata: event.metadata,
           version: version,
-          createdAt: _getTime(),
+          createdAt: event.createdAt,
         ),
       );
 
