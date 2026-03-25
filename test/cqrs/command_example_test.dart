@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executer.dart';
-import 'package:core/src/cqrs/event/event_pack.dart';
+import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/event_store_memory.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
@@ -13,53 +13,57 @@ sealed class _ExampleEvent {
 }
 
 class _ExampleEventAdd extends _ExampleEvent {
+  static const String kind = 'exampleEvent1';
+
   final int valueAdd;
 
   _ExampleEventAdd({required this.valueAdd});
 
-  toJson() => {'value': valueAdd};
+  toJson() => {'valueAdd': valueAdd};
 
   factory _ExampleEventAdd.fromJson(Map<String, dynamic> json) =>
-      _ExampleEventAdd(valueAdd: json['value'] as int);
+      _ExampleEventAdd(valueAdd: json['valueAdd'] as int);
 }
 
 class _ExampleEventSubtract extends _ExampleEvent {
+  static const String kind = 'exampleEvent2';
+
   final int valueSub;
 
   _ExampleEventSubtract({required this.valueSub});
 
-  toJson() => {'value': valueSub};
+  toJson() => {'valueSub': valueSub};
 
   factory _ExampleEventSubtract.fromJson(Map<String, dynamic> json) =>
-      _ExampleEventSubtract(valueSub: json['value'] as int);
+      _ExampleEventSubtract(valueSub: json['valueSub'] as int);
 }
 
-class _ExampleEventPack implements EventPack<_ExampleEvent> {
-  const _ExampleEventPack();
+class _ExampleEventCodec implements EventCodec<_ExampleEvent> {
+  const _ExampleEventCodec();
 
   @override
-  EncodedEvent encode(value) {
+  encode(value) {
     switch (value) {
       case _ExampleEventAdd():
         return EncodedEvent(
-          kind: 'exampleEvent1',
+          kind: _ExampleEventAdd.kind,
           detail: jsonEncode(value.toJson()),
         );
       case _ExampleEventSubtract():
         return EncodedEvent(
-          kind: 'exampleEvent2',
+          kind: _ExampleEventSubtract.kind,
           detail: jsonEncode(value.toJson()),
         );
     }
   }
 
   @override
-  decode(EncodedEvent raw) {
+  decode(raw) {
     final map = jsonDecode(raw.detail);
     switch (raw.kind) {
-      case 'exampleEvent1':
+      case _ExampleEventAdd.kind:
         return _ExampleEventAdd.fromJson(map);
-      case 'exampleEvent2':
+      case _ExampleEventSubtract.kind:
         return _ExampleEventSubtract.fromJson(map);
       default:
         throw Exception("unknown event kind");
@@ -69,7 +73,7 @@ class _ExampleEventPack implements EventPack<_ExampleEvent> {
 
 final _exampleStreamId = StreamIdPatternWildcard("example/*");
 // instance sshould be used
-const _exampleEventPack = _ExampleEventPack();
+const _exampleEventCodec = _ExampleEventCodec();
 
 class _ExampleCommandInput {
   final int value;
@@ -114,7 +118,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
     }
 
     final streamSource = ctx.stream(
-      _exampleEventPack,
+      _exampleEventCodec,
       _exampleStreamId,
       "source",
     );
@@ -134,7 +138,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       }
     }
 
-    final streamSink = ctx.stream(_exampleEventPack, _exampleStreamId, "sink");
+    final streamSink = ctx.stream(_exampleEventCodec, _exampleStreamId, "sink");
 
     await streamSink.lock();
 
@@ -143,8 +147,8 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 }
 
 void main() {
-  group('CQRS Example', () {
-    test('full usage', () async {
+  group('CQRS Command Example', () {
+    test('usage', () async {
       final eventStore = EventStoreMemory(
         getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
       );

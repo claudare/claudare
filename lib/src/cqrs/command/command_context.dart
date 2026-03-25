@@ -1,10 +1,10 @@
 import 'package:core/src/cqrs/command/command_stream.dart';
-import 'package:core/src/cqrs/event/event_pack.dart';
+import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class CommandContext {
   CommandStream<TEvent> stream<TEvent, TData>(
-    EventPack<TEvent> eventPack,
+    EventCodec<TEvent> eventPack,
     StreamIdPattern<TData> streamIdPattern,
     TData streamData,
   ) {
