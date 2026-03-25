@@ -1,9 +1,12 @@
+import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/event/event_pack.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/metadata/metadata.dart';
 
 abstract class Projector<Event, StreamIdData> {
   String get name;
-  EventPack<Event, StreamIdData> get eventPack;
+  StreamIdPattern<StreamIdData> get streamIdPattern;
+  EventPack<Event> get eventPack;
 
   Future<void> reset();
 

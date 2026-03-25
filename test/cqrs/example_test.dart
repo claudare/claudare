@@ -34,9 +34,7 @@ class _ExampleEventSubtract extends _ExampleEvent {
       _ExampleEventSubtract(valueSub: json['value'] as int);
 }
 
-final _exampleStreamId = StreamIdPatternWildcard("example/*");
-
-class _ExampleEventPack implements EventPack<_ExampleEvent, String> {
+class _ExampleEventPack implements EventPack<_ExampleEvent> {
   const _ExampleEventPack();
 
   @override
@@ -67,11 +65,9 @@ class _ExampleEventPack implements EventPack<_ExampleEvent, String> {
         throw Exception("unknown event kind");
     }
   }
-
-  @override
-  get streamIdPattern => _exampleStreamId;
 }
 
+final _exampleStreamId = StreamIdPatternWildcard("example/*");
 // instance sshould be used
 const _exampleEventPack = _ExampleEventPack();
 
@@ -117,7 +113,11 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       return;
     }
 
-    final streamSource = ctx.stream(_exampleEventPack, "source");
+    final streamSource = ctx.stream(
+      _exampleEventPack,
+      _exampleStreamId,
+      "source",
+    );
 
     final iter = streamSource.iterator();
 
@@ -134,7 +134,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       }
     }
 
-    final streamSink = ctx.stream(_exampleEventPack, "sink");
+    final streamSink = ctx.stream(_exampleEventPack, _exampleStreamId, "sink");
 
     await streamSink.lock();
 

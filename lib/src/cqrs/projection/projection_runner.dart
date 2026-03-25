@@ -9,11 +9,11 @@ class ProjectionRunner<TEvents, TIdData> {
   const ProjectionRunner(this._eventStore, this._projector);
 
   bool shouldProcess(StreamIdPattern<dynamic> streamIdPattern, String onPath) {
-    return _projector.eventPack.streamIdPattern.globs(streamIdPattern, onPath);
+    return _projector.streamIdPattern.globs(streamIdPattern, onPath);
   }
 
   bool shouldProcessPath(String onPath) {
-    return _projector.eventPack.streamIdPattern.filter.doesMatchPath(onPath);
+    return _projector.streamIdPattern.filter.doesMatchPath(onPath);
   }
 
   Future<void> catchupSelfLoad() async {}
