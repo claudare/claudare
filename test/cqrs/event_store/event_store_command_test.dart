@@ -39,15 +39,19 @@ void main() {
 
         expect(res.originatingVersion, equals(0));
         expect(res.versionCursor, equals(null));
-        expect(res.events.length, equals(0));
+        expect(res.events.moveNext(), equals(false));
       });
 
-      test("get empty stream info", () async {
-        final res = await store.getStreamInfo("non-existing");
+      test("get empty stream info first", () async {
+        final res = await store.getStreamInfoFirst("non-existing");
 
-        expect(res.totalEventCount, equals(0));
-        expect(res.firstCausalSequencePair, equals(null));
-        expect(res.lastCausalSequencePair, equals(null));
+        expect(res, equals(null));
+      });
+
+      test("get empty stream info last", () async {
+        final res = await store.getStreamInfoLast("non-existing");
+
+        expect(res, equals(null));
       });
 
       test("single insertion and retrieval", () async {
@@ -60,17 +64,16 @@ void main() {
             detail: '',
             startedAt: DateTime.fromMillisecondsSinceEpoch(0),
             completedAt: DateTime.fromMillisecondsSinceEpoch(1000),
-            dependencies: EventDependency(),
           ),
           StreamAppends(
-            locks: [StreamLock(streamIdStr: streamId, originatingVersion: 0)],
+            dependencies: EventDependency(),
+            locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
             events: [
               StoredEventCommandWrite(
                 streamId: streamId,
                 kind: 'test',
                 detail: '{}',
-                metadata: '{}',
-                createdAt: DateTime.fromMillisecondsSinceEpoch(2000),
+                occuredAt: DateTime.fromMillisecondsSinceEpoch(2000),
               ),
             ],
           ),
@@ -78,7 +81,7 @@ void main() {
 
         expect(insertRes.orders.length, equals(1));
         expect(insertRes.orders.first.localSequence, equals(1));
-        expect(insertRes.orders.first.version, equals(1));
+        expect(insertRes.orders.first.localVersion, equals(1));
 
         final retrieveRes = await store.getStreamEventsCursor(
           streamId,
@@ -86,14 +89,13 @@ void main() {
           null,
         );
 
-        expect(retrieveRes.events.length, equals(1));
-        expect(retrieveRes.events.first.deviceId, equals(DeviceId(1)));
-        expect(retrieveRes.events.first.causalSequence, equals(1));
-        expect(retrieveRes.events.first.kind, equals('test'));
-        expect(retrieveRes.events.first.detail, equals('{}'));
-        expect(retrieveRes.events.first.metadata, equals('{}'));
+        expect(retrieveRes.events.moveNext(), equals(true));
+        expect(retrieveRes.events.current.deviceId, equals(DeviceId(1)));
+        expect(retrieveRes.events.current.causalSequence, equals(1));
+        expect(retrieveRes.events.current.kind, equals('test'));
+        expect(retrieveRes.events.current.detail, equals('{}'));
         expect(
-          retrieveRes.events.first.createdAt,
+          retrieveRes.events.current.occuredAt,
           equals(DateTime.fromMillisecondsSinceEpoch(2000)),
         );
       });

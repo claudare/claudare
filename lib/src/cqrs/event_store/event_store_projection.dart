@@ -11,7 +11,7 @@ class GetGlobalEventsResult {
   });
 }
 
-abstract class EventStoreProjection {
+abstract interface class EventStoreProjection {
   Future<GetGlobalEventsResult> getGlobalEvents(
     int sequenceNumber,
     List<PatternFilter> aggregateFilters,

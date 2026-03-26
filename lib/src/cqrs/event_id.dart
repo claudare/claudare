@@ -12,6 +12,7 @@ class EventIdMin {
 /// This weak causality is important for offline-first operation.
 /// As for all Ids (except for unassigned device), zero is a null value
 /// For now this is not used
+/// TODO: delete this!
 class EventId {
   /// auto incrementing sequence for the view of global events on this device
   /// (localSequence)

@@ -5,7 +5,7 @@ import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 /// Implement this to define a projection that can play events
 /// Unfortunately Event and StreamIdData must be defined on the projection level
-abstract class Projection<Event, StreamIdData> {
+abstract interface class Projection<Event, StreamIdData> {
   String get name;
   StreamIdPattern<StreamIdData> get streamIdPattern;
   EventCodec<Event> get eventCodec;

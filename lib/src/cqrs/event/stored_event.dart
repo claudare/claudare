@@ -5,15 +5,13 @@ class StoredEventCommandWrite {
   final String streamId;
   final String kind;
   final String detail;
-  final String metadata;
-  final DateTime createdAt;
+  final DateTime occuredAt;
 
   const StoredEventCommandWrite({
     required this.streamId,
     required this.kind,
     required this.detail,
-    required this.metadata,
-    required this.createdAt,
+    required this.occuredAt,
   });
 }
 
@@ -22,36 +20,36 @@ class StoredEventCommandWrite {
 class StoredEventCommandRead {
   final DeviceId deviceId;
   final int causalSequence;
+
   final String kind;
   final String detail;
-  final String metadata;
-  final DateTime createdAt;
+  final DateTime occuredAt;
 
   const StoredEventCommandRead({
     required this.deviceId,
     required this.causalSequence,
+
     required this.kind,
     required this.detail,
-    required this.metadata,
-    required this.createdAt,
+    required this.occuredAt,
   });
 }
 
 /// [StoredEventProjectionRead] is for rebuilding projections
 class StoredEventProjectionRead {
+  final int localSequence;
+
   final String streamId;
   final String kind;
   final String detail;
-  final String metadata;
-  final DateTime createdAt;
-  final int localSequence;
+  final DateTime occuredAt;
 
   const StoredEventProjectionRead({
+    required this.localSequence,
+
     required this.streamId,
     required this.kind,
     required this.detail,
-    required this.metadata,
-    required this.createdAt,
-    required this.localSequence,
+    required this.occuredAt,
   });
 }

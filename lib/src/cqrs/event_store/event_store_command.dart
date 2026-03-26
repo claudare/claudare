@@ -1,12 +1,13 @@
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
   final int originatingVersion; // 0 is no events in this aggregate
   final int? versionCursor; // inclusive of the last event. For pagination
-  final List<StoredEventCommandRead> events;
+  final Iterator<StoredEventCommandRead> events;
 
   GetStreamEventsResult({
     required this.originatingVersion,
@@ -16,42 +17,60 @@ class GetStreamEventsResult {
 }
 
 class GetStreamInfoResult {
-  final int totalEventCount; // event count is originating version
-  final DeviceIdSequencePair? firstCausalSequencePair;
-  final DeviceIdSequencePair? lastCausalSequencePair;
+  /// Used for the dependency tracking
+  final DeviceIdSequencePair causalSequencePair;
 
-  const GetStreamInfoResult({
-    required this.totalEventCount,
-    required this.firstCausalSequencePair,
-    required this.lastCausalSequencePair,
-  });
-}
-
-class StreamLock {
-  final String streamIdStr;
+  /// Used for locking (as all commands are locked for now)
+  /// I dont think no consistency check commands are needed?
   final int originatingVersion;
 
-  const StreamLock({
-    required this.streamIdStr,
+  const GetStreamInfoResult({
+    required this.causalSequencePair,
     required this.originatingVersion,
   });
 }
 
+class GetStreamInfoPoint {
+  final DeviceIdSequencePair causalSequencePair;
+  final int localSequence;
+  final int version; // if last is gotten, this is the originatingVersion?
+
+  const GetStreamInfoPoint({
+    required this.causalSequencePair,
+    required this.localSequence,
+    required this.version,
+  });
+}
+
+class StreamLock {
+  final String streamId;
+  final int originatingVersion;
+
+  const StreamLock({required this.streamId, required this.originatingVersion});
+}
+
 class StreamAppends {
+  final EventDependency dependencies;
   final List<StreamLock> locks;
   final List<StoredEventCommandWrite> events; // could be dynamic?
 
-  const StreamAppends({required this.locks, required this.events})
-    : assert(locks.length > 0),
-      assert(events.length > 0),
-      assert(events.length >= locks.length);
+  const StreamAppends({
+    required this.dependencies,
+    required this.locks,
+    required this.events,
+  }) : assert(locks.length > 0),
+       assert(events.length > 0),
+       assert(events.length >= locks.length);
 }
 
 class StreamAppendOrder {
   final int localSequence;
-  final int version; // useless?
+  final int localVersion; // useless?
 
-  const StreamAppendOrder({required this.localSequence, required this.version});
+  const StreamAppendOrder({
+    required this.localSequence,
+    required this.localVersion,
+  });
 }
 
 class StreamAppendResult {
@@ -60,17 +79,17 @@ class StreamAppendResult {
   const StreamAppendResult({required this.orders});
 }
 
-abstract class EventStoreCommand {
+abstract interface class EventStoreCommand {
   // this should have query-like optionals such as fromVersion (for partial resolving of projections)
   // and till date (to replay events as if they have happened in the past)
   Future<GetStreamEventsResult> getStreamEventsCursor(
     String streamId,
     int count,
-    int? versionCursor, // this is a version cursor
+    int? versionCursor, // this is a local version cursor
   );
 
-  // this could be split into a separate count and originating id
-  Future<GetStreamInfoResult> getStreamInfo(String streamId);
+  Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId);
+  Future<GetStreamInfoResult?> getStreamInfoLast(String streamId);
 
   // This is a local command insertion
   // deviceId should be passed here either in the write or as a parameter

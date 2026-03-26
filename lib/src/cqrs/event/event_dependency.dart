@@ -13,6 +13,14 @@ class EventDependency {
     }
   }
 
+  void merge(EventDependency other) {
+    for (final entry in other._vector.entries) {
+      if (entry.value > (_vector[entry.key] ?? 0)) {
+        _vector[entry.key] = entry.value;
+      }
+    }
+  }
+
   int value(DeviceId deviceId) => _vector[deviceId] ?? 0;
 
   Map<DeviceId, int> get vector => _vector;

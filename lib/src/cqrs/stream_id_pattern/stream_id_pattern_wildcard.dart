@@ -10,6 +10,7 @@ class StreamIdPatternWildcard extends StreamIdPattern<String> {
   @override
   final PatternFilter filter;
 
+  // too bad this cant be made const (as comparisons will be made usually)
   StreamIdPatternWildcard(this.pattern)
     : assert(
         pattern.endsWith('*'),

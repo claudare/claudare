@@ -21,7 +21,6 @@ class _MemoryEvent {
   final String streamId;
   final String kind;
   final String detail;
-  final String metadata;
   final DateTime createdAt;
 
   const _MemoryEvent({
@@ -33,7 +32,6 @@ class _MemoryEvent {
     required this.streamId,
     required this.kind,
     required this.detail,
-    required this.metadata,
     required this.createdAt,
   });
 
@@ -43,8 +41,7 @@ class _MemoryEvent {
 
     kind: kind,
     detail: detail,
-    metadata: metadata,
-    createdAt: createdAt,
+    occuredAt: createdAt,
   );
 
   StoredEventProjectionRead get asStoredEventProjectionRead =>
@@ -52,8 +49,7 @@ class _MemoryEvent {
         streamId: streamId,
         kind: kind,
         detail: detail,
-        metadata: metadata,
-        createdAt: createdAt,
+        occuredAt: createdAt,
         localSequence: localSequence,
       );
 }
@@ -63,7 +59,6 @@ class MemoryEventInsert {
   final String streamId;
   final String kind;
   final String detail;
-  final String metadata;
   final int? version;
   final DateTime? createdAt;
 
@@ -72,7 +67,6 @@ class MemoryEventInsert {
     required this.streamId,
     required this.kind,
     required this.detail,
-    required this.metadata,
     this.version,
     this.createdAt,
   });
@@ -173,7 +167,6 @@ class MemoryEventStore implements EventStore {
       streamId: value.streamId,
       kind: value.kind,
       detail: value.detail,
-      metadata: value.metadata,
       createdAt: value.createdAt ?? _getTime(),
     );
 
@@ -218,41 +211,48 @@ class MemoryEventStore implements EventStore {
     final events = _getStreamEvents(streamIdStr);
 
     // TODO: paginate
+    final iterator = events.map((e) => e.asStoredEventCommandRead).iterator;
 
     return Future.value(
       GetStreamEventsResult(
         originatingVersion: events.length,
         versionCursor: null,
-        events: events.map((e) => e.asStoredEventCommandRead).toList(),
+        events: iterator,
       ),
     );
   }
 
   @override
-  Future<GetStreamInfoResult> getStreamInfo(String streamId) {
+  Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId) async {
     final events = _getStreamEvents(streamId);
-    final count = events.length;
-    final firstCausalSequencePair =
-        events.isNotEmpty
-            ? DeviceIdSequencePair(
-              events.first.deviceId,
-              events.first.causalSequence,
-            )
-            : null;
-    final lastCausalSequencePair =
-        events.isNotEmpty
-            ? DeviceIdSequencePair(
-              events.last.deviceId,
-              events.last.causalSequence,
-            )
-            : null;
 
-    return Future.value(
-      GetStreamInfoResult(
-        totalEventCount: count,
-        firstCausalSequencePair: firstCausalSequencePair,
-        lastCausalSequencePair: lastCausalSequencePair,
+    if (events.isEmpty) {
+      return null;
+    }
+
+    return GetStreamInfoResult(
+      causalSequencePair: DeviceIdSequencePair(
+        events.first.deviceId,
+        events.first.causalSequence,
       ),
+      originatingVersion: events.length,
+    );
+  }
+
+  @override
+  Future<GetStreamInfoResult?> getStreamInfoLast(String streamId) async {
+    final events = _getStreamEvents(streamId);
+
+    if (events.isEmpty) {
+      return null;
+    }
+
+    return GetStreamInfoResult(
+      causalSequencePair: DeviceIdSequencePair(
+        events.last.deviceId,
+        events.last.causalSequence,
+      ),
+      originatingVersion: events.length,
     );
   }
 
@@ -268,7 +268,7 @@ class MemoryEventStore implements EventStore {
       detail: command.detail,
       startedAt: command.startedAt,
       completedAt: command.completedAt,
-      dependencies: command.dependencies,
+      dependencies: appends.dependencies,
       exception: null,
       nackReason: null,
     );
@@ -280,11 +280,11 @@ class MemoryEventStore implements EventStore {
 
     // check consistency
     for (final lock in appends.locks) {
-      final info = await getStreamInfo(lock.streamIdStr);
+      final info = await getStreamInfoLast(lock.streamId);
 
-      final originatingVersion = info.totalEventCount;
+      final originatingVersion = info == null ? 0 : info.originatingVersion;
 
-      streams[lock.streamIdStr] = originatingVersion;
+      streams[lock.streamId] = originatingVersion;
 
       if (originatingVersion != lock.originatingVersion) {
         throw ConcurrencyProblem();
@@ -306,14 +306,16 @@ class MemoryEventStore implements EventStore {
           streamId: streamIdStr,
           kind: event.kind,
           detail: event.detail,
-          metadata: event.metadata,
           version: version,
-          createdAt: event.createdAt,
+          createdAt: event.occuredAt,
         ),
       );
 
       result.orders.add(
-        StreamAppendOrder(localSequence: ins.localSequence, version: version),
+        StreamAppendOrder(
+          localSequence: ins.localSequence,
+          localVersion: version,
+        ),
       );
 
       streams[streamIdStr] = version;

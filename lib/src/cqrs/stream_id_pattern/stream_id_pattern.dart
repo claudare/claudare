@@ -1,6 +1,8 @@
 import 'package:core/src/cqrs/pattern_filter.dart';
 
 abstract class StreamIdPattern<TData> {
+  const StreamIdPattern();
+
   String get pattern;
   PatternFilter get filter;
 

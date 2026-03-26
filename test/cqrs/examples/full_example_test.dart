@@ -14,7 +14,7 @@ import 'package:test/test.dart';
 // TODO: make this financial example (lame, but understandable)
 
 sealed class _ExampleEvent {
-  _ExampleEvent();
+  const _ExampleEvent();
 }
 
 class _ExampleEventAdd extends _ExampleEvent {
@@ -22,7 +22,7 @@ class _ExampleEventAdd extends _ExampleEvent {
 
   final int valueAdd;
 
-  _ExampleEventAdd({required this.valueAdd});
+  const _ExampleEventAdd({required this.valueAdd});
 
   toJson() => {'valueAdd': valueAdd};
 
@@ -35,7 +35,7 @@ class _ExampleEventSubtract extends _ExampleEvent {
 
   final int valueSub;
 
-  _ExampleEventSubtract({required this.valueSub});
+  const _ExampleEventSubtract({required this.valueSub});
 
   toJson() => {'valueSub': valueSub};
 
@@ -83,7 +83,7 @@ const _exampleEventCodec = _ExampleEventCodec();
 class _ExampleCommandInput {
   final int value;
 
-  _ExampleCommandInput({required this.value});
+  const _ExampleCommandInput({required this.value});
 
   toJson() => {'value': value};
 
@@ -164,7 +164,7 @@ class _ExampleReadModelRepo {
 class _ExampleProjection implements Projection<_ExampleEvent, String> {
   final _ExampleReadModelRepo _repo;
 
-  _ExampleProjection(this._repo);
+  const _ExampleProjection(this._repo);
 
   @override
   Future<void> apply(idData, event, metadata) {
@@ -221,14 +221,14 @@ class _ExampleIdGenerator {
 class _Commands {
   final BoundCommand<_ExampleCommandInput> example;
 
-  _Commands({required this.example});
+  const _Commands({required this.example});
 }
 
 class _ReadModels {
   /// TODO: this needs to be wrapped to not expose mutations, or 2 abstract classes
   final _ExampleReadModelRepo accounts;
 
-  _ReadModels({required this.accounts});
+  const _ReadModels({required this.accounts});
 }
 
 class _ExampleCqrs {
@@ -280,7 +280,7 @@ void main() {
       final eventStore = MemoryEventStore(
         getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
       );
-      var idGen = _ExampleIdGenerator();
+      final idGen = _ExampleIdGenerator();
 
       final someRepo = _ExampleReadModelRepo();
 

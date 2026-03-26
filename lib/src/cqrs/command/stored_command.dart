@@ -6,20 +6,19 @@ class StoredCommandWrite {
   final String detail;
   final DateTime startedAt;
   final DateTime completedAt;
-  final EventDependency dependencies;
 
   const StoredCommandWrite({
     required this.kind,
     required this.detail,
     required this.startedAt,
     required this.completedAt,
-    required this.dependencies,
   });
 }
 
 class StoredCommandResult {
   final String? nackReason;
-  final Exception? exception; // can this be error too... this is any failure
+  // this cannot be an error. An error is propagated up, never swallowed
+  final Exception? exception;
 
   const StoredCommandResult({
     required this.nackReason,
