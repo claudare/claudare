@@ -4,7 +4,7 @@ import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class CommandContext {
   CommandStream<TEvent> stream<TEvent, TData>(
-    EventCodec<TEvent> eventPack,
+    EventCodec<TEvent> eventCodec,
     StreamIdPattern<TData> streamIdPattern,
     TData streamData,
   ) {
@@ -17,5 +17,10 @@ class CommandContext {
 
   String newId() {
     return "";
+  }
+
+  DateTime now() {
+    // TODO: use the custom context
+    return DateTime.now();
   }
 }

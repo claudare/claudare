@@ -3,10 +3,10 @@ import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/metadata/metadata.dart';
 
-abstract class Projector<Event, StreamIdData> {
+abstract class Projection<Event, StreamIdData> {
   String get name;
   StreamIdPattern<StreamIdData> get streamIdPattern;
-  EventCodec<Event> get eventPack;
+  EventCodec<Event> get eventCodec;
 
   Future<void> reset();
 
@@ -18,6 +18,6 @@ abstract class Projector<Event, StreamIdData> {
     required int version,
     required StreamIdData idData,
     required Event event,
-    AnyMetadata? metadata,
+    AnyMetadata? metadata, // TODO: this must have createAt DateTime!
   });
 }

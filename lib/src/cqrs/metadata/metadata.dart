@@ -1,7 +1,6 @@
 // typedef AnyMetadata = Map<String, dynamic>;
 
-/// TODO: maybe just keep it as a map and let whoever want to use it (probably not)
-/// to deal with that type complexity
+/// TODO: remove custom metadata completely. Instead pass in localSequence, version, and occuredAt
 abstract class AnyMetadata {
   Map<String, dynamic> toJson();
 }

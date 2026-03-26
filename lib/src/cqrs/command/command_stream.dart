@@ -1,30 +1,32 @@
 import 'package:core/src/cqrs/metadata/metadata.dart';
 
 class CommandStream<TEvents> {
-  // this is a "js iterator" thingy. Return events as a stream here... Stream.stream()...
-  // make this a single subscriber
+  /// Returns an asynchronous dart abstract mixin class [Stream] for the events
+  /// Only the latest seen event will be used in the dependencies
   Stream<TEvents> iterator() async* {
     //
   }
 
-  Future<int> count() async {
-    return 0;
-  }
-
-  Future<void> lock() async {
+  /// Ensures the stream exists.
+  /// This will lock dependencies to the **last** event in the stream.
+  Future<void> lockLatest() async {
     return;
   }
 
+  /// Ensures the stream does not exist.
+  /// No dependencies are defined (aka **no** lock)
   Future<void> mustNotExist() async {
-    final cnt = await count();
+    final cnt = 42;
     if (cnt != 0) {
       // TODO: not an error, but an exception
       throw StateError('Command stream must be empty');
     }
   }
 
+  /// Ensure stream exists.
+  /// This will lock dependencies to the **first** event in the stream.
   Future<void> mustExist() async {
-    final cnt = await count();
+    final cnt = 42;
     if (cnt == 0) {
       // TODO: not an error, but an exception
       throw StateError('Command stream must not be empty');

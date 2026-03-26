@@ -1,12 +1,17 @@
 import 'dart:convert';
 
 import 'package:core/src/cqrs/command/command.dart';
-import 'package:core/src/cqrs/command/command_executer.dart';
+import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
-import 'package:core/src/cqrs/event_store/event_store_memory.dart';
+import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
+import 'package:core/src/cqrs/metadata/metadata.dart';
+import 'package:core/src/cqrs/projection/projection.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
+
+// TODO: make this financial example (lame, but understandable)
 
 sealed class _ExampleEvent {
   _ExampleEvent();
@@ -140,19 +145,73 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 
     final streamSink = ctx.stream(_exampleEventCodec, _exampleStreamId, "sink");
 
-    await streamSink.lock();
+    await streamSink.lockLatest();
 
     streamSink.append(_ExampleEventAdd(valueAdd: count), null);
   }
 }
 
+class _ExampleReadModelRepo {
+  Future<int> getCount() async {
+    return -1;
+  }
+
+  Future<void> setCount(int count) async {
+    return;
+  }
+}
+
+class _ExampleProjection implements Projection {
+  final _ExampleReadModelRepo _repo;
+
+  _ExampleProjection(this._repo);
+
+  @override
+  Future<void> apply({
+    required int version,
+    required idData,
+    required event,
+    AnyMetadata? metadata,
+  }) {
+    // TODO: implement apply
+    throw UnimplementedError();
+  }
+
+  @override
+  // TODO: implement eventCodec
+  EventCodec<dynamic> get eventCodec => throw UnimplementedError();
+
+  @override
+  Future<int> getSequenceNumber() {
+    // TODO: implement getSequenceNumber
+    throw UnimplementedError();
+  }
+
+  @override
+  // TODO: implement name
+  String get name => throw UnimplementedError();
+
+  @override
+  Future<void> reset() {
+    // TODO: implement reset
+    throw UnimplementedError();
+  }
+
+  @override
+  // TODO: implement streamIdPattern
+  StreamIdPattern<dynamic> get streamIdPattern => throw UnimplementedError();
+}
+
+// TODO: 2 examples, with methods from here https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/
+// one with getAndStore, another with direct DB apply()
+// this is a way to demo on how to use this and to test usage of all features!
 void main() {
-  group('CQRS Command Example', () {
-    test('usage', () async {
-      final eventStore = EventStoreMemory(
+  group('CQRS Quick Example', () {
+    test('standalone use', () async {
+      final eventStore = MemoryEventStore(
         getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
       );
-      final executer = CommandExecuter(eventStore);
+      final executer = CommandExecutor(eventStore);
 
       final cmdDep = _ExampleDep();
       final cmd = _ExampleCommand(cmdDep);

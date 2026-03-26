@@ -5,6 +5,7 @@ import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/device_sequences.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
+import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
@@ -129,7 +130,7 @@ class MemoryCommandInsert {
   });
 }
 
-class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
+class MemoryEventStore implements EventStore {
   final List<_MemoryEvent> _events = [];
   final List<_MemoryCommand> _commands = [];
   final CausalSequence _causalSequence = CausalSequence();
@@ -139,7 +140,7 @@ class EventStoreMemory implements EventStoreCommand, EventStoreProjection {
   final DateTime Function() _getTime;
   final void Function()? _onChange;
 
-  EventStoreMemory({
+  MemoryEventStore({
     required DateTime Function() getTime,
     void Function()? onChange,
   }) : _onChange = onChange,
