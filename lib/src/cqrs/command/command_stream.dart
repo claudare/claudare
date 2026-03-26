@@ -1,9 +1,7 @@
-import 'package:core/src/cqrs/metadata/metadata.dart';
-
-class CommandStream<TEvents> {
+class CommandStream<Event> {
   /// Returns an asynchronous dart abstract mixin class [Stream] for the events
   /// Only the latest seen event will be used in the dependencies
-  Stream<TEvents> iterator() async* {
+  Stream<Event> iterator() async* {
     //
   }
 
@@ -33,9 +31,9 @@ class CommandStream<TEvents> {
     }
   }
 
-  // the metadata could be a class with toJson method.
-  // decoding is not my problem
-  void append(TEvents event, AnyMetadata? metadata) {
-    return;
+  CommandStream<Event> append(Event event) => appendMany([event]);
+
+  CommandStream<Event> appendMany(Iterable<Event> events) {
+    return this;
   }
 }

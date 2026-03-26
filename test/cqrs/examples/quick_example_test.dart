@@ -5,7 +5,6 @@ import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
-import 'package:core/src/cqrs/metadata/metadata.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
@@ -147,7 +146,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 
     await streamSink.lockLatest();
 
-    streamSink.append(_ExampleEventAdd(valueAdd: count), null);
+    streamSink.append(_ExampleEventAdd(valueAdd: count));
   }
 }
 
@@ -161,35 +160,26 @@ class _ExampleReadModelRepo {
   }
 }
 
-class _ExampleProjection implements Projection {
+class _ExampleProjection implements Projection<_ExampleEvent, String> {
   final _ExampleReadModelRepo _repo;
 
   _ExampleProjection(this._repo);
 
   @override
-  Future<void> apply({
-    required int version,
-    required idData,
-    required event,
-    AnyMetadata? metadata,
-  }) {
-    // TODO: implement apply
-    throw UnimplementedError();
-  }
+  // TODO: implement name
+  String get name => "example";
 
   @override
-  // TODO: implement eventCodec
-  EventCodec<dynamic> get eventCodec => throw UnimplementedError();
+  get eventCodec => _exampleEventCodec;
 
   @override
-  Future<int> getSequenceNumber() {
+  get streamIdPattern => _exampleStreamId;
+
+  @override
+  Future<int> getLocalSequence() {
     // TODO: implement getSequenceNumber
     throw UnimplementedError();
   }
-
-  @override
-  // TODO: implement name
-  String get name => throw UnimplementedError();
 
   @override
   Future<void> reset() {
@@ -198,8 +188,10 @@ class _ExampleProjection implements Projection {
   }
 
   @override
-  // TODO: implement streamIdPattern
-  StreamIdPattern<dynamic> get streamIdPattern => throw UnimplementedError();
+  Future<void> apply(id, event, meta) {
+    // TODO: implement apply
+    throw UnimplementedError();
+  }
 }
 
 // TODO: 2 examples, with methods from here https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/

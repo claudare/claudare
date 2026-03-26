@@ -7,9 +7,7 @@ import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
-import 'package:core/src/cqrs/metadata/metadata.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
-import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
 
@@ -149,7 +147,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 
     await streamSink.lockLatest();
 
-    streamSink.append(_ExampleEventAdd(valueAdd: count), null);
+    streamSink.append(_ExampleEventAdd(valueAdd: count));
   }
 }
 
@@ -163,35 +161,25 @@ class _ExampleReadModelRepo {
   }
 }
 
-class _ExampleProjection implements Projection {
+class _ExampleProjection implements Projection<_ExampleEvent, String> {
   final _ExampleReadModelRepo _repo;
 
   _ExampleProjection(this._repo);
 
   @override
-  Future<void> apply({
-    required int version,
-    required idData,
-    required event,
-    AnyMetadata? metadata,
-  }) {
+  Future<void> apply(idData, event, metadata) {
     // TODO: implement apply
     throw UnimplementedError();
   }
 
   @override
-  // TODO: implement eventCodec
-  EventCodec<dynamic> get eventCodec => throw UnimplementedError();
-
-  @override
-  Future<int> getSequenceNumber() {
+  Future<int> getLocalSequence() {
     // TODO: implement getSequenceNumber
     throw UnimplementedError();
   }
 
   @override
-  // TODO: implement name
-  String get name => throw UnimplementedError();
+  get name => "example";
 
   @override
   Future<void> reset() {
@@ -200,9 +188,25 @@ class _ExampleProjection implements Projection {
   }
 
   @override
-  // TODO: implement streamIdPattern
-  StreamIdPattern<dynamic> get streamIdPattern => throw UnimplementedError();
+  get streamIdPattern => _exampleStreamId;
+
+  @override
+  get eventCodec => _exampleEventCodec;
 }
+
+// one way to make with type inference
+final exampleProjection = createProjection(
+  name: "example",
+  streamIdPattern: _exampleStreamId,
+  eventCodec: _exampleEventCodec,
+  apply: (idData, event, metadata) async {
+    //
+  },
+  reset: () async {},
+  getLocalSequence: () async {
+    return 0;
+  },
+);
 
 class _ExampleIdGenerator {
   int i = 0;
