@@ -34,7 +34,7 @@ void main() {
         final res = await store.getGlobalEvents(0, [], 10);
 
         expect(res.sequenceNumberCursor, equals(null));
-        expect(res.events.length, equals(0));
+        expect(res.events.moveNext(), equals(false));
       });
     });
   });

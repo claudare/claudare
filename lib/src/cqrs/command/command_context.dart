@@ -12,16 +12,19 @@ class CommandContext {
   final CommandAppends _appends;
   final CommandNacker _nacker;
   final CommandSideEffects _sideEffects;
+  final int _pageSize;
 
   const CommandContext({
     required EventStoreCommand eventStore,
     required CommandAppends appends,
     required CommandNacker nacker,
     required CommandSideEffects sideEffects,
+    required int pageSize,
   }) : _eventStore = eventStore,
        _appends = appends,
        _nacker = nacker,
-       _sideEffects = sideEffects;
+       _sideEffects = sideEffects,
+       _pageSize = pageSize;
 
   CommandStream<TEvent, TData> stream<TEvent, TData>(
     EventCodec<TEvent> eventCodec,
@@ -34,7 +37,7 @@ class CommandContext {
       _eventStore,
       _appends,
       safeEventCodec,
-      20, // pagination size
+      _pageSize,
       streamId,
       streamData,
       streamIdPattern,

@@ -2,7 +2,7 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
 class GetGlobalEventsResult {
-  final List<StoredEventProjectionRead> events;
+  final Iterator<StoredEventProjectionRead> events;
   final int? sequenceNumberCursor;
 
   const GetGlobalEventsResult({

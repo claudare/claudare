@@ -8,6 +8,7 @@ import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
+import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
 
@@ -177,7 +178,7 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
   get streamIdPattern => _exampleStreamId;
 
   @override
-  Future<int> getLocalSequence() {
+  Future<ProjectionCheckpoint> checkpoint() {
     // TODO: implement getSequenceNumber
     throw UnimplementedError();
   }
@@ -223,6 +224,7 @@ void main() {
         eventStore: eventStore,
         sideEffects: sideEffects,
         thisDeviceId: deviceId,
+        pageSize: 10,
       );
 
       final cmdDep = _ExampleDep();

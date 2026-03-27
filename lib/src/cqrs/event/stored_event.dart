@@ -1,4 +1,5 @@
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/event/event_metadata.dart';
 
 /// events to write to the database from commands
 class StoredEventCommandWrite {
@@ -38,6 +39,7 @@ class StoredEventCommandRead {
 /// [StoredEventProjectionRead] is for rebuilding projections
 class StoredEventProjectionRead {
   final int localSequence;
+  final int localVersion;
 
   final String streamId;
   final String kind;
@@ -46,10 +48,17 @@ class StoredEventProjectionRead {
 
   const StoredEventProjectionRead({
     required this.localSequence,
+    required this.localVersion,
 
     required this.streamId,
     required this.kind,
     required this.detail,
     required this.occuredAt,
   });
+
+  EventMetadata get eventMetadata => EventMetadata(
+    occuredAt: occuredAt,
+    localSequence: localSequence,
+    localVersion: localVersion,
+  );
 }

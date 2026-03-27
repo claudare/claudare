@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:core/src/cqrs/command/command_side_effects.dart';
+import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/command/command.dart';
@@ -10,6 +11,7 @@ import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
+import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
 
@@ -175,7 +177,7 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
   }
 
   @override
-  Future<int> getLocalSequence() {
+  Future<ProjectionCheckpoint> checkpoint() {
     // TODO: implement getSequenceNumber
     throw UnimplementedError();
   }
@@ -195,20 +197,6 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
   @override
   get eventCodec => _exampleEventCodec;
 }
-
-// one way to make with type inference
-final exampleProjection = createProjection(
-  name: "example",
-  streamIdPattern: _exampleStreamId,
-  eventCodec: _exampleEventCodec,
-  apply: (idData, event, metadata) async {
-    //
-  },
-  reset: () async {},
-  getLocalSequence: () async {
-    return 0;
-  },
-);
 
 // class _ExampleIdGenerator {
 //   int i = 0;
@@ -267,6 +255,7 @@ class _ExampleCqrs {
       projectors: [projection],
       sideEffects: sideEffects,
       deviceId: deviceId,
+      config: CqrsRuntimeConfig.defaults(),
     );
 
     final dep = _ExampleDep();

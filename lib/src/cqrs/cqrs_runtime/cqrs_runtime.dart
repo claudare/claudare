@@ -2,9 +2,12 @@ import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/command/command_side_effects.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
+import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
+import 'package:core/src/cqrs/projection/projection_failure_state.dart';
+import 'package:core/src/cqrs/projection/projection_router.dart';
 import 'package:core/src/cqrs/projection/projection_runtime.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 
@@ -15,23 +18,42 @@ class CqrsRuntime {
   late final List<ProjectionRuntime> _projectionRunners;
   final CommandSideEffects _sideEffects;
   final DeviceId deviceId; // should this be public?
+  final CqrsRuntimeConfig _config;
 
   CqrsRuntime({
     required EventStore eventStore,
     required List<Projection> projectors,
     required CommandSideEffects sideEffects,
     required this.deviceId,
-  }) : _sideEffects = sideEffects {
+    CqrsRuntimeConfig? config,
+  }) : _sideEffects = sideEffects,
+       _config = config ?? CqrsRuntimeConfig.defaults() {
     _eventStore = EventStoreSafe(eventStore);
 
     _projectionRunners =
         projectors
-            .map((projector) => ProjectionRuntime(_eventStore, projector))
+            .map(
+              (projector) => ProjectionRuntime(
+                projector,
+                ProjectionFailureState(), // TODO: this needs to be more advanced
+                _config.eventStorePageSize,
+              ),
+            )
             .toList();
   }
 
   Future<void> init() async {
-    //
+    // TODO: should this ensure that the event store is initialized too?
+    // or is that should be done outside?
+
+    await Future.wait(
+      _projectionRunners.map((runner) => runner.catchupSelfLoad(_eventStore)),
+    );
+  }
+
+  Future<void> gracefulShutdown() async {
+    // TODO: wait for runners to complete
+    // tell database to shutdown gracefully
   }
 
   BoundCommand<TInput> bindCommand<TInput>(
@@ -42,13 +64,29 @@ class CqrsRuntime {
       eventStore: _eventStore,
       sideEffects: _sideEffects,
       thisDeviceId: deviceId,
+      pageSize: _config.eventStorePageSize,
     );
+
+    final consistentRunners = <ProjectionRuntime>[];
+    final eventualRunners = <ProjectionRuntime>[];
+
+    for (final runner in _projectionRunners) {
+      final isConsistent = consistentProjectors.any(
+        (projector) => runner.isProjection(projector),
+      );
+
+      if (isConsistent) {
+        consistentRunners.add(runner);
+      } else {
+        eventualRunners.add(runner);
+      }
+    }
 
     return BoundCommand(
       executor: executor,
       command: command,
-      consistentRunners: [], // TODO
-      eventualRunners: [],
+      consistentRouter: ProjectionRouter(consistentRunners),
+      eventualRouter: ProjectionRouter(eventualRunners),
     );
   }
 }

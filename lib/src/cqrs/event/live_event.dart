@@ -1,13 +1,15 @@
+import 'package:core/src/cqrs/event/event_metadata.dart';
+import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
-class LiveEventMin {
+class LiveEventMin<Event, IdData> {
   final String streamIdStr;
-  final dynamic streamIdData;
+  final IdData streamIdData;
 
   /// momento is not needed here. event is already something in memory decoded.
   /// anothe reason to move it out
   final StreamIdPattern streamIdPattern;
-  final dynamic event;
+  final Event event;
   final DateTime occuredAt;
 
   const LiveEventMin({
@@ -18,7 +20,10 @@ class LiveEventMin {
     required this.occuredAt,
   });
 
-  LiveEventFull toFull({required int localSequence, required int version}) {
+  LiveEventFull<Event, IdData> toFull({
+    required int localSequence,
+    required int version,
+  }) {
     return LiveEventFull(
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,
@@ -26,17 +31,19 @@ class LiveEventMin {
       event: event,
       occuredAt: occuredAt,
       localSequence: localSequence,
-      version: version,
+      localVersion: version,
     );
   }
 }
 
-class LiveEventFull extends LiveEventMin {
+// TODO: this should hold actual classes
+// things like checkpoint, eventMetadata
+class LiveEventFull<Event, IdData> extends LiveEventMin<Event, IdData> {
   final int localSequence;
 
   /// TODO: version is not required? It is only used on the database level to
   /// prevent Concurrency issues (which there would be extremely few for now)
-  final int version;
+  final int localVersion;
 
   const LiveEventFull({
     required super.streamIdStr,
@@ -45,6 +52,17 @@ class LiveEventFull extends LiveEventMin {
     required super.event,
     required super.occuredAt,
     required this.localSequence,
-    required this.version,
+    required this.localVersion,
   });
+
+  EventMetadata get eventMetadata => EventMetadata(
+    occuredAt: occuredAt,
+    localSequence: localSequence,
+    localVersion: localVersion,
+  );
+
+  ProjectionCheckpoint get checkpoint => ProjectionCheckpoint(
+    localSequence: localSequence,
+    localVersion: localVersion,
+  );
 }

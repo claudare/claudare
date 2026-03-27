@@ -1,9 +1,9 @@
 import 'package:core/src/cqrs/command/command_appends.dart';
-import 'package:core/src/cqrs/command/event_store_stream_reader.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
+import 'package:core/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:core/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:core/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_found_exception.dart';
@@ -49,7 +49,7 @@ class CommandStream<Event, IdData> {
   Stream<Event> iterator() async* {
     _tryLock();
 
-    final reader = EventStoreStreamReader(_eventStore, _pageSize, _streamId);
+    final reader = StreamEventReader(_eventStore, _pageSize, _streamId);
 
     try {
       while (await reader.loadMore()) {

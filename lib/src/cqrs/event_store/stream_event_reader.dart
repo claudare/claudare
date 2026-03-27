@@ -3,8 +3,8 @@ import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 
-class EventStoreStreamReader {
-  final EventStoreCommand _underlying;
+class StreamEventReader {
+  final EventStoreCommand _eventStore;
   final int _pageSize;
   final String _streamId;
 
@@ -15,7 +15,7 @@ class EventStoreStreamReader {
   int _originatingLocalVersion = 0; // careful!
   int? _localVersionCursor = 0;
 
-  EventStoreStreamReader(this._underlying, this._pageSize, this._streamId);
+  StreamEventReader(this._eventStore, this._pageSize, this._streamId);
 
   StoredEventCommandRead? next() {
     assert(_current != null, "No iterator available");
@@ -40,7 +40,7 @@ class EventStoreStreamReader {
     }
     assert(_current == null, "Iterator already exists");
 
-    final result = await _underlying.getStreamEventsCursor(
+    final result = await _eventStore.getStreamEventsCursor(
       _streamId,
       _pageSize,
       _localVersionCursor,

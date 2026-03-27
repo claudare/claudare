@@ -16,7 +16,7 @@ class _MemoryEvent {
   final int deviceSequence;
   final int causalSequence;
   final int localSequence;
-  final int version;
+  final int localVersion;
 
   final String streamId;
   final String kind;
@@ -28,7 +28,7 @@ class _MemoryEvent {
     required this.deviceSequence,
     required this.causalSequence,
     required this.localSequence,
-    required this.version,
+    required this.localVersion,
     required this.streamId,
     required this.kind,
     required this.detail,
@@ -51,6 +51,7 @@ class _MemoryEvent {
         detail: detail,
         occuredAt: createdAt,
         localSequence: localSequence,
+        localVersion: localVersion,
       );
 }
 
@@ -163,7 +164,7 @@ class MemoryEventStore implements EventStore {
       deviceSequence: nextDeviceSequence,
       causalSequence: nextCausalSequence,
       localSequence: nextLocalSequence,
-      version: version,
+      localVersion: version,
       streamId: value.streamId,
       kind: value.kind,
       detail: value.detail,
@@ -361,15 +362,18 @@ class MemoryEventStore implements EventStore {
     int count,
   ) async {
     // TODO: pagination
-    final answer =
+    final eventIterator =
         _events
             .sublist(sequenceNumber)
             .where(
               (e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)),
             )
             .map((e) => e.asStoredEventProjectionRead)
-            .toList();
+            .iterator;
 
-    return GetGlobalEventsResult(events: answer, sequenceNumberCursor: null);
+    return GetGlobalEventsResult(
+      events: eventIterator,
+      sequenceNumberCursor: null,
+    );
   }
 }

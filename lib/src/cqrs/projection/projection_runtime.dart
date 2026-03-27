@@ -1,21 +1,145 @@
+import 'package:core/src/cqrs/event/encoded_event.dart';
+import 'package:core/src/cqrs/event/event_metadata.dart';
+import 'package:core/src/cqrs/event/live_event.dart';
+import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
+import 'package:core/src/cqrs/event_store/global_event_reader.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
+import 'package:core/src/cqrs/projection/projection_failure_state.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
+import 'package:core/src/utils/async_fifo_queue.dart';
 
 class ProjectionRuntime<TEvents, TIdData> {
-  final EventStoreProjection _eventStore;
-  final Projection<TEvents, TIdData> _projector;
+  final Projection<TEvents, TIdData> _projection;
+  final ProjectionFailureState _failureState;
+  final int _pageSize;
 
-  const ProjectionRuntime(this._eventStore, this._projector);
+  late final AsyncFIFOQueue<QueueItem<TEvents, TIdData>> _queue;
 
+  ProjectionRuntime(this._projection, this._failureState, this._pageSize) {
+    _queue = AsyncFIFOQueue<QueueItem<TEvents, TIdData>>(
+      (v) => _handleApply(v),
+    );
+  }
+
+  ProjectionFailureState get exceptionHandler => _failureState;
+
+  bool isProjection(Projection<TEvents, TIdData> projection) {
+    return identical(_projection, projection);
+  }
+
+  void onReached(int targetSequence, void Function() callback) {
+    _queue.onReached(targetSequence, callback);
+  }
+
+  void enqueue(LiveEventFull<TEvents, TIdData> liveEvent) {
+    _queue.enqueue(
+      QueueItem(
+        aggregateIdData: liveEvent.streamIdData,
+        event: liveEvent.event,
+        meta: liveEvent.eventMetadata,
+      ),
+      liveEvent.localSequence,
+    );
+  }
+
+  // bool maybeEnqueueLiveEvent(LiveEventFull liveEvent) {
+  //   final isAffected = shouldProcess(
+  //     _projection.streamIdPattern,
+  //     liveEvent.streamIdStr,
+  //   );
+  //   if (isAffected) {
+  //     _queue.enqueue(
+  //       QueueItem(
+  //         aggregateIdData: liveEvent.streamIdData,
+  //         event: liveEvent.event,
+  //         meta: liveEvent.eventMetadata,
+  //       ),
+  //       liveEvent.localSequence,
+  //     );
+  //   }
+  //   return isAffected;
+  // }
+
+  // faster checking then the `shouldProcessPath`
   bool shouldProcess(StreamIdPattern<dynamic> streamIdPattern, String onPath) {
-    return _projector.streamIdPattern.globs(streamIdPattern, onPath);
+    if (_failureState.hasError) {
+      return false;
+    }
+
+    return _projection.streamIdPattern.globs(streamIdPattern, onPath);
   }
 
   // TODO:rename to acceptsPath
   bool shouldProcessPath(String onPath) {
-    return _projector.streamIdPattern.filter.doesMatchPath(onPath);
+    if (_failureState.hasError) {
+      return false;
+    }
+
+    return _projection.streamIdPattern.filter.doesMatchPath(onPath);
   }
 
-  Future<void> catchupSelfLoad() async {}
+  Future<void> catchupSelfLoad(EventStoreProjection eventStore) async {
+    try {
+      final checkpoint = await _projection.checkpoint();
+
+      if (checkpoint.isZero) {
+        await _projection.reset();
+      }
+
+      final reader = GlobalEventReader(
+        eventStore,
+        _pageSize,
+        _projection.streamIdPattern.filter,
+      );
+
+      // paginate
+      while (await reader.loadMore()) {
+        StoredEventProjectionRead? e;
+        while ((e = reader.next()) != null) {
+          final event = _projection.eventCodec.decode(
+            EncodedEvent(kind: e!.kind, detail: e.detail),
+          );
+
+          final aggregateIdData = _projection.streamIdPattern.toData(
+            e.streamId,
+          );
+
+          await _projection.apply(aggregateIdData, event, e.eventMetadata);
+        }
+      }
+    } catch (error, stackTrace) {
+      _failureState.capture(error, stackTrace);
+      return;
+    }
+  }
+
+  Future<void> testWaitLatestSetted() {
+    return _queue.testWaitForLatest();
+  }
+
+  Future<void> _handleApply(QueueItem<TEvents, TIdData> item) async {
+    assert(!_failureState.hasError, "must not apply on error");
+    if (_failureState.hasError) {
+      return;
+    }
+
+    try {
+      await _projection.apply(item.aggregateIdData, item.event, item.meta);
+    } catch (error, stackTrace) {
+      _failureState.capture(error, stackTrace);
+    }
+  }
+}
+
+class QueueItem<TEvents, TIdData> {
+  TIdData aggregateIdData;
+  TEvents event;
+  EventMetadata meta;
+
+  QueueItem({
+    required this.aggregateIdData,
+    required this.event,
+    required this.meta,
+  });
 }

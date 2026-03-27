@@ -12,22 +12,27 @@ import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 
 class CommandExecutor {
-  final EventStoreCommand eventStore;
-  final CommandSideEffects sideEffects;
+  final EventStoreCommand _eventStore;
+  final CommandSideEffects _sideEffects;
 
-  final DeviceId thisDeviceId;
+  final DeviceId _thisDeviceId;
+  final int _pageSize;
 
   const CommandExecutor({
-    required this.eventStore,
-    required this.sideEffects,
-    required this.thisDeviceId,
-  });
+    required EventStoreCommand eventStore,
+    required CommandSideEffects sideEffects,
+    required DeviceId thisDeviceId,
+    required int pageSize,
+  }) : _eventStore = eventStore,
+       _thisDeviceId = thisDeviceId,
+       _sideEffects = sideEffects,
+       _pageSize = pageSize;
 
   Future<Iterable<LiveEventFull>> executeThrowable<TInput>(
     Command<TInput> command,
     TInput input,
   ) async {
-    final startedAt = sideEffects.currentTime();
+    final startedAt = _sideEffects.currentTime();
     final nacker = CommandNacker();
     final dependencies = EventDependency.empty();
     final appends = CommandAppends(
@@ -38,26 +43,28 @@ class CommandExecutor {
 
     final context = CommandContext(
       eventStore:
-          eventStore, // TODO: make sure its safe... just a single class? use a concrete EventStoreSafe
+          _eventStore, // TODO: make sure its safe... just a single class? use a concrete EventStoreSafe
       appends: appends,
       nacker: nacker,
-      sideEffects: sideEffects,
+      sideEffects: _sideEffects,
+      pageSize: _pageSize,
     );
 
     try {
       await command.handle(input, context);
-    } on Exception catch (cause) {
-      // TODO: save failed command
-      await _saveFailedCommand(
-        startedAt,
-        command,
-        input,
-        StoredCommandResult.exception(exception: cause),
-      );
+    } catch (cause, stackTrace) {
+      if (cause is Exception) {
+        await _saveFailedCommand(
+          startedAt,
+          command,
+          input,
+          StoredCommandResult.exception(exception: cause),
+        );
 
-      throw CommandExecutionException(cause.toString(), cause: cause);
-    } catch (_) {
-      rethrow;
+        throw CommandExecutionException(cause.toString(), cause: cause);
+      }
+
+      Error.throwWithStackTrace(cause, stackTrace);
     }
 
     if (nacker.message != null) {
@@ -87,7 +94,7 @@ class CommandExecutor {
       kind: command.kind,
       detail: detailString,
       startedAt: startedAt,
-      completedAt: sideEffects.currentTime(),
+      completedAt: _sideEffects.currentTime(),
     );
 
     final eventStoreAppends = StreamAppends(
@@ -99,8 +106,8 @@ class CommandExecutor {
               .toList(),
     );
 
-    final appendResult = await eventStore.multiAppendEvents(
-      thisDeviceId,
+    final appendResult = await _eventStore.multiAppendEvents(
+      _thisDeviceId,
       issuedCommand,
       eventStoreAppends,
     );
@@ -130,10 +137,10 @@ class CommandExecutor {
         kind: command.kind,
         detail: detailString,
         startedAt: startedAt,
-        completedAt: sideEffects.currentTime(),
+        completedAt: _sideEffects.currentTime(),
       );
 
-      await eventStore.saveFailedCommand(thisDeviceId, issuedCommand, result);
+      await _eventStore.saveFailedCommand(_thisDeviceId, issuedCommand, result);
     } on Exception catch (e) {
       // do nothing... stongly log?
       // TODO: remove me: no logging is most desirable...
@@ -144,10 +151,10 @@ class CommandExecutor {
   }
 
   // return of some result time for easy error checking
-  Future<dynamic> executeResult<TInput>(
-    Command<TInput> command,
-    TInput input,
-  ) async {
-    return [];
-  }
+  // Future<dynamic> executeResult<TInput>(
+  //   Command<TInput> command,
+  //   TInput input,
+  // ) async {
+  //   return [];
+  // }
 }

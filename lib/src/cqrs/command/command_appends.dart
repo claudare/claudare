@@ -45,7 +45,7 @@ class CommandAppendEvent<Event, IdData> {
       event: event,
       occuredAt: occuredAt,
       localSequence: localSequence,
-      version: version,
+      localVersion: version,
     );
   }
 }
