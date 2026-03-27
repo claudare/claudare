@@ -38,7 +38,6 @@ void main() {
         final res = await store.getStreamEvents("non-existing", 10, 0);
 
         expect(res.originatingVersion, 0);
-        expect(res.versionCursor, isNull);
         expect(res.events.length, 0);
       });
 
@@ -67,7 +66,9 @@ void main() {
           StreamAppends(
             dependencies: EventDependency({}),
             locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
-            events: [_fakeEvent(streamId: streamId, occuredAt: t2)],
+            events: [
+              _fakeEvent(streamId: streamId, kind: "test", occuredAt: t2),
+            ],
           ),
         );
 
@@ -85,6 +86,84 @@ void main() {
         expect(e.kind, 'test');
         expect(e.detail, '{}');
         expect(e.occuredAt, t2);
+      });
+
+      // TODO: a group where all tests have x events inserted
+      group("with events", () {
+        test("paginates on start", () async {
+          final streamId = 'test';
+          final deviceId = DeviceId(1);
+          final t0 = DateTime.fromMillisecondsSinceEpoch(0);
+
+          final insertRes = await store.multiAppendEvents(
+            deviceId,
+            _fakeCommand(startedAt: t0, completedAt: t0),
+            StreamAppends(
+              dependencies: EventDependency({}),
+              locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
+              events:
+                  List.generate(
+                    6,
+                    (i) => _fakeEvent(
+                      streamId: streamId,
+                      kind: "event-$i",
+                      occuredAt: t0,
+                    ),
+                  ).toList(),
+            ),
+          );
+
+          expect(insertRes.orders.length, 6);
+
+          final getRes = await store.getStreamEvents(streamId, 2, 0);
+          final events = getRes.events.toList();
+          expect(getRes.originatingVersion, 6);
+
+          expect(getRes.events.length, 2);
+
+          expect(events[0].kind, "event-0");
+          expect(events[1].kind, "event-1");
+
+          expect(events[0].localVersion, 1);
+          expect(events[1].localVersion, 2);
+        });
+
+        test("paginates in the middle", () async {
+          final streamId = 'test';
+          final deviceId = DeviceId(1);
+          final t0 = DateTime.fromMillisecondsSinceEpoch(0);
+
+          final insertRes = await store.multiAppendEvents(
+            deviceId,
+            _fakeCommand(startedAt: t0, completedAt: t0),
+            StreamAppends(
+              dependencies: EventDependency({}),
+              locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
+              events:
+                  List.generate(
+                    6,
+                    (i) => _fakeEvent(
+                      streamId: streamId,
+                      kind: "event-$i",
+                      occuredAt: t0,
+                    ),
+                  ).toList(),
+            ),
+          );
+
+          expect(insertRes.orders.length, 6);
+
+          final getRes = await store.getStreamEvents(streamId, 2, 2);
+          final events = getRes.events.toList();
+          expect(getRes.originatingVersion, 6);
+          expect(getRes.events.length, 2);
+
+          expect(events[0].kind, 'event-2');
+          expect(events[1].kind, 'event-3');
+
+          expect(events[0].localVersion, 3);
+          expect(events[1].localVersion, 4);
+        });
       });
     });
   });
@@ -104,11 +183,12 @@ StoredCommandWrite _fakeCommand({
 
 StoredEventCommandWrite _fakeEvent({
   required String streamId,
+  required String kind,
   required DateTime occuredAt,
 }) {
   return StoredEventCommandWrite(
     streamId: streamId,
-    kind: 'test',
+    kind: kind,
     detail: '{}',
     occuredAt: occuredAt,
   );

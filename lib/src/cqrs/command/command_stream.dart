@@ -73,6 +73,27 @@ class CommandStream<Event, IdData> {
     }
   }
 
+  Stream<Event> scan2() async* {
+    final reader = StreamEventReader(_eventStore, _pageSize, _streamId);
+
+    final scanStored = reader.scanStored();
+
+    try {
+      await for (final e in scanStored) {
+        yield _codec.decode(EncodedEvent(kind: e.kind, detail: e.detail));
+      }
+    } finally {
+      final state = reader.state();
+      _appends.dependencies.merge(state.dependencies);
+      _appends.locks.add(
+        StreamLock(
+          streamId: _streamId,
+          originatingVersion: state.originatingLocalVersion,
+        ),
+      );
+    }
+  }
+
   /// Just performs the simplest lock. Stream could exist or could not exist.
   /// This will try to lock dependencies to the **last** event in the stream.
   /// TODO: this needs more considerations from naming/usability perspective

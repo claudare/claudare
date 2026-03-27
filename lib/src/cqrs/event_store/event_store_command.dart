@@ -6,12 +6,10 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
   final int originatingVersion; // 0 is no events in this aggregate
-  final int? versionCursor; // inclusive of the last event. For pagination
   final Iterable<StoredEventCommandRead> events;
 
   GetStreamEventsResult({
     required this.originatingVersion,
-    required this.versionCursor,
     required this.events,
   });
 }

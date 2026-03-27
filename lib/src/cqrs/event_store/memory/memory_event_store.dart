@@ -38,6 +38,7 @@ class _MemoryEvent {
   StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
     deviceId: deviceId,
     causalSequence: causalSequence,
+    localVersion: localVersion,
 
     kind: kind,
     detail: detail,
@@ -60,16 +61,25 @@ class MemoryEventInsert {
   final String streamId;
   final String kind;
   final String detail;
-  final int? version;
-  final DateTime? createdAt;
+  final int? localVersion;
+  final DateTime? emitedAt;
 
   const MemoryEventInsert({
     required this.deviceId,
     required this.streamId,
     required this.kind,
     required this.detail,
-    this.version,
-    this.createdAt,
+    this.localVersion,
+    this.emitedAt,
+  });
+
+  MemoryEventInsert.minimal({
+    required this.deviceId,
+    required this.streamId,
+    this.kind = "test",
+    this.detail = "{}",
+    this.localVersion,
+    this.emitedAt,
   });
 }
 
@@ -149,6 +159,13 @@ class MemoryEventStore implements EventStore {
     return _events.where((e) => e.streamId == streamIdStr);
   }
 
+  // for testing
+  StoredEventCommandRead insertEvent(MemoryEventInsert value) {
+    final event = _insertEvent(value);
+    _emitChange();
+    return event.asStoredEventCommandRead;
+  }
+
   _MemoryEvent _insertEvent(MemoryEventInsert value) {
     final nextLocalSequence = _events.length + 1; // no zeros!
 
@@ -157,7 +174,7 @@ class MemoryEventStore implements EventStore {
     );
     final nextCausalSequence = _causalSequence.nextSequence(value.deviceId);
     final version =
-        value.version ?? _getStreamEvents(value.streamId).length + 1;
+        value.localVersion ?? _getStreamEvents(value.streamId).length + 1;
 
     final event = _MemoryEvent(
       deviceId: value.deviceId,
@@ -168,7 +185,7 @@ class MemoryEventStore implements EventStore {
       streamId: value.streamId,
       kind: value.kind,
       detail: value.detail,
-      createdAt: value.createdAt ?? _getTime(),
+      createdAt: value.emitedAt ?? _getTime(),
     );
 
     _events.add(event);
@@ -211,15 +228,15 @@ class MemoryEventStore implements EventStore {
   ) {
     final events = _getStreamEvents(streamIdStr);
 
+    // we need to get the correct version cursor
     final iterable = events
-        .skipWhile((e) => e.localSequence < versionCursor)
+        .skipWhile((e) => e.localVersion <= versionCursor)
         .take(count)
         .map((e) => e.asStoredEventCommandRead);
 
     return Future.value(
       GetStreamEventsResult(
         originatingVersion: events.length,
-        versionCursor: null,
         events: iterable,
       ),
     );
@@ -309,8 +326,8 @@ class MemoryEventStore implements EventStore {
           streamId: streamIdStr,
           kind: event.kind,
           detail: event.detail,
-          version: version,
-          createdAt: event.occuredAt,
+          localVersion: version,
+          emitedAt: event.occuredAt,
         ),
       );
 
@@ -364,7 +381,7 @@ class MemoryEventStore implements EventStore {
     int count,
   ) async {
     final iterable = _events
-        .skipWhile((e) => e.localSequence < sequenceNumber)
+        .skipWhile((e) => e.localSequence <= sequenceNumber)
         .where((e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)))
         .take(count)
         .map((e) => e.asStoredEventProjectionRead);

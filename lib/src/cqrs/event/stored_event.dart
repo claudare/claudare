@@ -21,6 +21,7 @@ class StoredEventCommandWrite {
 class StoredEventCommandRead {
   final DeviceId deviceId;
   final int causalSequence;
+  final int localVersion;
 
   final String kind;
   final String detail;
@@ -29,6 +30,7 @@ class StoredEventCommandRead {
   const StoredEventCommandRead({
     required this.deviceId,
     required this.causalSequence,
+    required this.localVersion,
 
     required this.kind,
     required this.detail,

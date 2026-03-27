@@ -12,8 +12,9 @@ class StreamEventReader {
 
   final EventDependency _dependencies = EventDependency.empty();
 
-  int _originatingLocalVersion = 0; // careful!
-  int? _localVersionCursor = 0;
+  bool done = false;
+  int _originatingLocalVersion = -1; // careful!
+  int _localVersionCursor = 0;
 
   StreamEventReader(this._eventStore, this._pageSize, this._streamId);
 
@@ -29,32 +30,41 @@ class StreamEventReader {
     _dependencies.add(
       DeviceIdSequencePair(value.deviceId, value.causalSequence),
     );
+    _localVersionCursor = value.localVersion;
 
     return value;
   }
 
   /// will load more. If true is returned, continue the iteration
   Future<bool> loadMore() async {
-    if (_localVersionCursor == null) {
+    if (_localVersionCursor == _originatingLocalVersion) {
       return false;
     }
-    assert(_current == null, "Iterator already exists");
 
     final result = await _eventStore.getStreamEvents(
       _streamId,
       _pageSize,
-      _localVersionCursor!,
+      _localVersionCursor,
     );
 
     _current = result.events.iterator;
     _originatingLocalVersion = result.originatingVersion;
-    _localVersionCursor = result.versionCursor;
 
     return true;
   }
 
   IterationState state() {
     return IterationState(_dependencies, _originatingLocalVersion);
+  }
+
+  /// do not use this. Its only for tests
+  Stream<StoredEventCommandRead> scanStored() async* {
+    while (await loadMore()) {
+      StoredEventCommandRead? e;
+      while ((e = next()) != null) {
+        yield e!;
+      }
+    }
   }
 }
 
