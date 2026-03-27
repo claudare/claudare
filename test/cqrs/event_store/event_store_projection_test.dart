@@ -33,8 +33,8 @@ void main() {
       test("get empty global events", () async {
         final res = await store.getGlobalEvents(0, [], 10);
 
-        expect(res.sequenceNumberCursor, equals(null));
-        expect(res.events.moveNext(), equals(false));
+        expect(res.sequenceNumberCursor, isNull);
+        expect(res.events.length, 0);
       });
     });
   });

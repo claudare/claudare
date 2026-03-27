@@ -8,7 +8,7 @@ import 'event_store_command.dart';
 class EventStoreMock implements EventStoreCommand, EventStoreProjection {
   // --- command
   @override
-  Future<GetStreamEventsResult> getStreamEventsCursor(
+  Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int count,
     int? versionCursor,

@@ -129,7 +129,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
       "source",
     );
 
-    final iter = streamSource.iterator();
+    final iter = streamSource.scan();
 
     var count = 0;
 

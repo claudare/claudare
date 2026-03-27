@@ -40,13 +40,13 @@ class StreamEventReader {
     }
     assert(_current == null, "Iterator already exists");
 
-    final result = await _eventStore.getStreamEventsCursor(
+    final result = await _eventStore.getStreamEvents(
       _streamId,
       _pageSize,
-      _localVersionCursor,
+      _localVersionCursor!,
     );
 
-    _current = result.events;
+    _current = result.events.iterator;
     _originatingLocalVersion = result.originatingVersion;
     _localVersionCursor = result.versionCursor;
 

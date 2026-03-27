@@ -13,13 +13,13 @@ class EventStoreSafe implements EventStore {
   const EventStoreSafe(this._store); //: assert(_store )
 
   @override
-  Future<GetStreamEventsResult> getStreamEventsCursor(
+  Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int count,
-    int? versionCursor,
+    int versionCursor,
   ) {
     try {
-      return _store.getStreamEventsCursor(streamId, count, versionCursor);
+      return _store.getStreamEvents(streamId, count, versionCursor);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream events cursor for stream '$streamId'",

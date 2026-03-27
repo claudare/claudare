@@ -37,7 +37,7 @@ class GlobalEventReader {
       _patternFilter,
     ], _pageSize);
 
-    _current = result.events;
+    _current = result.events.iterator;
     _localSequenceCursor = result.sequenceNumberCursor;
 
     return true;

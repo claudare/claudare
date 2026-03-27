@@ -46,7 +46,7 @@ class CommandStream<Event, IdData> {
 
   /// Returns an asynchronous dart abstract mixin class [Stream] for the events
   /// Only the latest seen event will be used in the dependencies
-  Stream<Event> iterator() async* {
+  Stream<Event> scan() async* {
     _tryLock();
 
     final reader = StreamEventReader(_eventStore, _pageSize, _streamId);

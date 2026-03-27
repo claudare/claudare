@@ -1,7 +1,6 @@
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/projection/projection_router.dart';
-import 'package:core/src/cqrs/projection/projection_runtime.dart';
 
 class BoundCommand<TInput> {
   final CommandExecutor _executor;

@@ -7,7 +7,7 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 class GetStreamEventsResult {
   final int originatingVersion; // 0 is no events in this aggregate
   final int? versionCursor; // inclusive of the last event. For pagination
-  final Iterator<StoredEventCommandRead> events;
+  final Iterable<StoredEventCommandRead> events;
 
   GetStreamEventsResult({
     required this.originatingVersion,
@@ -80,10 +80,12 @@ class StreamAppendResult {
 abstract interface class EventStoreCommand {
   // this should have query-like optionals such as fromVersion (for partial resolving of projections)
   // and till date (to replay events as if they have happened in the past)
-  Future<GetStreamEventsResult> getStreamEventsCursor(
+  Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int count,
-    int? versionCursor, // this is a local version cursor
+    // this is a local version cursor, returned values will start with it.
+    // Can pass 0 or 1 when no version cursor is available
+    int versionCursor,
   );
 
   Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId);

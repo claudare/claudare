@@ -145,8 +145,8 @@ class MemoryEventStore implements EventStore {
     _onChange?.call();
   }
 
-  List<_MemoryEvent> _getStreamEvents(String streamIdStr) {
-    return _events.where((e) => e.streamId == streamIdStr).toList();
+  Iterable<_MemoryEvent> _getStreamEvents(String streamIdStr) {
+    return _events.where((e) => e.streamId == streamIdStr);
   }
 
   _MemoryEvent _insertEvent(MemoryEventInsert value) {
@@ -204,21 +204,23 @@ class MemoryEventStore implements EventStore {
   // --- command
 
   @override
-  Future<GetStreamEventsResult> getStreamEventsCursor(
+  Future<GetStreamEventsResult> getStreamEvents(
     String streamIdStr,
     int count,
-    int? versionCursor,
+    int versionCursor,
   ) {
     final events = _getStreamEvents(streamIdStr);
 
-    // TODO: paginate
-    final iterator = events.map((e) => e.asStoredEventCommandRead).iterator;
+    final iterable = events
+        .skipWhile((e) => e.localSequence < versionCursor)
+        .take(count)
+        .map((e) => e.asStoredEventCommandRead);
 
     return Future.value(
       GetStreamEventsResult(
         originatingVersion: events.length,
         versionCursor: null,
-        events: iterator,
+        events: iterable,
       ),
     );
   }
@@ -361,19 +363,12 @@ class MemoryEventStore implements EventStore {
     List<PatternFilter> aggregateFilters,
     int count,
   ) async {
-    // TODO: pagination
-    final eventIterator =
-        _events
-            .sublist(sequenceNumber)
-            .where(
-              (e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)),
-            )
-            .map((e) => e.asStoredEventProjectionRead)
-            .iterator;
+    final iterable = _events
+        .skipWhile((e) => e.localSequence < sequenceNumber)
+        .where((e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)))
+        .take(count)
+        .map((e) => e.asStoredEventProjectionRead);
 
-    return GetGlobalEventsResult(
-      events: eventIterator,
-      sequenceNumberCursor: null,
-    );
+    return GetGlobalEventsResult(events: iterable, sequenceNumberCursor: null);
   }
 }
