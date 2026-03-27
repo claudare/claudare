@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:core/src/cqrs/event/live_event.dart';
-import 'package:core/src/cqrs/projection/projection_runtime.dart';
+import 'package:core/src/cqrs/projection/projection_sink.dart';
 
 class ProjectionRouter {
-  final List<ProjectionRuntime> _runtimes;
+  final List<ProjectionSink> _runtimes;
 
   const ProjectionRouter(this._runtimes);
 

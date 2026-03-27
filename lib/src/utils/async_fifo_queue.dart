@@ -31,13 +31,11 @@ class AsyncFIFOQueue<T> {
     _queue.add(_QueueItem(value, sequence, onDone: onDone));
     _size++;
 
-    // TODO: Test this.
-    // Using microtasks to mirror js implementation
-    // Could be racy if the underlying implementation is fake async
-    // as could be the case sometimes with memory repos.
-    // This could worth without it?
-    // Im gonna keep it for now and we go from there.
-    scheduleMicrotask(_processNext);
+    _processNext();
+
+    // Could use microtasks to mirror js implementation
+    // Im gonna try without it
+    // scheduleMicrotask(_processNext);
   }
 
   void _reset() {

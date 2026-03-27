@@ -6,10 +6,11 @@ import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/event_store/global_event_reader.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/cqrs/projection/projection_failure_state.dart';
+import 'package:core/src/cqrs/projection/projection_sink.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/utils/async_fifo_queue.dart';
 
-class ProjectionRuntime<TEvents, TIdData> {
+class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   final Projection<TEvents, TIdData> _projection;
   final ProjectionFailureState _failureState;
   final int _pageSize;
@@ -28,10 +29,8 @@ class ProjectionRuntime<TEvents, TIdData> {
     return identical(_projection, projection);
   }
 
-  void enqueue(
-    LiveEventFull<TEvents, TIdData> liveEvent, {
-    void Function()? onDone,
-  }) {
+  @override
+  void enqueue(LiveEventFull liveEvent, {void Function()? onDone}) {
     _queue.enqueue(
       QueueItem(
         aggregateIdData: liveEvent.streamIdData,
@@ -61,8 +60,8 @@ class ProjectionRuntime<TEvents, TIdData> {
   //   return isAffected;
   // }
 
-  // faster checking then the `shouldProcessPath`
-  bool shouldProcess(StreamIdPattern<dynamic> streamIdPattern, String onPath) {
+  @override
+  bool shouldProcess(StreamIdPattern streamIdPattern, String onPath) {
     if (_failureState.hasError) {
       return false;
     }
@@ -70,14 +69,13 @@ class ProjectionRuntime<TEvents, TIdData> {
     return _projection.streamIdPattern.globs(streamIdPattern, onPath);
   }
 
-  // TODO:rename to acceptsPath
-  bool shouldProcessPath(String onPath) {
-    if (_failureState.hasError) {
-      return false;
-    }
+  // bool shouldProcessPath(String onPath) {
+  //   if (_failureState.hasError) {
+  //     return false;
+  //   }
 
-    return _projection.streamIdPattern.filter.doesMatchPath(onPath);
-  }
+  //   return _projection.streamIdPattern.filter.doesMatchPath(onPath);
+  // }
 
   Future<void> catchupSelfLoad(EventStoreProjection eventStore) async {
     try {
