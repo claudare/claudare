@@ -1,6 +1,8 @@
 import 'package:core/src/cqrs/command/command_appends.dart';
+import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
+import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/stream_event_reader.dart';
@@ -50,47 +52,18 @@ class CommandStream<Event, IdData> {
     _tryLock();
 
     final reader = StreamEventReader(_eventStore, _pageSize, _streamId);
+    final dependencies = EventDependency.empty();
 
     try {
       while (await reader.loadMore()) {
-        StoredEventCommandRead? e;
-        while ((e = reader.next()) != null) {
-          yield _codec.decode(EncodedEvent(kind: e!.kind, detail: e.detail));
+        for (final e in reader.currentPage) {
+          dependencies.add(DeviceIdSequencePair(e.deviceId, e.causalSequence));
+          yield _codec.decode(EncodedEvent(kind: e.kind, detail: e.detail));
         }
       }
     } finally {
-      // always lock on regardless of if the stream was read fully.
-      // this is an intended behavior
-
-      final state = reader.state();
-      _appends.dependencies.merge(state.dependencies);
-      _appends.locks.add(
-        StreamLock(
-          streamId: _streamId,
-          originatingVersion: state.originatingLocalVersion,
-        ),
-      );
-    }
-  }
-
-  Stream<Event> scan2() async* {
-    final reader = StreamEventReader(_eventStore, _pageSize, _streamId);
-
-    final scanStored = reader.scanStored();
-
-    try {
-      await for (final e in scanStored) {
-        yield _codec.decode(EncodedEvent(kind: e.kind, detail: e.detail));
-      }
-    } finally {
-      final state = reader.state();
-      _appends.dependencies.merge(state.dependencies);
-      _appends.locks.add(
-        StreamLock(
-          streamId: _streamId,
-          originatingVersion: state.originatingLocalVersion,
-        ),
-      );
+      _appends.dependencies.merge(dependencies);
+      _appends.locks.add(reader.streamLock);
     }
   }
 

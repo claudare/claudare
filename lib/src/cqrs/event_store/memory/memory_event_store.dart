@@ -226,19 +226,18 @@ class MemoryEventStore implements EventStore {
     int count,
     int versionCursor,
   ) {
-    final events = _getStreamEvents(streamIdStr);
+    final all = _getStreamEvents(streamIdStr);
 
     // we need to get the correct version cursor
-    final iterable = events
-        .skipWhile((e) => e.localVersion <= versionCursor)
-        .take(count)
-        .map((e) => e.asStoredEventCommandRead);
+    final paginated =
+        all
+            .skipWhile((e) => e.localVersion <= versionCursor)
+            .take(count)
+            .map((e) => e.asStoredEventCommandRead)
+            .toList();
 
     return Future.value(
-      GetStreamEventsResult(
-        originatingVersion: events.length,
-        events: iterable,
-      ),
+      GetStreamEventsResult(originatingVersion: all.length, events: paginated),
     );
   }
 
@@ -380,12 +379,16 @@ class MemoryEventStore implements EventStore {
     List<PatternFilter> aggregateFilters,
     int count,
   ) async {
-    final iterable = _events
-        .skipWhile((e) => e.localSequence <= sequenceNumber)
-        .where((e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)))
-        .take(count)
-        .map((e) => e.asStoredEventProjectionRead);
+    final paginated =
+        _events
+            .skipWhile((e) => e.localSequence <= sequenceNumber)
+            .where(
+              (e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)),
+            )
+            .take(count)
+            .map((e) => e.asStoredEventProjectionRead)
+            .toList();
 
-    return GetGlobalEventsResult(events: iterable, sequenceNumberCursor: null);
+    return GetGlobalEventsResult(events: paginated, sequenceNumberCursor: null);
   }
 }

@@ -6,7 +6,7 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
   final int originatingVersion; // 0 is no events in this aggregate
-  final Iterable<StoredEventCommandRead> events;
+  final List<StoredEventCommandRead> events;
 
   GetStreamEventsResult({
     required this.originatingVersion,

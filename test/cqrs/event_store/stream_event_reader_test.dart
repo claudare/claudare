@@ -20,14 +20,14 @@ void main() {
     });
 
     test('handles empty result', () async {
-      final events = await _scan(reader).toList();
+      final events = await _scanAll(reader).toList();
       expect(events, isEmpty);
     });
 
     test('handles exact amount', () async {
       _appendCount(store, pageSize);
 
-      final events = await _scan(reader).toList();
+      final events = await _scanAll(reader).toList();
       expect(events, hasLength(pageSize));
       expect(events[0].kind, 'event-0');
       expect(events[1].kind, 'event-1');
@@ -36,7 +36,7 @@ void main() {
     test('handles more', () async {
       _appendCount(store, pageSize + 1);
 
-      final events = await _scan(reader).toList();
+      final events = await _scanAll(reader).toList();
 
       expect(events, hasLength(pageSize + 1));
 
@@ -47,11 +47,10 @@ void main() {
   });
 }
 
-Stream<StoredEventCommandRead> _scan(StreamEventReader reader) async* {
+Stream<StoredEventCommandRead> _scanAll(StreamEventReader reader) async* {
   while (await reader.loadMore()) {
-    StoredEventCommandRead? e;
-    while ((e = reader.next()) != null) {
-      yield e!;
+    for (final e in reader.currentPage) {
+      yield e;
     }
   }
 }

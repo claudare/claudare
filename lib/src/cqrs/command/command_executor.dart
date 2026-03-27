@@ -28,7 +28,7 @@ class CommandExecutor {
        _sideEffects = sideEffects,
        _pageSize = pageSize;
 
-  Future<Iterable<LiveEventFull>> executeThrowable<TInput>(
+  Future<List<LiveEventFull>> executeThrowable<TInput>(
     Command<TInput> command,
     TInput input,
   ) async {
@@ -81,7 +81,7 @@ class CommandExecutor {
     return _saveEvents<TInput>(appends, startedAt, command, input);
   }
 
-  Future<Iterable<LiveEventFull>> _saveEvents<TInput>(
+  Future<List<LiveEventFull>> _saveEvents<TInput>(
     CommandAppends commandAppends,
     DateTime startedAt,
     Command<TInput> command,
@@ -112,13 +112,13 @@ class CommandExecutor {
       eventStoreAppends,
     );
 
-    return Iterable.generate(commandAppends.appendEvents.length, (index) {
+    return List.generate(commandAppends.appendEvents.length, (index) {
       final order = appendResult.orders[index];
       return commandAppends.appendEvents[index].toLiveEventFull(
         localSequence: order.localSequence,
         version: order.localVersion,
       );
-    });
+    }, growable: false);
   }
 
   /// saves command that fails. This never throws!

@@ -3,6 +3,7 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
+// TODO: refactor to use lists as well
 class GlobalEventReader {
   final EventStoreProjection _underlying;
   final int _pageSize;
