@@ -1,9 +1,13 @@
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 
 /// Commands are synced and they define a dependency boundary
+/// This is the whole payload though, not just the command
+/// its command + commandResult + dependencies + events!
 class SyncCommand {
-  final DeviceId deviceId;
+  final DeviceIdSequencePair deviceSequence;
+
   final String kind;
   final String detail;
   final DateTime startedAt;
@@ -16,7 +20,7 @@ class SyncCommand {
   final List<SyncEvent> events;
 
   SyncCommand({
-    required this.deviceId,
+    required this.deviceSequence,
     required this.kind,
     required this.detail,
     required this.startedAt,
@@ -29,22 +33,22 @@ class SyncCommand {
 }
 
 class SyncEvent {
+  final DeviceId deviceId;
   final int deviceSequence;
   final int causalSequence;
 
   final String streamId;
   final String kind;
   final String detail;
-  final String metadata;
-  final DateTime createdAt;
+  final DateTime occuredAt;
 
   SyncEvent({
+    required this.deviceId,
     required this.deviceSequence,
     required this.causalSequence,
     required this.streamId,
     required this.kind,
     required this.detail,
-    required this.metadata,
-    required this.createdAt,
+    required this.occuredAt,
   });
 }

@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/device_id.dart';
 
+// TODO: add type enum to check that it is either causal or device specific
 class DeviceIdSequencePair {
   final DeviceId deviceId;
   final int sequence;
