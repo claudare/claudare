@@ -1,6 +1,8 @@
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
+import 'package:core/src/cqrs/command/command_side_effects.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
 import 'package:core/src/cqrs/projection/projection_runtime.dart';
@@ -11,16 +13,15 @@ import 'package:core/src/cqrs/projection/projection.dart';
 class CqrsRuntime {
   late final EventStoreSafe _eventStore;
   late final List<ProjectionRuntime> _projectionRunners;
-  final DateTime Function() _getTime;
-  final String Function() _getId;
+  final CommandSideEffects _sideEffects;
+  final DeviceId deviceId; // should this be public?
 
   CqrsRuntime({
     required EventStore eventStore,
     required List<Projection> projectors,
-    required DateTime Function() getTime,
-    required String Function() getId,
-  }) : _getId = getId,
-       _getTime = getTime {
+    required CommandSideEffects sideEffects,
+    required this.deviceId,
+  }) : _sideEffects = sideEffects {
     _eventStore = EventStoreSafe(eventStore);
 
     _projectionRunners =
@@ -37,7 +38,11 @@ class CqrsRuntime {
     Command<TInput> command,
     List<Projection> consistentProjectors,
   ) {
-    final executor = CommandExecutor(_eventStore);
+    final executor = CommandExecutor(
+      eventStore: _eventStore,
+      sideEffects: _sideEffects,
+      thisDeviceId: deviceId,
+    );
 
     return BoundCommand(
       executor: executor,

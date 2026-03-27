@@ -24,6 +24,12 @@ class StoredCommandResult {
     required this.nackReason,
     required this.exception,
   });
+
+  const StoredCommandResult.nack({required String reason})
+    : this(nackReason: reason, exception: null);
+
+  const StoredCommandResult.exception({required Exception exception})
+    : this(nackReason: null, exception: exception);
 }
 
 /// [StoredCommandRead] includes everything... probably should be flat

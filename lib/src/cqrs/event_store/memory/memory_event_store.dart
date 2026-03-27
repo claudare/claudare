@@ -269,8 +269,8 @@ class MemoryEventStore implements EventStore {
       startedAt: command.startedAt,
       completedAt: command.completedAt,
       dependencies: appends.dependencies,
-      exception: null,
       nackReason: null,
+      exception: null,
     );
 
     final result = StreamAppendResult(orders: []);
@@ -328,6 +328,28 @@ class MemoryEventStore implements EventStore {
     assert(result.orders.length == appends.events.length);
 
     return result;
+  }
+
+  @override
+  Future<void> saveFailedCommand(
+    DeviceId thisDeviceId,
+    StoredCommandWrite command,
+    StoredCommandResult result,
+  ) async {
+    final memoryCommand = MemoryCommandInsert(
+      deviceId: thisDeviceId,
+      kind: command.kind,
+      detail: command.detail,
+      startedAt: command.startedAt,
+      completedAt: command.completedAt,
+      dependencies: EventDependency.empty(),
+      nackReason: result.nackReason,
+      exception: result.exception,
+    );
+
+    _insertCommand(memoryCommand);
+
+    _emitChange();
   }
 
   // --- projection

@@ -66,7 +66,7 @@ void main() {
             completedAt: DateTime.fromMillisecondsSinceEpoch(1000),
           ),
           StreamAppends(
-            dependencies: EventDependency(),
+            dependencies: EventDependency({}),
             locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
             events: [
               StoredEventCommandWrite(

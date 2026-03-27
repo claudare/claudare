@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:core/src/cqrs/command/command_side_effects.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
@@ -145,7 +147,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 
     final streamSink = ctx.stream(_exampleEventCodec, _exampleStreamId, "sink");
 
-    await streamSink.lockLatest();
+    await streamSink.lock();
 
     streamSink.append(_ExampleEventAdd(valueAdd: count));
   }
@@ -208,13 +210,13 @@ final exampleProjection = createProjection(
   },
 );
 
-class _ExampleIdGenerator {
-  int i = 0;
+// class _ExampleIdGenerator {
+//   int i = 0;
 
-  String id() {
-    return (++i).toString();
-  }
-}
+//   String id() {
+//     return (++i).toString();
+//   }
+// }
 
 // actual implementaion
 
@@ -231,10 +233,22 @@ class _ReadModels {
   const _ReadModels({required this.accounts});
 }
 
+class _ExampleSideEffects implements CommandSideEffects {
+  int _id = 0;
+
+  @override
+  DateTime currentTime() {
+    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }
+
+  @override
+  String newId() {
+    return (++_id).toString();
+  }
+}
+
 class _ExampleCqrs {
   final EventStore _eventStore;
-  final DateTime Function() _getTime;
-  final String Function() _getId;
 
   late final CqrsRuntime _cqrsRuntime;
   late final _Commands command;
@@ -242,19 +256,17 @@ class _ExampleCqrs {
 
   _ExampleCqrs({
     required EventStore eventStore,
-    required DateTime Function() getTime,
-    required String Function() getId,
+    required CommandSideEffects sideEffects,
+    required DeviceId deviceId,
     required _ExampleReadModelRepo repo,
-  }) : _getId = getId,
-       _getTime = getTime,
-       _eventStore = eventStore {
+  }) : _eventStore = eventStore {
     final projection = _ExampleProjection(repo);
 
     _cqrsRuntime = CqrsRuntime(
       eventStore: _eventStore,
       projectors: [projection],
-      getTime: _getTime,
-      getId: _getId,
+      sideEffects: sideEffects,
+      deviceId: deviceId,
     );
 
     final dep = _ExampleDep();
@@ -280,14 +292,16 @@ void main() {
       final eventStore = MemoryEventStore(
         getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
       );
-      final idGen = _ExampleIdGenerator();
+      // final idGen = _ExampleIdGenerator();
+      final deviceId = DeviceId(42);
+      final sideEffects = _ExampleSideEffects();
 
       final someRepo = _ExampleReadModelRepo();
 
       final applicationCqrs = _ExampleCqrs(
         eventStore: eventStore,
-        getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
-        getId: () => idGen.id(),
+        sideEffects: sideEffects,
+        deviceId: deviceId,
         repo: someRepo,
       );
       await applicationCqrs.init();

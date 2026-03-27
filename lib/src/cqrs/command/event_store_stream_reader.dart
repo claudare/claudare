@@ -10,7 +10,7 @@ class EventStoreStreamReader {
 
   Iterator<StoredEventCommandRead>? _current;
 
-  final EventDependency _dependencies = EventDependency();
+  final EventDependency _dependencies = EventDependency.empty();
 
   int _originatingLocalVersion = 0; // careful!
   int? _localVersionCursor = 0;

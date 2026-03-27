@@ -58,9 +58,7 @@ class StreamAppends {
     required this.dependencies,
     required this.locks,
     required this.events,
-  }) : assert(locks.length > 0),
-       assert(events.length > 0),
-       assert(events.length >= locks.length);
+  });
 }
 
 class StreamAppendOrder {
@@ -98,5 +96,10 @@ abstract interface class EventStoreCommand {
     DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
+  );
+  Future<void> saveFailedCommand(
+    DeviceId thisDeviceId,
+    StoredCommandWrite command,
+    StoredCommandResult result,
   );
 }

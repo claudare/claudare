@@ -57,13 +57,34 @@ class EventStoreSafe implements EventStore {
     DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
-  ) {
+  ) async {
     try {
-      return _store.multiAppendEvents(thisDeviceId, command, appends);
+      final result = await _store.multiAppendEvents(
+        thisDeviceId,
+        command,
+        appends,
+      );
+
+      assert(result.orders.length == appends.events.length);
+
+      return result;
     } on ConcurrencyProblem {
       throw ConcurrencyProblem();
     } catch (cause) {
       throw EventStoreException("Failed to multi append events", cause: cause);
+    }
+  }
+
+  @override
+  Future<void> saveFailedCommand(
+    DeviceId thisDeviceId,
+    StoredCommandWrite command,
+    StoredCommandResult result,
+  ) async {
+    try {
+      await _store.saveFailedCommand(thisDeviceId, command, result);
+    } catch (cause) {
+      throw EventStoreException("Failed to save failed command", cause: cause);
     }
   }
 

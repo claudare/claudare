@@ -5,7 +5,11 @@ import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 /// new events are applied. This is a key on keeping correct order during sync.
 /// A vector is used and stored.
 class EventDependency {
-  final Map<DeviceId, int> _vector = {};
+  final Map<DeviceId, int> _vector;
+
+  const EventDependency(this._vector);
+
+  EventDependency.empty() : _vector = {};
 
   void add(DeviceIdSequencePair causalSequence) {
     if (causalSequence.sequence > (_vector[causalSequence.deviceId] ?? 0)) {
@@ -30,13 +34,9 @@ class EventDependency {
       _vector.entries.map((e) => [e.key.toJson(), e.value]).toList();
 
   // ugly but okay
-  static EventDependency fromJson(List<List<dynamic>> json) =>
-      EventDependency()
-        .._vector.addAll(
-          Map.fromEntries(
-            json.map(
-              (e) => MapEntry(DeviceId.fromJson(e[0] as int), e[1] as int),
-            ),
-          ),
-        );
+  static EventDependency fromJson(List<List<dynamic>> json) => EventDependency(
+    Map.fromEntries(
+      json.map((e) => MapEntry(DeviceId.fromJson(e[0] as int), e[1] as int)),
+    ),
+  );
 }

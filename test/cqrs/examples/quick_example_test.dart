@@ -2,11 +2,12 @@ import 'dart:convert';
 
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
+import 'package:core/src/cqrs/command/command_side_effects.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
-import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
 
@@ -144,7 +145,7 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
 
     final streamSink = ctx.stream(_exampleEventCodec, _exampleStreamId, "sink");
 
-    await streamSink.lockLatest();
+    await streamSink.lock();
 
     streamSink.append(_ExampleEventAdd(valueAdd: count));
   }
@@ -194,16 +195,35 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
   }
 }
 
+class _ExampleSideEffects implements CommandSideEffects {
+  int _id = 0;
+
+  @override
+  DateTime currentTime() {
+    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }
+
+  @override
+  String newId() {
+    return (++_id).toString();
+  }
+}
+
 // TODO: 2 examples, with methods from here https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/
 // one with getAndStore, another with direct DB apply()
 // this is a way to demo on how to use this and to test usage of all features!
 void main() {
   group('CQRS Quick Example', () {
     test('standalone use', () async {
-      final eventStore = MemoryEventStore(
-        getTime: () => DateTime.fromMillisecondsSinceEpoch(0),
+      final sideEffects = _ExampleSideEffects();
+      final eventStore = MemoryEventStore(getTime: sideEffects.currentTime);
+      final deviceId = DeviceId(41);
+
+      final executer = CommandExecutor(
+        eventStore: eventStore,
+        sideEffects: sideEffects,
+        thisDeviceId: deviceId,
       );
-      final executer = CommandExecutor(eventStore);
 
       final cmdDep = _ExampleDep();
       final cmd = _ExampleCommand(cmdDep);

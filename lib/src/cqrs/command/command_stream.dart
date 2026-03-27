@@ -1,3 +1,4 @@
+import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/event_store_stream_reader.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
@@ -7,13 +8,17 @@ import 'package:core/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:core/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_found_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_locked_exception.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
-class CommandStream<Event> {
+class CommandStream<Event, IdData> {
   final EventStoreCommand _eventStore;
-  final StreamAppends _appends;
+  final CommandAppends _appends;
   final EventCodec<Event> _codec;
   final int _pageSize; // TODO: unhardcode
   final String _streamId;
+  final IdData _streamIdData;
+  final StreamIdPattern<IdData> _streamIdPattern;
+
   bool _locked = false;
 
   CommandStream(
@@ -22,6 +27,8 @@ class CommandStream<Event> {
     this._codec,
     this._pageSize,
     this._streamId,
+    this._streamIdData,
+    this._streamIdPattern,
   );
 
   void _ensureLocked() {
@@ -64,6 +71,33 @@ class CommandStream<Event> {
         ),
       );
     }
+  }
+
+  /// Just performs the simplest lock. Stream could exist or could not exist.
+  /// This will try to lock dependencies to the **last** event in the stream.
+  /// TODO: this needs more considerations from naming/usability perspective
+  /// maybe rename to `lockAny`?
+  Future<void> lock() async {
+    _tryLock();
+
+    final info = await _eventStore.getStreamInfoLast(_streamId);
+
+    if (info == null) {
+      _appends.locks.add(
+        StreamLock(streamId: _streamId, originatingVersion: 0),
+      );
+      return;
+    }
+
+    _appends.dependencies.add(info.causalSequencePair);
+    _appends.locks.add(
+      StreamLock(
+        streamId: _streamId,
+        originatingVersion: info.originatingVersion,
+      ),
+    );
+
+    return;
   }
 
   /// Ensures the stream exists.
@@ -121,23 +155,32 @@ class CommandStream<Event> {
     );
   }
 
-  CommandStream<Event> append(Event event) {
+  CommandStream<Event, IdData> append(Event event) {
     _ensureLocked();
 
-    final encoded = _codec.encode(event);
-    _appends.events.add(
-      StoredEventCommandWrite(
-        streamId: _streamId,
-        kind: encoded.kind,
-        detail: encoded.detail,
-        occuredAt: DateTime.now(), // TODO: side effect!
+    final occuredAt = DateTime.now(); // TODO: side effect!
+
+    // todo: this should encode here, but also pass the raw event
+    // this is done so that encoding errors are readable and apparent
+    // the failures are at the call site
+    // do not encode here!
+    final encodedEvent = _codec.encode(event);
+
+    _appends.appendEvents.add(
+      CommandAppendEvent<Event, IdData>(
+        streamIdStr: _streamId,
+        streamIdData: _streamIdData,
+        streamIdPattern: _streamIdPattern,
+        event: event,
+        encodedEvent: encodedEvent,
+        occuredAt: occuredAt,
       ),
     );
 
     return this;
   }
 
-  CommandStream<Event> appendMany(Iterable<Event> events) {
+  CommandStream<Event, IdData> appendMany(Iterable<Event> events) {
     _ensureLocked();
 
     for (var event in events) {

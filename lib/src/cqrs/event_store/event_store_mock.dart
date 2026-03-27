@@ -39,6 +39,16 @@ class EventStoreMock implements EventStoreCommand, EventStoreProjection {
     throw UnimplementedError();
   }
 
+  @override
+  Future<void> saveFailedCommand(
+    DeviceId thisDeviceId,
+    StoredCommandWrite command,
+    StoredCommandResult result,
+  ) {
+    // TODO: implement saveFailedCommand
+    throw UnimplementedError();
+  }
+
   // --- projection
   @override
   Future<GetGlobalEventsResult> getGlobalEvents(

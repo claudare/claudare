@@ -8,17 +8,27 @@ class LiveEventMin {
   /// anothe reason to move it out
   final StreamIdPattern streamIdPattern;
   final dynamic event;
-  final dynamic metadata;
-  final DateTime createdAt;
+  final DateTime occuredAt;
 
   const LiveEventMin({
     required this.streamIdStr,
     required this.streamIdData,
     required this.streamIdPattern,
     required this.event,
-    required this.metadata,
-    required this.createdAt,
+    required this.occuredAt,
   });
+
+  LiveEventFull toFull({required int localSequence, required int version}) {
+    return LiveEventFull(
+      streamIdStr: streamIdStr,
+      streamIdData: streamIdData,
+      streamIdPattern: streamIdPattern,
+      event: event,
+      occuredAt: occuredAt,
+      localSequence: localSequence,
+      version: version,
+    );
+  }
 }
 
 class LiveEventFull extends LiveEventMin {
@@ -33,8 +43,7 @@ class LiveEventFull extends LiveEventMin {
     required super.streamIdData,
     required super.streamIdPattern,
     required super.event,
-    required super.metadata,
-    required super.createdAt,
+    required super.occuredAt,
     required this.localSequence,
     required this.version,
   });
