@@ -30,9 +30,22 @@ class ProjectionRouter {
   Future<void> dispatchAndWait(Iterable<LiveEventFull> events) {
     if (_runtimes.isEmpty) return Future.value();
 
-    final targets = <ProjectionRuntime, int>{};
+    final completer = Completer<void>();
+    var remaining = 1; // sentinel
+    var completed = false;
 
-    // Enqueue immediately, track latest sequence per runner.
+    void oneDone() {
+      assert(remaining > 0, 'onDone called more times than registered');
+      assert(!completed, 'onDone called after completion');
+
+      if (completed) return;
+      remaining--;
+      if (remaining == 0) {
+        completed = true;
+        completer.complete();
+      }
+    }
+
     for (final event in events) {
       for (final runner in _runtimes) {
         final isAffected = runner.shouldProcess(
@@ -41,34 +54,13 @@ class ProjectionRouter {
         );
         if (!isAffected) continue;
 
-        // the enqueue will use scheduleMicrotask.
-        // this is a bit confusing, but elegant.
-        // The only way to enqueue and wait without extra memory and
-        // iteration
-        runner.enqueue(event);
-        targets[runner] = event.checkpoint.localSequence;
+        remaining++;
+        runner.enqueue(event, onDone: oneDone);
       }
     }
 
-    if (targets.isEmpty) return Future.value();
-
-    final completer = Completer<void>();
-    var remaining = targets.length;
-    var done = false;
-
-    void oneDone() {
-      if (done) return;
-      remaining--;
-      if (remaining == 0) {
-        done = true;
-        completer.complete();
-      }
-    }
-
-    // Safe if onReached triggers immediately when already reached.
-    for (final entry in targets.entries) {
-      entry.key.onReached(entry.value, oneDone);
-    }
+    // Release sentinel after all registrations are done.
+    oneDone();
 
     return completer.future;
   }

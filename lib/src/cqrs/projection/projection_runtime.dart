@@ -28,11 +28,10 @@ class ProjectionRuntime<TEvents, TIdData> {
     return identical(_projection, projection);
   }
 
-  void onReached(int targetSequence, void Function() callback) {
-    _queue.onReached(targetSequence, callback);
-  }
-
-  void enqueue(LiveEventFull<TEvents, TIdData> liveEvent) {
+  void enqueue(
+    LiveEventFull<TEvents, TIdData> liveEvent, {
+    void Function()? onDone,
+  }) {
     _queue.enqueue(
       QueueItem(
         aggregateIdData: liveEvent.streamIdData,
@@ -40,6 +39,7 @@ class ProjectionRuntime<TEvents, TIdData> {
         meta: liveEvent.eventMetadata,
       ),
       liveEvent.localSequence,
+      onDone: onDone,
     );
   }
 
@@ -112,10 +112,6 @@ class ProjectionRuntime<TEvents, TIdData> {
       _failureState.capture(error, stackTrace);
       return;
     }
-  }
-
-  Future<void> testWaitLatestSetted() {
-    return _queue.testWaitForLatest();
   }
 
   Future<void> _handleApply(QueueItem<TEvents, TIdData> item) async {
