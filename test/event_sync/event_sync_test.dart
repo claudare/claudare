@@ -4,7 +4,6 @@ import 'package:core/protocol.dart';
 import 'package:core/src/client_transport/connection/stub.dart';
 import 'package:core/src/event_store/event_clock.dart';
 import 'package:core/src/event_sync/event_sync.dart';
-import 'package:pointycastle/api.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 

@@ -87,7 +87,6 @@ void main() {
 
       test("get stream events", () async {
         final streamId = "test";
-        final deviceId = DeviceId(1);
         final t0 = DateTime.fromMillisecondsSinceEpoch(0);
         final t1 = DateTime.fromMillisecondsSinceEpoch(1000);
         final t2 = DateTime.fromMillisecondsSinceEpoch(2000);

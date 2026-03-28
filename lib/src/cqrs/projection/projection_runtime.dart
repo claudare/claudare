@@ -1,4 +1,3 @@
-import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/event/live_event.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
