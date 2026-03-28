@@ -4,7 +4,6 @@ import 'package:core/protocol.dart';
 import 'package:core/src/client_transport/connection/stub.dart';
 import 'package:core/src/event_store/event_clock.dart';
 import 'package:core/src/event_sync/event_sync.dart';
-import 'package:pointycastle/api.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -64,7 +63,9 @@ void main() {
       final serverClaim = await keychainPairs.server.makeClaim(clientDeviceId);
       expect(eventSync.authExchange.done, isFalse);
 
+      // ignore: unawaited_futures
       expectLater(eventSync.init(), completes);
+      // ignore: unawaited_futures
       expectLater(eventSync.lifetime, completes);
 
       // send own auth
@@ -123,6 +124,7 @@ void main() {
         }
       });
 
+      // ignore: unawaited_futures
       expectLater(eventSync.lifetime, throwsException);
       expect(
         () => eventSync.init(),
