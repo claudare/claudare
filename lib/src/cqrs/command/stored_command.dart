@@ -1,3 +1,4 @@
+import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 
 /// TODO: this needs to have dependencies?
@@ -13,23 +14,6 @@ class StoredCommandWrite {
     required this.startedAt,
     required this.completedAt,
   });
-}
-
-class StoredCommandResult {
-  final String? nackReason;
-  // this cannot be an error. An error is propagated up, never swallowed
-  final Exception? exception;
-
-  const StoredCommandResult({
-    required this.nackReason,
-    required this.exception,
-  });
-
-  const StoredCommandResult.nack({required String reason})
-    : this(nackReason: reason, exception: null);
-
-  const StoredCommandResult.exception({required Exception exception})
-    : this(nackReason: null, exception: exception);
 }
 
 /// [StoredCommandRead] includes everything... probably should be flat
@@ -55,6 +39,6 @@ class StoredCommandRead {
     required this.exception,
   });
 
-  StoredCommandResult get result =>
-      StoredCommandResult(nackReason: nackReason, exception: exception);
+  CommandResult get result =>
+      CommandResult(nackReason: nackReason, exception: exception);
 }

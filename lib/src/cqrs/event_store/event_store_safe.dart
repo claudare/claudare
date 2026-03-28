@@ -1,3 +1,4 @@
+import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
@@ -7,9 +8,8 @@ import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
-// TODO: this needs to wrap projection and command separately?
-// each one will get thier own reader
-// reader must operate on the safe variant
+// TODO: separate to projection vs commnd
+// TODO: rename to Adapter
 class EventStoreSafe implements EventStore {
   final EventStore _store;
 
@@ -82,7 +82,7 @@ class EventStoreSafe implements EventStore {
   Future<void> saveFailedCommand(
     DeviceId thisDeviceId,
     StoredCommandWrite command,
-    StoredCommandResult result,
+    CommandResult result,
   ) async {
     try {
       await _store.saveFailedCommand(thisDeviceId, command, result);

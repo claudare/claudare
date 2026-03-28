@@ -1,5 +1,6 @@
 /// A unified way to deal with timestamps.
 /// Essentially, this is a unix timestamp.
+/// Should I use this instead of DateTime?
 class Timestamp implements Comparable<Timestamp> {
   /// unix millisecond value
   final DateTime value;

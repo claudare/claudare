@@ -1,35 +1,21 @@
-import 'dart:convert';
-
 import 'package:core/src/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
 
-class OpenAccountInput {
+class OpenAccountInput implements CommandInput {
   final String name;
 
   const OpenAccountInput({required this.name});
 
-  toJson() => {'name': name};
+  @override
+  String get kind => 'OpenAccount';
 
-  factory OpenAccountInput.fromJson(Map<String, dynamic> json) =>
-      OpenAccountInput(name: json['name'] as String);
+  @override
+  Map<String, dynamic> toJson() => {'name': name};
 }
 
 class OpenAccount implements Command<OpenAccountInput> {
-  @override
-  String get kind => 'openAccount';
-
-  @override
-  parseDetail(str) {
-    return OpenAccountInput.fromJson(jsonDecode(str));
-  }
-
-  @override
-  String encodeDetail(input) {
-    return jsonEncode(input.toJson());
-  }
-
   @override
   Future<void> handle(input, ctx) async {
     final accountId = ctx.newId();

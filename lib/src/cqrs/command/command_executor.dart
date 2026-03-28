@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/command_context.dart';
+import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
+import 'package:core/src/cqrs/command/command_result.dart';
+import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
@@ -9,8 +14,11 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
+import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
 import 'package:core/src/cqrs/id_generator/id_generator.dart';
 import 'package:core/src/cqrs/time_provider/time_provider.dart';
+
+import '../json_error.dart';
 
 class CommandExecutor {
   final EventStoreCommand _eventStore;
@@ -32,9 +40,9 @@ class CommandExecutor {
        _thisDeviceId = thisDeviceId,
        _pageSize = pageSize;
 
-  Future<List<LiveEventFull>> executeThrowable<TInput>(
-    Command<TInput> command,
-    TInput input,
+  Future<List<LiveEventFull>> executeThrowable<Input extends CommandInput>(
+    Command<Input> command,
+    Input input,
   ) async {
     final startedAt = _timeProvider.now();
     final nacker = CommandNacker();
@@ -62,7 +70,7 @@ class CommandExecutor {
           startedAt,
           command,
           input,
-          StoredCommandResult.exception(exception: cause),
+          CommandResult.exception(exception: cause),
         );
 
         throw CommandExecutionException(cause.toString(), cause: cause);
@@ -76,27 +84,50 @@ class CommandExecutor {
         startedAt,
         command,
         input,
-        StoredCommandResult.nack(reason: nacker.message!),
+        CommandResult.nack(reason: nacker.message!),
       );
 
       throw CommandNack(message: nacker.message!);
     }
 
-    return _saveEvents<TInput>(appends, startedAt, command, input);
+    return _saveEvents<Input>(appends, startedAt, command, input);
   }
 
-  Future<List<LiveEventFull>> _saveEvents<TInput>(
+  EncodedCommand _encodeCommand<Input extends CommandInput>(Input input) {
+    try {
+      return EncodedCommand(
+        kind: input.kind,
+        detail: jsonEncode(input.toJson()),
+      );
+    } catch (e, st) {
+      if (JsonError.isJsonLikeError(e)) {
+        Error.throwWithStackTrace(
+          CommandSerializationException(e.toString(), error: e),
+          st,
+        );
+      }
+
+      if (e is Exception) {
+        Error.throwWithStackTrace(
+          CommandSerializationException(e.toString(), error: e),
+          st,
+        );
+      }
+
+      Error.throwWithStackTrace(e, st);
+    }
+  }
+
+  Future<List<LiveEventFull>> _saveEvents<TInput extends CommandInput>(
     CommandAppends commandAppends,
     DateTime startedAt,
     Command<TInput> command,
     TInput input,
   ) async {
-    final detailString = command.encodeDetail(
-      input,
-    ); // TODO: this needs to be made safe
+    final encoded = _encodeCommand(input);
     final issuedCommand = StoredCommandWrite(
-      kind: command.kind,
-      detail: detailString,
+      kind: encoded.kind,
+      detail: encoded.detail,
       startedAt: startedAt,
       completedAt: _timeProvider.now(),
     );
@@ -126,20 +157,18 @@ class CommandExecutor {
   }
 
   /// saves command that fails. This never throws!
-  Future<void> _saveFailedCommand<TInput>(
+  Future<void> _saveFailedCommand<Input extends CommandInput>(
     DateTime startedAt,
-    Command<TInput> command,
-    TInput input,
-    StoredCommandResult result,
+    Command<Input> command,
+    Input input,
+    CommandResult result,
   ) async {
     try {
-      final detailString = command.encodeDetail(
-        input,
-      ); // this does not need to be safe
+      final encoded = _encodeCommand(input);
 
       final issuedCommand = StoredCommandWrite(
-        kind: command.kind,
-        detail: detailString,
+        kind: encoded.kind,
+        detail: encoded.detail,
         startedAt: startedAt,
         completedAt: _timeProvider.now(),
       );

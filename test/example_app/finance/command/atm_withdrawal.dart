@@ -1,40 +1,23 @@
-import 'dart:convert';
-
 import 'package:core/src/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
 
-class AtmWithdrawalInput {
+class AtmWithdrawalInput implements CommandInput {
   final String accountId;
   final int amount;
 
   AtmWithdrawalInput({required this.accountId, required this.amount})
     : assert(amount > 0);
 
-  Map<String, dynamic> toJson() => {'accountId': accountId, 'amount': amount};
-
-  static AtmWithdrawalInput fromJson(Map<String, dynamic> json) =>
-      AtmWithdrawalInput(
-        accountId: json['accountId'] as String,
-        amount: json['amount'] as int,
-      );
-}
-
-class AtmWithdrawal implements Command<AtmWithdrawalInput> {
   @override
   String get kind => 'atmWithdrawal';
 
   @override
-  parseDetail(str) {
-    return AtmWithdrawalInput.fromJson(jsonDecode(str));
-  }
+  Map<String, dynamic> toJson() => {'accountId': accountId, 'amount': amount};
+}
 
-  @override
-  String encodeDetail(input) {
-    return jsonEncode(input.toJson());
-  }
-
+class AtmWithdrawal implements Command<AtmWithdrawalInput> {
   @override
   Future<void> handle(input, ctx) async {
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);

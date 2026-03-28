@@ -23,6 +23,7 @@ export 'cqrs/event/encoded_event.dart';
 
 // command
 export 'cqrs/command/command.dart';
+export 'cqrs/command/command_input.dart';
 export 'cqrs/command/command_context.dart';
 
 // projection

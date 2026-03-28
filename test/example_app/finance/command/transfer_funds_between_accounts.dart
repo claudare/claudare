@@ -5,7 +5,7 @@ import 'package:core/src/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
 
-class TransferFundsBetweenAccountsInput {
+class TransferFundsBetweenAccountsInput implements CommandInput {
   final String fromAccountId;
   final String toAccountId;
   final int amount;
@@ -16,37 +16,20 @@ class TransferFundsBetweenAccountsInput {
     required this.amount,
   }) : assert(amount > 0);
 
+  @override
+  String get kind => 'TransferFundsBetweenAccounts';
+
+  @override
   Map<String, dynamic> toJson() => {
     'fromAccountId': fromAccountId,
     'toAccountId': toAccountId,
     'amount': amount,
   };
-
-  static TransferFundsBetweenAccountsInput fromJson(
-    Map<String, dynamic> json,
-  ) => TransferFundsBetweenAccountsInput(
-    fromAccountId: json['fromAccountId'] as String,
-    toAccountId: json['toAccountId'] as String,
-    amount: json['amount'] as int,
-  );
 }
 
 /// An example of using multiple streams + consistency check
 class TransferFundsBetweenAccounts
     implements Command<TransferFundsBetweenAccountsInput> {
-  @override
-  String get kind => 'transferFundsBetweenAccounts';
-
-  @override
-  parseDetail(str) {
-    return TransferFundsBetweenAccountsInput.fromJson(jsonDecode(str));
-  }
-
-  @override
-  String encodeDetail(input) {
-    return jsonEncode(input.toJson());
-  }
-
   @override
   Future<void> handle(input, ctx) async {
     final fromStream = ctx.stream(

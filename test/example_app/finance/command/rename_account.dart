@@ -1,42 +1,24 @@
-import 'dart:convert';
-
 import 'package:core/src/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
 
-class RenameAccountInput {
+class RenameAccountInput implements CommandInput {
   final String accountId;
   final String newName;
 
   RenameAccountInput({required this.accountId, required this.newName});
 
+  @override
+  String get kind => 'RenameAccount';
+
+  @override
   Map<String, dynamic> toJson() {
     return {'accountId': accountId, 'newName': newName};
   }
-
-  factory RenameAccountInput.fromJson(Map<String, dynamic> json) {
-    return RenameAccountInput(
-      accountId: json['accountId'] as String,
-      newName: json['newName'] as String,
-    );
-  }
 }
 
-class RenameAccount extends Command<RenameAccountInput> {
-  @override
-  String get kind => 'renameAccount';
-
-  @override
-  String encodeDetail(RenameAccountInput input) {
-    return input.toJson().toString();
-  }
-
-  @override
-  RenameAccountInput parseDetail(String str) {
-    return RenameAccountInput.fromJson(jsonDecode(str));
-  }
-
+class RenameAccount implements Command<RenameAccountInput> {
   @override
   Future<void> handle(input, ctx) async {
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);

@@ -2,13 +2,19 @@ enum EventCodecDirection { encode, decode }
 
 class EventCodecException implements Exception {
   final String message;
-  final dynamic cause;
+  final Object? error;
+  final StackTrace? stackTrace;
   final EventCodecDirection direction;
 
-  EventCodecException(this.message, {required this.direction, this.cause});
+  const EventCodecException(
+    this.message, {
+    required this.direction,
+    this.error,
+    this.stackTrace,
+  });
 
   @override
   String toString() {
-    return 'EventCodecException{message: $message, cause: $cause, direction: $direction}';
+    return 'EventCodecException{message: $message, error: $error, direction: $direction}';
   }
 }

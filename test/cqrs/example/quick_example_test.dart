@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
+import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
@@ -80,15 +81,16 @@ final _exampleStreamId = StreamIdPatternWildcard("example/*");
 // instance sshould be used
 const _exampleEventCodec = _ExampleEventCodec();
 
-class _ExampleCommandInput {
+class _ExampleCommandInput implements CommandInput {
   final int value;
 
   _ExampleCommandInput({required this.value});
 
-  toJson() => {'value': value};
+  @override
+  String get kind => 'exampleCommand';
 
-  factory _ExampleCommandInput.fromJson(Map<String, dynamic> json) =>
-      _ExampleCommandInput(value: json['value'] as int);
+  @override
+  toJson() => {'value': value};
 }
 
 class _ExampleDep {
@@ -101,19 +103,6 @@ class _ExampleCommand implements Command<_ExampleCommandInput> {
   final _ExampleDep dep;
 
   const _ExampleCommand(this.dep);
-
-  @override
-  String get kind => 'exampleCommand';
-
-  @override
-  parseDetail(str) {
-    return _ExampleCommandInput.fromJson(jsonDecode(str));
-  }
-
-  @override
-  String encodeDetail(input) {
-    return jsonEncode(input.toJson());
-  }
 
   @override
   Future<void> handle(input, ctx) async {

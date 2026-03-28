@@ -1,4 +1,5 @@
 import 'package:core/src/cqrs/causal_sequence.dart';
+import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
@@ -378,7 +379,7 @@ class MemoryEventStore implements EventStore {
   Future<void> saveFailedCommand(
     DeviceId thisDeviceId,
     StoredCommandWrite command,
-    StoredCommandResult result,
+    CommandResult result,
   ) async {
     final memoryCommand = MemoryCommandInsert(
       deviceId: thisDeviceId,

@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
+import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 import 'package:core/src/cqrs/device_id.dart';
@@ -53,8 +54,8 @@ class CqrsRuntime {
     // tell database to shutdown gracefully
   }
 
-  BoundCommand<TInput> bindCommand<TInput>(
-    Command<TInput> command,
+  BoundCommand<Input> bindCommand<Input extends CommandInput>(
+    Command<Input> command,
     List<Projection> consistentProjectors,
   ) {
     final executor = CommandExecutor(

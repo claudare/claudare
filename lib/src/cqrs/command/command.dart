@@ -1,14 +1,8 @@
-import 'package:core/src/cqrs/command/command_context.dart';
+import 'command_input.dart';
+import 'command_context.dart';
 
-abstract class Command<TInput> {
+abstract interface class Command<Input extends CommandInput> {
   const Command();
 
-  String get kind;
-
-  String encodeDetail(TInput input);
-
-  /// TODO: parsing is not needed... TInput could be forced to define toJson() or toString()
-  TInput parseDetail(String str);
-
-  Future<void> handle(TInput input, CommandContext ctx);
+  Future<void> handle(Input input, CommandContext ctx);
 }

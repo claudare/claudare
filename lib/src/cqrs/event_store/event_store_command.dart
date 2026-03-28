@@ -1,3 +1,4 @@
+import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
@@ -92,6 +93,7 @@ abstract interface class EventStoreCommand {
   // This is a local command insertion
   // deviceId should be passed here either in the write or as a parameter
   // the database should have no idea whats its deviceId
+  // TODO: merge two implementation. result is always available
   Future<StreamAppendResult> multiAppendEvents(
     DeviceId thisDeviceId,
     StoredCommandWrite command,
@@ -100,6 +102,6 @@ abstract interface class EventStoreCommand {
   Future<void> saveFailedCommand(
     DeviceId thisDeviceId,
     StoredCommandWrite command,
-    StoredCommandResult result,
+    CommandResult result,
   );
 }
