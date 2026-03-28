@@ -10,6 +10,10 @@ class CausalSequence {
 
   CausalSequence() : _latestDevice = DeviceId.zero(), _latestSequence = 0;
 
+  CausalSequence.fromSequencePair(DeviceIdSequencePair causalSequence)
+    : _latestDevice = causalSequence.deviceId,
+      _latestSequence = causalSequence.sequence;
+
   /// when new causal sequence arrives, also used to init
   void sync(DeviceIdSequencePair causalSequence) {
     if (causalSequence.sequence >= _latestSequence) {
@@ -18,9 +22,13 @@ class CausalSequence {
     }
   }
 
-  void forceReset(DeviceIdSequencePair causalSequence) {
+  void rollback(DeviceIdSequencePair causalSequence) {
     _latestDevice = causalSequence.deviceId;
     _latestSequence = causalSequence.sequence;
+  }
+
+  CausalSequence copy() {
+    return CausalSequence.fromSequencePair(current());
   }
 
   DeviceIdSequencePair current() {

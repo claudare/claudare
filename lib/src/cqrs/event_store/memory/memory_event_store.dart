@@ -1,9 +1,9 @@
 import 'package:core/src/cqrs/causal_sequence.dart';
-import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/device_sequences.dart';
+import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
@@ -44,8 +44,7 @@ class MemoryEvent {
     causalSequence: causalSequence,
     localVersion: localVersion,
 
-    kind: kind,
-    detail: detail,
+    encodedEvent: EncodedEvent(kind: kind, detail: detail),
     occuredAt: createdAt,
   );
 
@@ -266,23 +265,6 @@ class MemoryEventStore implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId) async {
-    final events = _getStreamEvents(streamId);
-
-    if (events.isEmpty) {
-      return null;
-    }
-
-    return GetStreamInfoResult(
-      causalSequencePair: DeviceIdSequencePair(
-        events.first.deviceId,
-        events.first.causalSequence,
-      ),
-      originatingVersion: events.length,
-    );
-  }
-
-  @override
   Future<GetStreamInfoResult?> getStreamInfoLast(String streamId) async {
     final events = _getStreamEvents(streamId);
 
@@ -301,29 +283,32 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<StreamAppendResult> multiAppendEvents(
-    DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
     return await writeTransaction.protect(() async {
       final memoryCommand = MemoryCommandInsert(
-        deviceId: thisDeviceId,
-        kind: command.kind,
-        detail: command.detail,
+        deviceId: command.deviceId,
+        kind: command.encoded.kind,
+        detail: command.encoded.detail,
         startedAt: command.startedAt,
         completedAt: command.completedAt,
         dependencies: appends.dependencies,
-        nackReason: null,
-        exception: null,
+        nackReason: command.result.nackReason,
+        exception: command.result.exception,
       );
+
+      if (appends.events.isEmpty) {
+        return StreamAppendResult.empty();
+      }
 
       final result = StreamAppendResult(orders: []);
 
       // aggreageteIdStr + latest version (for consistency check)
       final streams = <String, int>{};
 
-      // check consistency
-      for (final lock in appends.locks) {
+      // check local consistency
+      for (final lock in appends.localLocks) {
         final info = await getStreamInfoLast(lock.streamId);
 
         final originatingVersion = info == null ? 0 : info.originatingVersion;
@@ -339,17 +324,17 @@ class MemoryEventStore implements EventStore {
       for (final event in appends.events) {
         final streamIdStr = event.streamId;
         final prevVersion = streams[streamIdStr];
-        if (prevVersion == null) {
-          throw StateError('Incorrect command implementation (internal)');
-        }
-        final version = prevVersion + 1;
+
+        assert(prevVersion != null);
+
+        final version = prevVersion! + 1;
 
         final ins = _insertEvent(
           MemoryEventInsert(
-            deviceId: thisDeviceId,
+            deviceId: command.deviceId,
             streamId: streamIdStr,
-            kind: event.kind,
-            detail: event.detail,
+            kind: event.encodedEvent.kind,
+            detail: event.encodedEvent.detail,
             localVersion: version,
             emitedAt: event.occuredAt,
           ),
@@ -373,28 +358,6 @@ class MemoryEventStore implements EventStore {
 
       return result;
     });
-  }
-
-  @override
-  Future<void> saveFailedCommand(
-    DeviceId thisDeviceId,
-    StoredCommandWrite command,
-    CommandResult result,
-  ) async {
-    final memoryCommand = MemoryCommandInsert(
-      deviceId: thisDeviceId,
-      kind: command.kind,
-      detail: command.detail,
-      startedAt: command.startedAt,
-      completedAt: command.completedAt,
-      dependencies: EventDependency.empty(),
-      nackReason: result.nackReason,
-      exception: result.exception,
-    );
-
-    _insertCommand(memoryCommand);
-
-    _emitChange();
   }
 
   // --- projection

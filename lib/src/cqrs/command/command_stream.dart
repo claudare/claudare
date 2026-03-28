@@ -60,7 +60,7 @@ class CommandStream<Event, IdData> {
       while (await reader.loadMore()) {
         for (final e in reader.currentPage) {
           dependencies.add(DeviceIdSequencePair(e.deviceId, e.causalSequence));
-          yield _codec.decode(EncodedEvent(kind: e.kind, detail: e.detail));
+          yield _codec.decode(e.encodedEvent);
         }
       }
     } finally {
@@ -80,14 +80,14 @@ class CommandStream<Event, IdData> {
 
     if (info == null) {
       _appends.locks.add(
-        StreamLock(streamId: _streamId, originatingVersion: 0),
+        StreamLocalLock(streamId: _streamId, originatingVersion: 0),
       );
       return;
     }
 
     _appends.dependencies.add(info.causalSequencePair);
     _appends.locks.add(
-      StreamLock(
+      StreamLocalLock(
         streamId: _streamId,
         originatingVersion: info.originatingVersion,
       ),
@@ -109,7 +109,7 @@ class CommandStream<Event, IdData> {
 
     _appends.dependencies.add(info.causalSequencePair);
     _appends.locks.add(
-      StreamLock(
+      StreamLocalLock(
         streamId: _streamId,
         originatingVersion: info.originatingVersion,
       ),
@@ -123,12 +123,14 @@ class CommandStream<Event, IdData> {
   Future<void> mustNotExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfoFirst(_streamId);
+    final info = await _eventStore.getStreamInfoLast(_streamId);
     if (info != null) {
       throw StreamAlreadyExistsException(_streamId);
     }
 
-    _appends.locks.add(StreamLock(streamId: _streamId, originatingVersion: 0));
+    _appends.locks.add(
+      StreamLocalLock(streamId: _streamId, originatingVersion: 0),
+    );
   }
 
   /// Ensure stream exists.
@@ -138,14 +140,14 @@ class CommandStream<Event, IdData> {
   Future<void> mustExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfoFirst(_streamId);
+    final info = await _eventStore.getStreamInfoLast(_streamId);
     if (info == null) {
       throw StreamNotFoundException(_streamId);
     }
 
     _appends.dependencies.add(info.causalSequencePair);
     _appends.locks.add(
-      StreamLock(
+      StreamLocalLock(
         streamId: _streamId,
         originatingVersion: info.originatingVersion,
       ),
@@ -164,7 +166,7 @@ class CommandStream<Event, IdData> {
         streamIdStr: _streamId,
         streamIdData: _streamIdData,
         streamIdPattern: _streamIdPattern,
-        event: event,
+        runtimeEvent: event,
         encodedEvent: encodedEvent,
         occuredAt: occuredAt,
       ),

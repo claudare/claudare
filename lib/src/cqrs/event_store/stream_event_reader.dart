@@ -32,7 +32,7 @@ class StreamEventReader {
     return _current.isNotEmpty;
   }
 
-  StreamLock get streamLock => StreamLock(
+  StreamLocalLock get streamLock => StreamLocalLock(
     streamId: _streamId,
     originatingVersion: _originatingLocalVersion,
   );

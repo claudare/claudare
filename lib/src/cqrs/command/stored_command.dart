@@ -1,44 +1,40 @@
 import 'package:core/src/cqrs/command/command_result.dart';
+import 'package:core/src/cqrs/command/encoded_command.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 
 /// TODO: this needs to have dependencies?
 class StoredCommandWrite {
-  final String kind;
-  final String detail;
+  final DeviceId deviceId;
+  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
+  final CommandResult result;
 
   const StoredCommandWrite({
-    required this.kind,
-    required this.detail,
+    required this.deviceId,
+    required this.encoded,
     required this.startedAt,
     required this.completedAt,
+    required this.result,
   });
 }
 
-/// [StoredCommandRead] includes everything... probably should be flat
-/// this is not gonna be used for a while
+/// [StoredCommandRead] is used for iterating events inside the commands
 class StoredCommandRead {
-  final String kind;
-  final String detail;
+  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final EventDependency dependencies;
 
-  final String? nackReason;
-  final Exception? exception; // can this be error too... this is any failure
+  final CommandResult result;
 
   const StoredCommandRead({
-    required this.kind,
-    required this.detail,
+    required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.dependencies,
 
-    required this.nackReason,
-    required this.exception,
+    required this.result,
   });
-
-  CommandResult get result =>
-      CommandResult(nackReason: nackReason, exception: exception);
 }

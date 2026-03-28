@@ -1,5 +1,8 @@
+import 'package:core/src/cqrs/command/command_result.dart';
+import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
@@ -40,13 +43,7 @@ void main() {
         expect(res.events.length, 0);
       });
 
-      test("get empty stream info first", () async {
-        final res = await store.getStreamInfoFirst("non-existing");
-
-        expect(res, isNull);
-      });
-
-      test("get empty stream info last", () async {
+      test("get empty stream info", () async {
         final res = await store.getStreamInfoLast("non-existing");
 
         expect(res, isNull);
@@ -60,11 +57,12 @@ void main() {
         final t2 = DateTime.fromMillisecondsSinceEpoch(2000);
 
         final insertRes = await store.multiAppendEvents(
-          deviceId,
           _fakeCommand(startedAt: t0, completedAt: t1),
           StreamAppends(
             dependencies: EventDependency({}),
-            locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
+            localLocks: [
+              StreamLocalLock(streamId: streamId, originatingVersion: 0),
+            ],
             events: [
               _fakeEvent(streamId: streamId, kind: "test", occuredAt: t2),
             ],
@@ -82,24 +80,56 @@ void main() {
         final e = events.first;
         expect(e.deviceId, deviceId);
         expect(e.causalSequence, 1);
-        expect(e.kind, 'test');
-        expect(e.detail, '{}');
+        expect(e.encodedEvent.kind, 'test');
+        expect(e.encodedEvent.detail, '{}');
         expect(e.occuredAt, t2);
       });
 
+      test("get stream events", () async {
+        final streamId = "test";
+        final deviceId = DeviceId(1);
+        final t0 = DateTime.fromMillisecondsSinceEpoch(0);
+        final t1 = DateTime.fromMillisecondsSinceEpoch(1000);
+        final t2 = DateTime.fromMillisecondsSinceEpoch(2000);
+
+        await store.multiAppendEvents(
+          _fakeCommand(startedAt: t0, completedAt: t1),
+          StreamAppends(
+            dependencies: EventDependency({}),
+            localLocks: [
+              StreamLocalLock(streamId: streamId, originatingVersion: 0),
+            ],
+            events: [
+              _fakeEvent(streamId: streamId, kind: "test-1", occuredAt: t2),
+              _fakeEvent(streamId: streamId, kind: "test-2", occuredAt: t2),
+            ],
+          ),
+        );
+
+        final res = await store.getStreamInfoLast(streamId);
+
+        expect(res, isNotNull);
+        expect(res!.originatingVersion, 2);
+
+        // TODO: proper usage of sequences must be tested
+        // Or maybe the sequencer is in the outside?
+        expect(res.causalSequencePair.deviceId.value, 1);
+        expect(res.causalSequencePair.sequence, 2);
+      });
+
       // TODO: a group where all tests have x events inserted
-      group("with events", () {
-        test("paginates on start", () async {
+      group("pagination", () {
+        test("in the beginning", () async {
           final streamId = 'test';
-          final deviceId = DeviceId(1);
           final t0 = DateTime.fromMillisecondsSinceEpoch(0);
 
           final insertRes = await store.multiAppendEvents(
-            deviceId,
             _fakeCommand(startedAt: t0, completedAt: t0),
             StreamAppends(
               dependencies: EventDependency({}),
-              locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
+              localLocks: [
+                StreamLocalLock(streamId: streamId, originatingVersion: 0),
+              ],
               events:
                   List.generate(
                     6,
@@ -120,24 +150,24 @@ void main() {
 
           expect(getRes.events.length, 2);
 
-          expect(events[0].kind, "event-0");
-          expect(events[1].kind, "event-1");
+          expect(events[0].encodedEvent.kind, "event-0");
+          expect(events[1].encodedEvent.kind, "event-1");
 
           expect(events[0].localVersion, 1);
           expect(events[1].localVersion, 2);
         });
 
-        test("paginates in the middle", () async {
+        test("in the middle", () async {
           final streamId = 'test';
-          final deviceId = DeviceId(1);
           final t0 = DateTime.fromMillisecondsSinceEpoch(0);
 
           final insertRes = await store.multiAppendEvents(
-            deviceId,
             _fakeCommand(startedAt: t0, completedAt: t0),
             StreamAppends(
               dependencies: EventDependency({}),
-              locks: [StreamLock(streamId: streamId, originatingVersion: 0)],
+              localLocks: [
+                StreamLocalLock(streamId: streamId, originatingVersion: 0),
+              ],
               events:
                   List.generate(
                     6,
@@ -157,8 +187,8 @@ void main() {
           expect(getRes.originatingVersion, 6);
           expect(getRes.events.length, 2);
 
-          expect(events[0].kind, 'event-2');
-          expect(events[1].kind, 'event-3');
+          expect(events[0].encodedEvent.kind, 'event-2');
+          expect(events[1].encodedEvent.kind, 'event-3');
 
           expect(events[0].localVersion, 3);
           expect(events[1].localVersion, 4);
@@ -173,10 +203,11 @@ StoredCommandWrite _fakeCommand({
   required DateTime completedAt,
 }) {
   return StoredCommandWrite(
-    kind: 'test',
-    detail: '{}',
+    deviceId: DeviceId(1),
+    encoded: EncodedCommand(kind: 'test', detail: '{}'),
     startedAt: startedAt,
     completedAt: completedAt,
+    result: CommandResult.success(),
   );
 }
 
@@ -186,9 +217,9 @@ StoredEventCommandWrite _fakeEvent({
   required DateTime occuredAt,
 }) {
   return StoredEventCommandWrite(
+    encodedEvent: EncodedEvent(kind: kind, detail: '{}'),
     streamId: streamId,
-    kind: kind,
-    detail: '{}',
+
     occuredAt: occuredAt,
   );
 }

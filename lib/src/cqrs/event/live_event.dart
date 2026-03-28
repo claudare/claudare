@@ -3,19 +3,18 @@ import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class LiveEventMin<Event, IdData> {
+  final StreamIdPattern streamIdPattern;
   final String streamIdStr;
   final IdData streamIdData;
 
-  /// momento is not needed here. event is already something in memory decoded.
-  /// anothe reason to move it out
-  final StreamIdPattern streamIdPattern;
   final Event event;
   final DateTime occuredAt;
 
   const LiveEventMin({
+    required this.streamIdPattern,
     required this.streamIdStr,
     required this.streamIdData,
-    required this.streamIdPattern,
+
     required this.event,
     required this.occuredAt,
   });

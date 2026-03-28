@@ -28,8 +28,8 @@ void main() {
 
       final events = await _scanAll(reader).toList();
       expect(events, hasLength(pageSize));
-      expect(events[0].kind, 'event-0');
-      expect(events[1].kind, 'event-1');
+      expect(events[0].encodedEvent.kind, 'event-0');
+      expect(events[1].encodedEvent.kind, 'event-1');
     });
 
     test('handles more', () async {
@@ -39,9 +39,9 @@ void main() {
 
       expect(events, hasLength(pageSize + 1));
 
-      expect(events[0].kind, 'event-0');
-      expect(events[1].kind, 'event-1');
-      expect(events[2].kind, 'event-2');
+      expect(events[0].encodedEvent.kind, 'event-0');
+      expect(events[1].encodedEvent.kind, 'event-1');
+      expect(events[2].encodedEvent.kind, 'event-2');
     });
   });
 }

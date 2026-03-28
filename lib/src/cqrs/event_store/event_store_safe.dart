@@ -1,6 +1,4 @@
-import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
-import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
@@ -32,18 +30,6 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId) {
-    try {
-      return _store.getStreamInfoFirst(streamId);
-    } catch (cause) {
-      throw EventStoreException(
-        "Failed to get stream info for stream '$streamId' (first)",
-        cause: cause,
-      );
-    }
-  }
-
-  @override
   Future<GetStreamInfoResult?> getStreamInfoLast(String streamId) {
     try {
       return _store.getStreamInfoLast(streamId);
@@ -57,16 +43,11 @@ class EventStoreSafe implements EventStore {
 
   @override
   Future<StreamAppendResult> multiAppendEvents(
-    DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
     try {
-      final result = await _store.multiAppendEvents(
-        thisDeviceId,
-        command,
-        appends,
-      );
+      final result = await _store.multiAppendEvents(command, appends);
 
       assert(result.orders.length == appends.events.length);
 
@@ -75,19 +56,6 @@ class EventStoreSafe implements EventStore {
       throw ConcurrencyProblem();
     } catch (cause) {
       throw EventStoreException("Failed to multi append events", cause: cause);
-    }
-  }
-
-  @override
-  Future<void> saveFailedCommand(
-    DeviceId thisDeviceId,
-    StoredCommandWrite command,
-    CommandResult result,
-  ) async {
-    try {
-      await _store.saveFailedCommand(thisDeviceId, command, result);
-    } catch (cause) {
-      throw EventStoreException("Failed to save failed command", cause: cause);
     }
   }
 

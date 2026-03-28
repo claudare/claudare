@@ -1,17 +1,16 @@
 import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
 
 /// events to write to the database from commands
 class StoredEventCommandWrite {
   final String streamId;
-  final String kind;
-  final String detail;
+  final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
   const StoredEventCommandWrite({
     required this.streamId,
-    required this.kind,
-    required this.detail,
+    required this.encodedEvent,
     required this.occuredAt,
   });
 }
@@ -23,8 +22,7 @@ class StoredEventCommandRead {
   final int causalSequence;
   final int localVersion;
 
-  final String kind;
-  final String detail;
+  final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
   const StoredEventCommandRead({
@@ -32,8 +30,7 @@ class StoredEventCommandRead {
     required this.causalSequence,
     required this.localVersion,
 
-    required this.kind,
-    required this.detail,
+    required this.encodedEvent,
     required this.occuredAt,
   });
 }

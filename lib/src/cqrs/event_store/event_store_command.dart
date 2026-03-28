@@ -1,6 +1,4 @@
-import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
-import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
@@ -41,23 +39,31 @@ class GetStreamInfoPoint {
   });
 }
 
-class StreamLock {
+class StreamLocalLock {
   final String streamId;
   final int originatingVersion;
 
-  const StreamLock({required this.streamId, required this.originatingVersion});
+  const StreamLocalLock({
+    required this.streamId,
+    required this.originatingVersion,
+  });
 }
 
 class StreamAppends {
   final EventDependency dependencies;
-  final List<StreamLock> locks;
-  final List<StoredEventCommandWrite> events; // could be dynamic?
+  final List<StreamLocalLock> localLocks;
+  final List<StoredEventCommandWrite> events;
 
   const StreamAppends({
     required this.dependencies,
-    required this.locks,
+    required this.localLocks,
     required this.events,
   });
+
+  StreamAppends.empty()
+    : dependencies = EventDependency.empty(),
+      localLocks = [],
+      events = [];
 }
 
 class StreamAppendOrder {
@@ -74,6 +80,8 @@ class StreamAppendResult {
   final List<StreamAppendOrder> orders;
 
   const StreamAppendResult({required this.orders});
+
+  StreamAppendResult.empty() : orders = [];
 }
 
 abstract interface class EventStoreCommand {
@@ -87,21 +95,11 @@ abstract interface class EventStoreCommand {
     int versionCursor,
   );
 
-  Future<GetStreamInfoResult?> getStreamInfoFirst(String streamId);
   Future<GetStreamInfoResult?> getStreamInfoLast(String streamId);
 
-  // This is a local command insertion
-  // deviceId should be passed here either in the write or as a parameter
-  // the database should have no idea whats its deviceId
-  // TODO: merge two implementation. result is always available
+  /// TODO: rename to something better
   Future<StreamAppendResult> multiAppendEvents(
-    DeviceId thisDeviceId,
     StoredCommandWrite command,
     StreamAppends appends,
-  );
-  Future<void> saveFailedCommand(
-    DeviceId thisDeviceId,
-    StoredCommandWrite command,
-    CommandResult result,
   );
 }

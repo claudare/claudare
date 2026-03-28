@@ -6,21 +6,20 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class CommandAppendEvent<Event, IdData> {
+  final StreamIdPattern<IdData> streamIdPattern;
   final String streamIdStr;
   final IdData streamIdData;
 
-  /// momento is not needed here. event is already something in memory decoded.
-  /// anothe reason to move it out
-  final StreamIdPattern<IdData> streamIdPattern;
-  final Event event;
+  final Event runtimeEvent;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
   const CommandAppendEvent({
+    required this.streamIdPattern,
     required this.streamIdStr,
     required this.streamIdData,
-    required this.streamIdPattern,
-    required this.event,
+
+    required this.runtimeEvent,
     required this.encodedEvent,
     required this.occuredAt,
   });
@@ -28,8 +27,7 @@ class CommandAppendEvent<Event, IdData> {
   StoredEventCommandWrite toStoredEventCommandWrite() {
     return StoredEventCommandWrite(
       streamId: streamIdStr,
-      kind: encodedEvent.kind,
-      detail: encodedEvent.detail,
+      encodedEvent: encodedEvent,
       occuredAt: occuredAt,
     );
   }
@@ -39,10 +37,10 @@ class CommandAppendEvent<Event, IdData> {
     required int version,
   }) {
     return LiveEventFull(
+      streamIdPattern: streamIdPattern,
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,
-      streamIdPattern: streamIdPattern,
-      event: event,
+      event: runtimeEvent,
       occuredAt: occuredAt,
       localSequence: localSequence,
       localVersion: version,
@@ -52,7 +50,7 @@ class CommandAppendEvent<Event, IdData> {
 
 class CommandAppends {
   final EventDependency dependencies;
-  final List<StreamLock> locks;
+  final List<StreamLocalLock> locks;
   final List<CommandAppendEvent> appendEvents; // could be dynamic?
 
   const CommandAppends({

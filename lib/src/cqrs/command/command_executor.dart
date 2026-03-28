@@ -68,7 +68,6 @@ class CommandExecutor {
       if (cause is Exception) {
         await _saveFailedCommand(
           startedAt,
-          command,
           input,
           CommandResult.exception(exception: cause),
         );
@@ -82,7 +81,6 @@ class CommandExecutor {
     if (nacker.message != null) {
       await _saveFailedCommand(
         startedAt,
-        command,
         input,
         CommandResult.nack(reason: nacker.message!),
       );
@@ -90,7 +88,7 @@ class CommandExecutor {
       throw CommandNack(message: nacker.message!);
     }
 
-    return _saveEvents<Input>(appends, startedAt, command, input);
+    return _saveEvents<Input>(appends, startedAt, input);
   }
 
   EncodedCommand _encodeCommand<Input extends CommandInput>(Input input) {
@@ -121,20 +119,20 @@ class CommandExecutor {
   Future<List<LiveEventFull>> _saveEvents<TInput extends CommandInput>(
     CommandAppends commandAppends,
     DateTime startedAt,
-    Command<TInput> command,
     TInput input,
   ) async {
     final encoded = _encodeCommand(input);
     final issuedCommand = StoredCommandWrite(
-      kind: encoded.kind,
-      detail: encoded.detail,
+      deviceId: _thisDeviceId,
+      encoded: encoded,
       startedAt: startedAt,
       completedAt: _timeProvider.now(),
+      result: CommandResult.success(),
     );
 
     final eventStoreAppends = StreamAppends(
       dependencies: commandAppends.dependencies,
-      locks: commandAppends.locks,
+      localLocks: commandAppends.locks,
       events:
           commandAppends.appendEvents
               .map((e) => e.toStoredEventCommandWrite())
@@ -142,7 +140,6 @@ class CommandExecutor {
     );
 
     final appendResult = await _eventStore.multiAppendEvents(
-      _thisDeviceId,
       issuedCommand,
       eventStoreAppends,
     );
@@ -159,7 +156,6 @@ class CommandExecutor {
   /// saves command that fails. This never throws!
   Future<void> _saveFailedCommand<Input extends CommandInput>(
     DateTime startedAt,
-    Command<Input> command,
     Input input,
     CommandResult result,
   ) async {
@@ -167,13 +163,14 @@ class CommandExecutor {
       final encoded = _encodeCommand(input);
 
       final issuedCommand = StoredCommandWrite(
-        kind: encoded.kind,
-        detail: encoded.detail,
+        deviceId: _thisDeviceId,
+        encoded: encoded,
         startedAt: startedAt,
         completedAt: _timeProvider.now(),
+        result: result,
       );
 
-      await _eventStore.saveFailedCommand(_thisDeviceId, issuedCommand, result);
+      await _eventStore.multiAppendEvents(issuedCommand, StreamAppends.empty());
     } on Exception catch (e) {
       // do nothing... stongly log?
       // TODO: remove me: no logging is most desirable...
