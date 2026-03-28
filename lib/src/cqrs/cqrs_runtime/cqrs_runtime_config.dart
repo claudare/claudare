@@ -1,8 +1,16 @@
+import 'package:core/src/cqrs/id_generator/id_generator.dart';
+import 'package:core/src/cqrs/time_provider/time_provider.dart';
+
 class CqrsRuntimeConfig {
-  /// size for the pagination of event store queries
+  final IdGenerator idGenerator;
+  final TimeProvider timeProvider;
+
+  /// size for the pagination of event store queries, usually leave to defaults
   final int eventStorePageSize;
 
-  const CqrsRuntimeConfig({required this.eventStorePageSize});
-
-  CqrsRuntimeConfig.defaults() : this(eventStorePageSize: 20);
+  const CqrsRuntimeConfig({
+    required this.idGenerator,
+    required this.timeProvider,
+    this.eventStorePageSize = 20,
+  });
 }

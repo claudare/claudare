@@ -1,8 +1,8 @@
 import 'dart:convert';
 
+import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
-import 'package:core/src/cqrs/command/command_side_effects.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
@@ -10,9 +10,8 @@ import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
+import 'package:core/src/cqrs_test_utils.dart';
 import 'package:test/test.dart';
-
-// TODO: make this financial example (lame, but understandable)
 
 sealed class _ExampleEvent {
   _ExampleEvent();
@@ -196,33 +195,21 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
   }
 }
 
-class _ExampleSideEffects implements CommandSideEffects {
-  int _id = 0;
-
-  @override
-  DateTime currentTime() {
-    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-  }
-
-  @override
-  String newId() {
-    return (++_id).toString();
-  }
-}
-
 // TODO: 2 examples, with methods from here https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/
 // one with getAndStore, another with direct DB apply()
 // this is a way to demo on how to use this and to test usage of all features!
 void main() {
   group('CQRS Quick Example', () {
     test('standalone use', () async {
-      final sideEffects = _ExampleSideEffects();
-      final eventStore = MemoryEventStore(getTime: sideEffects.currentTime);
+      final eventStore = MemoryEventStore(
+        timeProvider: FakeTimeProviderStatic.zero(),
+      );
       final deviceId = DeviceId(41);
 
       final executer = CommandExecutor(
         eventStore: eventStore,
-        sideEffects: sideEffects,
+        idGenerator: FakeIdGeneratorSequential(),
+        timeProvider: FakeTimeProviderStatic.zero(),
         thisDeviceId: deviceId,
         pageSize: 10,
       );

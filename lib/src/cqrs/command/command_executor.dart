@@ -1,7 +1,6 @@
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/command_context.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
-import 'package:core/src/cqrs/command/command_side_effects.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
@@ -10,29 +9,34 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
+import 'package:core/src/cqrs/id_generator/id_generator.dart';
+import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 class CommandExecutor {
   final EventStoreCommand _eventStore;
-  final CommandSideEffects _sideEffects;
+  final TimeProvider _timeProvider;
+  final IdGenerator _idGenerator;
 
   final DeviceId _thisDeviceId;
   final int _pageSize;
 
   const CommandExecutor({
     required EventStoreCommand eventStore,
-    required CommandSideEffects sideEffects,
+    required TimeProvider timeProvider,
+    required IdGenerator idGenerator,
     required DeviceId thisDeviceId,
     required int pageSize,
-  }) : _eventStore = eventStore,
+  }) : _idGenerator = idGenerator,
+       _timeProvider = timeProvider,
+       _eventStore = eventStore,
        _thisDeviceId = thisDeviceId,
-       _sideEffects = sideEffects,
        _pageSize = pageSize;
 
   Future<List<LiveEventFull>> executeThrowable<TInput>(
     Command<TInput> command,
     TInput input,
   ) async {
-    final startedAt = _sideEffects.currentTime();
+    final startedAt = _timeProvider.now();
     final nacker = CommandNacker();
     final dependencies = EventDependency.empty();
     final appends = CommandAppends(
@@ -42,11 +46,11 @@ class CommandExecutor {
     );
 
     final context = CommandContext(
-      eventStore:
-          _eventStore, // TODO: make sure its safe... just a single class? use a concrete EventStoreSafe
+      eventStore: _eventStore,
       appends: appends,
       nacker: nacker,
-      sideEffects: _sideEffects,
+      timeProvider: _timeProvider,
+      idGenerator: _idGenerator,
       pageSize: _pageSize,
     );
 
@@ -94,7 +98,7 @@ class CommandExecutor {
       kind: command.kind,
       detail: detailString,
       startedAt: startedAt,
-      completedAt: _sideEffects.currentTime(),
+      completedAt: _timeProvider.now(),
     );
 
     final eventStoreAppends = StreamAppends(
@@ -137,7 +141,7 @@ class CommandExecutor {
         kind: command.kind,
         detail: detailString,
         startedAt: startedAt,
-        completedAt: _sideEffects.currentTime(),
+        completedAt: _timeProvider.now(),
       );
 
       await _eventStore.saveFailedCommand(_thisDeviceId, issuedCommand, result);

@@ -18,7 +18,7 @@ class FinanceApp {
 
   FinanceApp({
     required EventStore eventStore,
-    required CommandSideEffects sideEffects,
+    required CqrsRuntimeConfig config,
     required DeviceId deviceId,
     required AccountsSummaryReadModel accountSummaryRepo,
   }) : _eventStore = eventStore {
@@ -30,8 +30,8 @@ class FinanceApp {
 
     _cqrsRuntime = CqrsRuntime(
       eventStore: _eventStore,
-      sideEffects: sideEffects,
-      deviceId: deviceId,
+      config: config,
+      thisDeviceId: deviceId,
       projectors: [accountSummaryProjection],
     );
 

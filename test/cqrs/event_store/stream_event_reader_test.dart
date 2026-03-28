@@ -2,6 +2,7 @@ import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/stream_event_reader.dart';
+import 'package:core/src/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -13,9 +14,7 @@ void main() {
     const pageSize = 2;
 
     setUp(() {
-      store = MemoryEventStore(
-        getTime: () => DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      );
+      store = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
       reader = StreamEventReader(store, pageSize, streamId);
     });
 

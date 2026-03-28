@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
+import 'package:core/src/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 typedef EventStoreFactory = Future<EventStoreProjection> Function();
@@ -7,9 +8,7 @@ typedef EventStoreFactory = Future<EventStoreProjection> Function();
 void main() {
   final implementations = <String, EventStoreFactory>{
     'InMemory': () async {
-      final s = MemoryEventStore(
-        getTime: () => DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      );
+      final s = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
       return s;
     },
     // 'SQL': () async {

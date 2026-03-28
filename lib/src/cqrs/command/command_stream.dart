@@ -11,6 +11,7 @@ import 'package:core/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_found_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_locked_exception.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
+import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 class CommandStream<Event, IdData> {
   final EventStoreCommand _eventStore;
@@ -20,7 +21,7 @@ class CommandStream<Event, IdData> {
   final String _streamId;
   final IdData _streamIdData;
   final StreamIdPattern<IdData> _streamIdPattern;
-  final Function() currentTime;
+  final TimeProvider _timeProvider;
 
   bool _locked = false;
 
@@ -32,7 +33,7 @@ class CommandStream<Event, IdData> {
     this._streamId,
     this._streamIdData,
     this._streamIdPattern,
-    this.currentTime,
+    this._timeProvider,
   );
 
   void _ensureLocked() {
@@ -155,12 +156,8 @@ class CommandStream<Event, IdData> {
   CommandStream<Event, IdData> append(Event event) {
     _ensureLocked();
 
-    final occuredAt = currentTime(); // TODO: side effect!
+    final occuredAt = _timeProvider.now();
 
-    // todo: this should encode here, but also pass the raw event
-    // this is done so that encoding errors are readable and apparent
-    // the failures are at the call site
-    // do not encode here!
     final encodedEvent = _codec.encode(event);
 
     _appends.appendEvents.add(

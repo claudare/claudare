@@ -1,6 +1,5 @@
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
-import 'package:core/src/cqrs/command/command_side_effects.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 import 'package:core/src/cqrs/device_id.dart';
@@ -16,18 +15,16 @@ import 'package:core/src/cqrs/projection/projection.dart';
 class CqrsRuntime {
   late final EventStoreSafe _eventStore;
   late final List<ProjectionRuntime> _projectionRunners;
-  final CommandSideEffects _sideEffects;
-  final DeviceId deviceId; // should this be public?
+  final DeviceId _thisDeviceId;
   final CqrsRuntimeConfig _config;
 
   CqrsRuntime({
     required EventStore eventStore,
+    required CqrsRuntimeConfig config,
+    required DeviceId thisDeviceId,
     required List<Projection> projectors,
-    required CommandSideEffects sideEffects,
-    required this.deviceId,
-    CqrsRuntimeConfig? config,
-  }) : _sideEffects = sideEffects,
-       _config = config ?? CqrsRuntimeConfig.defaults() {
+  }) : _thisDeviceId = thisDeviceId,
+       _config = config {
     _eventStore = EventStoreSafe(eventStore);
 
     _projectionRunners =
@@ -62,8 +59,9 @@ class CqrsRuntime {
   ) {
     final executor = CommandExecutor(
       eventStore: _eventStore,
-      sideEffects: _sideEffects,
-      thisDeviceId: deviceId,
+      timeProvider: _config.timeProvider,
+      idGenerator: _config.idGenerator,
+      thisDeviceId: _thisDeviceId,
       pageSize: _config.eventStorePageSize,
     );
 

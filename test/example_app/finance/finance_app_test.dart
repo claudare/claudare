@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
+import 'package:core/src/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import 'command/atm_depost.dart';
@@ -10,38 +11,31 @@ import 'command/transfer_funds_between_accounts.dart';
 import 'finance_app.dart';
 import 'read_model/accounts_summary_read_model.dart';
 
-class _ExampleSideEffects implements CommandSideEffects {
-  int _id = 0;
-
-  @override
-  DateTime currentTime() {
-    // t0
-    return DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-  }
-
-  @override
-  String newId() {
-    return (++_id).toString();
-  }
-}
-
 void main() {
   group('Finance App Example', () {
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     late MemoryEventStore eventStore;
-    late CommandSideEffects sideEffects;
+    late TimeProvider commandTimeProvider;
+    late IdGenerator commandIdGenerator;
     late AccountsSummaryReadModel accountsSummaryRepo;
     late FinanceApp app;
 
     setUp(() async {
-      eventStore = MemoryEventStore(getTime: () => t0);
-      sideEffects = _ExampleSideEffects();
+      eventStore = MemoryEventStore(
+        timeProvider: FakeTimeProviderStatic.zero(),
+      );
+      commandTimeProvider = FakeTimeProviderStatic.zero();
+      commandIdGenerator = FakeIdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
 
       app = FinanceApp(
         eventStore: eventStore,
-        sideEffects: sideEffects,
+        config: CqrsRuntimeConfig(
+          idGenerator: commandIdGenerator,
+          timeProvider: commandTimeProvider,
+          eventStorePageSize: 10,
+        ),
         deviceId: DeviceId(1),
         accountSummaryRepo: accountsSummaryRepo,
       );

@@ -10,6 +10,7 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
+import 'package:core/src/cqrs/time_provider/time_provider.dart';
 import 'package:mutex/mutex.dart' show Mutex;
 
 class MemoryEvent {
@@ -155,14 +156,14 @@ class MemoryEventStore implements EventStore {
   final DeviceSequences _eventDeviceSequences = DeviceSequences();
   final Mutex writeTransaction = Mutex(); // TO emulate SQLITE transactions
 
-  final DateTime Function() _getTime;
+  final TimeProvider _timeProvider;
   final void Function()? _onChange;
 
   MemoryEventStore({
-    required DateTime Function() getTime,
+    required TimeProvider timeProvider,
     void Function()? onChange,
-  }) : _onChange = onChange,
-       _getTime = getTime;
+  }) : _timeProvider = timeProvider,
+       _onChange = onChange;
 
   void _emitChange() {
     _onChange?.call();
@@ -207,7 +208,7 @@ class MemoryEventStore implements EventStore {
       streamId: value.streamId,
       kind: value.kind,
       detail: value.detail,
-      createdAt: value.emitedAt ?? _getTime(),
+      createdAt: value.emitedAt ?? _timeProvider.now(),
     );
 
     _events.add(event);
