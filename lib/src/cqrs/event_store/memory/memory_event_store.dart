@@ -10,29 +10,31 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
+import 'package:mutex/mutex.dart' show Mutex;
 
-class _MemoryEvent {
+class MemoryEvent {
+  final String streamId;
+  final String kind;
+  final String detail;
+  final DateTime createdAt;
+
   final DeviceId deviceId;
   final int deviceSequence;
   final int causalSequence;
   final int localSequence;
   final int localVersion;
 
-  final String streamId;
-  final String kind;
-  final String detail;
-  final DateTime createdAt;
+  const MemoryEvent({
+    required this.streamId,
+    required this.kind,
+    required this.detail,
+    required this.createdAt,
 
-  const _MemoryEvent({
     required this.deviceId,
     required this.deviceSequence,
     required this.causalSequence,
     required this.localSequence,
     required this.localVersion,
-    required this.streamId,
-    required this.kind,
-    required this.detail,
-    required this.createdAt,
   });
 
   StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
@@ -54,6 +56,10 @@ class _MemoryEvent {
         localSequence: localSequence,
         localVersion: localVersion,
       );
+
+  @override
+  String toString() =>
+      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $localVersion)";
 }
 
 class MemoryEventInsert {
@@ -83,32 +89,38 @@ class MemoryEventInsert {
   });
 }
 
-class _MemoryCommand {
-  final DeviceId deviceId;
-  final int deviceSequence;
-  final int localSequence;
-
+class MemoryCommand {
   final String kind;
   final String detail;
   final DateTime startedAt;
   final DateTime completedAt;
+
   final EventDependency dependencies;
+  final DeviceId deviceId;
+  final int deviceSequence;
+  final int localSequence;
 
   final String? nackReason;
   final Exception? exception;
 
-  const _MemoryCommand({
-    required this.deviceId,
-    required this.deviceSequence,
-    required this.localSequence,
+  const MemoryCommand({
     required this.kind,
     required this.detail,
     required this.startedAt,
     required this.completedAt,
+
     required this.dependencies,
+    required this.deviceId,
+    required this.deviceSequence,
+    required this.localSequence,
+
     required this.nackReason,
     required this.exception,
   });
+
+  @override
+  String toString() =>
+      "MemoryCommand(kind: $kind, detail: $detail, startedAt: $startedAt, completedAt: $completedAt, dependencies: $dependencies, deviceId: $deviceId, deviceSequence: $deviceSequence, localSequence: $localSequence, nackReason: $nackReason, exception: $exception)";
 }
 
 class MemoryCommandInsert {
@@ -136,11 +148,12 @@ class MemoryCommandInsert {
 }
 
 class MemoryEventStore implements EventStore {
-  final List<_MemoryEvent> _events = [];
-  final List<_MemoryCommand> _commands = [];
+  final List<MemoryEvent> _events = [];
+  final List<MemoryCommand> _commands = [];
   final CausalSequence _causalSequence = CausalSequence();
   final DeviceSequences _commandDeviceSequences = DeviceSequences();
   final DeviceSequences _eventDeviceSequences = DeviceSequences();
+  final Mutex writeTransaction = Mutex(); // TO emulate SQLITE transactions
 
   final DateTime Function() _getTime;
   final void Function()? _onChange;
@@ -155,18 +168,27 @@ class MemoryEventStore implements EventStore {
     _onChange?.call();
   }
 
-  Iterable<_MemoryEvent> _getStreamEvents(String streamIdStr) {
+  // testing specigfic functions... dont rely on them
+
+  MemoryEvent testInsertEvent(MemoryEventInsert value) {
+    final event = _insertEvent(value);
+
+    _emitChange();
+    return event;
+  }
+
+  Iterable<MemoryEvent> testGetStreamEvents(String streamIdStr) {
+    return _getStreamEvents(streamIdStr);
+  }
+
+  List<MemoryEvent> get testAllEvents => _events;
+  List<MemoryCommand> get testAllCommands => _commands;
+
+  Iterable<MemoryEvent> _getStreamEvents(String streamIdStr) {
     return _events.where((e) => e.streamId == streamIdStr);
   }
 
-  // for testing
-  StoredEventCommandRead insertEvent(MemoryEventInsert value) {
-    final event = _insertEvent(value);
-    _emitChange();
-    return event.asStoredEventCommandRead;
-  }
-
-  _MemoryEvent _insertEvent(MemoryEventInsert value) {
+  MemoryEvent _insertEvent(MemoryEventInsert value) {
     final nextLocalSequence = _events.length + 1; // no zeros!
 
     final nextDeviceSequence = _eventDeviceSequences.nextSequence(
@@ -176,7 +198,7 @@ class MemoryEventStore implements EventStore {
     final version =
         value.localVersion ?? _getStreamEvents(value.streamId).length + 1;
 
-    final event = _MemoryEvent(
+    final event = MemoryEvent(
       deviceId: value.deviceId,
       deviceSequence: nextDeviceSequence,
       causalSequence: nextCausalSequence,
@@ -193,14 +215,14 @@ class MemoryEventStore implements EventStore {
     return event;
   }
 
-  _MemoryCommand _insertCommand(MemoryCommandInsert value) {
+  MemoryCommand _insertCommand(MemoryCommandInsert value) {
     final nextLocalSequence = _commands.length + 1; // no zeros!
 
     final nextDeviceSequence = _commandDeviceSequences.nextSequence(
       value.deviceId,
     );
 
-    final command = _MemoryCommand(
+    final command = MemoryCommand(
       deviceId: value.deviceId,
       deviceSequence: nextDeviceSequence,
       localSequence: nextLocalSequence,
@@ -281,72 +303,74 @@ class MemoryEventStore implements EventStore {
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
-    final memoryCommand = MemoryCommandInsert(
-      deviceId: thisDeviceId,
-      kind: command.kind,
-      detail: command.detail,
-      startedAt: command.startedAt,
-      completedAt: command.completedAt,
-      dependencies: appends.dependencies,
-      nackReason: null,
-      exception: null,
-    );
-
-    final result = StreamAppendResult(orders: []);
-
-    // aggreageteIdStr + latest version (for consistency check)
-    final streams = <String, int>{};
-
-    // check consistency
-    for (final lock in appends.locks) {
-      final info = await getStreamInfoLast(lock.streamId);
-
-      final originatingVersion = info == null ? 0 : info.originatingVersion;
-
-      streams[lock.streamId] = originatingVersion;
-
-      if (originatingVersion != lock.originatingVersion) {
-        throw ConcurrencyProblem();
-      }
-    }
-
-    // insert the events
-    for (final event in appends.events) {
-      final streamIdStr = event.streamId;
-      final prevVersion = streams[streamIdStr];
-      if (prevVersion == null) {
-        throw StateError('Incorrect command implementation (internal)');
-      }
-      final version = prevVersion + 1;
-
-      final ins = _insertEvent(
-        MemoryEventInsert(
-          deviceId: thisDeviceId,
-          streamId: streamIdStr,
-          kind: event.kind,
-          detail: event.detail,
-          localVersion: version,
-          emitedAt: event.occuredAt,
-        ),
+    return await writeTransaction.protect(() async {
+      final memoryCommand = MemoryCommandInsert(
+        deviceId: thisDeviceId,
+        kind: command.kind,
+        detail: command.detail,
+        startedAt: command.startedAt,
+        completedAt: command.completedAt,
+        dependencies: appends.dependencies,
+        nackReason: null,
+        exception: null,
       );
 
-      result.orders.add(
-        StreamAppendOrder(
-          localSequence: ins.localSequence,
-          localVersion: version,
-        ),
-      );
+      final result = StreamAppendResult(orders: []);
 
-      streams[streamIdStr] = version;
-    }
+      // aggreageteIdStr + latest version (for consistency check)
+      final streams = <String, int>{};
 
-    _insertCommand(memoryCommand);
+      // check consistency
+      for (final lock in appends.locks) {
+        final info = await getStreamInfoLast(lock.streamId);
 
-    _emitChange();
+        final originatingVersion = info == null ? 0 : info.originatingVersion;
 
-    assert(result.orders.length == appends.events.length);
+        streams[lock.streamId] = originatingVersion;
 
-    return result;
+        if (originatingVersion != lock.originatingVersion) {
+          throw ConcurrencyProblem();
+        }
+      }
+
+      // insert the events
+      for (final event in appends.events) {
+        final streamIdStr = event.streamId;
+        final prevVersion = streams[streamIdStr];
+        if (prevVersion == null) {
+          throw StateError('Incorrect command implementation (internal)');
+        }
+        final version = prevVersion + 1;
+
+        final ins = _insertEvent(
+          MemoryEventInsert(
+            deviceId: thisDeviceId,
+            streamId: streamIdStr,
+            kind: event.kind,
+            detail: event.detail,
+            localVersion: version,
+            emitedAt: event.occuredAt,
+          ),
+        );
+
+        result.orders.add(
+          StreamAppendOrder(
+            localSequence: ins.localSequence,
+            localVersion: version,
+          ),
+        );
+
+        streams[streamIdStr] = version;
+      }
+
+      _insertCommand(memoryCommand);
+
+      _emitChange();
+
+      assert(result.orders.length == appends.events.length);
+
+      return result;
+    });
   }
 
   @override

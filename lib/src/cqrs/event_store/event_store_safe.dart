@@ -1,12 +1,15 @@
-import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
+import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
+// TODO: this needs to wrap projection and command separately?
+// each one will get thier own reader
+// reader must operate on the safe variant
 class EventStoreSafe implements EventStore {
   final EventStore _store;
 

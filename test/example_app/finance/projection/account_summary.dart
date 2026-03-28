@@ -1,5 +1,4 @@
 import 'package:core/src/cqrs.dart';
-import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 
 import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';
@@ -21,7 +20,7 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
 
   @override
   Future<void> reset() async {
-    await _repo.init();
+    await _repo.reset();
   }
 
   @override

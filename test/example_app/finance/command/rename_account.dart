@@ -43,6 +43,6 @@ class RenameAccount extends Command<RenameAccountInput> {
 
     await stream.lockLatest();
 
-    stream.append(AccountOpened(name: input.newName));
+    stream.append(AccountRenamed(newName: input.newName));
   }
 }

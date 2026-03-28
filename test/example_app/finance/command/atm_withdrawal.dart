@@ -67,7 +67,7 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
     // Will implement comprehensive concurrency tests (bruteforce kinda) to
     // make apps work relably with offline Partition tolerance :)
     if (newBalance < 0) {
-      return ctx.nack('Insufficient funds');
+      return ctx.nack('insufficient funds');
     }
 
     stream.append(AccountAtmWithdrawn(amount: input.amount));

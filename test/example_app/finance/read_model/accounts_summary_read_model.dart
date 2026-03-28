@@ -38,24 +38,33 @@ class AccountSummary {
       lastLocalSequence: lastLocalSequence ?? this.lastLocalSequence,
     );
   }
+
+  @override
+  String toString() {
+    return 'AccountSummary(accountId: $accountId, name: $name, balance: $balance, transactionCount: $transactionCount, openedAt: $openedAt, lastTransactionAt: $lastTransactionAt, lastLocalSequence: $lastLocalSequence)';
+  }
 }
 
 // this does include mutations... just dont use them
 // following Oskar Dudycz GetAndStore example
 // https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/#talk-is-cheap-show-me-the-code
+// this is a memory implementation
 class AccountsSummaryReadModel {
   final Map<String, AccountSummary> summaries = {};
-  bool initialized = false;
+  bool _isInitialized = false;
 
   AccountsSummaryReadModel();
 
   Future<void> init() async {
-    initialized = true;
+    _isInitialized = true;
+  }
+
+  Future<void> reset() async {
     summaries.clear();
   }
 
   Future<ProjectionCheckpoint> checkpoint() async {
-    if (!initialized) {
+    if (!_isInitialized) {
       return ProjectionCheckpoint.zero();
     }
 
@@ -72,7 +81,7 @@ class AccountsSummaryReadModel {
   // mutations (can be moved out, easier to do with sql)
   Future<void> store(String accountId, AccountSummary summary) async {
     // should check everywhere
-    if (!initialized) {
+    if (!_isInitialized) {
       throw Exception("store called before init");
     }
 

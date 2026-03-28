@@ -42,4 +42,7 @@ class DeviceId implements Comparable<DeviceId> {
   bool operator <(DeviceId other) => value < other.value;
   bool operator >=(DeviceId other) => value >= other.value;
   bool operator <=(DeviceId other) => value <= other.value;
+
+  @override
+  String toString() => "DeviceId(value: $value)";
 }

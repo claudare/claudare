@@ -57,24 +57,24 @@ class TransferFundsBetweenAccounts
 
     final scanner = fromStream.scan();
 
-    final balance = await scanner.fold(0, (prev, event) {
+    final fromBalance = await scanner.fold(0, (prev, event) {
       switch (event) {
         case AccountAtmDeposited():
           return prev + event.amount;
         case AccountAtmWithdrawn():
           return prev - event.amount;
         case AccountInnerTransfer():
-          return prev += event.amount;
+          return prev + event.amount;
         // TODO: new events could be missed here
         default:
           return prev;
       }
     });
 
-    final newBalance = balance - input.amount;
+    final newFromBalance = fromBalance - input.amount;
 
-    if (newBalance < 0) {
-      return ctx.nack('Insufficient funds');
+    if (newFromBalance < 0) {
+      return ctx.nack('insufficient funds');
     }
 
     fromStream.append(

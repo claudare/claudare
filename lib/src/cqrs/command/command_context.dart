@@ -41,6 +41,7 @@ class CommandContext {
       streamId,
       streamData,
       streamIdPattern,
+      currentTime,
     );
   }
 

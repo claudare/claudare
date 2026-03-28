@@ -39,4 +39,7 @@ class EventDependency {
       json.map((e) => MapEntry(DeviceId.fromJson(e[0] as int), e[1] as int)),
     ),
   );
+
+  @override
+  String toString() => "EventDependency(vector: $_vector)";
 }

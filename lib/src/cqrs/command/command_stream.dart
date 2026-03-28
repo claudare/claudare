@@ -20,6 +20,7 @@ class CommandStream<Event, IdData> {
   final String _streamId;
   final IdData _streamIdData;
   final StreamIdPattern<IdData> _streamIdPattern;
+  final Function() currentTime;
 
   bool _locked = false;
 
@@ -31,6 +32,7 @@ class CommandStream<Event, IdData> {
     this._streamId,
     this._streamIdData,
     this._streamIdPattern,
+    this.currentTime,
   );
 
   void _ensureLocked() {
@@ -153,7 +155,7 @@ class CommandStream<Event, IdData> {
   CommandStream<Event, IdData> append(Event event) {
     _ensureLocked();
 
-    final occuredAt = DateTime.now(); // TODO: side effect!
+    final occuredAt = currentTime(); // TODO: side effect!
 
     // todo: this should encode here, but also pass the raw event
     // this is done so that encoding errors are readable and apparent
