@@ -1,6 +1,6 @@
 class ProjectionCheckpoint {
   final int localSequence;
-  final int localVersion; // TODO: version is not needed?
+  final int localVersion; // FIXME: remove
 
   const ProjectionCheckpoint({
     required this.localSequence,

@@ -132,6 +132,7 @@ class CommandStream<Event, IdData> {
   /// Ensure stream exists.
   /// This will lock dependencies to the **first** event in the stream.
   /// Use this sparingly. Prefer to call [lockLatest] instead.
+  /// This needs to be renamed, as it is easily confused with [lockLatest].
   Future<void> mustExist() async {
     _tryLock();
 

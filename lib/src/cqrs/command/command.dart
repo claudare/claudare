@@ -6,6 +6,8 @@ abstract class Command<TInput> {
   String get kind;
 
   String encodeDetail(TInput input);
+
+  /// TODO: parsing is not needed... TInput could be forced to define toJson() or toString()
   TInput parseDetail(String str);
 
   Future<void> handle(TInput input, CommandContext ctx);

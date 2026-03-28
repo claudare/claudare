@@ -15,8 +15,6 @@ import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 import 'package:test/test.dart';
 
-// TODO: make this financial example (lame, but understandable)
-
 sealed class _ExampleEvent {
   const _ExampleEvent();
 }

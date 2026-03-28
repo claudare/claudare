@@ -1,0 +1,75 @@
+import 'dart:convert';
+
+import 'package:core/src/cqrs.dart';
+
+import '../account_event/account.dart';
+import '../stream_id/account_stream_id.dart';
+
+class AtmWithdrawalInput {
+  final String accountId;
+  final int amount;
+
+  AtmWithdrawalInput({required this.accountId, required this.amount})
+    : assert(amount > 0);
+
+  Map<String, dynamic> toJson() => {'accountId': accountId, 'amount': amount};
+
+  static AtmWithdrawalInput fromJson(Map<String, dynamic> json) =>
+      AtmWithdrawalInput(
+        accountId: json['accountId'] as String,
+        amount: json['amount'] as int,
+      );
+}
+
+class AtmWithdrawal implements Command<AtmWithdrawalInput> {
+  @override
+  String get kind => 'atmWithdrawal';
+
+  @override
+  parseDetail(str) {
+    return AtmWithdrawalInput.fromJson(jsonDecode(str));
+  }
+
+  @override
+  String encodeDetail(input) {
+    return jsonEncode(input.toJson());
+  }
+
+  @override
+  Future<void> handle(input, ctx) async {
+    final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
+
+    int balance = 0;
+
+    final events = stream.scan();
+
+    await for (final event in events) {
+      // use pattern matching here
+      switch (event) {
+        case AccountAtmDeposited():
+          balance += event.amount;
+          break;
+        case AccountAtmWithdrawn():
+          balance -= event.amount;
+          break;
+        case AccountInnerTransfer():
+          balance += event.amount;
+          break;
+        default:
+          break;
+      }
+    }
+
+    final newBalance = balance - input.amount;
+
+    // TODO: this will not work offline
+    // Could get into the situaltion when the balance becomes negative.
+    // Will implement comprehensive concurrency tests (bruteforce kinda) to
+    // make apps work relably with offline Partition tolerance :)
+    if (newBalance < 0) {
+      return ctx.nack('Insufficient funds');
+    }
+
+    stream.append(AccountAtmWithdrawn(amount: input.amount));
+  }
+}

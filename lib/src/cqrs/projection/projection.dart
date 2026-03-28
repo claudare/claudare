@@ -1,4 +1,3 @@
-import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
