@@ -1,6 +1,5 @@
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
-import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
@@ -69,14 +68,12 @@ class CommandStream<Event, IdData> {
     }
   }
 
-  /// Just performs the simplest lock. Stream could exist or could not exist.
-  /// This will try to lock dependencies to the **last** event in the stream.
-  /// TODO: this needs more considerations from naming/usability perspective
-  /// maybe rename to `lockAny`?
+  /// Locks the stream.
+  /// The stream could exist or could not exist
   Future<void> lock() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfoLast(_streamId);
+    final info = await _eventStore.getStreamInfo(_streamId);
 
     if (info == null) {
       _appends.locks.add(
@@ -96,13 +93,11 @@ class CommandStream<Event, IdData> {
     return;
   }
 
-  /// Ensures the stream exists.
-  /// This will lock dependencies to the **last** event in the stream.
-  Future<void> lockLatest() async {
+  /// Ensure stream exists.
+  Future<void> mustExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfoLast(_streamId);
-
+    final info = await _eventStore.getStreamInfo(_streamId);
     if (info == null) {
       throw StreamNotFoundException(_streamId);
     }
@@ -114,43 +109,19 @@ class CommandStream<Event, IdData> {
         originatingVersion: info.originatingVersion,
       ),
     );
-
-    return;
   }
 
   /// Ensures the stream does not exist.
-  /// No dependencies are defined
   Future<void> mustNotExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfoLast(_streamId);
+    final info = await _eventStore.getStreamInfo(_streamId);
     if (info != null) {
       throw StreamAlreadyExistsException(_streamId);
     }
 
     _appends.locks.add(
       StreamLocalLock(streamId: _streamId, originatingVersion: 0),
-    );
-  }
-
-  /// Ensure stream exists.
-  /// This will lock dependencies to the **first** event in the stream.
-  /// Use this sparingly. Prefer to call [lockLatest] instead.
-  /// This needs to be renamed, as it is easily confused with [lockLatest].
-  Future<void> mustExist() async {
-    _tryLock();
-
-    final info = await _eventStore.getStreamInfoLast(_streamId);
-    if (info == null) {
-      throw StreamNotFoundException(_streamId);
-    }
-
-    _appends.dependencies.add(info.causalSequencePair);
-    _appends.locks.add(
-      StreamLocalLock(
-        streamId: _streamId,
-        originatingVersion: info.originatingVersion,
-      ),
     );
   }
 

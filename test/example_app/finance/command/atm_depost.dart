@@ -22,7 +22,7 @@ class AtmDeposit implements Command<AtmDepositInput> {
   Future<void> handle(input, ctx) async {
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
 
-    stream.lockLatest();
+    await stream.mustExist();
 
     stream.append(AccountAtmDeposited(amount: input.amount));
   }

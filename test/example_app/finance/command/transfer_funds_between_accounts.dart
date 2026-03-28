@@ -73,7 +73,7 @@ class TransferFundsBetweenAccounts
       input.toAccountId,
     );
 
-    await toStream.lockLatest();
+    await toStream.mustExist();
 
     toStream.append(
       AccountInnerTransfer(

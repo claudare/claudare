@@ -136,7 +136,6 @@ class _FakeProjectionRuntime implements ProjectionSink {
 LiveEventFull _fakeEvent({required int sequence}) {
   return LiveEventFull(
     localSequence: sequence,
-    localVersion: 0,
     streamIdStr: "",
     streamIdData: null,
     streamIdPattern: StreamIdPatternAll(),

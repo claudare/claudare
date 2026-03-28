@@ -23,7 +23,7 @@ class RenameAccount implements Command<RenameAccountInput> {
   Future<void> handle(input, ctx) async {
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
 
-    await stream.lockLatest();
+    await stream.mustExist();
 
     stream.append(AccountRenamed(newName: input.newName));
   }

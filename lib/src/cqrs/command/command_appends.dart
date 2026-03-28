@@ -43,7 +43,6 @@ class CommandAppendEvent<Event, IdData> {
       event: runtimeEvent,
       occuredAt: occuredAt,
       localSequence: localSequence,
-      localVersion: version,
     );
   }
 }

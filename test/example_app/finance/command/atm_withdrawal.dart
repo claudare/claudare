@@ -45,10 +45,6 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
 
     final newBalance = balance - input.amount;
 
-    // TODO: this will not work offline
-    // Could get into the situaltion when the balance becomes negative.
-    // Will implement comprehensive concurrency tests (bruteforce kinda) to
-    // make apps work relably with offline Partition tolerance :)
     if (newBalance < 0) {
       return ctx.nack('insufficient funds');
     }

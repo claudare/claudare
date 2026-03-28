@@ -44,7 +44,7 @@ void main() {
       });
 
       test("get empty stream info", () async {
-        final res = await store.getStreamInfoLast("non-existing");
+        final res = await store.getStreamInfo("non-existing");
 
         expect(res, isNull);
       });
@@ -106,7 +106,7 @@ void main() {
           ),
         );
 
-        final res = await store.getStreamInfoLast(streamId);
+        final res = await store.getStreamInfo(streamId);
 
         expect(res, isNotNull);
         expect(res!.originatingVersion, 2);

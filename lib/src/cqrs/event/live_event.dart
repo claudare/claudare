@@ -30,7 +30,6 @@ class LiveEventMin<Event, IdData> {
       event: event,
       occuredAt: occuredAt,
       localSequence: localSequence,
-      localVersion: version,
     );
   }
 }
@@ -40,10 +39,6 @@ class LiveEventMin<Event, IdData> {
 class LiveEventFull<Event, IdData> extends LiveEventMin<Event, IdData> {
   final int localSequence;
 
-  /// TODO: version is not required? It is only used on the database level to
-  /// prevent Concurrency issues (which there would be extremely few for now)
-  final int localVersion;
-
   const LiveEventFull({
     required super.streamIdStr,
     required super.streamIdData,
@@ -51,17 +46,11 @@ class LiveEventFull<Event, IdData> extends LiveEventMin<Event, IdData> {
     required super.event,
     required super.occuredAt,
     required this.localSequence,
-    required this.localVersion,
   });
 
-  EventMetadata get eventMetadata => EventMetadata(
-    occuredAt: occuredAt,
-    localSequence: localSequence,
-    localVersion: localVersion,
-  );
+  EventMetadata get eventMetadata =>
+      EventMetadata(occuredAt: occuredAt, localSequence: localSequence);
 
-  ProjectionCheckpoint get checkpoint => ProjectionCheckpoint(
-    localSequence: localSequence,
-    localVersion: localVersion,
-  );
+  ProjectionCheckpoint get checkpoint =>
+      ProjectionCheckpoint(localSequence: localSequence);
 }

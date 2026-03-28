@@ -42,24 +42,6 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     );
   }
 
-  // bool maybeEnqueueLiveEvent(LiveEventFull liveEvent) {
-  //   final isAffected = shouldProcess(
-  //     _projection.streamIdPattern,
-  //     liveEvent.streamIdStr,
-  //   );
-  //   if (isAffected) {
-  //     _queue.enqueue(
-  //       QueueItem(
-  //         aggregateIdData: liveEvent.streamIdData,
-  //         event: liveEvent.event,
-  //         meta: liveEvent.eventMetadata,
-  //       ),
-  //       liveEvent.localSequence,
-  //     );
-  //   }
-  //   return isAffected;
-  // }
-
   @override
   bool shouldProcess(StreamIdPattern streamIdPattern, String onPath) {
     if (_failureState.hasError) {
@@ -68,14 +50,6 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
     return _projection.streamIdPattern.globs(streamIdPattern, onPath);
   }
-
-  // bool shouldProcessPath(String onPath) {
-  //   if (_failureState.hasError) {
-  //     return false;
-  //   }
-
-  //   return _projection.streamIdPattern.filter.doesMatchPath(onPath);
-  // }
 
   Future<void> catchupSelfLoad(EventStoreProjection eventStore) async {
     try {
@@ -95,9 +69,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
       while (await reader.loadMore()) {
         StoredEventProjectionRead? e;
         while ((e = reader.next()) != null) {
-          final event = _projection.eventCodec.decode(
-            EncodedEvent(kind: e!.kind, detail: e.detail),
-          );
+          final event = _projection.eventCodec.decode(e!.encodedEvent);
 
           final aggregateIdData = _projection.streamIdPattern.toData(
             e.streamId,

@@ -30,9 +30,9 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfoLast(String streamId) {
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) {
     try {
-      return _store.getStreamInfoLast(streamId);
+      return _store.getStreamInfo(streamId);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream info for stream '$streamId' (last)",

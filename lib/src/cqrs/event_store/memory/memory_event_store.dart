@@ -51,11 +51,9 @@ class MemoryEvent {
   StoredEventProjectionRead get asStoredEventProjectionRead =>
       StoredEventProjectionRead(
         streamId: streamId,
-        kind: kind,
-        detail: detail,
+        encodedEvent: EncodedEvent(kind: kind, detail: detail),
         occuredAt: createdAt,
         localSequence: localSequence,
-        localVersion: localVersion,
       );
 
   @override
@@ -265,7 +263,7 @@ class MemoryEventStore implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfoLast(String streamId) async {
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
     final events = _getStreamEvents(streamId);
 
     if (events.isEmpty) {
@@ -309,7 +307,7 @@ class MemoryEventStore implements EventStore {
 
       // check local consistency
       for (final lock in appends.localLocks) {
-        final info = await getStreamInfoLast(lock.streamId);
+        final info = await getStreamInfo(lock.streamId);
 
         final originatingVersion = info == null ? 0 : info.originatingVersion;
 

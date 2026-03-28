@@ -1,4 +1,5 @@
 import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
@@ -85,17 +86,17 @@ class StreamAppendResult {
 }
 
 abstract interface class EventStoreCommand {
-  // this should have query-like optionals such as fromVersion (for partial resolving of projections)
-  // and till date (to replay events as if they have happened in the past)
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int count,
-    // this is a local version cursor, returned values will start with it.
-    // Can pass 0 or 1 when no version cursor is available
     int versionCursor,
   );
 
-  Future<GetStreamInfoResult?> getStreamInfoLast(String streamId);
+  /// TODO: I dont like this name + nullable return type
+  /// This method must return information on the last event of the stream.
+  /// The information is used to lock the stream for appends and to ensure
+  /// causal ordering after replication.
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId);
 
   /// TODO: rename to something better
   Future<StreamAppendResult> multiAppendEvents(

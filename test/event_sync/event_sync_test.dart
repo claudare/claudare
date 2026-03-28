@@ -64,7 +64,9 @@ void main() {
       final serverClaim = await keychainPairs.server.makeClaim(clientDeviceId);
       expect(eventSync.authExchange.done, isFalse);
 
+      // ignore: unawaited_futures
       expectLater(eventSync.init(), completes);
+      // ignore: unawaited_futures
       expectLater(eventSync.lifetime, completes);
 
       // send own auth
@@ -123,6 +125,7 @@ void main() {
         }
       });
 
+      // ignore: unawaited_futures
       expectLater(eventSync.lifetime, throwsException);
       expect(
         () => eventSync.init(),

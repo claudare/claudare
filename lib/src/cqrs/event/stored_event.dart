@@ -18,46 +18,39 @@ class StoredEventCommandWrite {
 /// events that are read from event store for the command processing
 /// this provides more in-depth to information to attach dependencies
 class StoredEventCommandRead {
+  final EncodedEvent encodedEvent;
+  final DateTime occuredAt;
+
   final DeviceId deviceId;
   final int causalSequence;
   final int localVersion;
 
-  final EncodedEvent encodedEvent;
-  final DateTime occuredAt;
-
   const StoredEventCommandRead({
+    required this.encodedEvent,
+    required this.occuredAt,
+
     required this.deviceId,
     required this.causalSequence,
     required this.localVersion,
-
-    required this.encodedEvent,
-    required this.occuredAt,
   });
 }
 
 /// [StoredEventProjectionRead] is for rebuilding projections
 class StoredEventProjectionRead {
-  final int localSequence;
-  final int localVersion;
-
   final String streamId;
-  final String kind;
-  final String detail;
+  final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
-  const StoredEventProjectionRead({
-    required this.localSequence,
-    required this.localVersion,
+  final int localSequence;
 
+  const StoredEventProjectionRead({
     required this.streamId,
-    required this.kind,
-    required this.detail,
+    required this.encodedEvent,
     required this.occuredAt,
+
+    required this.localSequence,
   });
 
-  EventMetadata get eventMetadata => EventMetadata(
-    occuredAt: occuredAt,
-    localSequence: localSequence,
-    localVersion: localVersion,
-  );
+  EventMetadata get eventMetadata =>
+      EventMetadata(occuredAt: occuredAt, localSequence: localSequence);
 }

@@ -65,7 +65,7 @@ class AccountsSummaryReadModel {
 
   Future<ProjectionCheckpoint> checkpoint() async {
     if (!_isInitialized) {
-      return ProjectionCheckpoint.zero();
+      throw Exception("checkpoint called before init");
     }
 
     return ProjectionCheckpoint(
@@ -74,7 +74,6 @@ class AccountsSummaryReadModel {
         (max, summary) =>
             max > summary.lastLocalSequence ? max : summary.lastLocalSequence,
       ),
-      localVersion: 0,
     );
   }
 

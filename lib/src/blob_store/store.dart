@@ -71,7 +71,7 @@ class BlobStore {
     } catch (e) {
       rethrow;
     } finally {
-      sink.close();
+      await sink.close();
     }
   }
 

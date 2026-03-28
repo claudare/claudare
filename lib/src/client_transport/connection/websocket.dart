@@ -74,7 +74,7 @@ class ClientConnectionWebsocket extends NetConnection {
     try {
       await channel.ready;
     } catch (e) {
-      _handleDisconnect();
+      await _handleDisconnect();
       rethrow;
     }
   }
