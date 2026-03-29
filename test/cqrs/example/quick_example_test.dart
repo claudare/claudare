@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
-import 'package:core/src/id_genenerator.dart';
+import 'package:core/src/id_generator.dart';
 import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
 

@@ -22,10 +22,6 @@ void main() {
         SodiumSecretstreamXChaCha20Poly1305Consts.aBytes,
         reason: 'aBytes mismatch',
       );
-
-      final id = sodium.randombytes.buf(16);
-
-      //
     });
   });
 }

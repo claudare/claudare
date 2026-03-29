@@ -1,6 +1,6 @@
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
-import 'package:core/src/id_genenerator.dart';
+import 'package:core/src/id_generator.dart';
 import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
 
@@ -52,10 +52,10 @@ void main() {
         OpenAccountInput(name: "first"),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "1", amount: 100),
+        AtmDepositInput(accountId: "0", amount: 100),
       );
       await app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "1", amount: 10),
+        AtmWithdrawalInput(accountId: "0", amount: 10),
       );
 
       final firstAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
@@ -63,7 +63,7 @@ void main() {
       expect(firstAccounts.first.name, equals("first"));
       expect(
         firstAccounts.first.accountId,
-        "1",
+        "0",
       ); // TODO: work on better testing for this
       expect(firstAccounts.first.balance, 90);
       expect(firstAccounts.first.transactionCount, 2);
@@ -77,13 +77,13 @@ void main() {
 
       await app.command.transferFundsBetweenAccounts.runThrowable(
         TransferFundsBetweenAccountsInput(
-          fromAccountId: "1",
-          toAccountId: "2",
+          fromAccountId: "0",
+          toAccountId: "1",
           amount: 20,
         ),
       );
       await app.command.renameAccount.runThrowable(
-        RenameAccountInput(accountId: "1", newName: "first-renamed"),
+        RenameAccountInput(accountId: "0", newName: "renamed"),
       );
 
       final secondAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
@@ -92,7 +92,7 @@ void main() {
       // print("FIRST: ${secondAccounts.first}");
       // print("SECOND: ${secondAccounts.last}");
 
-      expect(secondAccounts.first.name, equals("first-renamed"));
+      expect(secondAccounts.first.name, equals("renamed"));
       expect(secondAccounts.first.balance, 70);
 
       expect(secondAccounts.last.name, equals("second"));
@@ -105,7 +105,7 @@ void main() {
       );
       expect(
         () => app.command.atmWithdrawal.runThrowable(
-          AtmWithdrawalInput(accountId: "1", amount: 40),
+          AtmWithdrawalInput(accountId: "0", amount: 40),
         ),
         throwsA(
           isA<CommandNack>().having(
@@ -122,14 +122,14 @@ void main() {
         OpenAccountInput(name: "first"),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "1", amount: 100),
+        AtmDepositInput(accountId: "0", amount: 100),
       );
 
       final f1 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "1", amount: 80),
+        AtmWithdrawalInput(accountId: "0", amount: 80),
       );
       final f2 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "1", amount: 80),
+        AtmWithdrawalInput(accountId: "0", amount: 80),
       );
 
       // Attach handlers immediately. Ugly but works

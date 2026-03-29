@@ -15,7 +15,7 @@ class BlobId {
     // 11 char base58 58^11 = 2.49E19
 
     final intValue = randomU64();
-    final strValue = Base58.toStringPadded(intValue, _strLength);
+    final strValue = Base58.intToStringPadded(intValue, _strLength);
 
     return BlobId(strValue);
   }

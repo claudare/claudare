@@ -125,7 +125,7 @@ class Timestamp implements Comparable<Timestamp> {
       throw FormatException('Timestamp is invalid, wrong length', str);
     }
 
-    return Timestamp(Base58.fromString(str));
+    return Timestamp(Base58.intFromString(str));
   }
 
   void pack(Packer p) {
@@ -135,5 +135,5 @@ class Timestamp implements Comparable<Timestamp> {
   Timestamp.unpack(Unpacker u) : value = u.unpackInt()!;
 
   @override
-  String toString() => Base58.toStringPadded(value, _stringLength);
+  String toString() => Base58.intToStringPadded(value, _stringLength);
 }

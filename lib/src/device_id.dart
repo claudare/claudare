@@ -39,7 +39,8 @@ class DeviceId implements Comparable<DeviceId> {
   bool operator <=(DeviceId other) => value <= other.value;
 
   /// Creates a [DeviceId] from Base58 string representation
-  DeviceId.fromString(String valueStr) : value = Base58.fromString(valueStr) {
+  DeviceId.fromString(String valueStr)
+    : value = Base58.intFromString(valueStr) {
     if (value > _maxDeviceIdValue) {
       throw FormatException(
         'invalid deviceId, exceeds maximum allowed value of $_maxDeviceIdValue',
@@ -55,5 +56,5 @@ class DeviceId implements Comparable<DeviceId> {
 
   /// Converts the [DeviceId] to Base58 string representation
   @override
-  String toString() => Base58.toStringPadded(value, _strLenDevice);
+  String toString() => Base58.intToStringPadded(value, _strLenDevice);
 }

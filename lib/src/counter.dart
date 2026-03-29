@@ -42,7 +42,7 @@ class Counter16 {
       );
     }
 
-    final intValue = Base58.fromString(str);
+    final intValue = Base58.intFromString(str);
 
     return Counter16(intValue);
   }
@@ -51,7 +51,7 @@ class Counter16 {
 
   @override
   String toString() {
-    return Base58.toStringPadded(_value, _strLen);
+    return Base58.intToStringPadded(_value, _strLen);
   }
 
   @override
