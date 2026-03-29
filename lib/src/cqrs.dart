@@ -1,8 +1,5 @@
 library;
 
-// common
-export 'cqrs/device_id.dart';
-
 // cqrs runtime stuff
 export 'cqrs/cqrs_runtime/cqrs_runtime.dart';
 export 'cqrs/cqrs_runtime/cqrs_runtime_config.dart';

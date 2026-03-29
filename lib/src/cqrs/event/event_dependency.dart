@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 
 /// [EventDependency] keeps track of the events that must be replicated before

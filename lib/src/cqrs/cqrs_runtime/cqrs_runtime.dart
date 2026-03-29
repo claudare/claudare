@@ -3,7 +3,7 @@ import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
-import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
 import 'package:core/src/cqrs/projection/projection_failure_state.dart';

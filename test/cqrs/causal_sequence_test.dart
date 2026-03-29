@@ -1,5 +1,5 @@
 import 'package:core/src/cqrs/causal_sequence.dart';
-import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:test/test.dart';
 

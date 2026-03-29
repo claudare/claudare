@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/stream_event_reader.dart';

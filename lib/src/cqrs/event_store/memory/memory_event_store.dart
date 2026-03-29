@@ -4,7 +4,7 @@ import 'package:core/src/time_provider/time_provider.dart';
 
 import 'package:core/src/cqrs/causal_sequence.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
-import 'package:core/src/cqrs/device_id.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/device_sequences.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';

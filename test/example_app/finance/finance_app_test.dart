@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
+import 'package:core/src/device_id.dart';
 import 'package:core/src/id_generator.dart';
 import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';

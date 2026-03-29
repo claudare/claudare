@@ -1,13 +1,9 @@
-import 'dart:math';
-
-import 'package:core/src/utils/base58.dart';
-import 'package:messagepack/messagepack.dart';
+import 'dart:typed_data';
 
 class DeviceId implements Comparable<DeviceId> {
-  static const _strLenDevice = 3;
   static const int _maxDeviceIdValue = 0xFFFF; // u16
 
-  final int value; // hmmm, its not bytes
+  final int value;
 
   const DeviceId(this.value)
     : assert(
@@ -15,8 +11,22 @@ class DeviceId implements Comparable<DeviceId> {
         'incorrect deviceId $value, expected a value in 0-${_maxDeviceIdValue - 1} range',
       );
 
-  /// Creates a DeviceId with a random value
-  DeviceId.random() : value = Random.secure().nextInt(_maxDeviceIdValue);
+  factory DeviceId.validated(int value) {
+    if (value < 0 || value >= _maxDeviceIdValue) {
+      throw FormatException(
+        'incorrect deviceId $value, expected a value in 0-${_maxDeviceIdValue - 1} range',
+      );
+    }
+    return DeviceId(value);
+  }
+
+  /// Creates a DeviceId with zero value. That means there is no device
+  /// equivalent to a "null device".
+  DeviceId.zero() : value = 0;
+
+  /// Special kind to unassigned device. Could be used pre-sync in fully offline operation?
+  /// When sync is enabled it must be in the range of  1...u16-1.
+  DeviceId.unassigned() : value = 0xFFFF - 1;
 
   @override
   bool operator ==(Object other) {
@@ -38,23 +48,22 @@ class DeviceId implements Comparable<DeviceId> {
   bool operator >=(DeviceId other) => value >= other.value;
   bool operator <=(DeviceId other) => value <= other.value;
 
-  /// Creates a [DeviceId] from Base58 string representation
-  DeviceId.fromString(String valueStr)
-    : value = Base58.intFromString(valueStr) {
-    if (value > _maxDeviceIdValue) {
-      throw FormatException(
-        'invalid deviceId, exceeds maximum allowed value of $_maxDeviceIdValue',
-      );
-    }
+  int toJson() {
+    return value;
   }
 
-  void pack(Packer p) {
-    p.packInt(value);
+  factory DeviceId.fromJson(int json) {
+    return DeviceId.validated(json);
   }
 
-  DeviceId.unpack(Unpacker u) : value = u.unpackInt()!;
+  Uint8List toBytes() {
+    return Uint8List.fromList([value & 0xFF, (value >> 8) & 0xFF]);
+  }
 
-  /// Converts the [DeviceId] to Base58 string representation
+  factory DeviceId.fromBytes(Uint8List bytes) {
+    return DeviceId(bytes[0] | (bytes[1] << 8));
+  }
+
   @override
-  String toString() => Base58.intToStringPadded(value, _strLenDevice);
+  String toString() => "DeviceId(value: $value)";
 }
