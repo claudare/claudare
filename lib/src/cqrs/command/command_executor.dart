@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'package:core/src/id_generator/id_generator.dart';
+import 'package:core/src/time_provider/time_provider.dart';
+
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/command_context.dart';
 import 'package:core/src/cqrs/command/command_input.dart';
@@ -15,8 +18,6 @@ import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
-import 'package:core/src/cqrs/id_generator/id_generator.dart';
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 import '../json_error.dart';
 

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:core/src/cqrs/id_generator/id_generator.dart';
+import 'id_generator.dart';
 import 'package:uuid/uuid.dart';
 
 class UuidIdGenerator implements IdGenerator {

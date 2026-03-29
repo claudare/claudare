@@ -1,12 +1,13 @@
+import 'package:core/src/id_generator/id_generator.dart';
+import 'package:core/src/time_provider/time_provider.dart';
+
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
 import 'package:core/src/cqrs/command/command_stream.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/event/event_codec_safe.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/src/cqrs/id_generator/id_generator.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 class CommandContext {
   final EventStoreCommand _eventStore;

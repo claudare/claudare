@@ -1,6 +1,6 @@
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
-import 'package:core/src/cqrs_test_utils.dart';
+import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
 
 typedef EventStoreFactory = Future<EventStoreProjection> Function();

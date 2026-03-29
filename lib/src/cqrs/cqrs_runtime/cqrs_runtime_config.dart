@@ -1,5 +1,5 @@
-import 'package:core/src/cqrs/id_generator/id_generator.dart';
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
+import 'package:core/src/id_generator/id_generator.dart';
+import 'package:core/src/time_provider/time_provider.dart';
 
 class CqrsRuntimeConfig {
   final String applicationId;

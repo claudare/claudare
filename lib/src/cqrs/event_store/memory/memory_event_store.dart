@@ -1,3 +1,7 @@
+import 'package:mutex/mutex.dart' show Mutex;
+
+import 'package:core/src/time_provider/time_provider.dart';
+
 import 'package:core/src/cqrs/causal_sequence.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/cqrs/device_id.dart';
@@ -11,8 +15,6 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
-import 'package:mutex/mutex.dart' show Mutex;
 
 class MemoryEvent {
   final String streamId;

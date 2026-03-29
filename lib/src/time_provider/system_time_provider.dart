@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
+import 'time_provider.dart';
 
 class SystemTimeProvider implements TimeProvider {
   @override

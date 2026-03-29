@@ -7,7 +7,7 @@ import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
-import 'package:core/src/cqrs_test_utils.dart';
+import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
 
 typedef EventStoreFactory = Future<EventStoreCommand> Function();

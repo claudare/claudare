@@ -2,8 +2,37 @@ import 'dart:convert';
 
 import 'package:core/src/cqrs.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
-import 'package:core/src/cqrs_test_utils.dart';
+import 'package:core/src/id_genenerator.dart';
+import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
+
+void main() {
+  group('CQRS Quick Example', () {
+    test('standalone use', () async {
+      final eventStore = MemoryEventStore(
+        timeProvider: FakeTimeProviderStatic.zero(),
+      );
+      final deviceId = DeviceId(41);
+
+      final executer = CommandExecutor(
+        eventStore: eventStore,
+        idGenerator: FakeIdGeneratorSequential(),
+        timeProvider: FakeTimeProviderStatic.zero(),
+        thisDeviceId: deviceId,
+        applicationId: "test",
+        pageSize: 10,
+      );
+
+      final cmdDep = _ExampleDep();
+      final cmd = _ExampleCommand(cmdDep);
+
+      final res = await executer.executeThrowable(
+        cmd,
+        _ExampleCommandInput(value: 123),
+      );
+    });
+  });
+}
 
 sealed class _ExampleEvent {
   _ExampleEvent();
@@ -173,35 +202,4 @@ class _ExampleProjection implements Projection<_ExampleEvent, String> {
     // TODO: implement apply
     throw UnimplementedError();
   }
-}
-
-// TODO: 2 examples, with methods from here https://event-driven.io/en/projections_and_read_models_in_event_driven_architecture/
-// one with getAndStore, another with direct DB apply()
-// this is a way to demo on how to use this and to test usage of all features!
-void main() {
-  group('CQRS Quick Example', () {
-    test('standalone use', () async {
-      final eventStore = MemoryEventStore(
-        timeProvider: FakeTimeProviderStatic.zero(),
-      );
-      final deviceId = DeviceId(41);
-
-      final executer = CommandExecutor(
-        eventStore: eventStore,
-        idGenerator: FakeIdGeneratorSequential(),
-        timeProvider: FakeTimeProviderStatic.zero(),
-        thisDeviceId: deviceId,
-        applicationId: "test",
-        pageSize: 10,
-      );
-
-      final cmdDep = _ExampleDep();
-      final cmd = _ExampleCommand(cmdDep);
-
-      final res = await executer.executeThrowable(
-        cmd,
-        _ExampleCommandInput(value: 123),
-      );
-    });
-  });
 }

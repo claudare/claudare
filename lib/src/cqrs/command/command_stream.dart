@@ -1,3 +1,5 @@
+import 'package:core/src/time_provider/time_provider.dart';
+
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
@@ -9,7 +11,6 @@ import 'package:core/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_found_exception.dart';
 import 'package:core/src/cqrs/exception/stream_not_locked_exception.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 class CommandStream<Event, IdData> {
   final EventStoreCommand _eventStore;

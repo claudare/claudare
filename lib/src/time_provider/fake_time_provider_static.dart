@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/time_provider/time_provider.dart';
+import 'time_provider.dart';
 
 // time in the app is always using UTC time
 class FakeTimeProviderStatic implements TimeProvider {
