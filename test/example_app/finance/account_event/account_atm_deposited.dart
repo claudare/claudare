@@ -7,6 +7,7 @@ class AccountAtmDeposited extends AccountEvent {
 
   const AccountAtmDeposited({required this.amount});
 
+  @override
   toJson() => {'amount': amount};
 
   factory AccountAtmDeposited.fromJson(Map<String, dynamic> json) =>

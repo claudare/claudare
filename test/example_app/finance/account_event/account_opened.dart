@@ -7,6 +7,7 @@ class AccountOpened extends AccountEvent {
 
   const AccountOpened({required this.name});
 
+  @override
   toJson() => {'name': name};
 
   factory AccountOpened.fromJson(Map<String, dynamic> json) =>

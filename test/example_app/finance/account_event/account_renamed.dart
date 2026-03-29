@@ -7,6 +7,7 @@ class AccountRenamed extends AccountEvent {
 
   const AccountRenamed({required this.newName});
 
+  @override
   toJson() => {'newName': newName};
 
   factory AccountRenamed.fromJson(Map<String, dynamic> json) =>

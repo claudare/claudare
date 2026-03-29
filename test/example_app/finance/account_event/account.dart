@@ -16,6 +16,8 @@ part 'account_renamed.dart';
 // - editing of the trascations
 sealed class AccountEvent {
   const AccountEvent();
+
+  Map<String, dynamic> toJson();
 }
 
 const accountCodec = AccountCodec();
@@ -25,32 +27,18 @@ class AccountCodec implements EventCodec<AccountEvent> {
 
   @override
   encode(event) {
+    final detail = jsonEncode(event.toJson());
     switch (event) {
       case AccountOpened():
-        return EncodedEvent(
-          kind: AccountOpened.kind,
-          detail: jsonEncode(event.toJson()),
-        );
+        return EncodedEvent(kind: AccountOpened.kind, detail: detail);
       case AccountAtmDeposited():
-        return EncodedEvent(
-          kind: AccountAtmDeposited.kind,
-          detail: jsonEncode(event.toJson()),
-        );
+        return EncodedEvent(kind: AccountAtmDeposited.kind, detail: detail);
       case AccountAtmWithdrawn():
-        return EncodedEvent(
-          kind: AccountAtmWithdrawn.kind,
-          detail: jsonEncode(event.toJson()),
-        );
+        return EncodedEvent(kind: AccountAtmWithdrawn.kind, detail: detail);
       case AccountInnerTransfer():
-        return EncodedEvent(
-          kind: AccountInnerTransfer.kind,
-          detail: jsonEncode(event.toJson()),
-        );
+        return EncodedEvent(kind: AccountInnerTransfer.kind, detail: detail);
       case AccountRenamed():
-        return EncodedEvent(
-          kind: AccountRenamed.kind,
-          detail: jsonEncode(event.toJson()),
-        );
+        return EncodedEvent(kind: AccountRenamed.kind, detail: detail);
     }
   }
 

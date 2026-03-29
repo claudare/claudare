@@ -11,6 +11,7 @@ class AccountInnerTransfer extends AccountEvent {
     required this.amount,
   });
 
+  @override
   toJson() => {'fromAccountId': fromAccountId, 'amount': amount};
 
   factory AccountInnerTransfer.fromJson(Map<String, dynamic> json) =>
