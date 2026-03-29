@@ -8,12 +8,18 @@ class GlobalEventReader {
   final EventStoreProjection _underlying;
   final int _pageSize;
   final PatternFilter _patternFilter;
+  final String _applicationId;
 
   Iterator<StoredEventProjectionRead>? _current;
 
   int? _localSequenceCursor = 0;
 
-  GlobalEventReader(this._underlying, this._pageSize, this._patternFilter);
+  GlobalEventReader(
+    this._underlying,
+    this._pageSize,
+    this._patternFilter,
+    this._applicationId,
+  );
 
   StoredEventProjectionRead? next() {
     assert(_current != null, "No iterator available");
@@ -34,9 +40,12 @@ class GlobalEventReader {
     }
     assert(_current == null, "Iterator already exists");
 
-    final result = await _underlying.getGlobalEvents(_localSequenceCursor!, [
-      _patternFilter,
-    ], _pageSize);
+    final result = await _underlying.getGlobalEvents(
+      _applicationId,
+      _localSequenceCursor!,
+      [_patternFilter],
+      _pageSize,
+    );
 
     _current = result.events.iterator;
     _localSequenceCursor = result.sequenceNumberCursor;

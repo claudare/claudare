@@ -32,6 +32,7 @@ void main() {
       app = FinanceApp(
         eventStore: eventStore,
         config: CqrsRuntimeConfig(
+          applicationId: "finance",
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
           eventStorePageSize: 10,

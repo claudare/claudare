@@ -45,7 +45,9 @@ class CqrsRuntime {
     // or is that should be done outside?
 
     await Future.wait(
-      _projectionRunners.map((runner) => runner.catchupSelfLoad(_eventStore)),
+      _projectionRunners.map(
+        (runner) => runner.catchupSelfLoad(_eventStore, _config.applicationId),
+      ),
     );
   }
 
@@ -63,6 +65,7 @@ class CqrsRuntime {
       timeProvider: _config.timeProvider,
       idGenerator: _config.idGenerator,
       thisDeviceId: _thisDeviceId,
+      applicationId: _config.applicationId,
       pageSize: _config.eventStorePageSize,
     );
 

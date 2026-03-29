@@ -15,12 +15,18 @@ class EventStoreSafe implements EventStore {
 
   @override
   Future<GetStreamEventsResult> getStreamEvents(
+    String applicationId,
     String streamId,
     int count,
     int versionCursor,
   ) {
     try {
-      return _store.getStreamEvents(streamId, count, versionCursor);
+      return _store.getStreamEvents(
+        applicationId,
+        streamId,
+        count,
+        versionCursor,
+      );
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream events cursor for stream '$streamId'",
@@ -30,9 +36,12 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfo(String streamId) {
+  Future<GetStreamInfoResult?> getStreamInfo(
+    String applicationId,
+    String streamId,
+  ) {
     try {
-      return _store.getStreamInfo(streamId);
+      return _store.getStreamInfo(applicationId, streamId);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream info for stream '$streamId' (last)",
@@ -61,12 +70,18 @@ class EventStoreSafe implements EventStore {
 
   @override
   Future<GetGlobalEventsResult> getGlobalEvents(
+    String applicationId,
     int sequenceNumber,
     List<PatternFilter> aggregateFilters,
     int count,
   ) {
     try {
-      return _store.getGlobalEvents(sequenceNumber, aggregateFilters, count);
+      return _store.getGlobalEvents(
+        applicationId,
+        sequenceNumber,
+        aggregateFilters,
+        count,
+      );
     } catch (cause) {
       throw EventStoreException("Failed to get global events", cause: cause);
     }

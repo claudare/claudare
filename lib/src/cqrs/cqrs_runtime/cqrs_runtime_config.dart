@@ -2,6 +2,7 @@ import 'package:core/src/cqrs/id_generator/id_generator.dart';
 import 'package:core/src/cqrs/time_provider/time_provider.dart';
 
 class CqrsRuntimeConfig {
+  final String applicationId;
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;
 
@@ -9,6 +10,7 @@ class CqrsRuntimeConfig {
   final int eventStorePageSize;
 
   const CqrsRuntimeConfig({
+    required this.applicationId,
     required this.idGenerator,
     required this.timeProvider,
     this.eventStorePageSize = 20,

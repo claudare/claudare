@@ -30,7 +30,7 @@ void main() {
       });
 
       test("get empty global events", () async {
-        final res = await store.getGlobalEvents(0, [], 10);
+        final res = await store.getGlobalEvents("test", 0, [], 10);
 
         expect(res.sequenceNumberCursor, isNull);
         expect(res.events.length, 0);

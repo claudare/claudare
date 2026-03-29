@@ -146,6 +146,10 @@ class MemoryCommandInsert {
   });
 }
 
+const _todoApplicationId = "TODO";
+
+/// Reference memory implementation.
+/// Currently application id is not supported.
 class MemoryEventStore implements EventStore {
   final List<MemoryEvent> _events = [];
   final List<MemoryCommand> _commands = [];
@@ -243,6 +247,7 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<GetStreamEventsResult> getStreamEvents(
+    String _,
     String streamIdStr,
     int count,
     int versionCursor,
@@ -263,7 +268,7 @@ class MemoryEventStore implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
+  Future<GetStreamInfoResult?> getStreamInfo(String _, String streamId) async {
     final events = _getStreamEvents(streamId);
 
     if (events.isEmpty) {
@@ -307,7 +312,7 @@ class MemoryEventStore implements EventStore {
 
       // check local consistency
       for (final lock in appends.localLocks) {
-        final info = await getStreamInfo(lock.streamId);
+        final info = await getStreamInfo(_todoApplicationId, lock.streamId);
 
         final originatingVersion = info == null ? 0 : info.originatingVersion;
 
@@ -362,6 +367,7 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<GetGlobalEventsResult> getGlobalEvents(
+    String _,
     int sequenceNumber,
     List<PatternFilter> aggregateFilters,
     int count,
