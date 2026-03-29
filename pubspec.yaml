@@ -22,6 +22,7 @@ dependencies:
   web_socket_channel: ^3.0.2
   uuid: ^4.5.3
   mutex: ^3.1.0
+  sodium: ^4.0.0+1
   # path: ^1.8.0
 
 dev_dependencies:
