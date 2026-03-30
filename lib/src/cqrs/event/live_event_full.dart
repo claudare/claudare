@@ -1,6 +1,5 @@
 import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/event/live_event_min.dart';
-import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 
 // TODO: this should hold actual classes
 // things like checkpoint, eventMetadata
@@ -18,7 +17,4 @@ class LiveEventFull<Event, IdData> extends LiveEventMin<Event, IdData> {
 
   EventMetadata get eventMetadata =>
       EventMetadata(occuredAt: occuredAt, localSequence: localSequence);
-
-  ProjectionCheckpoint get checkpoint =>
-      ProjectionCheckpoint(localSequence: localSequence);
 }

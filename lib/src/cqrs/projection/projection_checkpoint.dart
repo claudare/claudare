@@ -5,5 +5,5 @@ class ProjectionCheckpoint {
 
   ProjectionCheckpoint.zero() : localSequence = 0;
 
-  get isZero => localSequence == 0;
+  bool get isZero => localSequence == 0;
 }

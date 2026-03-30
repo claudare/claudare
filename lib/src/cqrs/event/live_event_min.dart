@@ -1,6 +1,4 @@
-import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/event/live_event_full.dart';
-import 'package:core/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class LiveEventMin<Event, IdData> {
