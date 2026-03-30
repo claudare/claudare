@@ -8,7 +8,7 @@ class StreamEventReader {
   final String _streamId;
 
   List<StoredEventCommandRead> _current = const [];
-  int _originatingLocalVersion = -1;
+  int _originatingStreamVersion = -1;
 
   StreamEventReader(
     this._eventStore,
@@ -21,11 +21,11 @@ class StreamEventReader {
 
   Future<bool> loadMore() async {
     if (_current.isNotEmpty &&
-        _current.last.localVersion == _originatingLocalVersion) {
+        _current.last.streamVersion == _originatingStreamVersion) {
       return false;
     }
 
-    final cursor = _current.isEmpty ? 0 : _current.last.localVersion;
+    final cursor = _current.isEmpty ? 0 : _current.last.streamVersion;
     final result = await _eventStore.getStreamEvents(
       _applicationId,
       _streamId,
@@ -34,13 +34,13 @@ class StreamEventReader {
     );
 
     _current = result.events;
-    _originatingLocalVersion = result.originatingVersion;
+    _originatingStreamVersion = result.originatingStreamVersion;
 
     return _current.isNotEmpty;
   }
 
   StreamLocalLock get streamLock => StreamLocalLock(
     streamId: _streamId,
-    originatingVersion: _originatingLocalVersion,
+    originatingStreamVersion: _originatingStreamVersion,
   );
 }

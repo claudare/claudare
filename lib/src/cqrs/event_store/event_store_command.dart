@@ -4,11 +4,11 @@ import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 
 class GetStreamEventsResult {
-  final int originatingVersion; // 0 is no events in this aggregate
+  final int originatingStreamVersion; // 0 is no events in this aggregate
   final List<StoredEventCommandRead> events;
 
   GetStreamEventsResult({
-    required this.originatingVersion,
+    required this.originatingStreamVersion,
     required this.events,
   });
 }
@@ -17,35 +17,23 @@ class GetStreamInfoResult {
   /// Used for the dependency tracking
   final DeviceIdSequencePair causalSequencePair;
 
-  /// Used for locking (as all commands are locked for now)
-  /// I dont think no consistency check commands are needed?
-  final int originatingVersion;
+  /// Used for concurrency check on stream level.
+  /// Maybe no-consistency checks will be needed?
+  final int originatingStreamVersion;
 
   const GetStreamInfoResult({
     required this.causalSequencePair,
-    required this.originatingVersion,
-  });
-}
-
-class GetStreamInfoPoint {
-  final DeviceIdSequencePair causalSequencePair;
-  final int localSequence;
-  final int version; // if last is gotten, this is the originatingVersion?
-
-  const GetStreamInfoPoint({
-    required this.causalSequencePair,
-    required this.localSequence,
-    required this.version,
+    required this.originatingStreamVersion,
   });
 }
 
 class StreamLocalLock {
   final String streamId;
-  final int originatingVersion;
+  final int originatingStreamVersion;
 
   const StreamLocalLock({
     required this.streamId,
-    required this.originatingVersion,
+    required this.originatingStreamVersion,
   });
 }
 

@@ -23,7 +23,7 @@ class StoredEventCommandRead {
 
   final DeviceId deviceId;
   final int causalSequence;
-  final int localVersion;
+  final int streamVersion;
 
   const StoredEventCommandRead({
     required this.encodedEvent,
@@ -31,7 +31,7 @@ class StoredEventCommandRead {
 
     required this.deviceId,
     required this.causalSequence,
-    required this.localVersion,
+    required this.streamVersion,
   });
 }
 

@@ -85,7 +85,7 @@ class CommandStream<Event, IdData> {
 
     if (info == null) {
       _appends.locks.add(
-        StreamLocalLock(streamId: _streamId, originatingVersion: 0),
+        StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
       );
       return;
     }
@@ -94,7 +94,7 @@ class CommandStream<Event, IdData> {
     _appends.locks.add(
       StreamLocalLock(
         streamId: _streamId,
-        originatingVersion: info.originatingVersion,
+        originatingStreamVersion: info.originatingStreamVersion,
       ),
     );
 
@@ -114,7 +114,7 @@ class CommandStream<Event, IdData> {
     _appends.locks.add(
       StreamLocalLock(
         streamId: _streamId,
-        originatingVersion: info.originatingVersion,
+        originatingStreamVersion: info.originatingStreamVersion,
       ),
     );
   }
@@ -129,7 +129,7 @@ class CommandStream<Event, IdData> {
     }
 
     _appends.locks.add(
-      StreamLocalLock(streamId: _streamId, originatingVersion: 0),
+      StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
     );
   }
 

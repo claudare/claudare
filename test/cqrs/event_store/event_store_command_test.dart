@@ -73,7 +73,7 @@ void main() {
       test("get empty stream events", () async {
         final res = await store.getStreamEvents("test", "non-existing", 10, 0);
 
-        expect(res.originatingVersion, 0);
+        expect(res.originatingStreamVersion, 0);
         expect(res.events.length, 0);
       });
 
@@ -95,7 +95,7 @@ void main() {
           StreamAppends(
             dependencies: EventDependency({}),
             localLocks: [
-              StreamLocalLock(streamId: streamId, originatingVersion: 0),
+              StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
             ],
             events: [
               _fakeEvent(streamId: streamId, kind: "test", occuredAt: t2),
@@ -134,7 +134,7 @@ void main() {
           StreamAppends(
             dependencies: EventDependency({}),
             localLocks: [
-              StreamLocalLock(streamId: streamId, originatingVersion: 0),
+              StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
             ],
             events: [
               _fakeEvent(streamId: streamId, kind: "test-1", occuredAt: t2),
@@ -146,7 +146,7 @@ void main() {
         final res = await store.getStreamInfo("test", streamId);
 
         expect(res, isNotNull);
-        expect(res!.originatingVersion, 2);
+        expect(res!.originatingStreamVersion, 2);
 
         // TODO: proper usage of sequences must be tested
         // Or maybe the sequencer is in the outside?
@@ -165,7 +165,10 @@ void main() {
             StreamAppends(
               dependencies: EventDependency({}),
               localLocks: [
-                StreamLocalLock(streamId: streamId, originatingVersion: 0),
+                StreamLocalLock(
+                  streamId: streamId,
+                  originatingStreamVersion: 0,
+                ),
               ],
               events:
                   List.generate(
@@ -183,15 +186,15 @@ void main() {
 
           final getRes = await store.getStreamEvents("test", streamId, 2, 0);
           final events = getRes.events.toList();
-          expect(getRes.originatingVersion, 6);
+          expect(getRes.originatingStreamVersion, 6);
 
           expect(getRes.events.length, 2);
 
           expect(events[0].encodedEvent.kind, "event-0");
           expect(events[1].encodedEvent.kind, "event-1");
 
-          expect(events[0].localVersion, 1);
-          expect(events[1].localVersion, 2);
+          expect(events[0].streamVersion, 1);
+          expect(events[1].streamVersion, 2);
         });
 
         test("in the middle", () async {
@@ -203,7 +206,10 @@ void main() {
             StreamAppends(
               dependencies: EventDependency({}),
               localLocks: [
-                StreamLocalLock(streamId: streamId, originatingVersion: 0),
+                StreamLocalLock(
+                  streamId: streamId,
+                  originatingStreamVersion: 0,
+                ),
               ],
               events:
                   List.generate(
@@ -221,14 +227,14 @@ void main() {
 
           final getRes = await store.getStreamEvents("test", streamId, 2, 2);
           final events = getRes.events.toList();
-          expect(getRes.originatingVersion, 6);
+          expect(getRes.originatingStreamVersion, 6);
           expect(getRes.events.length, 2);
 
           expect(events[0].encodedEvent.kind, 'event-2');
           expect(events[1].encodedEvent.kind, 'event-3');
 
-          expect(events[0].localVersion, 3);
-          expect(events[1].localVersion, 4);
+          expect(events[0].streamVersion, 3);
+          expect(events[1].streamVersion, 4);
         });
       });
     });

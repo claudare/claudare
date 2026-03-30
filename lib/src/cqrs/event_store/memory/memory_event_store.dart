@@ -133,7 +133,10 @@ class MemoryEventStore implements EventStore {
             .toList();
 
     return Future.value(
-      GetStreamEventsResult(originatingVersion: all.length, events: paginated),
+      GetStreamEventsResult(
+        originatingStreamVersion: all.length,
+        events: paginated,
+      ),
     );
   }
 
@@ -150,7 +153,7 @@ class MemoryEventStore implements EventStore {
         events.last.deviceId,
         events.last.causalSequence,
       ),
-      originatingVersion: events.length,
+      originatingStreamVersion: events.length,
     );
   }
 
@@ -184,11 +187,12 @@ class MemoryEventStore implements EventStore {
       for (final lock in appends.localLocks) {
         final info = await getStreamInfo(_todoApplicationId, lock.streamId);
 
-        final originatingVersion = info == null ? 0 : info.originatingVersion;
+        final originatingStreamVersion =
+            info == null ? 0 : info.originatingStreamVersion;
 
-        streams[lock.streamId] = originatingVersion;
+        streams[lock.streamId] = originatingStreamVersion;
 
-        if (originatingVersion != lock.originatingVersion) {
+        if (originatingStreamVersion != lock.originatingStreamVersion) {
           throw ConcurrencyProblem();
         }
       }
@@ -277,7 +281,7 @@ class MemoryEvent {
   StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
     deviceId: deviceId,
     causalSequence: causalSequence,
-    localVersion: localVersion,
+    streamVersion: localVersion,
 
     encodedEvent: EncodedEvent(kind: kind, detail: detail),
     occuredAt: createdAt,

@@ -31,6 +31,7 @@ final migrations =
         // (local_sequence) for fully offline projection catchup and playback
         await db.exec('''CREATE TABLE event(
           stream_id,
+          stream_version INTEGER,
           kind,
           detail,
           occured_at,
@@ -38,7 +39,6 @@ final migrations =
           device_sequence INTEGER,
           causal_sequence INTEGER,
           local_sequence INTEGER,
-          local_version INTEGER,
           PRIMARY KEY (local_sequence)
         );'''); // app_sequence!
 
@@ -88,17 +88,17 @@ class EventDb {
     int versionCursor,
   ) async {
     // could transact here!
-    final originatingVersion = await _db.queryValue<int>(
+    final originatingStreamVersion = await _db.queryValue<int>(
       "SELECT version FROM stream WHERE stream_id = ?",
       [streamId],
     );
 
-    if (originatingVersion == null) {
-      return GetStreamEventsResult(originatingVersion: 0, events: []);
+    if (originatingStreamVersion == null) {
+      return GetStreamEventsResult(originatingStreamVersion: 0, events: []);
     }
 
     final eventsResult = await _db.query(
-      "SELECT kind, detail, occured_at, device_id, causal_sequence, local_version FROM event WHERE stream_id = ? AND local_version > ? ORDER BY local_version ASC LIMIT ?",
+      "SELECT kind, detail, occured_at, device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? AND stream_version > ? ORDER BY stream_version ASC LIMIT ?",
       [streamId, versionCursor, count],
     );
 
@@ -118,19 +118,19 @@ class EventDb {
         ),
         deviceId: DeviceId(row[3] as int),
         causalSequence: row[4] as int,
-        localVersion: row[5] as int,
+        streamVersion: row[5] as int,
       );
     });
 
     return GetStreamEventsResult(
-      originatingVersion: originatingVersion,
+      originatingStreamVersion: originatingStreamVersion,
       events: events,
     );
   }
 
   Future<GetStreamInfoResult?> getStreamInfo(String _, String streamId) async {
     final row = await _db.queryRow(
-      "SELECT device_id, causal_sequence, local_version FROM event WHERE stream_id = ? ORDER BY local_version DESC LIMIT 1",
+      "SELECT device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? ORDER BY stream_version DESC LIMIT 1",
       [streamId],
     );
 
@@ -143,11 +143,11 @@ class EventDb {
         DeviceId(row[0] as int),
         row[1] as int,
       ),
-      originatingVersion: row[2] as int,
+      originatingStreamVersion: row[2] as int,
     );
   }
 
-  Future<SaveChangesResult> multiAppendEvents(
+  Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
@@ -173,25 +173,27 @@ class EventDb {
 
     final deviceId = command.deviceId;
     final streamId = appends.localLocks.single.streamId;
-    final originatingVersion = appends.localLocks.single.originatingVersion;
+    final originatingStreamVersion =
+        appends.localLocks.single.originatingStreamVersion;
 
     return await _db.transaction((tx) {
-      var version = 0;
+      var streamVersion = 0;
 
-      final versionDb = tx.queryValue<int>(
+      final streamVersionInDb = tx.queryValue<int>(
         "SELECT version FROM stream WHERE stream_id = ? LIMIT 1",
+
         [streamId],
       );
 
-      if (versionDb == null) {
+      if (streamVersionInDb == null) {
         tx.exec("INSERT INTO stream (stream_id, version) VALUES (?, 0)", [
           streamId,
         ]);
       } else {
-        version = versionDb;
+        streamVersion = streamVersionInDb;
       }
 
-      if (originatingVersion != version) {
+      if (originatingStreamVersion != streamVersion) {
         throw ConcurrencyProblem();
       }
 
@@ -202,11 +204,11 @@ class EventDb {
         final localSequence = tx.queryValue<int>(
           """INSERT INTO event (
             stream_id,
+            stream_version,
             kind,
             detail,
             occured_at,
             device_id,
-            local_version,
             device_sequence,
             causal_sequence,
             local_sequence
@@ -223,16 +225,16 @@ class EventDb {
           ) RETURNING local_sequence; """,
           [
             streamId,
+            streamVersion + 1,
             event.encodedEvent.kind,
             event.encodedEvent.detail,
             event.occuredAt.millisecondsSinceEpoch,
             deviceId.value,
-            version + 1,
             deviceId.value,
             deviceId.value,
           ],
         );
-        version++;
+        streamVersion++;
 
         if (localSequence == null) {
           throw StateError('localSequence is null');
@@ -242,7 +244,7 @@ class EventDb {
       }
 
       tx.exec("UPDATE stream SET version = ? WHERE stream_id = ?", [
-        version,
+        streamVersion,
         streamId,
       ]);
 

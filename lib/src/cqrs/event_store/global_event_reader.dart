@@ -53,10 +53,3 @@ class GlobalEventReader {
     return true;
   }
 }
-
-class IterationState {
-  final EventDependency dependencies;
-  final int originatingLocalVersion;
-
-  IterationState(this.dependencies, this.originatingLocalVersion);
-}

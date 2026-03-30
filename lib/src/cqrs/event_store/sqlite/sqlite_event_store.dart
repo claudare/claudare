@@ -43,7 +43,7 @@ class SqliteEventStore implements EventStore {
     StoredCommandWrite command,
     StreamAppends appends,
   ) {
-    return _eventDb.multiAppendEvents(command, appends);
+    return _eventDb.saveChanges(command, appends);
   }
 
   @override
