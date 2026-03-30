@@ -1,11 +1,11 @@
 import 'dart:async';
 
+import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_all.dart';
 import 'package:test/test.dart';
 
 import 'package:core/src/cqrs/projection/projection_sink.dart';
 import 'package:core/src/cqrs/projection/projection_router.dart';
-import 'package:core/src/cqrs/event/live_event.dart';
 
 void main() {
   group('ProjectionRouter', () {

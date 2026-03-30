@@ -1,5 +1,5 @@
 import 'package:core/src/cqrs/event/event_metadata.dart';
-import 'package:core/src/cqrs/event/live_event.dart';
+import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/event_store/global_event_reader.dart';

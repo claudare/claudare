@@ -1,6 +1,6 @@
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
-import 'package:core/src/cqrs/event/live_event.dart';
+import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';

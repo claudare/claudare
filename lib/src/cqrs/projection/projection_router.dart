@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:core/src/cqrs/event/live_event.dart';
+import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/projection/projection_sink.dart';
 
 class ProjectionRouter {
