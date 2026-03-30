@@ -72,14 +72,14 @@ class EventStoreSafe implements EventStore {
   Future<GetGlobalEventsResult> getGlobalEvents(
     String applicationId,
     int sequenceNumber,
-    List<PatternFilter> aggregateFilters,
+    PatternFilter patternFilter,
     int count,
   ) {
     try {
       return _store.getGlobalEvents(
         applicationId,
         sequenceNumber,
-        aggregateFilters,
+        patternFilter,
         count,
       );
     } catch (cause) {

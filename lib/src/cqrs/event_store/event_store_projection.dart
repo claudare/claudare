@@ -16,7 +16,7 @@ abstract interface class EventStoreProjection {
   Future<GetGlobalEventsResult> getGlobalEvents(
     String applicationId,
     int sequenceNumber,
-    List<PatternFilter> aggregateFilters,
+    PatternFilter patternFilter,
     int count,
   );
 }

@@ -50,13 +50,13 @@ class SqliteEventStore implements EventStore {
   Future<GetGlobalEventsResult> getGlobalEvents(
     String applicationId,
     int sequenceNumber,
-    List<PatternFilter> aggregateFilters,
+    PatternFilter patternFilter,
     int count,
   ) {
     return _eventDb.getGlobalEvents(
       applicationId,
       sequenceNumber,
-      aggregateFilters,
+      patternFilter,
       count,
     );
   }

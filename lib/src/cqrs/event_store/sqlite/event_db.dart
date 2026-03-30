@@ -253,14 +253,10 @@ class EventDb {
   Future<GetGlobalEventsResult> getGlobalEvents(
     String applicationId,
     int sequenceNumber,
-    List<PatternFilter> aggregateFilters,
+    PatternFilter patternFilter,
     int count,
   ) async {
-    if (aggregateFilters.length != 1) {
-      throw UnimplementedError("multiple aggreagete filters not possible");
-    }
-
-    final filterSql = patternToSQL(aggregateFilters.first);
+    final filterSql = patternToSQL(patternFilter);
     final values = await _db.query(
       """SELECT
         stream_id,

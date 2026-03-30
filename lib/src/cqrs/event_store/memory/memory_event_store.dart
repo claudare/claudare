@@ -234,15 +234,13 @@ class MemoryEventStore implements EventStore {
   Future<GetGlobalEventsResult> getGlobalEvents(
     String _,
     int sequenceNumber,
-    List<PatternFilter> aggregateFilters,
+    PatternFilter patternFilter,
     int count,
   ) async {
     final paginated =
         _events
             .skipWhile((e) => e.localSequence <= sequenceNumber)
-            .where(
-              (e) => aggregateFilters.any((f) => f.doesMatchPath(e.streamId)),
-            )
+            .where((e) => patternFilter.doesMatchPath(e.streamId))
             .take(count)
             .map((e) => e.asStoredEventProjectionRead)
             .toList();

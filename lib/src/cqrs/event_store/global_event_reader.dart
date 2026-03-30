@@ -43,7 +43,7 @@ class GlobalEventReader {
     final result = await _underlying.getGlobalEvents(
       _applicationId,
       _localSequenceCursor!,
-      [_patternFilter],
+      _patternFilter,
       _pageSize,
     );
 
