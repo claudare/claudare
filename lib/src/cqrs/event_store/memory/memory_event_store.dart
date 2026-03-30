@@ -16,138 +16,6 @@ import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
-class MemoryEvent {
-  final String streamId;
-  final String kind;
-  final String detail;
-  final DateTime createdAt;
-
-  final DeviceId deviceId;
-  final int deviceSequence;
-  final int causalSequence;
-  final int localSequence;
-  final int localVersion;
-
-  const MemoryEvent({
-    required this.streamId,
-    required this.kind,
-    required this.detail,
-    required this.createdAt,
-
-    required this.deviceId,
-    required this.deviceSequence,
-    required this.causalSequence,
-    required this.localSequence,
-    required this.localVersion,
-  });
-
-  StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
-    deviceId: deviceId,
-    causalSequence: causalSequence,
-    localVersion: localVersion,
-
-    encodedEvent: EncodedEvent(kind: kind, detail: detail),
-    occuredAt: createdAt,
-  );
-
-  StoredEventProjectionRead get asStoredEventProjectionRead =>
-      StoredEventProjectionRead(
-        streamId: streamId,
-        encodedEvent: EncodedEvent(kind: kind, detail: detail),
-        occuredAt: createdAt,
-        localSequence: localSequence,
-      );
-
-  @override
-  String toString() =>
-      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $localVersion)";
-}
-
-class MemoryEventInsert {
-  final DeviceId deviceId;
-  final String streamId;
-  final String kind;
-  final String detail;
-  final int? localVersion;
-  final DateTime? emitedAt;
-
-  const MemoryEventInsert({
-    required this.deviceId,
-    required this.streamId,
-    required this.kind,
-    required this.detail,
-    this.localVersion,
-    this.emitedAt,
-  });
-
-  MemoryEventInsert.minimal({
-    required this.deviceId,
-    required this.streamId,
-    this.kind = "test",
-    this.detail = "{}",
-    this.localVersion,
-    this.emitedAt,
-  });
-}
-
-class MemoryCommand {
-  final String kind;
-  final String detail;
-  final DateTime startedAt;
-  final DateTime completedAt;
-
-  final EventDependency dependencies;
-  final DeviceId deviceId;
-  final int deviceSequence;
-  final int localSequence;
-
-  final String? nackReason;
-  final Exception? exception;
-
-  const MemoryCommand({
-    required this.kind,
-    required this.detail,
-    required this.startedAt,
-    required this.completedAt,
-
-    required this.dependencies,
-    required this.deviceId,
-    required this.deviceSequence,
-    required this.localSequence,
-
-    required this.nackReason,
-    required this.exception,
-  });
-
-  @override
-  String toString() =>
-      "MemoryCommand(kind: $kind, detail: $detail, startedAt: $startedAt, completedAt: $completedAt, dependencies: $dependencies, deviceId: $deviceId, deviceSequence: $deviceSequence, localSequence: $localSequence, nackReason: $nackReason, exception: $exception)";
-}
-
-class MemoryCommandInsert {
-  final DeviceId deviceId;
-
-  final String kind;
-  final String detail;
-  final DateTime startedAt;
-  final DateTime completedAt;
-  final EventDependency dependencies;
-
-  final String? nackReason;
-  final Exception? exception;
-
-  const MemoryCommandInsert({
-    required this.deviceId,
-    required this.kind,
-    required this.detail,
-    required this.startedAt,
-    required this.completedAt,
-    required this.dependencies,
-    required this.nackReason,
-    required this.exception,
-  });
-}
-
 const _todoApplicationId = "TODO";
 
 /// Reference memory implementation.
@@ -212,7 +80,7 @@ class MemoryEventStore implements EventStore {
       streamId: value.streamId,
       kind: value.kind,
       detail: value.detail,
-      createdAt: value.emitedAt ?? _timeProvider.now(),
+      createdAt: value.occuredAt ?? _timeProvider.now(),
     );
 
     _events.add(event);
@@ -341,16 +209,11 @@ class MemoryEventStore implements EventStore {
             kind: event.encodedEvent.kind,
             detail: event.encodedEvent.detail,
             localVersion: version,
-            emitedAt: event.occuredAt,
+            occuredAt: event.occuredAt,
           ),
         );
 
-        result.orders.add(
-          StreamAppendOrder(
-            localSequence: ins.localSequence,
-            localVersion: version,
-          ),
-        );
+        result.orders.add(StreamAppendOrder(localSequence: ins.localSequence));
 
         streams[streamIdStr] = version;
       }
@@ -386,4 +249,136 @@ class MemoryEventStore implements EventStore {
 
     return GetGlobalEventsResult(events: paginated, sequenceNumberCursor: null);
   }
+}
+
+class MemoryEvent {
+  final String streamId;
+  final String kind;
+  final String detail;
+  final DateTime createdAt;
+
+  final DeviceId deviceId;
+  final int deviceSequence;
+  final int causalSequence;
+  final int localSequence;
+  final int localVersion;
+
+  const MemoryEvent({
+    required this.streamId,
+    required this.kind,
+    required this.detail,
+    required this.createdAt,
+
+    required this.deviceId,
+    required this.deviceSequence,
+    required this.causalSequence,
+    required this.localSequence,
+    required this.localVersion,
+  });
+
+  StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
+    deviceId: deviceId,
+    causalSequence: causalSequence,
+    localVersion: localVersion,
+
+    encodedEvent: EncodedEvent(kind: kind, detail: detail),
+    occuredAt: createdAt,
+  );
+
+  StoredEventProjectionRead get asStoredEventProjectionRead =>
+      StoredEventProjectionRead(
+        streamId: streamId,
+        encodedEvent: EncodedEvent(kind: kind, detail: detail),
+        occuredAt: createdAt,
+        localSequence: localSequence,
+      );
+
+  @override
+  String toString() =>
+      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $localVersion)";
+}
+
+class MemoryEventInsert {
+  final DeviceId deviceId;
+  final String streamId;
+  final String kind;
+  final String detail;
+  final int? localVersion;
+  final DateTime? occuredAt;
+
+  const MemoryEventInsert({
+    required this.deviceId,
+    required this.streamId,
+    required this.kind,
+    required this.detail,
+    this.localVersion,
+    this.occuredAt,
+  });
+
+  MemoryEventInsert.minimal({
+    required this.deviceId,
+    required this.streamId,
+    this.kind = "test",
+    this.detail = "{}",
+    this.localVersion,
+    this.occuredAt,
+  });
+}
+
+class MemoryCommand {
+  final String kind;
+  final String detail;
+  final DateTime startedAt;
+  final DateTime completedAt;
+
+  final EventDependency dependencies;
+  final DeviceId deviceId;
+  final int deviceSequence;
+  final int localSequence;
+
+  final String? nackReason;
+  final Exception? exception;
+
+  const MemoryCommand({
+    required this.kind,
+    required this.detail,
+    required this.startedAt,
+    required this.completedAt,
+
+    required this.dependencies,
+    required this.deviceId,
+    required this.deviceSequence,
+    required this.localSequence,
+
+    required this.nackReason,
+    required this.exception,
+  });
+
+  @override
+  String toString() =>
+      "MemoryCommand(kind: $kind, detail: $detail, startedAt: $startedAt, completedAt: $completedAt, dependencies: $dependencies, deviceId: $deviceId, deviceSequence: $deviceSequence, localSequence: $localSequence, nackReason: $nackReason, exception: $exception)";
+}
+
+class MemoryCommandInsert {
+  final DeviceId deviceId;
+
+  final String kind;
+  final String detail;
+  final DateTime startedAt;
+  final DateTime completedAt;
+  final EventDependency dependencies;
+
+  final String? nackReason;
+  final Exception? exception;
+
+  const MemoryCommandInsert({
+    required this.deviceId,
+    required this.kind,
+    required this.detail,
+    required this.startedAt,
+    required this.completedAt,
+    required this.dependencies,
+    required this.nackReason,
+    required this.exception,
+  });
 }

@@ -11,7 +11,6 @@ environment:
 dependencies:
   pointycastle: ^4.0.0
   async: ^2.12.0
-  sqlite_async: ^0.13.1
   path: ^1.9.1
   convert: ^3.1.2
   messagepack: ^0.2.1
@@ -23,6 +22,11 @@ dependencies:
   uuid: ^4.5.3
   mutex: ^3.1.0
   sodium: ^4.0.0+1
+  isolate_sqlite:
+    git:
+      url: git@github.com:claudare/isolate_sqlite.git
+      ref: main
+
   # path: ^1.8.0
 
 dev_dependencies:

@@ -32,10 +32,7 @@ class CommandAppendEvent<Event, IdData> {
     );
   }
 
-  LiveEventFull toLiveEventFull({
-    required int localSequence,
-    required int version,
-  }) {
+  LiveEventFull toLiveEventFull({required int localSequence}) {
     return LiveEventFull(
       streamIdPattern: streamIdPattern,
       streamIdStr: streamIdStr,

@@ -19,10 +19,7 @@ class LiveEventMin<Event, IdData> {
     required this.occuredAt,
   });
 
-  LiveEventFull<Event, IdData> toFull({
-    required int localSequence,
-    required int version,
-  }) {
+  LiveEventFull<Event, IdData> toFull({required int localSequence}) {
     return LiveEventFull(
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,

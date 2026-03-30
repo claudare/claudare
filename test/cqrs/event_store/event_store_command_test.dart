@@ -1,6 +1,7 @@
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/event_store/sqlite/sqlite_event_store.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
@@ -8,32 +9,65 @@ import 'package:core/src/cqrs/event/stored_event.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/time_provider.dart';
+import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 
-typedef EventStoreFactory = Future<EventStoreCommand> Function();
+abstract interface class EventStoreFactory {
+  String get name;
+  Future<EventStoreCommand> create();
+  Future<void> cleanup();
+}
+
+class MemoryEventStoreFactory implements EventStoreFactory {
+  @override
+  String get name => 'InMemory';
+
+  @override
+  Future<EventStoreCommand> create() async {
+    return MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
+  }
+
+  @override
+  Future<void> cleanup() async {}
+}
+
+class SqlEventStoreFactory implements EventStoreFactory {
+  @override
+  String get name => 'SQLite';
+
+  late IsolateSqlite _db;
+
+  @override
+  Future<EventStoreCommand> create() async {
+    _db = IsolateSqlite(IsolateSqlite.memoryInitFn);
+    await _db.open();
+
+    final es = SqliteEventStore(_db);
+
+    await es.migrate();
+
+    return es;
+  }
+
+  @override
+  Future<void> cleanup() async {
+    await _db.close();
+  }
+}
 
 void main() {
-  final implementations = <String, EventStoreFactory>{
-    'InMemory': () async {
-      final s = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
-      return s;
-    },
-    // 'SQL': () async {
-    //   final s = await createSqlEventStore();
-    //   return s;
-    // },
-  };
+  final implementations = [MemoryEventStoreFactory(), SqlEventStoreFactory()];
 
-  implementations.forEach((name, factory) {
-    group('EventStoreCommand - $name', () {
+  implementations.forEach((factory) {
+    group('EventStoreCommand - ${factory.name}', () {
       late EventStoreCommand store;
 
       setUp(() async {
-        store = await factory();
+        store = await factory.create();
       });
 
       tearDown(() async {
-        // TODOs
+        await factory.cleanup();
       });
 
       test("get empty stream events", () async {
@@ -52,9 +86,9 @@ void main() {
       test("single insertion and retrieval", () async {
         final streamId = "test";
         final deviceId = DeviceId(1);
-        final t0 = DateTime.fromMillisecondsSinceEpoch(0);
-        final t1 = DateTime.fromMillisecondsSinceEpoch(1000);
-        final t2 = DateTime.fromMillisecondsSinceEpoch(2000);
+        final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        final t1 = DateTime.fromMillisecondsSinceEpoch(1000, isUtc: true);
+        final t2 = DateTime.fromMillisecondsSinceEpoch(2000, isUtc: true);
 
         final insertRes = await store.multiAppendEvents(
           _fakeCommand(startedAt: t0, completedAt: t1),
@@ -71,7 +105,6 @@ void main() {
 
         expect(insertRes.orders, hasLength(1));
         expect(insertRes.orders.first.localSequence, 1);
-        expect(insertRes.orders.first.localVersion, 1);
 
         final retrieveRes = await store.getStreamEvents(
           "test",
@@ -163,7 +196,7 @@ void main() {
 
         test("in the middle", () async {
           final streamId = 'test';
-          final t0 = DateTime.fromMillisecondsSinceEpoch(0);
+          final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
           final insertRes = await store.multiAppendEvents(
             _fakeCommand(startedAt: t0, completedAt: t0),

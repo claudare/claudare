@@ -3,7 +3,7 @@ import 'package:core/src/cqrs/pattern_filter.dart';
 
 class GetGlobalEventsResult {
   final List<StoredEventProjectionRead> events;
-  final int? sequenceNumberCursor;
+  final int? sequenceNumberCursor; // TODO: this should not be needed...
 
   const GetGlobalEventsResult({
     required this.events,
@@ -12,6 +12,7 @@ class GetGlobalEventsResult {
 }
 
 abstract interface class EventStoreProjection {
+  // TODO: only a single filter per projection
   Future<GetGlobalEventsResult> getGlobalEvents(
     String applicationId,
     int sequenceNumber,

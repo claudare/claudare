@@ -154,7 +154,6 @@ class CommandExecutor {
       final order = appendResult.orders[index];
       return commandAppends.appendEvents[index].toLiveEventFull(
         localSequence: order.localSequence,
-        version: order.localVersion,
       );
     }, growable: false);
   }

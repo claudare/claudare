@@ -68,12 +68,8 @@ class StreamAppends {
 
 class StreamAppendOrder {
   final int localSequence;
-  final int localVersion; // useless?
 
-  const StreamAppendOrder({
-    required this.localSequence,
-    required this.localVersion,
-  });
+  const StreamAppendOrder({required this.localSequence});
 }
 
 class StreamAppendResult {
