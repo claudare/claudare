@@ -58,7 +58,7 @@ class SqlEventStoreFactory implements EventStoreFactory {
 void main() {
   final implementations = [MemoryEventStoreFactory(), SqlEventStoreFactory()];
 
-  implementations.forEach((factory) {
+  for (var factory in implementations) {
     group('EventStoreCommand - ${factory.name}', () {
       late EventStoreCommand store;
 
@@ -232,7 +232,7 @@ void main() {
         });
       });
     });
-  });
+  }
 }
 
 StoredCommandWrite _fakeCommand({
