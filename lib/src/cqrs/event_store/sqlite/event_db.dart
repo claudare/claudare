@@ -147,14 +147,14 @@ class EventDb {
     );
   }
 
-  Future<StreamAppendResult> multiAppendEvents(
+  Future<SaveChangesResult> multiAppendEvents(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
     // TODO: save command + the vector...
 
     if (appends.localLocks.isEmpty || appends.events.isEmpty) {
-      return StreamAppendResult(orders: []);
+      return SaveChangesResult(orders: []);
     }
 
     if (appends.localLocks.length == 1) {
@@ -164,7 +164,7 @@ class EventDb {
     throw UnimplementedError("Multi appends not supported yet");
   }
 
-  Future<StreamAppendResult> singleAppendEvents(
+  Future<SaveChangesResult> singleAppendEvents(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
@@ -195,7 +195,7 @@ class EventDb {
         throw ConcurrencyProblem();
       }
 
-      final result = StreamAppendResult(orders: []);
+      final result = SaveChangesResult(orders: []);
 
       for (final event in appends.events) {
         // separate insertions for now to get it working

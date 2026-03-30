@@ -72,12 +72,12 @@ class StreamAppendOrder {
   const StreamAppendOrder({required this.localSequence});
 }
 
-class StreamAppendResult {
+class SaveChangesResult {
   final List<StreamAppendOrder> orders;
 
-  const StreamAppendResult({required this.orders});
+  const SaveChangesResult({required this.orders});
 
-  StreamAppendResult.empty() : orders = [];
+  SaveChangesResult.empty() : orders = [];
 }
 
 abstract interface class EventStoreCommand {
@@ -97,8 +97,7 @@ abstract interface class EventStoreCommand {
     String streamId,
   );
 
-  /// TODO: rename to something better
-  Future<StreamAppendResult> multiAppendEvents(
+  Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
   );

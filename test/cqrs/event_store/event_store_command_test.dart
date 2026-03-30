@@ -90,7 +90,7 @@ void main() {
         final t1 = DateTime.fromMillisecondsSinceEpoch(1000, isUtc: true);
         final t2 = DateTime.fromMillisecondsSinceEpoch(2000, isUtc: true);
 
-        final insertRes = await store.multiAppendEvents(
+        final insertRes = await store.saveChanges(
           _fakeCommand(startedAt: t0, completedAt: t1),
           StreamAppends(
             dependencies: EventDependency({}),
@@ -129,7 +129,7 @@ void main() {
         final t1 = DateTime.fromMillisecondsSinceEpoch(1000);
         final t2 = DateTime.fromMillisecondsSinceEpoch(2000);
 
-        await store.multiAppendEvents(
+        await store.saveChanges(
           _fakeCommand(startedAt: t0, completedAt: t1),
           StreamAppends(
             dependencies: EventDependency({}),
@@ -160,7 +160,7 @@ void main() {
           final streamId = 'test';
           final t0 = DateTime.fromMillisecondsSinceEpoch(0);
 
-          final insertRes = await store.multiAppendEvents(
+          final insertRes = await store.saveChanges(
             _fakeCommand(startedAt: t0, completedAt: t0),
             StreamAppends(
               dependencies: EventDependency({}),
@@ -198,7 +198,7 @@ void main() {
           final streamId = 'test';
           final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
-          final insertRes = await store.multiAppendEvents(
+          final insertRes = await store.saveChanges(
             _fakeCommand(startedAt: t0, completedAt: t0),
             StreamAppends(
               dependencies: EventDependency({}),

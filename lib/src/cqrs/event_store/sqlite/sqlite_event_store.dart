@@ -39,7 +39,7 @@ class SqliteEventStore implements EventStore {
   }
 
   @override
-  Future<StreamAppendResult> multiAppendEvents(
+  Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
   ) {

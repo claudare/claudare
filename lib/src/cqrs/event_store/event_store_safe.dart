@@ -51,12 +51,12 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<StreamAppendResult> multiAppendEvents(
+  Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
     try {
-      final result = await _store.multiAppendEvents(command, appends);
+      final result = await _store.saveChanges(command, appends);
 
       assert(result.orders.length == appends.events.length);
 

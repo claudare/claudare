@@ -145,7 +145,7 @@ class CommandExecutor {
               .toList(),
     );
 
-    final appendResult = await _eventStore.multiAppendEvents(
+    final appendResult = await _eventStore.saveChanges(
       issuedCommand,
       eventStoreAppends,
     );
@@ -176,7 +176,7 @@ class CommandExecutor {
         result: result,
       );
 
-      await _eventStore.multiAppendEvents(issuedCommand, StreamAppends.empty());
+      await _eventStore.saveChanges(issuedCommand, StreamAppends.empty());
     } on Exception catch (e) {
       // do nothing... stongly log?
       // TODO: remove me: no logging is most desirable...

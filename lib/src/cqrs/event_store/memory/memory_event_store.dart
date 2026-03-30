@@ -155,7 +155,7 @@ class MemoryEventStore implements EventStore {
   }
 
   @override
-  Future<StreamAppendResult> multiAppendEvents(
+  Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
@@ -172,10 +172,10 @@ class MemoryEventStore implements EventStore {
       );
 
       if (appends.events.isEmpty) {
-        return StreamAppendResult.empty();
+        return SaveChangesResult.empty();
       }
 
-      final result = StreamAppendResult(orders: []);
+      final result = SaveChangesResult(orders: []);
 
       // aggreageteIdStr + latest version (for consistency check)
       final streams = <String, int>{};
