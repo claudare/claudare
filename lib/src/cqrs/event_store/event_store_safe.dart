@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';

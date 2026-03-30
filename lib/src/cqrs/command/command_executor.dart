@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/id_generator/id_generator.dart';
 import 'package:core/src/time_provider/time_provider.dart';
 
@@ -9,7 +10,6 @@ import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
-import 'package:core/src/cqrs/command/stored_command.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/live_event.dart';

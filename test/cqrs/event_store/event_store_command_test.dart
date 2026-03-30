@@ -1,6 +1,6 @@
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
-import 'package:core/src/cqrs/command/stored_command.dart';
+import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event_store/sqlite/sqlite_event_store.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
@@ -83,7 +83,7 @@ void main() {
         expect(res, isNull);
       });
 
-      test("single insertion and retrieval", () async {
+      test("single insertion", () async {
         final streamId = "test";
         final deviceId = DeviceId(1);
         final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
