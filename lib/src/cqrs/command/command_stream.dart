@@ -66,7 +66,7 @@ class CommandStream<Event, IdData> {
     try {
       while (await reader.loadMore()) {
         for (final e in reader.currentPage) {
-          dependencies.add(DeviceIdSequencePair(e.deviceId, e.causalSequence));
+          dependencies.add(e.causalPair);
           yield _codec.decode(e.encodedEvent);
         }
       }

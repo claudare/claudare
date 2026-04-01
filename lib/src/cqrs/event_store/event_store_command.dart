@@ -32,6 +32,9 @@ class StreamLocalLock {
   final String streamId;
   final int originatingStreamVersion;
 
+  // could add this flag to skip local consistency checking
+  // final bool enforceConsistency;
+
   const StreamLocalLock({
     required this.streamId,
     required this.originatingStreamVersion,

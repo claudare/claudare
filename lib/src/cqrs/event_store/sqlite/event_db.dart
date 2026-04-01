@@ -117,8 +117,10 @@ class EventDb {
           row[2] as int,
           isUtc: true,
         ),
-        deviceId: DeviceId(row[3] as int),
-        causalSequence: row[4] as int,
+        causalPair: DeviceIdSequencePair(
+          DeviceId(row[3] as int),
+          row[4] as int,
+        ),
         streamVersion: row[5] as int,
       );
     });

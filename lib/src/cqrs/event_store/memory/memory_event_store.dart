@@ -280,8 +280,7 @@ class MemoryEvent {
   });
 
   StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
-    deviceId: deviceId,
-    causalSequence: causalSequence,
+    causalPair: DeviceIdSequencePair(deviceId, causalSequence),
     streamVersion: localVersion,
 
     encodedEvent: EncodedEvent(kind: kind, detail: detail),

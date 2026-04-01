@@ -116,8 +116,8 @@ void main() {
 
         expect(events, hasLength(1));
         final e = events.first;
-        expect(e.deviceId, deviceId);
-        expect(e.causalSequence, 1);
+        expect(e.causalPair.deviceId, deviceId);
+        expect(e.causalPair.sequence, 1);
         expect(e.encodedEvent.kind, 'test');
         expect(e.encodedEvent.detail, '{}');
         expect(e.occuredAt, t2);
