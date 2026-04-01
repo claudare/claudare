@@ -97,17 +97,17 @@ void main() {
         expect(res, isNotNull);
         expect(res!.originatingStreamVersion, 2);
 
-        // TODO: proper usage of sequences must be tested
-        // Or maybe the sequencer is in the outside?
         expect(res.causalSequencePair.deviceId.value, 1);
         expect(res.causalSequencePair.sequence, 2);
       });
 
-      // TODO: a group where all tests have x events inserted
       group("pagination", () {
-        test("in the beginning", () async {
-          final streamId = 'test';
-          final t0 = DateTime.fromMillisecondsSinceEpoch(0);
+        late String streamId;
+        late DateTime t0;
+
+        setUp(() async {
+          streamId = 'test';
+          t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
           final insertRes = await store.saveChanges(
             _fakeCommand(startedAt: t0, completedAt: t0),
@@ -131,12 +131,14 @@ void main() {
             ),
           );
 
-          expect(insertRes.orders.length, 6);
+          expect(insertRes.orders, hasLength(6));
+        });
 
+        test("in the beginning", () async {
           final getRes = await store.getStreamEvents(streamId, 2, 0);
           final events = getRes.events.toList();
-          expect(getRes.originatingStreamVersion, 6);
 
+          expect(getRes.originatingStreamVersion, 6);
           expect(getRes.events.length, 2);
 
           expect(events[0].encodedEvent.kind, "event-0");
@@ -147,35 +149,9 @@ void main() {
         });
 
         test("in the middle", () async {
-          final streamId = 'test';
-          final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-
-          final insertRes = await store.saveChanges(
-            _fakeCommand(startedAt: t0, completedAt: t0),
-            StreamAppends(
-              dependencies: EventDependency({}),
-              localLocks: [
-                StreamLocalLock(
-                  streamId: streamId,
-                  originatingStreamVersion: 0,
-                ),
-              ],
-              events:
-                  List.generate(
-                    6,
-                    (i) => _fakeEvent(
-                      streamId: streamId,
-                      kind: "event-$i",
-                      occuredAt: t0,
-                    ),
-                  ).toList(),
-            ),
-          );
-
-          expect(insertRes.orders.length, 6);
-
           final getRes = await store.getStreamEvents(streamId, 2, 2);
           final events = getRes.events.toList();
+
           expect(getRes.originatingStreamVersion, 6);
           expect(getRes.events.length, 2);
 
@@ -184,6 +160,20 @@ void main() {
 
           expect(events[0].streamVersion, 3);
           expect(events[1].streamVersion, 4);
+        });
+
+        test("in the end", () async {
+          final getRes = await store.getStreamEvents(streamId, 99, 4);
+          final events = getRes.events.toList();
+
+          expect(getRes.originatingStreamVersion, 6);
+          expect(getRes.events.length, 2);
+
+          expect(events[0].encodedEvent.kind, 'event-4');
+          expect(events[1].encodedEvent.kind, 'event-5');
+
+          expect(events[0].streamVersion, 5);
+          expect(events[1].streamVersion, 6);
         });
       });
     });
