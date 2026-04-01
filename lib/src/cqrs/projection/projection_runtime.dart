@@ -1,5 +1,5 @@
+import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
-import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/event_store/global_event_reader.dart';
@@ -29,7 +29,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   }
 
   @override
-  void enqueue(LiveEventFull liveEvent, {void Function()? onDone}) {
+  void enqueue(EventEnvelope liveEvent, {void Function()? onDone}) {
     _queue.enqueue(
       QueueItem(
         aggregateIdData: liveEvent.streamIdData,

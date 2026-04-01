@@ -1,7 +1,7 @@
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
+import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
-import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
@@ -36,8 +36,8 @@ class CommandAppendEvent<Event, IdData> {
     );
   }
 
-  LiveEventFull toLiveEventFull({required int localSequence}) {
-    return LiveEventFull(
+  EventEnvelope toEventEnvelope({required int localSequence}) {
+    return EventEnvelope(
       streamIdPattern: streamIdPattern,
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,

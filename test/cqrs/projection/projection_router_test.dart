@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/cqrs/event/event_metadata.dart';
-import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_all.dart';
 import 'package:test/test.dart';
 
@@ -108,7 +108,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
   final bool affected;
   final bool immediateDone;
 
-  final List<LiveEventFull> enqueued = [];
+  final List<EventEnvelope> enqueued = [];
   final List<void Function()> _pendingDone = [];
 
   _FakeProjectionRuntime({required this.affected, this.immediateDone = true});
@@ -117,7 +117,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
   bool shouldProcess(_, __) => affected;
 
   @override
-  void enqueue(LiveEventFull event, {void Function()? onDone}) {
+  void enqueue(EventEnvelope event, {void Function()? onDone}) {
     enqueued.add(event);
     if (immediateDone) {
       onDone?.call(); // simulate sync completion race
@@ -134,8 +134,8 @@ class _FakeProjectionRuntime implements ProjectionSink {
   }
 }
 
-LiveEventFull _fakeEvent({required int sequence}) {
-  return LiveEventFull(
+EventEnvelope _fakeEvent({required int sequence}) {
+  return EventEnvelope(
     streamIdStr: "",
     streamIdData: null,
     streamIdPattern: StreamIdPatternAll(),

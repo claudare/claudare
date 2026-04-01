@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:core/src/cqrs/event/live_event_full.dart';
+import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/cqrs/projection/projection_sink.dart';
 
 class ProjectionRouter {
@@ -9,7 +9,7 @@ class ProjectionRouter {
   const ProjectionRouter(this._runtimes);
 
   /// For eventual projection resolution
-  void dispatch(Iterable<LiveEventFull> events) {
+  void dispatch(Iterable<EventEnvelope> events) {
     if (_runtimes.isEmpty) return;
 
     for (final event in events) {
@@ -27,7 +27,7 @@ class ProjectionRouter {
 
   /// For consistent projection resolution.
   /// Waits until the affected projections finish resolving
-  Future<void> dispatchAndWait(Iterable<LiveEventFull> events) {
+  Future<void> dispatchAndWait(Iterable<EventEnvelope> events) {
     if (_runtimes.isEmpty) return Future.value();
 
     final completer = Completer<void>();

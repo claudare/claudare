@@ -1,7 +1,7 @@
 import 'package:core/src/cqrs.dart';
-import 'package:core/src/cqrs/event/live_event_full.dart';
+import 'package:core/src/cqrs/event/event_envelope.dart';
 
 abstract interface class ProjectionSink {
   bool shouldProcess(StreamIdPattern streamIdPattern, String streamIdStr);
-  void enqueue(LiveEventFull event, {void Function()? onDone});
+  void enqueue(EventEnvelope event, {void Function()? onDone});
 }

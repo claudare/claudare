@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:core/src/cqrs/command/stored_command_write.dart';
-import 'package:core/src/cqrs/event/live_event_full.dart';
+import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/id_generator/id_generator.dart';
 import 'package:core/src/time_provider/time_provider.dart';
 
@@ -44,7 +44,7 @@ class CommandExecutor {
        _applicationId = applicationId,
        _pageSize = pageSize;
 
-  Future<List<LiveEventFull>> executeThrowable<Input extends CommandInput>(
+  Future<List<EventEnvelope>> executeThrowable<Input extends CommandInput>(
     Command<Input> command,
     Input input,
   ) async {
@@ -121,7 +121,7 @@ class CommandExecutor {
     }
   }
 
-  Future<List<LiveEventFull>> _saveEvents<TInput extends CommandInput>(
+  Future<List<EventEnvelope>> _saveEvents<TInput extends CommandInput>(
     CommandAppends commandAppends,
     DateTime startedAt,
     TInput input,
@@ -152,7 +152,7 @@ class CommandExecutor {
 
     return List.generate(commandAppends.appendEvents.length, (index) {
       final order = appendResult.orders[index];
-      return commandAppends.appendEvents[index].toLiveEventFull(
+      return commandAppends.appendEvents[index].toEventEnvelope(
         localSequence: order.localSequence,
       );
     }, growable: false);
