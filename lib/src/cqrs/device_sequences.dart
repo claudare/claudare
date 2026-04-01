@@ -2,7 +2,7 @@ import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 
 /// [DeviceSequences] keeps track of the autoincrementing sequences for each device.
-/// Used in sync to make sure that all events are applied in device order.
+/// Used in sync to make sure that all commands and events are applied in device-local order.
 class DeviceSequences {
   final Map<DeviceId, int> _vector = {};
 
