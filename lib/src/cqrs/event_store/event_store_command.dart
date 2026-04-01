@@ -74,7 +74,6 @@ class SaveChangesResult {
 
 abstract interface class EventStoreCommand {
   Future<GetStreamEventsResult> getStreamEvents(
-    String applicationId,
     String streamId,
     int count,
     int versionCursor,
@@ -84,10 +83,7 @@ abstract interface class EventStoreCommand {
   /// This method must return information on the last event of the stream.
   /// The information is used to lock the stream for appends and to ensure
   /// causal ordering after replication.
-  Future<GetStreamInfoResult?> getStreamInfo(
-    String applicationId,
-    String streamId,
-  );
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId);
 
   Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,

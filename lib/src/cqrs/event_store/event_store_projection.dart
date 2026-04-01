@@ -19,9 +19,8 @@ class GetLocalLastEventResult {
 
 abstract interface class EventStoreProjection {
   Future<GetLocalEventsResult> getLocalEvents(
-    String applicationId,
-    int sequenceNumber,
     PatternFilter patternFilter,
+    int sequenceNumber,
     int count,
   );
   Future<GetLocalLastEventResult> getLocalLastEvent(

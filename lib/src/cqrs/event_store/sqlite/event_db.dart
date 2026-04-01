@@ -83,7 +83,6 @@ class EventDb {
   }
 
   Future<GetStreamEventsResult> getStreamEvents(
-    String _,
     String streamId,
     int count,
     int versionCursor,
@@ -131,7 +130,7 @@ class EventDb {
     );
   }
 
-  Future<GetStreamInfoResult?> getStreamInfo(String _, String streamId) async {
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
     final row = await _db.queryRow(
       "SELECT device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? ORDER BY stream_version DESC LIMIT 1",
       [streamId],
@@ -256,9 +255,8 @@ class EventDb {
   }
 
   Future<GetLocalEventsResult> getLocalEvents(
-    String applicationId,
-    int sequenceNumber,
     PatternFilter patternFilter,
+    int sequenceNumber,
     int count,
   ) async {
     final filterSql = patternToSQL(patternFilter);

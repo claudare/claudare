@@ -17,25 +17,16 @@ class SqliteEventStore implements EventStore {
 
   @override
   Future<GetStreamEventsResult> getStreamEvents(
-    String applicationId,
     String streamId,
     int count,
     int versionCursor,
   ) {
-    return _eventDb.getStreamEvents(
-      applicationId,
-      streamId,
-      count,
-      versionCursor,
-    );
+    return _eventDb.getStreamEvents(streamId, count, versionCursor);
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfo(
-    String applicationId,
-    String streamId,
-  ) {
-    return _eventDb.getStreamInfo(applicationId, streamId);
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) {
+    return _eventDb.getStreamInfo(streamId);
   }
 
   @override
@@ -48,17 +39,11 @@ class SqliteEventStore implements EventStore {
 
   @override
   Future<GetLocalEventsResult> getLocalEvents(
-    String applicationId,
-    int sequenceNumber,
     PatternFilter patternFilter,
+    int sequenceNumber,
     int count,
   ) {
-    return _eventDb.getLocalEvents(
-      applicationId,
-      sequenceNumber,
-      patternFilter,
-      count,
-    );
+    return _eventDb.getLocalEvents(patternFilter, sequenceNumber, count);
   }
 
   @override

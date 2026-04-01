@@ -27,7 +27,6 @@ class CommandExecutor {
   final IdGenerator _idGenerator;
 
   final DeviceId _thisDeviceId;
-  final String _applicationId;
   final int _pageSize;
 
   const CommandExecutor({
@@ -35,13 +34,11 @@ class CommandExecutor {
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     required DeviceId thisDeviceId,
-    required String applicationId,
     required int pageSize,
   }) : _idGenerator = idGenerator,
        _timeProvider = timeProvider,
        _eventStore = eventStore,
        _thisDeviceId = thisDeviceId,
-       _applicationId = applicationId,
        _pageSize = pageSize;
 
   Future<List<EventEnvelope>> executeThrowable<Input extends CommandInput>(
@@ -61,7 +58,6 @@ class CommandExecutor {
       eventStore: _eventStore,
       appends: appends,
       nacker: nacker,
-      applicationId: _applicationId,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
       pageSize: _pageSize,
@@ -128,7 +124,6 @@ class CommandExecutor {
   ) async {
     final encoded = _encodeCommand(input);
     final issuedCommand = StoredCommandWrite(
-      applicationId: _applicationId,
       deviceId: _thisDeviceId,
       encoded: encoded,
       startedAt: startedAt,
@@ -168,7 +163,6 @@ class CommandExecutor {
       final encoded = _encodeCommand(input);
 
       final issuedCommand = StoredCommandWrite(
-        applicationId: _applicationId,
         deviceId: _thisDeviceId,
         encoded: encoded,
         startedAt: startedAt,

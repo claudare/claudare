@@ -25,14 +25,14 @@ void main() {
       });
 
       test("get empty stream events", () async {
-        final res = await store.getStreamEvents("test", "non-existing", 10, 0);
+        final res = await store.getStreamEvents("non-existing", 10, 0);
 
         expect(res.originatingStreamVersion, 0);
         expect(res.events.length, 0);
       });
 
       test("get empty stream info", () async {
-        final res = await store.getStreamInfo("test", "non-existing");
+        final res = await store.getStreamInfo("non-existing");
 
         expect(res, isNull);
       });
@@ -60,12 +60,7 @@ void main() {
         expect(insertRes.orders, hasLength(1));
         expect(insertRes.orders.first.localSequence, 1);
 
-        final retrieveRes = await store.getStreamEvents(
-          "test",
-          streamId,
-          10,
-          0,
-        );
+        final retrieveRes = await store.getStreamEvents(streamId, 10, 0);
         final events = retrieveRes.events.toList();
 
         expect(events, hasLength(1));
@@ -97,7 +92,7 @@ void main() {
           ),
         );
 
-        final res = await store.getStreamInfo("test", streamId);
+        final res = await store.getStreamInfo(streamId);
 
         expect(res, isNotNull);
         expect(res!.originatingStreamVersion, 2);
@@ -138,7 +133,7 @@ void main() {
 
           expect(insertRes.orders.length, 6);
 
-          final getRes = await store.getStreamEvents("test", streamId, 2, 0);
+          final getRes = await store.getStreamEvents(streamId, 2, 0);
           final events = getRes.events.toList();
           expect(getRes.originatingStreamVersion, 6);
 
@@ -179,7 +174,7 @@ void main() {
 
           expect(insertRes.orders.length, 6);
 
-          final getRes = await store.getStreamEvents("test", streamId, 2, 2);
+          final getRes = await store.getStreamEvents(streamId, 2, 2);
           final events = getRes.events.toList();
           expect(getRes.originatingStreamVersion, 6);
           expect(getRes.events.length, 2);
@@ -200,7 +195,6 @@ StoredCommandWrite _fakeCommand({
   required DateTime completedAt,
 }) {
   return StoredCommandWrite(
-    applicationId: "test",
     deviceId: DeviceId(1),
     encoded: EncodedCommand(kind: 'test', detail: '{}'),
     startedAt: startedAt,

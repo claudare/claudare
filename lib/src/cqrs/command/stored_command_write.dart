@@ -4,7 +4,6 @@ import 'package:core/src/device_id.dart';
 
 /// TODO: this needs to have dependencies?
 class StoredCommandWrite {
-  final String applicationId;
   final DeviceId deviceId;
   final EncodedCommand encoded;
   final DateTime startedAt;
@@ -12,7 +11,6 @@ class StoredCommandWrite {
   final CommandResult result;
 
   const StoredCommandWrite({
-    required this.applicationId,
     required this.deviceId,
     required this.encoded,
     required this.startedAt,

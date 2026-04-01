@@ -20,7 +20,6 @@ void main() {
         idGenerator: FakeIdGeneratorSequential(),
         timeProvider: FakeTimeProviderStatic.zero(),
         thisDeviceId: deviceId,
-        applicationId: "test",
         pageSize: 10,
       );
 

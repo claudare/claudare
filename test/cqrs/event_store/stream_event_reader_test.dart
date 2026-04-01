@@ -15,7 +15,7 @@ void main() {
 
     setUp(() {
       store = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
-      reader = StreamEventReader(store, pageSize, "test", streamId);
+      reader = StreamEventReader(store, streamId, pageSize);
     });
 
     test('handles empty result', () async {

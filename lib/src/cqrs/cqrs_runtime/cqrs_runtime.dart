@@ -42,9 +42,7 @@ class CqrsRuntime {
 
   Future<void> catchupAllProjections() async {
     await Future.wait(
-      _projectionRunners.map(
-        (runner) => runner.catchupSelfLoad(_eventStore, _config.applicationId),
-      ),
+      _projectionRunners.map((runner) => runner.catchupSelfLoad(_eventStore)),
     );
   }
 
@@ -62,7 +60,6 @@ class CqrsRuntime {
       timeProvider: _config.timeProvider,
       idGenerator: _config.idGenerator,
       thisDeviceId: _thisDeviceId,
-      applicationId: _config.applicationId,
       pageSize: _config.eventStorePageSize,
     );
 

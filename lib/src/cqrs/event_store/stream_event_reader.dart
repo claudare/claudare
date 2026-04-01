@@ -3,19 +3,13 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 
 class StreamEventReader {
   final EventStoreCommand _eventStore;
-  final int _pageSize;
-  final String _applicationId;
   final String _streamId;
+  final int _pageSize;
 
   List<StoredEventCommandRead> _current = const [];
   int _originatingStreamVersion = -1;
 
-  StreamEventReader(
-    this._eventStore,
-    this._pageSize,
-    this._applicationId,
-    this._streamId,
-  );
+  StreamEventReader(this._eventStore, this._streamId, this._pageSize);
 
   List<StoredEventCommandRead> get currentPage => _current;
 
@@ -27,7 +21,6 @@ class StreamEventReader {
 
     final cursor = _current.isEmpty ? 0 : _current.last.streamVersion;
     final result = await _eventStore.getStreamEvents(
-      _applicationId,
       _streamId,
       _pageSize,
       cursor,

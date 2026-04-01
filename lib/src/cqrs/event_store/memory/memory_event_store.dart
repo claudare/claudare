@@ -118,7 +118,6 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<GetStreamEventsResult> getStreamEvents(
-    String _,
     String streamIdStr,
     int count,
     int versionCursor,
@@ -142,7 +141,7 @@ class MemoryEventStore implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfo(String _, String streamId) async {
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
     final events = _getStreamEvents(streamId);
 
     if (events.isEmpty) {
@@ -186,7 +185,7 @@ class MemoryEventStore implements EventStore {
 
       // check local consistency
       for (final lock in appends.localLocks) {
-        final info = await getStreamInfo(_todoApplicationId, lock.streamId);
+        final info = await getStreamInfo(lock.streamId);
 
         final originatingStreamVersion =
             info == null ? 0 : info.originatingStreamVersion;
@@ -237,9 +236,8 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<GetLocalEventsResult> getLocalEvents(
-    String _,
-    int sequenceNumber,
     PatternFilter patternFilter,
+    int sequenceNumber,
     int count,
   ) async {
     final paginated =

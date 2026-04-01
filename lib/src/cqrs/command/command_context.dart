@@ -13,7 +13,6 @@ class CommandContext {
   final EventStoreCommand _eventStore;
   final CommandAppends _appends;
   final CommandNacker _nacker;
-  final String _applicationId;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final int _pageSize;
@@ -22,14 +21,12 @@ class CommandContext {
     required EventStoreCommand eventStore,
     required CommandAppends appends,
     required CommandNacker nacker,
-    required String applicationId,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     required int pageSize,
   }) : _eventStore = eventStore,
        _appends = appends,
        _nacker = nacker,
-       _applicationId = applicationId,
        _timeProvider = timeProvider,
        _idGenerator = idGenerator,
        _pageSize = pageSize;
@@ -49,7 +46,6 @@ class CommandContext {
       streamId,
       streamData,
       streamIdPattern,
-      _applicationId,
       _timeProvider,
     );
   }

@@ -20,7 +20,6 @@ class CommandStream<Event, IdData> {
   final String _streamId;
   final IdData _streamIdData;
   final StreamIdPattern<IdData> _streamIdPattern;
-  final String _applicationId;
   final TimeProvider _timeProvider;
 
   bool _locked = false;
@@ -33,7 +32,6 @@ class CommandStream<Event, IdData> {
     this._streamId,
     this._streamIdData,
     this._streamIdPattern,
-    this._applicationId,
     this._timeProvider,
   );
 
@@ -55,12 +53,7 @@ class CommandStream<Event, IdData> {
   Stream<Event> scan() async* {
     _tryLock();
 
-    final reader = StreamEventReader(
-      _eventStore,
-      _pageSize,
-      _applicationId,
-      _streamId,
-    );
+    final reader = StreamEventReader(_eventStore, _streamId, _pageSize);
     final dependencies = EventDependency.empty();
 
     try {
@@ -81,7 +74,7 @@ class CommandStream<Event, IdData> {
   Future<void> lock() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_applicationId, _streamId);
+    final info = await _eventStore.getStreamInfo(_streamId);
 
     if (info == null) {
       _appends.locks.add(
@@ -105,7 +98,7 @@ class CommandStream<Event, IdData> {
   Future<void> mustExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_applicationId, _streamId);
+    final info = await _eventStore.getStreamInfo(_streamId);
     if (info == null) {
       throw StreamNotFoundException(_streamId);
     }
@@ -123,7 +116,7 @@ class CommandStream<Event, IdData> {
   Future<void> mustNotExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_applicationId, _streamId);
+    final info = await _eventStore.getStreamInfo(_streamId);
     if (info != null) {
       throw StreamAlreadyExistsException(_streamId);
     }

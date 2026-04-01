@@ -50,13 +50,8 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     return _projection.streamIdPattern.globs(streamIdPattern, onPath);
   }
 
-  /// Will sync to latest version
-  /// Currently the projections do not define which application they are in
-  /// I think its an okay design
-  Future<void> catchupSelfLoad(
-    EventStoreProjection eventStore,
-    String applicationId,
-  ) async {
+  /// Will sync all projections to their latest version
+  Future<void> catchupSelfLoad(EventStoreProjection eventStore) async {
     try {
       final checkpoint = await _projection.checkpoint();
 
@@ -68,7 +63,6 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
         eventStore,
         _pageSize,
         _projection.streamIdPattern.filter,
-        applicationId,
       );
 
       // paginate
