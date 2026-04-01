@@ -17,10 +17,7 @@ import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
-const _todoApplicationId = "TODO";
-
 /// Reference memory implementation.
-/// Currently application id is not supported.
 class MemoryEventStore implements EventStore {
   final List<MemoryEvent> _events = [];
   final List<MemoryCommand> _commands = [];

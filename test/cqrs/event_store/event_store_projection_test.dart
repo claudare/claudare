@@ -1,5 +1,3 @@
-import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 import 'package:test/test.dart';

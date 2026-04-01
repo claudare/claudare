@@ -1,5 +1,4 @@
 import 'package:core/src/cqrs.dart';
-import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
