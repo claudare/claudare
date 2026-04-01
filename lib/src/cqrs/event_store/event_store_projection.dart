@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/event/stored_event.dart';
+import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
 class GetGlobalEventsResult {

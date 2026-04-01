@@ -1,10 +1,13 @@
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/live_event_full.dart';
-import 'package:core/src/cqrs/event/stored_event.dart';
+import 'package:core/src/cqrs/event/stored_event_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
+// TODO: rename this to this a EventBusEnvelope, include mutatable localSequence
+// which is set my event store. Mutability is okay here
+// it makes it simple. it is assert validated for db testing
 class CommandAppendEvent<Event, IdData> {
   final StreamIdPattern<IdData> streamIdPattern;
   final String streamIdStr;

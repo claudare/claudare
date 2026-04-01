@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/event/stored_event.dart';
+import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 
 class StreamEventReader {
