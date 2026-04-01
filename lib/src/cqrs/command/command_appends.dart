@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
+import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
@@ -41,8 +42,10 @@ class CommandAppendEvent<Event, IdData> {
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,
       event: runtimeEvent,
-      occuredAt: occuredAt,
-      localSequence: localSequence,
+      metadata: EventMetadata(
+        occuredAt: occuredAt,
+        localSequence: localSequence,
+      ),
     );
   }
 }

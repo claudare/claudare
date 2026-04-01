@@ -22,7 +22,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     );
   }
 
-  ProjectionFailureState get exceptionHandler => _failureState;
+  // ProjectionFailureState get exceptionHandler => _failureState;
 
   bool isProjection(Projection<TEvents, TIdData> projection) {
     return identical(_projection, projection);
@@ -34,9 +34,9 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
       QueueItem(
         aggregateIdData: liveEvent.streamIdData,
         event: liveEvent.event,
-        meta: liveEvent.eventMetadata,
+        meta: liveEvent.metadata,
       ),
-      liveEvent.localSequence,
+      liveEvent.metadata.localSequence,
       onDone: onDone,
     );
   }

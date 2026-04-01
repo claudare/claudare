@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:core/src/cqrs/event/event_metadata.dart';
 import 'package:core/src/cqrs/event/live_event_full.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern_all.dart';
 import 'package:test/test.dart';
@@ -135,11 +136,13 @@ class _FakeProjectionRuntime implements ProjectionSink {
 
 LiveEventFull _fakeEvent({required int sequence}) {
   return LiveEventFull(
-    localSequence: sequence,
     streamIdStr: "",
     streamIdData: null,
     streamIdPattern: StreamIdPatternAll(),
     event: null,
-    occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+    metadata: EventMetadata(
+      occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      localSequence: sequence,
+    ),
   );
 }

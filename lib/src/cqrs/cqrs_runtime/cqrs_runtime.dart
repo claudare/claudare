@@ -40,10 +40,7 @@ class CqrsRuntime {
             .toList();
   }
 
-  Future<void> init() async {
-    // TODO: should this ensure that the event store is initialized too?
-    // or is that should be done outside?
-
+  Future<void> catchupAllProjections() async {
     await Future.wait(
       _projectionRunners.map(
         (runner) => runner.catchupSelfLoad(_eventStore, _config.applicationId),

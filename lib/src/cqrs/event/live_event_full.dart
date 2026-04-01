@@ -1,20 +1,22 @@
 import 'package:core/src/cqrs/event/event_metadata.dart';
-import 'package:core/src/cqrs/event/live_event_min.dart';
+import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
-// TODO: this should hold actual classes
-// things like checkpoint, eventMetadata
-class LiveEventFull<Event, IdData> extends LiveEventMin<Event, IdData> {
-  final int localSequence;
+// the better name is EventBusEnvelope
+// but there is no bus in the application
+// RuntimeEventEnvelope?
+class LiveEventFull<Event, IdData> {
+  final StreamIdPattern streamIdPattern;
+  final String streamIdStr;
+  final IdData streamIdData;
+
+  final Event event;
+  final EventMetadata metadata;
 
   const LiveEventFull({
-    required super.streamIdStr,
-    required super.streamIdData,
-    required super.streamIdPattern,
-    required super.event,
-    required super.occuredAt,
-    required this.localSequence,
+    required this.streamIdStr,
+    required this.streamIdData,
+    required this.streamIdPattern,
+    required this.event,
+    required this.metadata,
   });
-
-  EventMetadata get eventMetadata =>
-      EventMetadata(occuredAt: occuredAt, localSequence: localSequence);
 }

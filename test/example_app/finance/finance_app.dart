@@ -62,7 +62,7 @@ class FinanceApp {
     // but I don't want to wrap repo init in cqrsRuntime.init()...
     await readModel.accountsSummary.init();
 
-    await _cqrsRuntime.init();
+    await _cqrsRuntime.catchupAllProjections();
   }
 }
 
