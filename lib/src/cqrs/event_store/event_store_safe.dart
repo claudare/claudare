@@ -69,14 +69,14 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetGlobalEventsResult> getGlobalEvents(
+  Future<GetLocalEventsResult> getLocalEvents(
     String applicationId,
     int sequenceNumber,
     PatternFilter patternFilter,
     int count,
   ) {
     try {
-      return _store.getGlobalEvents(
+      return _store.getLocalEvents(
         applicationId,
         sequenceNumber,
         patternFilter,
@@ -84,6 +84,20 @@ class EventStoreSafe implements EventStore {
       );
     } catch (cause) {
       throw EventStoreException("Failed to get global events", cause: cause);
+    }
+  }
+
+  @override
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
+  ) {
+    try {
+      return _store.getLocalLastEvent(patternFilter);
+    } catch (cause) {
+      throw EventStoreException(
+        "Failed to get global last event",
+        cause: cause,
+      );
     }
   }
 }

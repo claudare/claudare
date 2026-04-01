@@ -47,17 +47,24 @@ class SqliteEventStore implements EventStore {
   }
 
   @override
-  Future<GetGlobalEventsResult> getGlobalEvents(
+  Future<GetLocalEventsResult> getLocalEvents(
     String applicationId,
     int sequenceNumber,
     PatternFilter patternFilter,
     int count,
   ) {
-    return _eventDb.getGlobalEvents(
+    return _eventDb.getLocalEvents(
       applicationId,
       sequenceNumber,
       patternFilter,
       count,
     );
+  }
+
+  @override
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
+  ) {
+    return _eventDb.getLocalLastEvent(patternFilter);
   }
 }

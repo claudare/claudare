@@ -236,7 +236,7 @@ class MemoryEventStore implements EventStore {
   // --- projection
 
   @override
-  Future<GetGlobalEventsResult> getGlobalEvents(
+  Future<GetLocalEventsResult> getLocalEvents(
     String _,
     int sequenceNumber,
     PatternFilter patternFilter,
@@ -250,7 +250,21 @@ class MemoryEventStore implements EventStore {
             .map((e) => e.asStoredEventProjectionRead)
             .toList();
 
-    return GetGlobalEventsResult(events: paginated, sequenceNumberCursor: null);
+    return GetLocalEventsResult(events: paginated, sequenceNumberCursor: null);
+  }
+
+  @override
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
+  ) async {
+    final last =
+        _events
+            .where((e) => patternFilter.doesMatchPath(e.streamId))
+            .lastOrNull;
+
+    final localSequence = last?.localSequence;
+
+    return GetLocalLastEventResult(localSequence: localSequence);
   }
 }
 

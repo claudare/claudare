@@ -8,6 +8,7 @@ export 'cqrs/cqrs_runtime/bound_command.dart';
 // event store
 export 'cqrs/event_store/event_store.dart';
 export 'cqrs/event_store/memory/memory_event_store.dart';
+export 'cqrs/event_store/sqlite/sqlite_event_store.dart';
 
 // event
 export 'cqrs/event/event_codec.dart';

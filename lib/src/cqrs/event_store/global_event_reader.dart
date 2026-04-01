@@ -39,7 +39,7 @@ class GlobalEventReader {
     }
     assert(_current == null, "Iterator already exists");
 
-    final result = await _underlying.getGlobalEvents(
+    final result = await _underlying.getLocalEvents(
       _applicationId,
       _localSequenceCursor!,
       _patternFilter,

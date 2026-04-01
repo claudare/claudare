@@ -2,63 +2,17 @@ import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
-import 'package:core/src/cqrs/event_store/sqlite/sqlite_event_store.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
-import 'package:core/src/time_provider.dart';
-import 'package:isolate_sqlite/isolate_sqlite.dart';
+
 import 'package:test/test.dart';
 
-abstract interface class EventStoreFactory {
-  String get name;
-  Future<EventStoreCommand> create();
-  Future<void> cleanup();
-}
-
-class MemoryEventStoreFactory implements EventStoreFactory {
-  @override
-  String get name => 'InMemory';
-
-  @override
-  Future<EventStoreCommand> create() async {
-    return MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
-  }
-
-  @override
-  Future<void> cleanup() async {}
-}
-
-class SqlEventStoreFactory implements EventStoreFactory {
-  @override
-  String get name => 'SQLite';
-
-  late IsolateSqlite _db;
-
-  @override
-  Future<EventStoreCommand> create() async {
-    _db = IsolateSqlite(IsolateSqlite.memoryInitFn);
-    await _db.open();
-
-    final es = SqliteEventStore(_db);
-
-    await es.migrate();
-
-    return es;
-  }
-
-  @override
-  Future<void> cleanup() async {
-    await _db.close();
-  }
-}
+import 'event_store_test_utils.dart';
 
 void main() {
-  final implementations = [MemoryEventStoreFactory(), SqlEventStoreFactory()];
-
-  for (var factory in implementations) {
+  for (var factory in eventStoreImplementations) {
     group('EventStoreCommand - ${factory.name}', () {
       late EventStoreCommand store;
 

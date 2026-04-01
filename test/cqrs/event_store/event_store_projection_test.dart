@@ -1,37 +1,29 @@
+import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 import 'package:core/src/time_provider.dart';
 import 'package:test/test.dart';
 
+import 'event_store_test_utils.dart';
+
 typedef EventStoreFactory = Future<EventStoreProjection> Function();
 
 void main() {
-  final implementations = <String, EventStoreFactory>{
-    'InMemory': () async {
-      final s = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
-      return s;
-    },
-    // 'SQL': () async {
-    //   final s = await createSqlEventStore();
-    //   return s;
-    // },
-  };
-
-  implementations.forEach((name, factory) {
-    group('EventStoreProjection - $name', () {
+  for (var factory in eventStoreImplementations) {
+    group('EventStoreProjection - ${factory.name}', () {
       late EventStoreProjection store;
 
       setUp(() async {
-        store = await factory();
+        store = await factory.create();
       });
 
       tearDown(() async {
-        // TODOs
+        await factory.cleanup();
       });
 
       test("get empty global events", () async {
-        final res = await store.getGlobalEvents(
+        final res = await store.getLocalEvents(
           "test",
           0,
           PatternFilter.any(),
@@ -41,6 +33,12 @@ void main() {
         expect(res.sequenceNumberCursor, isNull);
         expect(res.events.length, 0);
       });
+
+      test("get empty last global event", () async {
+        final res = await store.getLocalLastEvent(PatternFilter.any());
+
+        expect(res.localSequence, isNull);
+      });
     });
-  });
+  }
 }

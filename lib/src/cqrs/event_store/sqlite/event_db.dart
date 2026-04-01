@@ -161,13 +161,13 @@ class EventDb {
     }
 
     if (appends.localLocks.length == 1) {
-      return await singleAppendEvents(command, appends);
+      return await saveSingleChange(command, appends);
     }
 
     throw UnimplementedError("Multi appends not supported yet");
   }
 
-  Future<SaveChangesResult> singleAppendEvents(
+  Future<SaveChangesResult> saveSingleChange(
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
@@ -255,7 +255,7 @@ class EventDb {
     });
   }
 
-  Future<GetGlobalEventsResult> getGlobalEvents(
+  Future<GetLocalEventsResult> getLocalEvents(
     String applicationId,
     int sequenceNumber,
     PatternFilter patternFilter,
@@ -277,7 +277,7 @@ class EventDb {
       [sequenceNumber, count],
     );
 
-    return GetGlobalEventsResult(
+    return GetLocalEventsResult(
       events: List<StoredEventProjectionRead>.generate(values.length, (i) {
         final row = values[i];
         return StoredEventProjectionRead(
@@ -295,6 +295,21 @@ class EventDb {
       }),
       sequenceNumberCursor: values.isNotEmpty ? values.last[4] as int : null,
     );
+  }
+
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
+  ) async {
+    final filterSql = patternToSQL(patternFilter);
+    final value = await _db.queryValue<int>("""SELECT
+        local_sequence
+      FROM event
+      WHERE
+        $filterSql
+      ORDER BY local_sequence DESC
+      LIMIT 1;""");
+
+    return GetLocalLastEventResult(localSequence: value);
   }
 }
 

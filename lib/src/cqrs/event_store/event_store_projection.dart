@@ -1,22 +1,30 @@
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
-class GetGlobalEventsResult {
+class GetLocalEventsResult {
   final List<StoredEventProjectionRead> events;
   final int? sequenceNumberCursor; // TODO: this should not be needed...
 
-  const GetGlobalEventsResult({
+  const GetLocalEventsResult({
     required this.events,
     required this.sequenceNumberCursor,
   });
 }
 
+class GetLocalLastEventResult {
+  final int? localSequence;
+
+  const GetLocalLastEventResult({required this.localSequence});
+}
+
 abstract interface class EventStoreProjection {
-  // TODO: only a single filter per projection
-  Future<GetGlobalEventsResult> getGlobalEvents(
+  Future<GetLocalEventsResult> getLocalEvents(
     String applicationId,
     int sequenceNumber,
     PatternFilter patternFilter,
     int count,
+  );
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
   );
 }
