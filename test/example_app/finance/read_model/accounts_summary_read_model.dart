@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs.dart';
+import 'package:core/cqrs.dart';
 
 class AccountSummary {
   final String accountId;

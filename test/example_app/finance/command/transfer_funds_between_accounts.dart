@@ -1,5 +1,4 @@
-
-import 'package:core/src/cqrs.dart';
+import 'package:core/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';

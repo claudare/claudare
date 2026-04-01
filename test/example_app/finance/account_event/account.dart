@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:core/src/cqrs.dart';
+import 'package:core/cqrs.dart';
 
 part 'account_atm_deposited.dart';
 part 'account_atm_withdrawn.dart';

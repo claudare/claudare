@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs.dart';
+import 'package:core/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';

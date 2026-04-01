@@ -1,3 +1,3 @@
-import 'package:core/src/cqrs.dart';
+import 'package:core/cqrs.dart';
 
 final accountStreamId = StreamIdPatternWildcard("account/*");
