@@ -67,15 +67,15 @@ class MemoryEventStore implements EventStore {
     );
     final nextCausalSequence = _causalSequence.nextSequence(value.deviceId);
     final version =
-        value.localVersion ?? _getStreamEvents(value.streamId).length + 1;
+        value.streamVersion ?? _getStreamEvents(value.streamId).length + 1;
 
     final event = MemoryEvent(
       deviceId: value.deviceId,
       deviceSequence: nextDeviceSequence,
       causalSequence: nextCausalSequence,
       localSequence: nextLocalSequence,
-      localVersion: version,
       streamId: value.streamId,
+      streamVersion: version,
       kind: value.kind,
       detail: value.detail,
       createdAt: value.occuredAt ?? _timeProvider.now(),
@@ -124,7 +124,7 @@ class MemoryEventStore implements EventStore {
     // we need to get the correct version cursor
     final paginated =
         all
-            .skipWhile((e) => e.localVersion <= versionCursor)
+            .skipWhile((e) => e.streamVersion <= versionCursor)
             .take(count)
             .map((e) => e.asStoredEventCommandRead)
             .toList();
@@ -209,7 +209,7 @@ class MemoryEventStore implements EventStore {
             streamId: streamIdStr,
             kind: event.encodedEvent.kind,
             detail: event.encodedEvent.detail,
-            localVersion: version,
+            streamVersion: version,
             occuredAt: event.occuredAt,
           ),
         );
@@ -273,7 +273,7 @@ class MemoryEvent {
   final int deviceSequence;
   final int causalSequence;
   final int localSequence;
-  final int localVersion;
+  final int streamVersion;
 
   const MemoryEvent({
     required this.streamId,
@@ -285,12 +285,12 @@ class MemoryEvent {
     required this.deviceSequence,
     required this.causalSequence,
     required this.localSequence,
-    required this.localVersion,
+    required this.streamVersion,
   });
 
   StoredEventCommandRead get asStoredEventCommandRead => StoredEventCommandRead(
     causalPair: DeviceIdSequencePair(deviceId, causalSequence),
-    streamVersion: localVersion,
+    streamVersion: streamVersion,
 
     encodedEvent: EncodedEvent(kind: kind, detail: detail),
     occuredAt: createdAt,
@@ -306,7 +306,7 @@ class MemoryEvent {
 
   @override
   String toString() =>
-      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $localVersion)";
+      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $streamVersion)";
 }
 
 class MemoryEventInsert {
@@ -314,7 +314,7 @@ class MemoryEventInsert {
   final String streamId;
   final String kind;
   final String detail;
-  final int? localVersion;
+  final int? streamVersion;
   final DateTime? occuredAt;
 
   const MemoryEventInsert({
@@ -322,7 +322,7 @@ class MemoryEventInsert {
     required this.streamId,
     required this.kind,
     required this.detail,
-    this.localVersion,
+    this.streamVersion,
     this.occuredAt,
   });
 
@@ -331,7 +331,7 @@ class MemoryEventInsert {
     required this.streamId,
     this.kind = "test",
     this.detail = "{}",
-    this.localVersion,
+    this.streamVersion,
     this.occuredAt,
   });
 }

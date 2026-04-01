@@ -76,7 +76,7 @@ abstract interface class EventStoreCommand {
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int count,
-    int versionCursor,
+    int streamVersionCursor, // TODO: reorder before count
   );
 
   /// TODO: I dont like this name + nullable return type

@@ -2,6 +2,7 @@ import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
+import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
@@ -175,6 +176,53 @@ void main() {
           expect(events[0].streamVersion, 5);
           expect(events[1].streamVersion, 6);
         });
+      });
+
+      test("concurrency check", () async {
+        final streamId = 'test';
+        final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
+        final insertRes = await store.saveChanges(
+          _fakeCommand(startedAt: t0, completedAt: t0),
+          StreamAppends(
+            dependencies: EventDependency({}),
+            localLocks: [
+              StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
+            ],
+            events: [
+              _fakeEvent(streamId: streamId, kind: "event-0", occuredAt: t0),
+            ],
+          ),
+        );
+
+        expect(insertRes.orders, hasLength(1));
+
+        // emit the saveChanged with the same originating stream version
+        await expectLater(
+          store.saveChanges(
+            _fakeCommand(startedAt: t0, completedAt: t0),
+            StreamAppends(
+              dependencies: EventDependency({}),
+              localLocks: [
+                StreamLocalLock(
+                  streamId: streamId,
+                  originatingStreamVersion: 0,
+                ),
+              ],
+              events: [
+                _fakeEvent(streamId: streamId, kind: "event-1", occuredAt: t0),
+              ],
+            ),
+          ),
+          throwsA(isA<ConcurrencyProblem>()),
+        );
+
+        // ensure that events were not emitted
+        final readRes = await store.getStreamEvents(streamId, 10, 0);
+
+        expect(readRes.originatingStreamVersion, 1);
+        expect(readRes.events, hasLength(1));
+        expect(readRes.events.first.encodedEvent.kind, 'event-0');
       });
     });
   }
