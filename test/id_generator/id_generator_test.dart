@@ -1,4 +1,4 @@
-import 'package:core/src/id_generator.dart';
+import 'package:core/id_generator.dart';
 import 'package:test/test.dart';
 
 void main() {

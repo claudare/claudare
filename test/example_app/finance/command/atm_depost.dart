@@ -7,8 +7,7 @@ class AtmDepositInput implements CommandInput {
   final String accountId;
   final int amount;
 
-  AtmDepositInput({required this.accountId, required this.amount})
-    : assert(amount > 0);
+  const AtmDepositInput({required this.accountId, required this.amount});
 
   @override
   String get kind => 'atmDeposit';
@@ -20,6 +19,10 @@ class AtmDepositInput implements CommandInput {
 class AtmDeposit implements Command<AtmDepositInput> {
   @override
   Future<void> handle(input, ctx) async {
+    if (input.amount <= 0) {
+      return ctx.nack('amount must be positive');
+    }
+
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
 
     await stream.mustExist();

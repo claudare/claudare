@@ -55,17 +55,18 @@ class AccountsSummaryReadModel {
 
   AccountsSummaryReadModel();
 
-  Future<void> init() async {
-    _isInitialized = true;
-  }
+  // Future<void> init() async {
+  //   _isInitialized = true;
+  // }
 
   Future<void> reset() async {
+    _isInitialized = true;
     summaries.clear();
   }
 
   Future<ProjectionCheckpoint> checkpoint() async {
     if (!_isInitialized) {
-      throw Exception("checkpoint called before init");
+      return ProjectionCheckpoint.zero();
     }
 
     return ProjectionCheckpoint(
@@ -90,7 +91,7 @@ class AccountsSummaryReadModel {
 
   Future<void> getAndStore(
     String accountId,
-    Function(AccountSummary summary) update,
+    AccountSummary Function(AccountSummary summary) update,
   ) async {
     final summary = await get(accountId);
     if (summary == null) {
@@ -99,7 +100,7 @@ class AccountsSummaryReadModel {
       throw Exception("invalid getAndStore id");
     }
 
-    await store(accountId, await update(summary));
+    await store(accountId, update(summary));
   }
 
   // Read methods below

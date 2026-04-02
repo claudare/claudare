@@ -57,10 +57,8 @@ class FinanceApp {
   }
 
   Future<void> init() async {
-    // Could initialize the repost here?
-    // This is an ugly way to do this,
-    // but I don't want to wrap repo init in cqrsRuntime.init()...
-    await readModel.accountsSummary.init();
+    // TODO: should the deviceId be loaded here and set on the runtime?
+    // TODO: how to show progress? This could take a while.
 
     await _cqrsRuntime.catchupAllProjections();
   }

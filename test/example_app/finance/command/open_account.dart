@@ -22,6 +22,8 @@ class OpenAccount implements Command<OpenAccountInput> {
 
     final stream = ctx.stream(accountCodec, accountStreamId, accountId);
 
+    // TODO: would be nice to check that no other account has the same name?
+
     await stream.mustNotExist();
 
     stream.append(AccountOpened(name: input.name));

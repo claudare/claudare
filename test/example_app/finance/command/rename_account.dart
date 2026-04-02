@@ -7,7 +7,7 @@ class RenameAccountInput implements CommandInput {
   final String accountId;
   final String newName;
 
-  RenameAccountInput({required this.accountId, required this.newName});
+  const RenameAccountInput({required this.accountId, required this.newName});
 
   @override
   String get kind => 'RenameAccount';

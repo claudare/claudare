@@ -68,8 +68,8 @@ class CommandStream<Event, IdData> {
     }
   }
 
-  /// Locks the stream.
-  /// The stream could exist or could not exist
+  /// The stream could exist or could not exist.
+  /// Locks the stream to the latest version.
   Future<void> lock() async {
     _tryLock();
 
@@ -94,6 +94,7 @@ class CommandStream<Event, IdData> {
   }
 
   /// Ensure stream exists.
+  /// Locks to the latest version.
   Future<void> mustExist() async {
     _tryLock();
 
@@ -112,6 +113,7 @@ class CommandStream<Event, IdData> {
   }
 
   /// Ensures the stream does not exist.
+  /// Locks to the zero version.
   Future<void> mustNotExist() async {
     _tryLock();
 

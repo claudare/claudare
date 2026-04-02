@@ -8,7 +8,7 @@ class TransferFundsBetweenAccountsInput implements CommandInput {
   final String toAccountId;
   final int amount;
 
-  TransferFundsBetweenAccountsInput({
+  const TransferFundsBetweenAccountsInput({
     required this.fromAccountId,
     required this.toAccountId,
     required this.amount,
@@ -30,6 +30,10 @@ class TransferFundsBetweenAccounts
     implements Command<TransferFundsBetweenAccountsInput> {
   @override
   Future<void> handle(input, ctx) async {
+    if (input.amount <= 0) {
+      return ctx.nack('amount must be positive');
+    }
+
     final fromStream = ctx.stream(
       accountCodec,
       accountStreamId,

@@ -2,7 +2,7 @@ import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/stream_event_reader.dart';
-import 'package:core/src/time_provider.dart';
+import 'package:core/time_provider.dart';
 import 'package:test/test.dart';
 
 void main() {

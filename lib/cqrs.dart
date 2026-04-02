@@ -23,6 +23,7 @@ export 'src/cqrs/command/command_context.dart';
 // projection
 export 'src/cqrs/projection/projection.dart';
 export 'src/cqrs/projection/projection_checkpoint.dart';
+export 'src/cqrs/projection/sqlite_projection.dart';
 
 // id pattern
 export 'src/cqrs/stream_id_pattern/stream_id_pattern.dart';

@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/time_provider.dart';
+import 'package:core/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreFactory {
