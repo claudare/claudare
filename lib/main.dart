@@ -22,6 +22,8 @@ Future<String> getDatabasePath() async {
   return path.join(docDir.path, 'event_store.db');
 }
 
+// interesting alternative for async init, to run runApp() twice?
+// https://www.youtube.com/watch?v=kIJ7KX1PObw
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -43,6 +45,8 @@ void main() {
   final application = Application(
     sqliteDb: sqliteDb,
     eventStore: eventStore,
+    idGenerator: idGenerator,
+    timeProvider: timeProvider,
     notesRuntime: NotesRuntime(
       eventStore: eventStore,
       cqrsConfig: cqrsConfig,
@@ -65,6 +69,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      debugShowCheckedModeBanner: false,
       home: const LoadingScreen(),
     );
   }

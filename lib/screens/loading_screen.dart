@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/application_provider.dart';
+import 'package:notes_app_v0/command/create_note.dart';
+import 'package:notes_app_v0/command/update_note_content.dart';
+import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/screens/home_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -10,6 +13,7 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
+  // progress state goes in here
   String _error = '';
 
   void _onError(dynamic error) {
@@ -24,21 +28,40 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // final services = ServiceProvider.of(context);
+    print('LoadingScreen didChangeDependencies');
+
+    _initApplication();
+  }
+
+  Future<void> _initApplication() async {
     final application = ApplicationProvider.of(context);
 
-    application
-        .initialize()
-        .then((_) {
-          setState(() {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          });
-        })
-        .catchError((err) {
-          _onError(err);
-        });
+    try {
+      await application.initialize();
+
+      await application.notesRuntime.commands.createNote.runThrowable(
+        CreateNoteInput(noteId: 'test'),
+      );
+      await application.notesRuntime.commands.updateNoteTitle.runThrowable(
+        UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
+      );
+      await application.notesRuntime.commands.updateNoteContent.runThrowable(
+        UpdateNoteContentInput(
+          noteId: 'test',
+          overrideContent:
+              'this is an example note data inserted at the intialization. Application development on track! :)',
+        ),
+      );
+
+      if (!mounted) {
+        throw Exception('not mounted after loading');
+      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } catch (e) {
+      _onError(e);
+    }
   }
 
   @override
@@ -49,11 +72,13 @@ class _LoadingScreenState extends State<LoadingScreen> {
       );
     }
 
-    return Scaffold(
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [Center(child: CircularProgressIndicator()), Text('loading')],
-      ),
-    );
+    return Scaffold(body: CircularProgressIndicator());
+
+    // return Scaffold(
+    //   body: Column(
+    //     mainAxisAlignment: MainAxisAlignment.center,
+    //     children: [Center(child: CircularProgressIndicator()), Text('loading')],
+    //   ),
+    // );
   }
 }

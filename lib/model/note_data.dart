@@ -18,6 +18,13 @@ class NoteData {
     required this.isDeleted,
   });
 
+  NoteData.empty(this.noteId, DateTime currentTime)
+    : title = '',
+      content = '',
+      createdAt = currentTime,
+      updatedAt = currentTime,
+      isDeleted = false;
+
   NoteData copyWith({
     String? title,
     String? content,

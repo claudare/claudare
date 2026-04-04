@@ -16,6 +16,11 @@ class UpdateNoteTitleInput implements CommandInput {
   Map<String, dynamic> toJson() {
     return {'noteId': noteId, 'fullValue': fullValue};
   }
+
+  @override
+  String toString() {
+    return 'UpdateNoteTitleInput{noteId: $noteId, fullValue: $fullValue}';
+  }
 }
 
 class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {

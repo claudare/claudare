@@ -5,25 +5,20 @@ import 'package:notes_app_v0/stream_id/note_stream_id.dart';
 
 class CreateNoteInput implements CommandInput {
   final String noteId;
-  final String initialContent;
-  final String initialTitle;
 
-  const CreateNoteInput({
-    required this.noteId,
-    required this.initialContent,
-    required this.initialTitle,
-  });
+  const CreateNoteInput({required this.noteId});
 
   @override
   String get kind => 'createNote';
 
   @override
   Map<String, dynamic> toJson() {
-    return {
-      'noteId': noteId,
-      'initialContent': initialContent,
-      'initialTitle': initialTitle,
-    };
+    return {'noteId': noteId};
+  }
+
+  @override
+  String toString() {
+    return 'CreateNoteInput{noteId: $noteId}';
   }
 }
 
@@ -37,5 +32,7 @@ class CreateNote implements Command<CreateNoteInput> {
     await stream.mustNotExist();
 
     stream.append(NoteCreated());
+
+    print('created note $noteId');
   }
 }

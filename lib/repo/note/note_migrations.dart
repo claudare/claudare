@@ -2,16 +2,17 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
   SqliteMigration(1, (db) async {
+    print('applying note table read model migrations');
     // timestamps are strings
     await db.exec('''CREATE TABLE note (
-          id STRING PRIMARY KEY,
-          title TEXT,
-          content TEXT,
-          created_at TEXT,
-          updated_at TEXT,
-          is_deleted INTEGER,
-          _local_sequence INTEGER
-        )''');
+      id STRING PRIMARY KEY,
+      title TEXT,
+      content TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      is_deleted INTEGER,
+      _local_sequence INTEGER
+    )''');
     await db.exec(
       'CREATE INDEX idx_note_id_is_deleted ON note(id, is_deleted);',
     );

@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/model/note_data.dart';
 import 'package:notes_app_v0/repo/note/note_read_model.dart';
@@ -8,10 +10,28 @@ class SqliteNoteReadModel implements NoteReadModel {
   const SqliteNoteReadModel(this._db);
 
   @override
+  Future<NoteData?> getNote(String noteId) async {
+    final row = await _db.queryRow(
+      'SELECT id, title, content, created_at, updated_at FROM note WHERE id = ? AND is_deleted = 0 LIMIT 1;',
+      [noteId],
+    );
+    if (row == null) return null;
+    return NoteData(
+      noteId: row[0] as String,
+      title: row[1] as String,
+      content: row[2] as String,
+      createdAt: DateTime.parse(row[3] as String),
+      updatedAt: DateTime.parse(row[4] as String),
+      isDeleted: false,
+    );
+  }
+
+  @override
   Future<List<NoteData>> getAllNotes() async {
     final rows = await _db.query(
       'SELECT id, title, content, created_at, updated_at FROM note WHERE is_deleted = 0;',
     );
+
     return rows
         .map(
           (row) => NoteData(

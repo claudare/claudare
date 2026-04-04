@@ -56,7 +56,16 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
   @override
   Future<void> store(NoteData note, int localSequence) async {
     await _db.exec(
-      'INSERT INTO note (id, title, content, created_at, updated_at, is_deleted, _local_sequence) VALUES (?, ?, ?, ?, ?, ?, ?);',
+      '''INSERT INTO note (
+        id, title, content, created_at, updated_at, is_deleted, _local_sequence
+      ) VALUES (
+        ?, ?, ?, ?, ?, ?, ?
+      ) ON CONFLICT(id) DO UPDATE SET
+        title=excluded.title,
+        content=excluded.content,
+        updated_at=excluded.updated_at,
+        is_deleted=excluded.is_deleted,
+        _local_sequence=excluded._local_sequence;''',
       [
         note.noteId,
         note.title,

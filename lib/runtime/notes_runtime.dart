@@ -47,7 +47,7 @@ class NotesRuntime {
     );
   }
 
-  Future<void> init() async {
+  Future<void> initialize() async {
     await _cqrsRuntime.catchupAllProjections();
   }
 }

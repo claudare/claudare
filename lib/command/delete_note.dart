@@ -15,6 +15,11 @@ class DeleteNoteInput implements CommandInput {
   Map<String, dynamic> toJson() {
     return {'noteId': noteId};
   }
+
+  @override
+  String toString() {
+    return 'DeleteNoteInput{noteId: $noteId}';
+  }
 }
 
 class DeleteNote implements Command<DeleteNoteInput> {
