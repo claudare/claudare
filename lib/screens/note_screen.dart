@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:notes_app_v0/application.dart';
 import 'package:notes_app_v0/application_provider.dart';
 import 'package:notes_app_v0/command/create_note.dart';
+import 'package:notes_app_v0/command/delete_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/common.dart';
@@ -216,6 +217,42 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
+  Future<void> _deleteNote() async {
+    if (_noteId == null) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    try {
+      final application = ApplicationProvider.of(context);
+      await application.notesRuntime.commands.deleteNote.runThrowable(
+        DeleteNoteInput(noteId: _noteId!),
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
+      );
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting note: $e'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  void _onPopInvokedWithResult() async {
+    await _saveChanges();
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -225,10 +262,6 @@ class _NoteScreenState extends State<NoteScreen> {
     _contentFocus.dispose();
 
     super.dispose();
-  }
-
-  void _onPopInvokedWithResult() async {
-    await _saveChanges();
   }
 
   @override
@@ -243,10 +276,10 @@ class _NoteScreenState extends State<NoteScreen> {
             //   icon: Icon(Icons.tag),
             //   onPressed: () => _onTagPressed(context),
             // ),
-            // IconButton(
-            //   icon: Icon(Icons.delete),
-            //   onPressed: () => _deleteNote(context, controller),
-            // ),
+            IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () => _deleteNote(),
+            ),
             // IconButton(
             //   icon: Icon(Icons.save),
             //   onPressed:
