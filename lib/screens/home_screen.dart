@@ -39,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final app = ApplicationProvider.of(context);
 
-    final data = await app.notesRuntime.noteReadModel.getAllNotes();
+    final data = await app.notesRuntime.noteReadModel.getAllNonDeletedNotes();
 
     setState(() {
       _noteData = data;

@@ -6,15 +6,17 @@ final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
     // timestamps are strings
     await db.exec('''CREATE TABLE note (
       id STRING PRIMARY KEY,
-      title TEXT,
-      content TEXT,
-      created_at TEXT,
-      updated_at TEXT,
-      is_deleted INTEGER,
-      _local_sequence INTEGER
+      title TEXT NOT NULL,
+      title_updated_at TEXT,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      trashed_at TEXT,
+      -- favorited_at... unfavorited_at...
+      _local_sequence INTEGER NOT NULL
     )''');
     await db.exec(
-      'CREATE INDEX idx_note_id_is_deleted ON note(id, is_deleted);',
+      'CREATE INDEX idx_note_id_trashed_at ON note(id, trashed_at);',
     );
     await db.exec(
       'CREATE INDEX idx_note_local_sequence ON note(_local_sequence);',

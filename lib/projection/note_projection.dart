@@ -1,4 +1,5 @@
 import 'package:core/cqrs.dart';
+import 'package:core/crdt.dart';
 import 'package:notes_app_v0/event/note/_note_codec.dart';
 import 'package:notes_app_v0/event/note/note.dart';
 import 'package:notes_app_v0/model/note_data.dart';
@@ -43,11 +44,11 @@ class NoteProjection implements Projection<NoteEvent, String> {
         return _repo.store(
           NoteData(
             noteId: noteId,
-            title: '',
+            title: CrdtValueLatestWriteWins<String>('', metadata.occuredAt),
             content: '',
             createdAt: metadata.occuredAt,
             updatedAt: metadata.occuredAt,
-            isDeleted: false,
+            trashedAt: null,
           ),
           metadata.localSequence,
         );
@@ -55,14 +56,16 @@ class NoteProjection implements Projection<NoteEvent, String> {
         return _repo.getAndStore(
           noteId,
           metadata.localSequence,
-          (note) => note.copyWith(isDeleted: true),
+          (note) => note.copyTrashedSet(trashedAt: metadata.occuredAt),
         );
       case NoteTitleUpdated(:final newTitle):
         return _repo.getAndStore(
           noteId,
           metadata.localSequence,
-          (note) =>
-              note.copyWith(title: newTitle, updatedAt: metadata.occuredAt),
+          (note) => note.copyWith(
+            titlePair: CrdtValueDateTimePair(newTitle, metadata.occuredAt),
+            updatedAt: metadata.occuredAt,
+          ),
         );
     }
   }

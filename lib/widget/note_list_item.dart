@@ -11,7 +11,7 @@ class NoteListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(note.title),
+      title: Text(note.title.value),
       subtitle: Text(
         note.content,
         maxLines: 2,

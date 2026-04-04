@@ -1,4 +1,5 @@
 import 'package:core/cqrs.dart';
+import 'package:core/crdt.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/model/note_data.dart';
 import 'package:notes_app_v0/repo/note/note_internal_repo.dart';
@@ -38,18 +39,21 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
   @override
   Future<NoteData?> get(String noteId) async {
     final value = await _db.queryRow(
-      'SELECT id, title, content, created_at, updated_at, is_deleted FROM note WHERE id = ? LIMIT 1;',
+      'SELECT id, title, title_updated_at, content, created_at, updated_at, trashed_at FROM note WHERE id = ? LIMIT 1;',
       [noteId],
     );
     if (value == null) return null;
 
     return NoteData(
       noteId: value[0] as String,
-      title: value[1] as String,
-      content: value[2] as String,
-      createdAt: DateTime.parse(value[3] as String),
-      updatedAt: DateTime.parse(value[4] as String),
-      isDeleted: value[5] as int == 1,
+      title: CrdtValueLatestWriteWins<String>(
+        value[1] as String,
+        DateTime.parse(value[2] as String),
+      ),
+      content: value[3] as String,
+      createdAt: DateTime.parse(value[4] as String),
+      updatedAt: DateTime.parse(value[5] as String),
+      trashedAt: value[6] == null ? null : DateTime.parse(value[6] as String),
     );
   }
 
@@ -57,22 +61,25 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
   Future<void> store(NoteData note, int localSequence) async {
     await _db.exec(
       '''INSERT INTO note (
-        id, title, content, created_at, updated_at, is_deleted, _local_sequence
+        id, title, title_updated_at, content, created_at, updated_at, trashed_at, _local_sequence
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?
       ) ON CONFLICT(id) DO UPDATE SET
         title=excluded.title,
+        title_updated_at=excluded.title_updated_at,
         content=excluded.content,
+        -- createdAt is never edited!
         updated_at=excluded.updated_at,
-        is_deleted=excluded.is_deleted,
+        trashed_at=excluded.trashed_at,
         _local_sequence=excluded._local_sequence;''',
       [
         note.noteId,
-        note.title,
+        note.title.value,
+        note.title.occurredAt.toIso8601String(),
         note.content,
         note.createdAt.toIso8601String(),
         note.updatedAt.toIso8601String(),
-        note.isDeleted ? 1 : 0,
+        note.trashedAt?.toIso8601String(),
         localSequence,
       ],
     );

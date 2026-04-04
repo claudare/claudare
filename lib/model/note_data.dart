@@ -1,13 +1,17 @@
+import 'package:core/crdt.dart';
+
 class NoteData {
   final String noteId;
 
-  final String title;
+  final CrdtValueLatestWriteWins<String> title;
   final String content;
 
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  final bool isDeleted;
+  // nullable confustion here. untrashing will not be registered
+  // hhhhh
+  final DateTime? trashedAt;
 
   const NoteData({
     required this.noteId,
@@ -15,35 +19,50 @@ class NoteData {
     required this.content,
     required this.createdAt,
     required this.updatedAt,
-    required this.isDeleted,
+    required this.trashedAt,
   });
 
   NoteData.empty(this.noteId, DateTime currentTime)
-    : title = '',
+    : title = CrdtValueLatestWriteWins<String>.zero(''),
       content = '',
       createdAt = currentTime,
       updatedAt = currentTime,
-      isDeleted = false;
+      trashedAt = null;
+
+  bool get isTrashed => trashedAt != null;
 
   NoteData copyWith({
-    String? title,
+    CrdtValueDateTimePair<String>? titlePair,
     String? content,
     DateTime? createdAt,
     DateTime? updatedAt,
-    bool? isDeleted,
   }) {
+    final newTitle = titlePair == null ? title : title.mergePair(titlePair);
+
     return NoteData(
       noteId: noteId,
-      title: title ?? this.title,
+      title: newTitle,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      isDeleted: isDeleted ?? this.isDeleted,
+      trashedAt: trashedAt,
+    );
+  }
+
+  // because null is both a value and default non-existing condition
+  NoteData copyTrashedSet({required DateTime trashedAt}) {
+    return NoteData(
+      noteId: noteId,
+      title: title,
+      content: content,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      trashedAt: trashedAt,
     );
   }
 
   @override
   toString() {
-    return 'NoteData(noteId: $noteId, title: $title, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, isDeleted: $isDeleted)';
+    return 'NoteData(noteId: $noteId, title: ${title.value}, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, trashedAt: $trashedAt)';
   }
 }

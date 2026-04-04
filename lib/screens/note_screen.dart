@@ -103,12 +103,12 @@ class _NoteScreenState extends State<NoteScreen> {
       if (note == null) return;
 
       setState(() {
-        _prevTitle = note.title;
+        _prevTitle = note.title.value;
         _prevContent = note.content;
       });
 
       // update the controllers
-      _titleController.text = note.title;
+      _titleController.text = note.title.value;
       _contentController.text = note.content;
     } catch (e) {
       print('Failed to load note: $e');
