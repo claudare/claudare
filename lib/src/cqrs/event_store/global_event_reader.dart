@@ -10,9 +10,16 @@ class GlobalEventReader {
 
   Iterator<StoredEventProjectionRead>? _current;
 
-  int? _localSequenceCursor = 0;
+  int? _localSequenceCursor;
 
-  GlobalEventReader(this._underlying, this._pageSize, this._patternFilter);
+  GlobalEventReader(
+    this._underlying,
+    this._patternFilter,
+    this._pageSize,
+    int localSequenceCursor,
+  ) {
+    _localSequenceCursor = localSequenceCursor;
+  }
 
   StoredEventProjectionRead? next() {
     assert(_current != null, "No iterator available");

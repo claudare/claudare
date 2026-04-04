@@ -12,7 +12,8 @@ abstract interface class Projection<Event, StreamIdData> {
 
   Future<void> reset();
 
-  /// return zero version if there is none
+  /// Return nil localSequence if the projection is not initialized
+  /// Null value will call [reset].
   Future<ProjectionCheckpoint> checkpoint();
 
   /// do the application. Throwing is an error

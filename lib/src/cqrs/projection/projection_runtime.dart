@@ -55,14 +55,15 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     try {
       final checkpoint = await _projection.checkpoint();
 
-      if (checkpoint.isZero) {
+      if (!checkpoint.isProjectionInitialized) {
         await _projection.reset();
       }
 
       final reader = GlobalEventReader(
         eventStore,
-        _pageSize,
         _projection.streamIdPattern.filter,
+        _pageSize,
+        checkpoint.localSequence,
       );
 
       // paginate

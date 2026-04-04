@@ -1,3 +1,5 @@
+// TODO: Specify where the error happened.
+// Is it during init or event application?>
 class ProjectionFailureState {
   Object? _error;
   StackTrace? _stackTrace;
@@ -15,7 +17,8 @@ class ProjectionFailureState {
     _error ??= error;
     _stackTrace ??= stackTrace;
 
-    // TODO: this needs to be available elsewhere
+    // TODO: this needs to be available elsewhere.
+    // there must be a runtime failure class keeping track of all projection errors.
     print("PROJECTION ENCOUNTERED AN ERROR: $error");
   }
 }

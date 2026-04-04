@@ -53,6 +53,8 @@ class AccountsSummaryReadModel {
   final Map<String, AccountSummary> summaries = {};
   bool _isInitialized = false;
 
+  bool get isInitialized => _isInitialized;
+
   AccountsSummaryReadModel();
 
   // Future<void> init() async {
@@ -66,11 +68,11 @@ class AccountsSummaryReadModel {
 
   Future<ProjectionCheckpoint> checkpoint() async {
     if (!_isInitialized) {
-      return ProjectionCheckpoint.zero();
+      return ProjectionCheckpoint.notInitialized();
     }
 
     return ProjectionCheckpoint(
-      localSequence: summaries.values.fold(
+      summaries.values.fold(
         0,
         (max, summary) =>
             max > summary.lastLocalSequence ? max : summary.lastLocalSequence,
