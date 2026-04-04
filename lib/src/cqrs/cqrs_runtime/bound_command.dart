@@ -6,22 +6,24 @@ import 'package:core/src/cqrs/projection/projection_router.dart';
 class BoundCommand<Input extends CommandInput> {
   final CommandExecutor _executor;
   final Command<Input> _command;
-  final ProjectionRouter consistentRouter;
-  final ProjectionRouter eventualRouter;
+  final ProjectionRouter _consistentRouter;
+  final ProjectionRouter _eventualRouter;
 
   const BoundCommand({
     required CommandExecutor executor,
     required Command<Input> command,
-    required this.consistentRouter,
-    required this.eventualRouter,
-  }) : _command = command,
+    required ProjectionRouter consistentRouter,
+    required ProjectionRouter eventualRouter,
+  }) : _eventualRouter = eventualRouter,
+       _consistentRouter = consistentRouter,
+       _command = command,
        _executor = executor;
 
   // run is a bad name
   Future<void> runThrowable(Input input) async {
     final liveEvents = await _executor.executeThrowable(_command, input);
 
-    eventualRouter.dispatch(liveEvents);
-    await consistentRouter.dispatchAndWait(liveEvents);
+    _eventualRouter.dispatch(liveEvents);
+    await _consistentRouter.dispatchAndWait(liveEvents);
   }
 }

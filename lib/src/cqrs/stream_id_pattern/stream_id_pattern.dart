@@ -20,5 +20,5 @@ abstract class StreamIdPattern<TData> {
   }
 
   @override
-  String toString() => '$runtimeType(pattern: $pattern)';
+  String toString() => '$runtimeType(pattern: $pattern, filter: $filter)';
 }

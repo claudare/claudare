@@ -14,5 +14,8 @@ class ProjectionFailureState {
     // only first error will be saved
     _error ??= error;
     _stackTrace ??= stackTrace;
+
+    // TODO: this needs to be available elsewhere
+    print("PROJECTION ENCOUNTERED AN ERROR: $error");
   }
 }

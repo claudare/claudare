@@ -27,7 +27,7 @@ class PatternFilter {
     return PatternFilter.startsWith(prefix);
   }
 
-  doesMatchPath(String path) {
+  bool doesMatchPath(String path) {
     if (path == "*") {
       return true;
     }
@@ -46,11 +46,11 @@ class PatternFilter {
   String toString() {
     switch (type) {
       case PatternFilterType.any:
-        return "*";
+        return "PatternFilter.any()";
       case PatternFilterType.startsWith:
-        return "$pattern*";
+        return "PatternFilter.startsWith($pattern)";
       case PatternFilterType.exact:
-        return pattern;
+        return "PatternFilter.exact($pattern)";
     }
   }
 }

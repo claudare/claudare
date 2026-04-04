@@ -320,6 +320,6 @@ String patternToSQL(PatternFilter filter) {
       return 'stream_id = $value';
     case PatternFilterType.startsWith:
       final prefix = filter.pattern;
-      return 'stream_id LIKE $prefix%';
+      return "stream_id LIKE '$prefix%'";
   }
 }

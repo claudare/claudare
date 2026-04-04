@@ -20,4 +20,8 @@ class EventEnvelope<Event, IdData> {
     required this.event,
     required this.metadata,
   });
+
+  @override
+  toString() =>
+      'EventEnvelope(streamIdStr: $streamIdStr, streamIdData: $streamIdData, streamIdPattern: $streamIdPattern, event: $event, metadata: $metadata)';
 }

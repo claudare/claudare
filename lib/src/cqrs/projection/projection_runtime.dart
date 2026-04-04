@@ -96,6 +96,9 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
       _failureState.capture(error, stackTrace);
     }
   }
+
+  @override
+  toString() => 'ProjectionRuntime(${_projection.name})';
 }
 
 class QueueItem<TEvents, TIdData> {
