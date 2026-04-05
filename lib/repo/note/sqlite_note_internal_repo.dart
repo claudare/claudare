@@ -29,10 +29,10 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
         'SELECT MAX(_local_sequence) FROM note;',
       );
 
-      return ProjectionCheckpoint(localSequence: localSequence ?? 0);
+      return ProjectionCheckpoint(localSequence ?? 0);
     } catch (e) {
       // print('expected failure of checkpoint in SqliteNoteInternalRepo: $e');
-      return ProjectionCheckpoint(localSequence: 0);
+      return ProjectionCheckpoint.notInitialized();
     }
   }
 

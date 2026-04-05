@@ -15,16 +15,24 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   EventCodec<TagEvent> get eventCodec => tagCodec;
 
   @override
-  void reset(Transaction tx) {
-    tx.exec('DELETE FROM tag;');
-    tx.exec('DELETE FROM note_tag;');
-    tx.exec('DELETE FROM local_sequence;');
+  Future<void> reset(IsolateSqlite db) async {
+    await db.transaction((tx) {
+      tx.exec('DELETE FROM tag;');
+      tx.exec('DELETE FROM note_tag;');
+      tx.exec('DELETE FROM local_sequence;');
+    });
   }
 
   @override
-  ProjectionCheckpoint checkpoint(Transaction tx) {
-    final value = tx.queryValue<int>('SELECT value FROM checkpoint;');
-    return ProjectionCheckpoint(localSequence: value ?? 0);
+  Future<ProjectionCheckpoint> checkpoint(IsolateSqlite db) async {
+    // TODO: check that transactions error like this
+    try {
+      final value = await db.queryValue<int>('SELECT value FROM checkpoint;');
+      return ProjectionCheckpoint(value ?? 0);
+    } catch (e) {
+      print('checkpoint get error. Probably not initialized? $e');
+      return ProjectionCheckpoint.notInitialized();
+    }
   }
 
   @override
