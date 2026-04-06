@@ -12,7 +12,7 @@ class GetLocalEventsResult {
 }
 
 class GetLocalLastEventResult {
-  final int? localSequence;
+  final int localSequence;
 
   const GetLocalLastEventResult({required this.localSequence});
 }

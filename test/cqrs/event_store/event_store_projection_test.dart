@@ -29,7 +29,7 @@ void main() {
       test("get empty last global event", () async {
         final res = await store.getLocalLastEvent(PatternFilter.any());
 
-        expect(res.localSequence, isNull);
+        expect(res.localSequence, 0);
       });
     });
   }

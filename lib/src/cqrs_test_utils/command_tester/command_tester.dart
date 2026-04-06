@@ -1,135 +1,140 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/cqrs/command/command_nacker.dart';
-import 'package:core/src/cqrs_test_utils/command_tester/command_tester_store.dart';
-import 'package:core/src/cqrs_test_utils/command_tester/test_command_context.dart';
-import 'package:core/src/id_generator/id_generator.dart';
+import 'package:core/device_id.dart';
+import 'package:core/id_generator.dart';
+import 'package:core/src/cqrs/command/command_executor.dart';
+import 'package:core/src/cqrs/pattern_filter.dart';
 import 'package:core/time_provider.dart';
 
+// Max integer value. This is a hacky solution.
+// https://stackoverflow.com/a/75928881
+// It may have issues, and could silently fail.
+const int _maxIntValue = -1 >>> 1;
+
+// TODO: this currently relies on MemoryEventStore
 class CommandTester<Input extends CommandInput> {
   final Command<Input> _command;
-  final _nacker = CommandNacker();
-  final _readStore = CommandTesterStore();
-  final _writeStore = CommandTesterStore();
+
+  final DeviceId _deviceId;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
+  final MemoryEventStore _eventStore;
 
-  Object? _error;
+  int? _preRunLastLocalSequence;
 
   CommandTester(
     this._command, {
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
+    MemoryEventStore? eventStore,
+    DeviceId deviceId = const DeviceId.unassigned(),
   }) : _timeProvider = timeProvider,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _eventStore = eventStore ?? MemoryEventStore(timeProvider: timeProvider),
+       _deviceId = deviceId;
 
-  // testing functions
-  String? get nackMessage => _nacker.message;
-  Object? get error => _error;
+  void _ensureRan() {
+    if (_preRunLastLocalSequence == null) {
+      throw StateError('tester did not ran, but it should have been');
+    }
+  }
 
-  // pre-append helpers.
+  void _ensureNotRan() {
+    if (_preRunLastLocalSequence != null) {
+      throw StateError('tester already ran, but it should not have been');
+    }
+  }
 
   /// Appends event to the stream with type safety for stream and event.
-  /// This is recommended as event pack encode/decode will be tested.
-  CommandTester<Input> withTypedStreamEvent<Event, IdData>(
+  CommandTester<Input> withEvent<Event, IdData>(
     StreamIdPattern<IdData> streamIdPattern,
     IdData streamData,
     EventCodec<Event> eventCodec,
     Event event,
   ) {
-    final streamPath = streamIdPattern.toPath(streamData);
-    _readStore.append(streamPath, eventCodec, event);
-    return this;
-  }
+    _ensureNotRan();
 
-  /// [withTypedStreamEvents] inserts multiple events with [withTypedStreamEvent].
-  CommandTester<Input> withTypedStreamEvents<Event, IdData>(
-    StreamIdPattern<IdData> streamIdPattern,
-    IdData streamData,
-    EventCodec<Event> eventCodec,
-    List<Event> events,
-  ) {
+    final encoded = eventCodec.encode(event);
+
     final streamPath = streamIdPattern.toPath(streamData);
-    for (final event in events) {
-      _readStore.append(streamPath, eventCodec, event);
-    }
+    _eventStore.testInsertEvent(
+      MemoryEventInsert(
+        deviceId: _deviceId,
+        streamId: streamPath,
+        kind: encoded.kind,
+        detail: encoded.detail,
+      ),
+    );
+
     return this;
   }
 
   /// Appends event to the stream with type safety for event only.
-  /// This is recommended as event pack encode/decode will be tested.
-  CommandTester<Input> withTypedEvent<Event, IdData>(
-    String streamPath,
+  CommandTester<Input> withEvent2<Event, IdData>(
+    String streamIdPath,
     EventCodec<Event> eventCodec,
     Event event,
   ) {
-    _readStore.append(streamPath, eventCodec, event);
+    _ensureNotRan();
+
+    final encoded = eventCodec.encode(event);
+
+    _eventStore.testInsertEvent(
+      MemoryEventInsert(
+        deviceId: _deviceId,
+        streamId: streamIdPath,
+        kind: encoded.kind,
+        detail: encoded.detail,
+      ),
+    );
+
     return this;
   }
 
-  /// [withTypedEvents] inserts multiple events with [withTypedEvent].
-  CommandTester<Input> withTypedEvents<Event, IdData>(
-    String streamPath,
+  Future<List<Event>> getWrittenEvents<Event, IdData>(
     EventCodec<Event> eventCodec,
-    List<Event> events,
-  ) {
-    for (final event in events) {
-      _readStore.append(streamPath, eventCodec, event);
-    }
-    return this;
+    StreamIdPattern<IdData> streamIdPattern,
+    IdData streamData,
+  ) async {
+    return getWrittenEvents2(eventCodec, streamIdPattern.toPath(streamData));
   }
 
-  /// Appends event to the stream by path and runtime value.
-  /// Warning: the event pack encode/decode will not be tested!
-  CommandTester<Input> withEvent<Event>(String streamPath, Event event) {
-    _readStore.appendPathOnly(streamPath, event);
-    return this;
-  }
+  Future<List<Event>> getWrittenEvents2<Event>(
+    EventCodec<Event> eventCodec,
+    String streamIdPath,
+  ) async {
+    _ensureRan();
 
-  /// [withEvents] inserts multiple events with [withEvent].
-  CommandTester<Input> withEvents<Event>(
-    String streamPath,
-    List<Event> events,
-  ) {
-    for (final event in events) {
-      _readStore.appendPathOnly(streamPath, event);
-    }
-    return this;
-  }
+    // only gets events that were emitted after the test has ran
+    final values = await _eventStore.getLocalEvents(
+      PatternFilter.exact(streamIdPath),
+      _preRunLastLocalSequence!,
+      _maxIntValue,
+    );
 
-  // post test helpers
-
-  Iterable<Event> getWrittenEventsForPattern<Event>(StreamIdPattern pattern) {
-    return _writeStore.getForPattern<Event>(pattern);
-  }
-
-  Iterable<Event> getWrittenEventsOnPath<Event>(String path) {
-    return _writeStore.getOnPath<Event>(path);
+    return values.events
+        .map((e) => eventCodec.decode(e.encodedEvent))
+        .toList(growable: false);
   }
 
   /// Returns true on succeess, false on failure.
   /// If failure is encountered, check [nackMessage] and [error].
-  Future<bool> run(Input input) async {
-    final ctx = TestCommandContext(
-      _readStore,
-      _writeStore,
-      _nacker,
-      _timeProvider,
-      _idGenerator,
+  Future<CommandRunResult> run(Input input) async {
+    _ensureNotRan();
+
+    final res = await _eventStore.getLocalLastEvent(PatternFilter.any());
+    _preRunLastLocalSequence = res.localSequence;
+
+    final executer = CommandExecutor(
+      eventStore: _eventStore,
+      timeProvider: _timeProvider,
+      idGenerator: _idGenerator,
+      thisDeviceId: _deviceId,
+      pageSize: _maxIntValue,
     );
-    try {
-      await _command.handle(input, ctx);
-      if (_nacker.message != null) {
-        throw CommandNack(message: _nacker.message!);
-      }
-      return true;
-    } catch (e) {
-      if (e is CommandNack) {
-        return false;
-      }
 
-      _error = e;
-
-      return false;
-    }
+    // envelopes are ingored
+    return await wrapCommandExecutionFuture(
+      executer.executeThrowable(_command, input),
+    );
   }
 }

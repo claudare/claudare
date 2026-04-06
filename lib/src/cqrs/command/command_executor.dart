@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:core/cqrs.dart';
 import 'package:core/src/cqrs/command/command_context_impl.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_envelope.dart';
@@ -7,7 +8,6 @@ import 'package:core/src/id_generator/id_generator.dart';
 import 'package:core/src/time_provider/time_provider.dart';
 
 import 'package:core/src/cqrs/command/command_appends.dart';
-import 'package:core/src/cqrs/command/command_context.dart';
 import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
 import 'package:core/src/cqrs/command/command_result.dart';
@@ -66,6 +66,9 @@ class CommandExecutor {
 
     try {
       await command.handle(input, context);
+    } on ConcurrencyProblem catch (_) {
+      // Do nothing on concurrency problem
+      throw ConcurrencyProblem();
     } catch (cause, stackTrace) {
       if (cause is Exception) {
         await _saveFailedCommand(
@@ -173,19 +176,11 @@ class CommandExecutor {
 
       await _eventStore.saveChanges(issuedCommand, StreamAppends.empty());
     } on Exception catch (e) {
-      // do nothing... stongly log?
-      // TODO: remove me: no logging is most desirable...
+      // do nothing... or stongly log somehow?
+      // TODO: remove me: no logging is desirable...
       print('failed to save failed command: $e');
     } catch (_) {
       rethrow;
     }
   }
-
-  // return of some result time for easy error checking
-  // Future<dynamic> executeResult<TInput>(
-  //   Command<TInput> command,
-  //   TInput input,
-  // ) async {
-  //   return [];
-  // }
 }

@@ -257,7 +257,7 @@ class MemoryEventStore implements EventStore {
             .where((e) => patternFilter.doesMatchPath(e.streamId))
             .lastOrNull;
 
-    final localSequence = last?.localSequence;
+    final localSequence = last?.localSequence ?? 0;
 
     return GetLocalLastEventResult(localSequence: localSequence);
   }

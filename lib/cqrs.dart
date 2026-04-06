@@ -1,5 +1,8 @@
 library;
 
+// helpers
+export 'src/cqrs/command/command_run_result.dart';
+
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 export 'src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';

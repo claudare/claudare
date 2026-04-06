@@ -22,11 +22,11 @@ class DeviceId implements Comparable<DeviceId> {
 
   /// Creates a DeviceId with zero value. That means there is no device
   /// equivalent to a "null device".
-  DeviceId.zero() : value = 0;
+  const DeviceId.zero() : value = 0;
 
   /// Special kind to unassigned device. Could be used pre-sync in fully offline operation?
   /// When sync is enabled it must be in the range of  1...u16-1.
-  DeviceId.unassigned() : value = 0xFFFF - 1;
+  const DeviceId.unassigned() : value = 0xFFFF - 1;
 
   @override
   bool operator ==(Object other) {

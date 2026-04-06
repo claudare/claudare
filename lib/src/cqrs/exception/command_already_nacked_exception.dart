@@ -1,5 +1,5 @@
 class CommandAlreadyNackedException implements Exception {
-  CommandAlreadyNackedException();
+  const CommandAlreadyNackedException();
 
   @override
   String toString() => 'CommandAlreadyNackedException';

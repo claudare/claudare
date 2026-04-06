@@ -307,7 +307,7 @@ class EventDb {
       ORDER BY local_sequence DESC
       LIMIT 1;""");
 
-    return GetLocalLastEventResult(localSequence: value);
+    return GetLocalLastEventResult(localSequence: value ?? 0);
   }
 }
 

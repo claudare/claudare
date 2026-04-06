@@ -85,4 +85,39 @@ class CqrsRuntime {
       eventualRouter: ProjectionRouter(eventualRunners),
     );
   }
+
+  BoundCommandFn<Input> bindCommand2<Input extends CommandInput>(
+    Command<Input> command,
+    List<Projection> consistentProjectors,
+  ) {
+    final executor = CommandExecutor(
+      eventStore: _eventStore,
+      timeProvider: _config.timeProvider,
+      idGenerator: _config.idGenerator,
+      thisDeviceId: _thisDeviceId,
+      pageSize: _config.eventStorePageSize,
+    );
+
+    final consistentRunners = <ProjectionRuntime>[];
+    final eventualRunners = <ProjectionRuntime>[];
+
+    for (final runner in _projectionRunners) {
+      final isConsistent = consistentProjectors.any(
+        (projector) => runner.isProjection(projector),
+      );
+
+      if (isConsistent) {
+        consistentRunners.add(runner);
+      } else {
+        eventualRunners.add(runner);
+      }
+    }
+
+    return BoundCommand(
+      executor: executor,
+      command: command,
+      consistentRouter: ProjectionRouter(consistentRunners),
+      eventualRouter: ProjectionRouter(eventualRunners),
+    ).runThrowable;
+  }
 }
