@@ -1,13 +1,10 @@
+import 'package:core/cqrs_test_utils.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 import 'package:test/test.dart';
 
-import 'event_store_test_utils.dart';
-
-typedef EventStoreFactory = Future<EventStoreProjection> Function();
-
 void main() {
-  for (var factory in eventStoreImplementations) {
+  for (var factory in getEventStoreFactories()) {
     group('EventStoreProjection - ${factory.name}', () {
       late EventStoreProjection store;
 

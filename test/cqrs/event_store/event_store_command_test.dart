@@ -1,3 +1,4 @@
+import 'package:core/cqrs_test_utils.dart';
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
@@ -7,13 +8,10 @@ import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-
 import 'package:test/test.dart';
 
-import 'event_store_test_utils.dart';
-
 void main() {
-  for (var factory in eventStoreImplementations) {
+  for (var factory in getEventStoreFactories()) {
     group('EventStoreCommand - ${factory.name}', () {
       late EventStoreCommand store;
 

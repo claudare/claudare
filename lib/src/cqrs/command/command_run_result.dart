@@ -46,7 +46,7 @@ Future<CommandRunResult> wrapCommandExecutionFuture(Future<void> future) async {
   } on ConcurrencyProblem catch (_) {
     return CommandRunResult._concurrencyProblem();
   } on CommandExecutionException catch (e) {
-    return CommandRunResult._exception(exception: e.cause!);
+    return CommandRunResult._exception(exception: e.cause);
   } on Exception catch (e) {
     return CommandRunResult._exception(exception: e);
   } catch (e, stackTrace) {

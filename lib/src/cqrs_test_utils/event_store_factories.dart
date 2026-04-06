@@ -44,7 +44,6 @@ class SqlEventStoreFactory implements EventStoreFactory {
   }
 }
 
-final eventStoreImplementations = [
-  MemoryEventStoreFactory(),
-  SqlEventStoreFactory(),
-];
+List<EventStoreFactory> getEventStoreFactories() {
+  return [MemoryEventStoreFactory(), SqlEventStoreFactory()];
+}
