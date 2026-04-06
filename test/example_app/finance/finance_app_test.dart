@@ -24,9 +24,7 @@ void main() {
     late FinanceApp app;
 
     setUp(() async {
-      eventStore = MemoryEventStore(
-        timeProvider: FakeTimeProviderStatic.zero(),
-      );
+      eventStore = MemoryEventStore();
       commandTimeProvider = FakeTimeProviderStatic.zero();
       commandIdGenerator = FakeIdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();

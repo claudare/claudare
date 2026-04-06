@@ -26,14 +26,9 @@ class MemoryEventStore implements EventStore {
   final DeviceSequences _eventDeviceSequences = DeviceSequences();
   final Mutex writeTransaction = Mutex(); // TO emulate SQLITE transactions
 
-  final TimeProvider _timeProvider;
   final void Function()? _onChange;
 
-  MemoryEventStore({
-    required TimeProvider timeProvider,
-    void Function()? onChange,
-  }) : _timeProvider = timeProvider,
-       _onChange = onChange;
+  MemoryEventStore({void Function()? onChange}) : _onChange = onChange;
 
   void _emitChange() {
     _onChange?.call();
@@ -78,7 +73,7 @@ class MemoryEventStore implements EventStore {
       streamVersion: version,
       kind: value.kind,
       detail: value.detail,
-      createdAt: value.occuredAt ?? _timeProvider.now(),
+      createdAt: value.occuredAt,
     );
 
     _events.add(event);
@@ -314,25 +309,25 @@ class MemoryEventInsert {
   final String streamId;
   final String kind;
   final String detail;
+  final DateTime occuredAt;
   final int? streamVersion;
-  final DateTime? occuredAt;
 
   const MemoryEventInsert({
     required this.deviceId,
     required this.streamId,
     required this.kind,
     required this.detail,
+    required this.occuredAt,
     this.streamVersion,
-    this.occuredAt,
   });
 
   MemoryEventInsert.minimal({
     required this.deviceId,
     required this.streamId,
+    required this.occuredAt,
     this.kind = "test",
     this.detail = "{}",
     this.streamVersion,
-    this.occuredAt,
   });
 }
 

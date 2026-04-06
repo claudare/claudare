@@ -26,7 +26,7 @@ class CommandTester {
     DeviceId deviceId = const DeviceId.unassigned(),
   }) : _timeProvider = timeProvider,
        _idGenerator = idGenerator,
-       _eventStore = eventStore ?? MemoryEventStore(timeProvider: timeProvider),
+       _eventStore = eventStore ?? MemoryEventStore(),
        _deviceId = deviceId;
 
   void _ensureRan() {
@@ -59,6 +59,7 @@ class CommandTester {
         streamId: streamPath,
         kind: encoded.kind,
         detail: encoded.detail,
+        occuredAt: _timeProvider.now(),
       ),
     );
 
@@ -81,6 +82,7 @@ class CommandTester {
         streamId: streamIdPath,
         kind: encoded.kind,
         detail: encoded.detail,
+        occuredAt: _timeProvider.now(),
       ),
     );
 

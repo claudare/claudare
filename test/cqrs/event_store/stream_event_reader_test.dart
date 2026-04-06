@@ -2,7 +2,6 @@ import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
 import 'package:core/src/cqrs/event_store/stream_event_reader.dart';
-import 'package:core/time_provider.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -14,7 +13,7 @@ void main() {
     const pageSize = 2;
 
     setUp(() {
-      store = MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
+      store = MemoryEventStore();
       reader = StreamEventReader(store, streamId, pageSize);
     });
 
@@ -61,6 +60,7 @@ _appendCount(MemoryEventStore store, int count) {
         deviceId: DeviceId(1),
         streamId: 'test',
         kind: 'event-$i',
+        occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       ),
     );
   }

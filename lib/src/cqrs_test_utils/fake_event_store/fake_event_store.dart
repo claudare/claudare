@@ -11,7 +11,7 @@ class FakeEventStore {
   late final MemoryEventStore eventStore;
 
   FakeEventStore() {
-    eventStore = MemoryEventStore(timeProvider: _timeProvider);
+    eventStore = MemoryEventStore();
   }
 
   FakeEventStore insertEvent(MemoryEventInsert raw) {
@@ -37,7 +37,7 @@ class FakeEventStore {
       kind: encoded.kind,
       detail: encoded.detail,
       streamVersion: null,
-      occuredAt: occuredAt,
+      occuredAt: occuredAt ?? _timeProvider.now(),
     );
 
     return insertEvent(raw);

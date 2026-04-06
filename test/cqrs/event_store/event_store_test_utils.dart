@@ -1,5 +1,4 @@
 import 'package:core/cqrs.dart';
-import 'package:core/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreFactory {
@@ -14,7 +13,7 @@ class MemoryEventStoreFactory implements EventStoreFactory {
 
   @override
   Future<EventStore> create() async {
-    return MemoryEventStore(timeProvider: FakeTimeProviderStatic.zero());
+    return MemoryEventStore();
   }
 
   @override
