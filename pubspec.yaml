@@ -39,7 +39,7 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.1
   restart_app: ^1.3.2
-  sqlite3_flutter_libs: ^0.5.32
+  sqlite3_flutter_libs: ^0.6.0+eol
   messagepack: ^0.2.1
   isolate_sqlite:
     git:
@@ -55,7 +55,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
   test: ^1.30.0
 
 # For information on the generic Dart part of this file, see the
