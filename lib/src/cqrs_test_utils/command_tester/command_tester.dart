@@ -11,9 +11,7 @@ import 'package:core/time_provider.dart';
 const int _maxIntValue = -1 >>> 1;
 
 // TODO: this currently relies on MemoryEventStore
-class CommandTester<Input extends CommandInput> {
-  final Command<Input> _command;
-
+class CommandTester {
   final DeviceId _deviceId;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
@@ -21,8 +19,7 @@ class CommandTester<Input extends CommandInput> {
 
   int? _preRunLastLocalSequence;
 
-  CommandTester(
-    this._command, {
+  CommandTester({
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     MemoryEventStore? eventStore,
@@ -45,7 +42,7 @@ class CommandTester<Input extends CommandInput> {
   }
 
   /// Appends event to the stream with type safety for stream and event.
-  CommandTester<Input> withEvent<Event, IdData>(
+  CommandTester withEvent<Event, IdData>(
     StreamIdPattern<IdData> streamIdPattern,
     IdData streamData,
     EventCodec<Event> eventCodec,
@@ -69,7 +66,7 @@ class CommandTester<Input extends CommandInput> {
   }
 
   /// Appends event to the stream with type safety for event only.
-  CommandTester<Input> withEvent2<Event, IdData>(
+  CommandTester withEvent2<Event, IdData>(
     String streamIdPath,
     EventCodec<Event> eventCodec,
     Event event,
@@ -118,7 +115,10 @@ class CommandTester<Input extends CommandInput> {
 
   /// Returns true on succeess, false on failure.
   /// If failure is encountered, check [nackMessage] and [error].
-  Future<CommandRunResult> run(Input input) async {
+  Future<CommandRunResult> run<Input extends CommandInput>(
+    Command<Input> command,
+    Input input,
+  ) async {
     _ensureNotRan();
 
     final res = await _eventStore.getLocalLastEvent(PatternFilter.any());
@@ -134,7 +134,7 @@ class CommandTester<Input extends CommandInput> {
 
     // envelopes are ingored
     return await wrapCommandExecutionFuture(
-      executer.executeThrowable(_command, input),
+      executer.executeThrowable(command, input),
     );
   }
 }

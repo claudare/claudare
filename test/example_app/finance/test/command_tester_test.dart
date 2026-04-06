@@ -99,33 +99,33 @@ void main() {
   group('Command tester 2', () {
     late TimeProvider timeProvider;
     late IdGenerator idGenerator;
+    late CommandTester commandTester;
 
     setUp(() {
       timeProvider = FakeTimeProviderStatic.unixMilliseconds(0);
       idGenerator = FakeIdGeneratorSequential();
-    });
-
-    test('happy path', () async {
-      final tester = CommandTester(
-        AtmDeposit(),
+      commandTester = CommandTester(
         timeProvider: timeProvider,
         idGenerator: idGenerator,
       );
+    });
 
-      tester.withEvent(
+    test('happy path', () async {
+      commandTester.withEvent(
         accountStreamId,
         "123",
         accountCodec,
         AccountOpened(name: "test"),
       );
 
-      final result = await tester.run(
+      final result = await commandTester.run(
+        AtmDeposit(),
         AtmDepositInput(accountId: "123", amount: 42),
       );
 
       expect(result.success, isTrue);
 
-      final events = await tester.getWrittenEvents(
+      final events = await commandTester.getWrittenEvents(
         accountCodec,
         accountStreamId,
         "123",
@@ -137,13 +137,8 @@ void main() {
 
     // try to append to event that does not exist
     test('exception', () async {
-      final tester = CommandTester(
+      final result = await commandTester.run(
         AtmDeposit(),
-        timeProvider: timeProvider,
-        idGenerator: idGenerator,
-      );
-
-      final result = await tester.run(
         AtmDepositInput(accountId: "123", amount: 42),
       );
 
@@ -156,19 +151,14 @@ void main() {
     // testing nack handling
     // also withEvent (untyped!!!)
     test('nack', () async {
-      final tester = CommandTester(
-        AtmDeposit(),
-        timeProvider: timeProvider,
-        idGenerator: idGenerator,
-      );
-
-      tester.withEvent2(
+      commandTester.withEvent2(
         "account/123",
         accountCodec,
         AccountOpened(name: "test"),
       );
 
-      final result = await tester.run(
+      final result = await commandTester.run(
+        AtmDeposit(),
         AtmDepositInput(accountId: "123", amount: -999),
       );
 
