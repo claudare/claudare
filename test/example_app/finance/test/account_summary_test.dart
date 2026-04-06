@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';
-import 'account_summary.dart';
+import '../projection/account_summary.dart';
 
 void main() {
   group('Account summary projection', () {

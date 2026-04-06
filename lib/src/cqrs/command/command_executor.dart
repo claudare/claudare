@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:core/src/cqrs/command/command_context_impl.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_envelope.dart';
 import 'package:core/src/id_generator/id_generator.dart';
@@ -54,7 +55,7 @@ class CommandExecutor {
       appendEvents: [],
     );
 
-    final context = CommandContext(
+    final context = CommandContextImpl(
       eventStore: _eventStore,
       appends: appends,
       nacker: nacker,

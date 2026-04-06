@@ -19,6 +19,12 @@ abstract class StreamIdPattern<TData> {
     return filter.doesMatchPath(otherPath);
   }
 
+  /// Slower method to filter by path only.
+  /// Used for testing
+  bool globsPathOnly(String otherPath) {
+    return filter.doesMatchPath(otherPath);
+  }
+
   @override
   String toString() => '$runtimeType(pattern: $pattern, filter: $filter)';
 }

@@ -30,4 +30,14 @@ export 'src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 export 'src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
 
 // exception
+export "src/cqrs/exception/command_already_nacked_exception.dart";
+export "src/cqrs/exception/command_execution_exception.dart";
+export "src/cqrs/exception/command_nack.dart";
+export "src/cqrs/exception/command_serialization_exception.dart";
 export "src/cqrs/exception/concurrency_problem.dart";
+export 'src/cqrs/exception/event_codec_exception.dart';
+export 'src/cqrs/exception/event_store_exception.dart';
+export 'src/cqrs/exception/stream_already_exists_exception.dart';
+export 'src/cqrs/exception/stream_already_locked_exception.dart';
+export "src/cqrs/exception/stream_not_found_exception.dart";
+export 'src/cqrs/exception/stream_not_locked_exception.dart';
