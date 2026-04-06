@@ -16,7 +16,7 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
     // Should the reset drop and recreate schema as well?
     // This could be ran outside of the initialization.
     await _db.transaction((tx) {
-      tx.exec('DROP TABLE IF EXISTS note;');
+      tx.execute('DROP TABLE IF EXISTS note;');
     });
     await noteMigrations.migrate(_db);
   }
@@ -59,7 +59,7 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
 
   @override
   Future<void> store(NoteData note, int localSequence) async {
-    await _db.exec(
+    await _db.execute(
       '''INSERT INTO note (
         id, title, title_updated_at, content, created_at, updated_at, trashed_at, _local_sequence
       ) VALUES (

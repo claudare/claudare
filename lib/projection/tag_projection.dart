@@ -17,9 +17,9 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   @override
   Future<void> reset(IsolateSqlite db) async {
     await db.transaction((tx) {
-      tx.exec('DELETE FROM tag;');
-      tx.exec('DELETE FROM note_tag;');
-      tx.exec('DELETE FROM local_sequence;');
+      tx.execute('DELETE FROM tag;');
+      tx.execute('DELETE FROM note_tag;');
+      tx.execute('DELETE FROM local_sequence;');
     });
   }
 
@@ -42,35 +42,37 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
     TagEvent event,
     EventMetadata metadata,
   ) {
-    tx.exec('UPDATE local_sequence SET value = ?;', [metadata.localSequence]);
+    tx.execute('UPDATE local_sequence SET value = ?;', [
+      metadata.localSequence,
+    ]);
 
     switch (event) {
       case TagAssigned(:final noteId):
         {
-          tx.exec('INSERT INTO note_tag (note_id, tag_id) VALUES (?, ?)', [
+          tx.execute('INSERT INTO note_tag (note_id, tag_id) VALUES (?, ?)', [
             noteId,
             tagId,
           ]);
         }
       case TagCreated(:final name):
         {
-          tx.exec('INSERT INTO tag (id, name) VALUES (?, ?)', [tagId, name]);
+          tx.execute('INSERT INTO tag (id, name) VALUES (?, ?)', [tagId, name]);
         }
       case TagRemoved():
         {
           // TODO: this will not work, need shadow delete, always
-          tx.exec('DELETE FROM tag WHERE id = ?', [tagId]);
+          tx.execute('DELETE FROM tag WHERE id = ?', [tagId]);
         }
       case TagRenamed(:final newName):
         {
           // TODO: this will not preserve the order
-          // Could use timestamp to keep the latest name?
-          tx.exec('UPDATE tag SET name = ? WHERE id = ?', [newName, tagId]);
+          // Utilize the CrtdValue here instead
+          tx.execute('UPDATE tag SET name = ? WHERE id = ?', [newName, tagId]);
         }
       case TagUnassigned(:final noteId):
         {
           // but this is okay?
-          tx.exec('DELETE FROM note_tag WHERE note_id = ? AND tag_id = ?', [
+          tx.execute('DELETE FROM note_tag WHERE note_id = ? AND tag_id = ?', [
             noteId,
             tagId,
           ]);

@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  restart_app
   sqlite3_flutter_libs
 )
 

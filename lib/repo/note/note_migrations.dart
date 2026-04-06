@@ -1,10 +1,10 @@
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
-  SqliteMigration(1, (db) async {
+  SqliteMigration(1, (tx) {
     print('applying note table read model migrations');
     // timestamps are strings
-    await db.exec('''CREATE TABLE note (
+    tx.execute('''CREATE TABLE note (
       id STRING PRIMARY KEY,
       title TEXT NOT NULL,
       title_updated_at TEXT,
@@ -15,10 +15,8 @@ final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
       -- favorited_at... unfavorited_at...
       _local_sequence INTEGER NOT NULL
     )''');
-    await db.exec(
-      'CREATE INDEX idx_note_id_trashed_at ON note(id, trashed_at);',
-    );
-    await db.exec(
+    tx.execute('CREATE INDEX idx_note_id_trashed_at ON note(id, trashed_at);');
+    tx.execute(
       'CREATE INDEX idx_note_local_sequence ON note(_local_sequence);',
     );
 
