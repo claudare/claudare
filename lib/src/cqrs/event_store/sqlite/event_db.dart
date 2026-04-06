@@ -14,13 +14,13 @@ const appId = "TODO";
 
 final migrations =
     SqliteMigrations()..add(
-      SqliteMigration(1, (db) async {
-        await db.exec('''CREATE TABLE stream(
+      SqliteMigration(1, (tx) {
+        tx.execute('''CREATE TABLE stream(
           stream_id STRING,
           version INTEGER,
           PRIMARY KEY (stream_id)
         );''');
-        await db.exec(
+        tx.execute(
           'CREATE INDEX idx_stream_version ON stream(stream_id, version);',
         );
 
@@ -30,7 +30,7 @@ final migrations =
         // (app_id, device_id, causal_sequence) for sync, event dependency tracking
         // (app_id, device_id, device_sequence) for sync, events are downloaded sequentially
         // (local_sequence) for fully offline projection catchup and playback
-        await db.exec('''CREATE TABLE event(
+        tx.execute('''CREATE TABLE event(
           stream_id,
           stream_version INTEGER,
           kind,
@@ -43,29 +43,29 @@ final migrations =
           PRIMARY KEY (local_sequence)
         );'''); // app_sequence!
 
-        await db.exec(
+        tx.execute(
           'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
         );
-        await db.exec(
+        tx.execute(
           'CREATE INDEX idx_causal_sequence ON event(device_id, causal_sequence);',
         );
 
         // clocks maintained by sqlite
-        await db.exec('''
+        tx.execute('''
           CREATE VIEW next_device_sequence AS
           SELECT device_id, COALESCE(MAX(device_sequence), 0) + 1 AS next_seq
           FROM event
           GROUP BY device_id;
         ''');
 
-        await db.exec('''
+        tx.execute('''
           CREATE VIEW next_causal_sequence AS
           SELECT device_id, COALESCE(MAX(causal_sequence), 0) + 1 AS next_seq
           FROM event
           GROUP BY device_id;
         ''');
 
-        await db.exec('''
+        tx.execute('''
           CREATE VIEW next_local_sequence AS
           SELECT COALESCE(MAX(local_sequence), 0) + 1 AS next_seq
           FROM event;
@@ -188,7 +188,7 @@ class EventDb {
       );
 
       if (streamVersionInDb == null) {
-        tx.exec("INSERT INTO stream (stream_id, version) VALUES (?, 0)", [
+        tx.execute("INSERT INTO stream (stream_id, version) VALUES (?, 0)", [
           streamId,
         ]);
       } else {
@@ -245,7 +245,7 @@ class EventDb {
         result.orders.add(StreamAppendOrder(localSequence: localSequence));
       }
 
-      tx.exec("UPDATE stream SET version = ? WHERE stream_id = ?", [
+      tx.execute("UPDATE stream SET version = ? WHERE stream_id = ?", [
         streamVersion,
         streamId,
       ]);
