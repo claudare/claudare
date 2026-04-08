@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/common.dart';
-import 'package:notes_app_v0/model/note_data.dart';
+import 'package:notes_app_v0/model/resolved_note.dart';
 
 class NoteListItem extends StatelessWidget {
-  final NoteData note;
+  final ResolvedNote note;
   final VoidCallback onTap;
 
   const NoteListItem({super.key, required this.note, required this.onTap});
@@ -11,7 +11,7 @@ class NoteListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      title: Text(note.title.value),
+      title: Text(note.title),
       subtitle: Text(
         note.content,
         maxLines: 2,

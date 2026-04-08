@@ -6,13 +6,15 @@ import 'package:notes_app_v0/model/note_data.dart';
 import 'package:notes_app_v0/repo/note/note_internal_repo.dart';
 import 'package:notes_app_v0/stream_id/note_stream_id.dart';
 
+/// Single projection that holds both the summary (string title and content)
+/// and the granular CRDT changes. 2 separate read models are used to query it.
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteInternalRepo _repo;
 
   NoteProjection(this._repo);
 
   @override
-  String get name => 'note.content';
+  String get name => 'note.complete';
 
   @override
   EventCodec<NoteEvent> get eventCodec => noteCodec;

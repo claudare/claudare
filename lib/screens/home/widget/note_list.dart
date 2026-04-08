@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/model/note_data.dart';
+import 'package:notes_app_v0/model/resolved_note.dart';
 import 'package:notes_app_v0/screens/home/widget/note_list_item.dart';
 
 class NoteList extends StatelessWidget {
   final Future<void> Function(String? noteId) openNote;
-  final List<NoteData> noteData;
+  final List<ResolvedNote> noteData;
 
   const NoteList({super.key, required this.noteData, required this.openNote});
 

@@ -1,25 +1,34 @@
 import 'package:flutter/foundation.dart';
 import 'package:notes_app_v0/command/delete_note.dart';
-import 'package:notes_app_v0/model/note_data.dart';
-import 'package:notes_app_v0/repo/note/note_read_model.dart';
+import 'package:notes_app_v0/model/resolved_note.dart';
+import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
 
 class NoteListController extends ChangeNotifier {
   final NotesRuntime notesRuntime;
 
-  List<NoteData> _noteData = [];
-  NoteReadModelOrder _filter = NoteReadModelOrder.createdAtDescending;
+  List<ResolvedNote> _noteData = [];
+  ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.available;
+  ResolvedNoteQueryOrder _order = ResolvedNoteQueryOrder.createdAtDescending;
   bool _isLoading = false;
 
   NoteListController(this.notesRuntime);
 
-  List<NoteData> get noteData => _noteData;
+  List<ResolvedNote> get noteData => _noteData;
   bool get isLoading => _isLoading;
 
-  Future<void> setFilter(NoteReadModelOrder filter) async {
-    if (_filter == filter) return;
+  Future<void> setCategory(ResolvedNoteQueryCategory category) async {
+    if (_category == category) return;
 
-    _filter = filter;
+    _category = category;
+
+    await reloadNotes();
+  }
+
+  Future<void> setFilter(ResolvedNoteQueryOrder filter) async {
+    if (_order == filter) return;
+
+    _order = filter;
 
     await reloadNotes();
   }
@@ -33,8 +42,9 @@ class NoteListController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await notesRuntime.noteReadModel.queryNonDeletedNotes(
-        _filter,
+      final data = await notesRuntime.resolvedNoteReadModel.query(
+        _category,
+        _order,
       );
       _noteData = data;
     } catch (e) {

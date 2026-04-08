@@ -1,10 +1,9 @@
-import 'package:core/crdt.dart';
-
-/// [NoteData] is the full internal, CRDT-centric data representation
-class NoteData {
+/// [ResolvedNote] is a read-only representation of a note that has been fully resolved.
+/// There is no CRDT information, only final values.
+class ResolvedNote {
   final String noteId;
 
-  final CrdtValueLatestWriteWins<String> title;
+  final String title;
   final String content;
 
   final DateTime createdAt;
@@ -14,7 +13,7 @@ class NoteData {
   // hhhhh
   final DateTime? trashedAt;
 
-  const NoteData({
+  const ResolvedNote({
     required this.noteId,
     required this.title,
     required this.content,
@@ -23,8 +22,8 @@ class NoteData {
     required this.trashedAt,
   });
 
-  NoteData.empty(this.noteId, DateTime currentTime)
-    : title = CrdtValueLatestWriteWins<String>.zero(''),
+  ResolvedNote.empty(this.noteId, DateTime currentTime)
+    : title = '',
       content = '',
       createdAt = currentTime,
       updatedAt = currentTime,
@@ -32,17 +31,15 @@ class NoteData {
 
   bool get isTrashed => trashedAt != null;
 
-  NoteData copyWith({
-    CrdtValueDateTimePair<String>? titlePair,
+  ResolvedNote copyWith({
+    String? title,
     String? content,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    final newTitle = titlePair == null ? title : title.mergePair(titlePair);
-
-    return NoteData(
+    return ResolvedNote(
       noteId: noteId,
-      title: newTitle,
+      title: title ?? this.title,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -51,8 +48,8 @@ class NoteData {
   }
 
   // because null is both a value and default non-existing condition
-  NoteData copyTrashedSet({required DateTime trashedAt}) {
-    return NoteData(
+  ResolvedNote copyTrashedSet({required DateTime trashedAt}) {
+    return ResolvedNote(
       noteId: noteId,
       title: title,
       content: content,
@@ -64,6 +61,6 @@ class NoteData {
 
   @override
   toString() {
-    return 'NoteData(noteId: $noteId, title: ${title.value}, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, trashedAt: $trashedAt)';
+    return 'NoteData(noteId: $noteId, title: $title, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, trashedAt: $trashedAt)';
   }
 }

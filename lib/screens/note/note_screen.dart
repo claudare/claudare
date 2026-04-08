@@ -4,8 +4,6 @@ import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/delete_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
-import 'package:notes_app_v0/common.dart';
-import 'package:notes_app_v0/model/note_data.dart';
 
 class NoteScreen extends StatefulWidget {
   final String? noteId;
@@ -96,10 +94,9 @@ class _NoteScreenState extends State<NoteScreen> {
 
       final application = ApplicationProvider.of(context);
 
-      final note = await application.notesRuntime.noteReadModel.getNote(
+      final note = await application.notesRuntime.internalNoteReadModel.getNote(
         _noteId!,
       );
-      if (note == null) return;
 
       setState(() {
         _prevTitle = note.title.value;

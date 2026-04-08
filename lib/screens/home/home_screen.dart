@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:notes_app_v0/application/application_provider.dart';
 import 'package:notes_app_v0/screens/home/note_list_controller.dart';
 import 'package:notes_app_v0/screens/home/widget/note_list.dart';
-import 'package:notes_app_v0/screens/note_screen.dart';
-
-import 'widget/note_list_item.dart';
+import 'package:notes_app_v0/screens/note/note_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
