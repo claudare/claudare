@@ -31,12 +31,13 @@ class _HomeScreenState extends State<HomeScreen> {
     // but this works!
     final app = ApplicationProvider.of(context);
     _controller = NoteListController(app.notesRuntime);
-    _controller.onStateChanged = () => setState(() {});
+    _controller.addListener(() => setState(() {}));
     _controller.reloadNotes();
   }
 
   @override
   void dispose() {
+    _controller.dispose(); // listener list is cleared
     super.dispose();
   }
 

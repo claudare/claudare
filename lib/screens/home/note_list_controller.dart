@@ -1,10 +1,9 @@
-import 'dart:ui';
-
+import 'package:flutter/foundation.dart';
 import 'package:notes_app_v0/model/note_data.dart';
 import 'package:notes_app_v0/repo/note/note_read_model.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
 
-class NoteListController {
+class NoteListController extends ChangeNotifier {
   final NotesRuntime notesRuntime;
 
   List<NoteData> _noteData = [];
@@ -15,8 +14,6 @@ class NoteListController {
 
   List<NoteData> get noteData => _noteData;
   bool get isLoading => _isLoading;
-
-  VoidCallback onStateChanged = () {};
 
   Future<void> setFilter(NoteReadModelOrder filter) async {
     if (_filter == filter) return;
@@ -32,7 +29,7 @@ class NoteListController {
     }
 
     _isLoading = true;
-    onStateChanged();
+    notifyListeners();
 
     try {
       final data = await notesRuntime.noteReadModel.queryNonDeletedNotes(
@@ -43,7 +40,7 @@ class NoteListController {
       print('ERROR LOADING NOTES: $e');
     } finally {
       _isLoading = false;
-      onStateChanged();
+      notifyListeners();
     }
   }
 }
