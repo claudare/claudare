@@ -10,6 +10,13 @@ class NoteListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // nice UI :()
+    String categories = '';
+
+    if (note.isTrashed) {
+      categories += ' Trashed';
+    }
+
     return ListTile(
       title: Text(note.title),
       subtitle: Text(
@@ -17,9 +24,14 @@ class NoteListItem extends StatelessWidget {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: Text(
-        formatDateTime(note.updatedAt),
-        style: TextStyle(fontSize: 12, color: Colors.grey),
+      trailing: Column(
+        children: [
+          Text(
+            formatDateTime(note.updatedAt),
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          Text(categories),
+        ],
       ),
       onTap: onTap,
     );

@@ -61,7 +61,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
         throw Exception('not mounted after loading');
       }
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(
+          builder:
+              (context) => HomeScreen(notesRuntime: application.notesRuntime),
+        ),
       );
     } catch (e) {
       _onError(e);

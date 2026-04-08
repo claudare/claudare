@@ -13,14 +13,16 @@ class NoteCodec implements EventCodec<NoteEvent> {
     final detail = jsonEncode(event.toJson());
 
     switch (event) {
-      case NoteCreated():
-        return EncodedEvent(kind: NoteCreated.kind, detail: detail);
-      case NoteTitleUpdated():
-        return EncodedEvent(kind: NoteTitleUpdated.kind, detail: detail);
       case NoteContentUpdated():
         return EncodedEvent(kind: NoteContentUpdated.kind, detail: detail);
+      case NoteCreated():
+        return EncodedEvent(kind: NoteCreated.kind, detail: detail);
       case NoteDeleted():
         return EncodedEvent(kind: NoteDeleted.kind, detail: detail);
+      case NoteRestored():
+        return EncodedEvent(kind: NoteRestored.kind, detail: detail);
+      case NoteTitleUpdated():
+        return EncodedEvent(kind: NoteTitleUpdated.kind, detail: detail);
     }
   }
 
@@ -29,14 +31,16 @@ class NoteCodec implements EventCodec<NoteEvent> {
     final detail = jsonDecode(encoded.detail);
 
     switch (encoded.kind) {
-      case NoteCreated.kind:
-        return NoteCreated.fromJson(detail);
-      case NoteTitleUpdated.kind:
-        return NoteTitleUpdated.fromJson(detail);
       case NoteContentUpdated.kind:
         return NoteContentUpdated.fromJson(detail);
+      case NoteCreated.kind:
+        return NoteCreated.fromJson(detail);
       case NoteDeleted.kind:
         return NoteDeleted.fromJson(detail);
+      case NoteRestored.kind:
+        return NoteRestored.fromJson(detail);
+      case NoteTitleUpdated.kind:
+        return NoteTitleUpdated.fromJson(detail);
       default:
         throw UnsupportedError('Unknown kind: ${encoded.kind}');
     }

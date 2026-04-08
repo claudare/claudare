@@ -51,7 +51,7 @@ class NoteData {
   }
 
   // because null is both a value and default non-existing condition
-  NoteData copyTrashedSet({required DateTime trashedAt}) {
+  NoteData copyWithTrashedValue({required DateTime? trashedAt}) {
     return NoteData(
       noteId: noteId,
       title: title,

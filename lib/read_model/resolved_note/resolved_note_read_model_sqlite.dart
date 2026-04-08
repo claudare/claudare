@@ -22,8 +22,10 @@ class ResolvedNoteReadModelSqlite implements ResolvedNoteReadModel {
 
   String _categoryWhereSql(ResolvedNoteQueryCategory category) {
     switch (category) {
+      case ResolvedNoteQueryCategory.all:
+        return '';
       case ResolvedNoteQueryCategory.available:
-        return 'WHERE trashed_at IS NOT NULL';
+        return 'WHERE trashed_at IS NULL';
       case ResolvedNoteQueryCategory.trashed:
         return 'WHERE trashed_at IS NOT NULL';
       case ResolvedNoteQueryCategory.favorited:

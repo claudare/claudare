@@ -8,7 +8,7 @@ class NoteListController extends ChangeNotifier {
   final NotesRuntime notesRuntime;
 
   List<ResolvedNote> _noteData = [];
-  ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.available;
+  ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.all;
   ResolvedNoteQueryOrder _order = ResolvedNoteQueryOrder.createdAtDescending;
   bool _isLoading = false;
 

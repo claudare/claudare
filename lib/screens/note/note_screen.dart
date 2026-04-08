@@ -4,197 +4,126 @@ import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/delete_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
+import 'package:notes_app_v0/common.dart';
+import 'package:notes_app_v0/runtime/notes_runtime.dart';
+import 'package:notes_app_v0/screens/note/note_controller.dart';
 
 class NoteScreen extends StatefulWidget {
+  final NotesRuntime notesRuntime;
+
   final String? noteId;
 
-  const NoteScreen({super.key, required this.noteId});
+  const NoteScreen({
+    super.key,
+    required this.noteId,
+    required this.notesRuntime,
+  });
 
   @override
   State<NoteScreen> createState() => _NoteScreenState();
 }
 
 class _NoteScreenState extends State<NoteScreen> {
+  late NoteController _controller;
+
   late TextEditingController _titleController;
   late FocusNode _titleFocus;
 
   late TextEditingController _contentController;
   late FocusNode _contentFocus;
 
-  bool _isBusy = true;
-  String? _noteId;
-  String _prevTitle = '';
-  String _prevContent = '';
+  bool _flushed = true;
 
   @override
   void initState() {
     super.initState();
 
-    _noteId = widget.noteId;
-
-    // It is very important that actual content of this preview aligns with
-    // the value of CRDT exactly.
-    // For now its set to empty, will be set after load.
     _titleController = TextEditingController(text: '');
+    _titleController.addListener(_onTitleTextChange);
+
     _titleFocus = FocusNode();
     _titleFocus.addListener(_onTitleFocusChange);
     _titleFocus.onKeyEvent = (node, event) {
-      print(
-        'title focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
-      );
+      // print(
+      //   'title focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
+      // );
       return KeyEventResult.ignored;
     };
 
     _contentController = TextEditingController(text: '');
+    _contentController.addListener(_onContentTextChange);
+
     _contentFocus = FocusNode();
     _contentFocus.addListener(_onContentFocusChange);
     _contentFocus.onKeyEvent = (node, event) {
-      print(
-        'content focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
-      );
+      // print(
+      //   'content focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
+      // );
       return KeyEventResult.ignored;
     };
-  }
 
-  void _onTitleFocusChange() {
-    print('title focus changed: ${_titleFocus.hasFocus}');
+    _controller = NoteController(widget.notesRuntime);
+    _controller.addListener(() => setState(() {}));
 
-    if (!_titleFocus.hasFocus) {
-      // meaning we were let go
-      // try to save the changes
-      _saveChanges();
-    }
-  }
-
-  void _onContentFocusChange() {
-    print('content focus changed: ${_contentFocus.hasFocus}');
-
-    if (!_contentFocus.hasFocus) {
-      // meaning we were let go
-      // try to save the changes
-      _saveChanges();
-    }
+    _controller.load(widget.noteId).then((values) {
+      _titleController.text = values.title;
+      _contentController.text = values.content;
+    });
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void dispose() {
+    _titleController.dispose();
+    _titleFocus.dispose();
 
-    print('NoteScreen didChangeDependencies');
+    _contentController.dispose();
+    _contentFocus.dispose();
 
-    _loadNote();
+    _controller.dispose();
+
+    super.dispose();
   }
 
-  Future<void> _loadNote() async {
-    // load everything based on the note
-    //
+  void _markDirty() {
+    _flushed = false;
+  }
 
-    try {
-      if (_noteId == null) return;
+  void _onTitleTextChange() {
+    _markDirty();
+    _controller.submitTitleChange(_titleController.text);
+  }
 
-      final application = ApplicationProvider.of(context);
-
-      final note = await application.notesRuntime.internalNoteReadModel.getNote(
-        _noteId!,
-      );
-
-      setState(() {
-        _prevTitle = note.title.value;
-        _prevContent = note.content;
-      });
-
-      // update the controllers
-      _titleController.text = note.title.value;
-      _contentController.text = note.content;
-    } catch (e) {
-      print('Failed to load note: $e');
-    } finally {
-      setState(() {
-        _isBusy = false;
-      });
+  void _onTitleFocusChange() {
+    if (!_titleFocus.hasFocus) {
+      _flushChanges();
     }
   }
 
-  Future<void> _saveChanges() async {
-    if (_isBusy) return;
-    setState(() {
-      _isBusy = true;
-    });
+  void _onContentTextChange() {
+    _markDirty();
+    _controller.submitContentChange(_contentController.text);
+  }
 
-    // early exit if nothing was created
-    if (_noteId == null &&
-        _titleController.text == '' &&
-        _contentController.text == '') {
-      setState(() {
-        _isBusy = false;
-      });
-      return;
+  void _onContentFocusChange() {
+    if (!_contentFocus.hasFocus) {
+      _flushChanges();
     }
+  }
+
+  Future<void> _flushChanges() async {
+    if (_flushed) return;
+    _flushed = true;
 
     try {
-      int changeCount = 0;
-      final application = ApplicationProvider.of(context);
-
-      final noteId = _noteId ?? application.idGenerator.generateId();
-
-      if (_noteId == null) {
-        // create the note
-        setState(() {
-          _noteId = noteId;
-          _prevTitle = '';
-          _prevContent = '';
-        });
-
-        await application.notesRuntime.commands.createNote.runThrowable(
-          CreateNoteInput(noteId: noteId),
-        );
-        changeCount++;
-      }
-
-      final prevTitle = _prevTitle;
-      final newTitle = _titleController.text;
-      if (newTitle != prevTitle) {
-        await application.notesRuntime.commands.updateNoteTitle.runThrowable(
-          UpdateNoteTitleInput(noteId: noteId, fullValue: newTitle),
-        );
-
-        setState(() {
-          _prevTitle = newTitle;
-        });
-        changeCount++;
-      }
-
-      final initialContent = _prevContent;
-      final newContent = _contentController.text;
-      if (newContent != initialContent) {
-        await application.notesRuntime.commands.updateNoteContent.runThrowable(
-          UpdateNoteContentInput(noteId: noteId, overrideContent: newContent),
-        );
-
-        setState(() {
-          _prevContent = newContent;
-        });
-        changeCount++;
-      }
+      final applied = await _controller.flushChanges();
+      if (!applied) return;
 
       if (!mounted) {
-        print('not mounted when trying to show a snackbar');
         return;
       }
-      if (changeCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Note saved'), duration: Duration(seconds: 1)),
-        );
-      }
-      // else {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     SnackBar(
-      //       content: Text('No note changes'),
-
-      //       duration: Duration(seconds: 1),
-      //     ),
-      //   );
-      // }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Note saved'), duration: Duration(seconds: 1)),
+      );
     } catch (e) {
       if (!mounted) {
         return;
@@ -203,30 +132,18 @@ class _NoteScreenState extends State<NoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving note: $e'),
-          duration: Duration(seconds: 1),
+          duration: Duration(seconds: 10),
         ),
       );
-    } finally {
-      setState(() {
-        _isBusy = false;
-      });
     }
   }
 
-  Future<void> _deleteNote() async {
-    if (_noteId == null) {
-      Navigator.of(context).pop();
-      return;
-    }
-
+  Future<void> _trashNote() async {
     try {
-      final application = ApplicationProvider.of(context);
-      await application.notesRuntime.commands.deleteNote.runThrowable(
-        DeleteNoteInput(noteId: _noteId!),
-      );
-      if (!mounted) {
-        return;
-      }
+      final trashed = await _controller.trash();
+      if (!trashed) return;
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
       );
@@ -239,25 +156,41 @@ class _NoteScreenState extends State<NoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting note: $e'),
+          duration: Duration(seconds: 10),
+        ),
+      );
+    }
+  }
+
+  Future<void> _restoreNote() async {
+    try {
+      final restored = await _controller.restore();
+      if (!restored) return;
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Note restored'),
           duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error restoring note: $e'),
+          duration: Duration(seconds: 10),
         ),
       );
     }
   }
 
   void _onPopInvokedWithResult() async {
-    await _saveChanges();
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _titleFocus.dispose();
-
-    _contentController.dispose();
-    _contentFocus.dispose();
-
-    super.dispose();
+    print('invoking pop with result');
+    await _flushChanges();
   }
 
   @override
@@ -266,16 +199,24 @@ class _NoteScreenState extends State<NoteScreen> {
       onPopInvokedWithResult: (didPop, _) => _onPopInvokedWithResult(),
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Editing note'),
+          title: Text(
+            _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
+          ),
           actions: [
             // IconButton(
             //   icon: Icon(Icons.tag),
             //   onPressed: () => _onTagPressed(context),
             // ),
-            IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () => _deleteNote(),
-            ),
+            _controller.isTrashed
+                ? IconButton(
+                  icon: Icon(Icons.restore),
+                  onPressed:
+                      _controller.isTrashed ? () => _restoreNote() : null,
+                )
+                : IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => _trashNote(),
+                ),
             // IconButton(
             //   icon: Icon(Icons.save),
             //   onPressed:
@@ -295,14 +236,6 @@ class _NoteScreenState extends State<NoteScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Text(
-              //   'Created: ${formatDateTime(widget.note.createdAt.toDateTime())}',
-              //   style: TextStyle(fontSize: 12, color: Colors.grey),
-              // ),
-              // Text(
-              //   'Last updated: ${formatDateTime(widget.note.updatedAt.toDateTime())}',
-              //   style: TextStyle(fontSize: 12, color: Colors.grey),
-              // ),
               SizedBox(height: 8),
               TextField(
                 controller: _titleController,
@@ -311,7 +244,8 @@ class _NoteScreenState extends State<NoteScreen> {
                   border: OutlineInputBorder(),
                 ),
                 focusNode: _titleFocus,
-                enabled: !_isBusy,
+                // TODO: this breaks tab order, sometimes
+                enabled: !_controller.isBusy && !_controller.isTrashed,
               ),
               SizedBox(height: 8),
               Expanded(
@@ -325,9 +259,32 @@ class _NoteScreenState extends State<NoteScreen> {
                   ),
                   textAlignVertical: TextAlignVertical.top,
                   focusNode: _contentFocus,
-                  enabled: !_isBusy,
+                  // TODO: this breaks tab order, sometimes
+                  enabled: !_controller.isBusy && !_controller.isTrashed,
                 ),
               ),
+              SizedBox(height: 4),
+
+              Row(
+                spacing: 8.0,
+                children: [
+                  Text(
+                    'Created at ${formatDateTime(_controller.createdAt)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  Text(
+                    'Updated at ${formatDateTime(_controller.updatedAt)}',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  _controller.trashedAt != null
+                      ? Text(
+                        'Deleted at ${formatDateTime(_controller.trashedAt!)}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      )
+                      : SizedBox.shrink(),
+                ],
+              ),
+
               // only show below if tags are present... what a wierd syntax
               // if (widget.note.tags.isNotEmpty) SizedBox(height: 8),
               // Wrap(

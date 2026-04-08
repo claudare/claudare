@@ -4,6 +4,7 @@ import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
 import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/delete_note.dart';
+import 'package:notes_app_v0/command/restore_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/projection/note/note_projection.dart';
@@ -43,6 +44,7 @@ class NotesRuntime {
     commands = CqrsCommands(
       createNote: _cqrsRuntime.bindCommand(CreateNote(), [noteProjection]),
       deleteNote: _cqrsRuntime.bindCommand(DeleteNote(), [noteProjection]),
+      restoreNote: _cqrsRuntime.bindCommand(RestoreNote(), [noteProjection]),
       updateNoteContent: _cqrsRuntime.bindCommand(UpdateNoteContent(), [
         noteProjection,
       ]),
@@ -63,12 +65,14 @@ class NotesRuntime {
 class CqrsCommands {
   final BoundCommand<CreateNoteInput> createNote;
   final BoundCommand<DeleteNoteInput> deleteNote;
+  final BoundCommand<RestoreNoteInput> restoreNote;
   final BoundCommand<UpdateNoteContentInput> updateNoteContent;
   final BoundCommand<UpdateNoteTitleInput> updateNoteTitle;
 
   const CqrsCommands({
     required this.createNote,
     required this.deleteNote,
+    required this.restoreNote,
     required this.updateNoteContent,
     required this.updateNoteTitle,
   });

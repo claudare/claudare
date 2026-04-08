@@ -7,7 +7,7 @@ enum ResolvedNoteQueryOrder {
   updatedAtAscending,
 }
 
-enum ResolvedNoteQueryCategory { available, trashed, favorited }
+enum ResolvedNoteQueryCategory { all, available, trashed, favorited }
 
 abstract interface class ResolvedNoteReadModel {
   Future<List<ResolvedNote>> query(

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/application/application_provider.dart';
+import 'package:notes_app_v0/runtime/notes_runtime.dart';
 import 'package:notes_app_v0/screens/home/note_list_controller.dart';
 import 'package:notes_app_v0/screens/home/widget/note_list.dart';
 import 'package:notes_app_v0/screens/note/note_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final NotesRuntime notesRuntime;
+
+  const HomeScreen({super.key, required this.notesRuntime});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -14,38 +17,30 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late NoteListController _controller;
 
-  // pagination here
-
   @override
   void initState() {
     super.initState();
-  }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    print('HomeScreen didChangeDependencies');
-
-    // but this works!
-    final app = ApplicationProvider.of(context);
-    _controller = NoteListController(app.notesRuntime);
+    _controller = NoteListController(widget.notesRuntime);
     _controller.addListener(() => setState(() {}));
     _controller.reloadNotes();
   }
 
   @override
   void dispose() {
-    _controller.dispose(); // listener list is cleared
+    _controller.dispose(); // listener list is cleared on dispose
     super.dispose();
   }
 
   Future<void> _openNote(String? noteId) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => NoteScreen(noteId: noteId)));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                NoteScreen(noteId: noteId, notesRuntime: widget.notesRuntime),
+      ),
+    );
     // this will rerun after push is over
-    // is there a race condition?
     await _controller.reloadNotes();
   }
 

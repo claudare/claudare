@@ -58,7 +58,13 @@ class NoteProjection implements Projection<NoteEvent, String> {
         return _repo.getAndStore(
           noteId,
           metadata.localSequence,
-          (note) => note.copyTrashedSet(trashedAt: metadata.occuredAt),
+          (note) => note.copyWithTrashedValue(trashedAt: metadata.occuredAt),
+        );
+      case NoteRestored():
+        return _repo.getAndStore(
+          noteId,
+          metadata.localSequence,
+          (note) => note.copyWithTrashedValue(trashedAt: null),
         );
       case NoteTitleUpdated(:final newTitle):
         return _repo.getAndStore(

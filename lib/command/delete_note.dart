@@ -29,24 +29,29 @@ class DeleteNote implements Command<DeleteNoteInput> {
 
     final stream = ctx.stream(noteCodec, noteStreamId, noteId);
 
-    // This implementation is not concurrent, as concurrency will need to use
-    // the actual device time.
-    // TODO: make this work concurrently, atleast for the title
-    // ctx.currentTime() is available in the projection through metadata!
-    // With proper merge crdt timestamps will not be needed
-
-    // Rough edges of current CQRS design
-    var exists = false;
+    var exists = false; // Annoying usage in current CQRS design
+    var trashed = false;
 
     await for (final ev in stream.scan()) {
       exists = true;
-      if (ev.runtimeType == NoteDeleted) {
-        return ctx.nack('note already delete');
+
+      switch (ev) {
+        case NoteDeleted():
+          trashed = true;
+          break;
+        case NoteRestored():
+          trashed = false;
+          break;
+        default:
+          break;
       }
     }
 
     if (!exists) {
       return ctx.nack('note does not exist');
+    }
+    if (trashed) {
+      return ctx.nack('note already trashed');
     }
 
     stream.append(NoteDeleted());
