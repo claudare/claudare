@@ -10,19 +10,16 @@ import 'projection/account_summary.dart';
 import 'read_model/accounts_summary_read_model.dart';
 
 class FinanceApp {
-  final EventStore _eventStore;
-
   late final CqrsRuntime _cqrsRuntime;
 
   late final ReadModels readModel;
   late final Commands command;
 
   FinanceApp({
-    required EventStore eventStore,
     required CqrsRuntimeConfig config,
     required DeviceId deviceId,
     required AccountsSummaryReadModel accountSummaryRepo,
-  }) : _eventStore = eventStore {
+  }) {
     final accountSummaryProjection = AccountSummaryProjection(
       accountSummaryRepo,
     );
@@ -30,9 +27,9 @@ class FinanceApp {
     readModel = ReadModels(accountsSummary: accountSummaryRepo);
 
     _cqrsRuntime = CqrsRuntime(
-      eventStore: _eventStore,
       config: config,
       thisDeviceId: deviceId,
+      runtimeName: 'finance-main',
       projectors: [accountSummaryProjection],
     );
 
@@ -60,7 +57,7 @@ class FinanceApp {
     // TODO: should the deviceId be loaded here and set on the runtime?
     // TODO: how to show progress? This could take a while.
 
-    await _cqrsRuntime.catchupAllProjections();
+    await _cqrsRuntime.catchupAllProjections(1);
   }
 }
 

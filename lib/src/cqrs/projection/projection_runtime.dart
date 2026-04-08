@@ -50,12 +50,28 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     return _projection.streamIdPattern.globs(streamIdPattern, onPath);
   }
 
+  Future<void> resetProjection() async {
+    try {
+      await _projection.reset();
+    } catch (error, stackTrace) {
+      _failureState.capture(error, stackTrace);
+      return;
+    }
+  }
+
   /// Will sync all projections to their latest version
   Future<void> catchupSelfLoad(EventStoreProjection eventStore) async {
+    if (_failureState.hasError) {
+      return;
+    }
+
     try {
       final checkpoint = await _projection.checkpoint();
 
       if (!checkpoint.isProjectionInitialized) {
+        print(
+          "Warning: Projection was not initialized when catchupSelfLoad was called",
+        );
         await _projection.reset();
       }
 

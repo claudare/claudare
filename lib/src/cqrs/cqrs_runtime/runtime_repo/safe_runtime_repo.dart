@@ -7,6 +7,16 @@ class SafeRuntimeRepo {
 
   const SafeRuntimeRepo(this._repo);
 
+  Future<void> initialize() async {
+    try {
+      await _repo.initialize();
+    } on Exception catch (e) {
+      throw RuntimeRepoException('Failed to initialize runtime repo', cause: e);
+    } catch (e, st) {
+      Error.throwWithStackTrace(e, st);
+    }
+  }
+
   Future<int> getRuntimeVersion(String runtimeName) async {
     try {
       final value = await _repo.getRuntimeVersion(runtimeName);
@@ -24,7 +34,7 @@ class SafeRuntimeRepo {
   }
 
   Future<void> setRuntimeVersion(String runtimeName, int version) async {
-    if (version <= 0) {
+    if (version < 0) {
       throw StateError('Invalid runtime version: $version');
     }
 

@@ -18,6 +18,7 @@ void main() {
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     late MemoryEventStore eventStore;
+    late MemoryRuntimeRepo runtimeRepo;
     late TimeProvider commandTimeProvider;
     late IdGenerator commandIdGenerator;
     late AccountsSummaryReadModel accountsSummaryRepo;
@@ -25,13 +26,15 @@ void main() {
 
     setUp(() async {
       eventStore = MemoryEventStore();
+      runtimeRepo = MemoryRuntimeRepo();
       commandTimeProvider = FakeTimeProviderStatic.zero();
       commandIdGenerator = FakeIdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
 
       app = FinanceApp(
-        eventStore: eventStore,
         config: CqrsRuntimeConfig(
+          eventStore: eventStore,
+          runtimeRepo: runtimeRepo,
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
           eventStorePageSize: 10,
