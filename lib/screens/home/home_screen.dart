@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/application/application_provider.dart';
 import 'package:notes_app_v0/screens/home/note_list_controller.dart';
+import 'package:notes_app_v0/screens/home/widget/note_list.dart';
 import 'package:notes_app_v0/screens/note_screen.dart';
 
 import 'widget/note_list_item.dart';
@@ -63,18 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(icon: Icon(Icons.add), onPressed: () => _newNote()),
         ],
       ),
-      body: ListView.builder(
-        itemCount: _controller.noteData.length,
-        itemBuilder: (context, index) {
-          final note = _controller.noteData[index];
-          return NoteListItem(
-            note: note,
-            onTap: () {
-              _openNote(note.noteId);
-            },
-          );
-        },
-      ),
+      body: NoteList(noteData: _controller.noteData, openNote: _openNote),
     );
   }
 }
