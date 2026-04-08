@@ -212,18 +212,6 @@ class _NoteScreenState extends State<NoteScreen> {
                   icon: Icon(Icons.delete),
                   onPressed: () => _trashNote(),
                 ),
-            // IconButton(
-            //   icon: Icon(Icons.save),
-            //   onPressed:
-            //       _textContentChanged
-            //           ? () => _saveNote(controller, updateState: true)
-            //           : null,
-            //   tooltip:
-            //       _textContentChanged
-            //           ? 'Save changes'
-            //           : 'All changes upto date',
-            //   disabledColor: _textContentChanged ? null : Colors.red,
-            // ),
           ],
         ),
         body: Padding(
