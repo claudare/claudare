@@ -1,5 +1,12 @@
 import 'package:notes_app_v0/model/note_data.dart';
 
+enum NoteReadModelOrder {
+  createdAtDescending,
+  createdAtAscending,
+  updatedAtDescending,
+  updatedAtAscending,
+}
+
 abstract interface class NoteReadModel {
   Future<NoteData?> getNote(String noteId);
 
@@ -7,5 +14,5 @@ abstract interface class NoteReadModel {
   // isDeleted boolean
   // favorite filtering
   // ordering by: createdAt ASC DESC, updatedAt ASC DESC
-  Future<List<NoteData>> getAllNonDeletedNotes();
+  Future<List<NoteData>> queryNonDeletedNotes(NoteReadModelOrder order);
 }

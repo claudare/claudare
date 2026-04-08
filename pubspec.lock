@@ -308,10 +308,10 @@ packages:
     description:
       path: "."
       ref: main
-      resolved-ref: d49876c2c78fa2fca12d5eb651d02ae1d777cbd0
+      resolved-ref: "89d9ce4ab25084503b74fc91845ac6e9a66f4270"
       url: "git@github.com:claudare/isolate_sqlite.git"
     source: git
-    version: "0.2.0"
+    version: "0.2.1"
   json_annotation:
     dependency: transitive
     description:

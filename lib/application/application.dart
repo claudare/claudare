@@ -22,24 +22,17 @@ class Application {
   });
 
   Future<void> initialize() async {
-    // TODO: abstract this too?
     await sqliteDb.open();
-
-    // TODO: abstract event store initialization...
     await eventStore.migrate();
-
     await notesRuntime.initialize();
-
-    await Future.delayed(const Duration(seconds: 1));
+    // await Future.delayed(const Duration(seconds: 1));
   }
 
-  // used for ApplicationProvider notifier
   @override
   bool operator ==(Object other) {
     return identical(this, other);
   }
 
-  // TODO: this may not work!!!
   @override
   int get hashCode => Object.hash(eventStore, notesRuntime);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
-import 'package:notes_app_v0/application.dart';
+
+import 'application.dart';
 
 // [ControllerProvider] injects the main app controller into the widget tree
 class ApplicationProvider extends InheritedWidget {
@@ -19,9 +20,6 @@ class ApplicationProvider extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ApplicationProvider oldWidget) {
-    print(
-      'should ControllerProvider notify? ${application != oldWidget.application}',
-    );
     return application != oldWidget.application;
   }
 }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/application_provider.dart';
+import 'package:notes_app_v0/application/application_provider.dart';
 import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
-import 'package:notes_app_v0/screens/home_screen.dart';
+import 'package:notes_app_v0/screens/home/home_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -39,19 +39,23 @@ class _LoadingScreenState extends State<LoadingScreen> {
     try {
       await application.initialize();
 
-      await application.notesRuntime.commands.createNote.runThrowable(
-        CreateNoteInput(noteId: 'test'),
-      );
-      await application.notesRuntime.commands.updateNoteTitle.runThrowable(
-        UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
-      );
-      await application.notesRuntime.commands.updateNoteContent.runThrowable(
-        UpdateNoteContentInput(
-          noteId: 'test',
-          overrideContent:
-              'this is an example note data inserted at the intialization. Application development on track! :)',
-        ),
-      );
+      try {
+        await application.notesRuntime.commands.createNote.runThrowable(
+          CreateNoteInput(noteId: 'test'),
+        );
+        await application.notesRuntime.commands.updateNoteTitle.runThrowable(
+          UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
+        );
+        await application.notesRuntime.commands.updateNoteContent.runThrowable(
+          UpdateNoteContentInput(
+            noteId: 'test',
+            overrideContent:
+                'this is an example note data inserted at the intialization. Application development on track! :)',
+          ),
+        );
+      } catch (_) {
+        print('could not insert test data, it was probably already there?');
+      }
 
       if (!mounted) {
         throw Exception('not mounted after loading');

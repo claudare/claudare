@@ -30,7 +30,7 @@ class SqliteNoteReadModel implements NoteReadModel {
   }
 
   @override
-  Future<List<NoteData>> getAllNonDeletedNotes() async {
+  Future<List<NoteData>> queryNonDeletedNotes(_) async {
     final rows = await _db.query(
       'SELECT id, title, title_updated_at, content, created_at, updated_at, trashed_at FROM note WHERE trashed_at IS NULL;',
     );

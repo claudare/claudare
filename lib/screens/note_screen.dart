@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/application.dart';
-import 'package:notes_app_v0/application_provider.dart';
+import 'package:notes_app_v0/application/application_provider.dart';
 import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/delete_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
@@ -350,34 +349,5 @@ class _NoteScreenState extends State<NoteScreen> {
         ),
       ),
     );
-  }
-}
-
-class _LastNoteState {
-  final String noteId;
-  final String title;
-  final String content;
-
-  _LastNoteState({
-    required this.noteId,
-    required this.title,
-    required this.content,
-  });
-
-  copyWith({String? noteId, String? title, String? content}) {
-    return _LastNoteState(
-      noteId: noteId ?? this.noteId,
-      title: title ?? this.title,
-      content: content ?? this.content,
-    );
-  }
-
-  bool wasCreated() {
-    return noteId.isNotEmpty;
-  }
-
-  @override
-  String toString() {
-    return 'LastNoteState(noteId: $noteId, title: $title, content: $content)';
   }
 }

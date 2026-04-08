@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-import 'package:notes_app_v0/application_provider.dart';
-import 'package:notes_app_v0/model/note_data.dart';
+import 'package:notes_app_v0/application/application_provider.dart';
+import 'package:notes_app_v0/screens/home/note_list_controller.dart';
 import 'package:notes_app_v0/screens/note_screen.dart';
-import 'package:notes_app_v0/widget/note_list_item.dart';
+
+import 'widget/note_list_item.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,15 +13,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<NoteData> _noteData = [];
+  late NoteListController _controller;
 
   // pagination here
 
   @override
   void initState() {
     super.initState();
-
-    print('HomeScreen initState');
   }
 
   @override
@@ -30,22 +28,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     print('HomeScreen didChangeDependencies');
 
-    _reloadLoadNoteData();
-  }
-
-  // reloads the data
-  Future<void> _reloadLoadNoteData() async {
-    print('reloading note data');
-
+    // but this works!
     final app = ApplicationProvider.of(context);
-
-    final data = await app.notesRuntime.noteReadModel.getAllNonDeletedNotes();
-
-    setState(() {
-      _noteData = data;
-    });
-
-    print('got note data $_noteData');
+    _controller = NoteListController(app.notesRuntime);
+    _controller.onStateChanged = () => setState(() {});
+    _controller.reloadNotes();
   }
 
   @override
@@ -59,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ).push(MaterialPageRoute(builder: (context) => NoteScreen(noteId: noteId)));
     // this will rerun after push is over
     // is there a race condition?
-    _reloadLoadNoteData();
+    await _controller.reloadNotes();
   }
 
   Future<void> _newNote() async {
@@ -76,9 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: ListView.builder(
-        itemCount: _noteData.length,
+        itemCount: _controller.noteData.length,
         itemBuilder: (context, index) {
-          final note = _noteData[index];
+          final note = _controller.noteData[index];
           return NoteListItem(
             note: note,
             onTap: () {
