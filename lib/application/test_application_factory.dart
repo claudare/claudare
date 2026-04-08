@@ -27,14 +27,17 @@ class TestApplicationFactory implements ApplicationFactory {
     final idGenerator = mockIdGenerator ?? FakeIdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
 
+    final sqliteDb = IsolateSqlite(IsolateSqlite.memoryInitFn);
+    final eventStore = SqliteEventStore(sqliteDb);
+    final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
+
     final cqrsConfig = CqrsRuntimeConfig(
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       eventStorePageSize: 20,
+      eventStore: eventStore,
+      runtimeRepo: runtimeRepo,
     );
-
-    final sqliteDb = IsolateSqlite(IsolateSqlite.memoryInitFn);
-    final eventStore = SqliteEventStore(sqliteDb);
 
     final noteInternalRepo = SqliteNoteInternalRepo(sqliteDb);
     final resolvedNoteReadModel = ResolvedNoteReadModelSqlite(sqliteDb);
@@ -46,7 +49,6 @@ class TestApplicationFactory implements ApplicationFactory {
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
-        eventStore: eventStore,
         cqrsConfig: cqrsConfig,
         noteInternalRepo: noteInternalRepo,
         resolvedNoteReadModel: resolvedNoteReadModel,

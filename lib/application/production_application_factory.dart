@@ -28,12 +28,6 @@ class ProductionApplicationFactory implements ApplicationFactory {
     final idGenerator = RandomIdGenerator();
     final timeProvider = SystemTimeProvider();
 
-    final cqrsConfig = CqrsRuntimeConfig(
-      idGenerator: idGenerator,
-      timeProvider: timeProvider,
-      eventStorePageSize: 20,
-    );
-
     print('preparing to open db path');
 
     // final sqliteDb = IsolateSqlite(IsolateSqlite.memoryInitFn);
@@ -49,6 +43,15 @@ class ProductionApplicationFactory implements ApplicationFactory {
       return db;
     });
     final eventStore = SqliteEventStore(sqliteDb);
+    final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
+
+    final cqrsConfig = CqrsRuntimeConfig(
+      idGenerator: idGenerator,
+      timeProvider: timeProvider,
+      eventStorePageSize: 20,
+      eventStore: eventStore,
+      runtimeRepo: runtimeRepo,
+    );
 
     final noteInternalRepo = SqliteNoteInternalRepo(sqliteDb);
     final resolvedNoteReadModel = ResolvedNoteReadModelSqlite(sqliteDb);
@@ -60,7 +63,6 @@ class ProductionApplicationFactory implements ApplicationFactory {
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
-        eventStore: eventStore,
         cqrsConfig: cqrsConfig,
         noteInternalRepo: noteInternalRepo,
         resolvedNoteReadModel: resolvedNoteReadModel,

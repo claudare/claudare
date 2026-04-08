@@ -13,7 +13,7 @@ import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.d
 import 'package:notes_app_v0/repo/note/note_internal_repo.dart';
 
 class NotesRuntime {
-  final EventStore eventStore;
+  static int runtimeVersion = 3;
 
   // the read model is exposed directly
   final ResolvedNoteReadModel resolvedNoteReadModel;
@@ -23,7 +23,6 @@ class NotesRuntime {
   late final CqrsCommands commands;
 
   NotesRuntime({
-    required this.eventStore,
     required CqrsRuntimeConfig cqrsConfig,
     required NoteInternalRepo noteInternalRepo,
     required this.resolvedNoteReadModel,
@@ -35,10 +34,10 @@ class NotesRuntime {
     final noteProjection = NoteProjection(noteInternalRepo);
 
     _cqrsRuntime = CqrsRuntime(
-      eventStore: eventStore,
       config: cqrsConfig,
       projectors: [noteProjection],
       thisDeviceId: DeviceId.unassigned(),
+      runtimeName: 'notes',
     );
 
     commands = CqrsCommands(
@@ -58,7 +57,7 @@ class NotesRuntime {
   IdGenerator get idGenerator => _cqrsRuntime.idGenerator;
 
   Future<void> initialize() async {
-    await _cqrsRuntime.catchupAllProjections();
+    await _cqrsRuntime.catchupAllProjections(runtimeVersion);
   }
 }
 

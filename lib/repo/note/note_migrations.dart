@@ -12,7 +12,6 @@ final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       trashed_at TEXT,
-      -- favorited_at... unfavorited_at...
       _local_sequence INTEGER NOT NULL
     )''');
     tx.execute('CREATE INDEX idx_note_id_trashed_at ON note(id, trashed_at);');

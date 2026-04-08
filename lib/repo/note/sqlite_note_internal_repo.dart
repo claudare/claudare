@@ -13,12 +13,12 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
 
   @override
   Future<void> reset() async {
-    // Should the reset drop and recreate schema as well?
-    // This could be ran outside of the initialization.
-    await _db.transaction((tx) {
-      tx.execute('DROP TABLE IF EXISTS note;');
-    });
     await noteMigrations.migrate(_db);
+
+    await _db.transaction((tx) {
+      // reset only after the migrations were applied!
+      tx.execute('DELETE FROM note;');
+    });
   }
 
   @override
@@ -26,12 +26,12 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
     // database could be not initialized at this point
     try {
       final localSequence = await _db.queryValue<int>(
-        'SELECT MAX(_local_sequence) FROM note;',
+        'SELECT COALESCE(MAX(_local_sequence), 0) FROM note;',
       );
 
       return ProjectionCheckpoint(localSequence ?? 0);
     } catch (e) {
-      // print('expected failure of checkpoint in SqliteNoteInternalRepo: $e');
+      print('failure of checkpoint in SqliteNoteInternalRepo: $e');
       return ProjectionCheckpoint.notInitialized();
     }
   }
