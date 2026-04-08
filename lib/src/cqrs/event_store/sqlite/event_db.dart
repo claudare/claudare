@@ -266,6 +266,7 @@ class EventDb {
         stream_id,
         kind,
         detail,
+        occured_at,
         local_sequence
       FROM event
       WHERE

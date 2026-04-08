@@ -84,7 +84,7 @@ class AccountsSummaryReadModel {
   Future<void> store(String accountId, AccountSummary summary) async {
     // should check everywhere
     if (!_isInitialized) {
-      throw Exception("store called before init");
+      throw StateError("read model not initialized");
     }
 
     assert(accountId == summary.accountId);
@@ -95,6 +95,10 @@ class AccountsSummaryReadModel {
     String accountId,
     AccountSummary Function(AccountSummary summary) update,
   ) async {
+    if (!_isInitialized) {
+      throw StateError("read model not initialized");
+    }
+
     final summary = await get(accountId);
     if (summary == null) {
       // He does not throw, uses zero value instead
@@ -107,12 +111,29 @@ class AccountsSummaryReadModel {
 
   // Read methods below
 
-  Future<AccountSummary?> get(String accountId) async => summaries[accountId];
+  Future<AccountSummary?> get(String accountId) async {
+    if (!_isInitialized) {
+      throw StateError("read model not initialized");
+    }
+
+    return summaries[accountId];
+  }
 
   // implement whatever query capability
-  Future<List<AccountSummary>> getAllSortedByNameDesc() async =>
-      summaries.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+  Future<List<AccountSummary>> getAllSortedByNameDesc() async {
+    if (!_isInitialized) {
+      throw StateError("read model not initialized");
+    }
 
-  Future<List<AccountSummary>> getAllSortedByBalanceDesc() async =>
-      summaries.values.toList()..sort((a, b) => a.balance.compareTo(b.balance));
+    return summaries.values.toList()..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  Future<List<AccountSummary>> getAllSortedByBalanceDesc() async {
+    if (!_isInitialized) {
+      throw StateError("read model not initialized");
+    }
+
+    return summaries.values.toList()
+      ..sort((a, b) => a.balance.compareTo(b.balance));
+  }
 }

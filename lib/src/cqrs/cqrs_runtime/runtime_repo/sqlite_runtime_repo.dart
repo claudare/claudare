@@ -14,7 +14,7 @@ class SqliteRuntimeRepo implements RuntimeRepo {
   @override
   Future<int> getRuntimeVersion(String runtimeName) async {
     final value = await _db.queryValue<int>(
-      "SELECT version FROM runtime_repo WHERE runtime_name = ?",
+      "SELECT version FROM runtime_repo_version WHERE runtime_name = ?",
       [runtimeName],
     );
     return value ?? 0;
@@ -23,7 +23,7 @@ class SqliteRuntimeRepo implements RuntimeRepo {
   @override
   Future<void> setRuntimeVersion(String runtimeName, int version) async {
     await _db.execute(
-      "INSERT OR REPLACE INTO runtime_repo (runtime_name, version) VALUES (?, ?)",
+      "INSERT OR REPLACE INTO runtime_repo_version (runtime_name, version) VALUES (?, ?)",
       [runtimeName, version],
     );
   }
@@ -31,10 +31,10 @@ class SqliteRuntimeRepo implements RuntimeRepo {
 
 final runtimeRepoMigrations = SqliteMigrations(
   migrationTable: 'migrations_runtime_repo',
-).add(
+)..add(
   SqliteMigration(1, (tx) {
     tx.execute(
-      'CREATE TABLE runtime_repo (runtime_name TEXT PRIMARY KEY, version INTEGER)',
+      'CREATE TABLE runtime_repo_version (runtime_name TEXT PRIMARY KEY, version INTEGER)',
     );
   }),
 );

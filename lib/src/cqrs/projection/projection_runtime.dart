@@ -70,7 +70,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
       if (!checkpoint.isProjectionInitialized) {
         print(
-          "Warning: Projection was not initialized when catchupSelfLoad was called",
+          "Warning: Projection ${_projection.name} was not initialized when catchupSelfLoad was called",
         );
         await _projection.reset();
       }

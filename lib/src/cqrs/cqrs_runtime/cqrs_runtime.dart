@@ -64,13 +64,8 @@ class CqrsRuntime {
     await _runtimeRepo.initialize(); // TODO: get me outa here
 
     final storedVersion = await _runtimeRepo.getRuntimeVersion(_runtimeName);
-    if (currentVersion < storedVersion) {
-      throw StateError(
-        'Invalid runtime version: $currentVersion (stored: $storedVersion)',
-      );
-    }
 
-    final doReset = currentVersion > storedVersion;
+    final doReset = currentVersion != storedVersion;
 
     if (doReset) {
       await Future.wait(
