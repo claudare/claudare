@@ -31,7 +31,7 @@ class RestoreNote implements Command<RestoreNoteInput> {
     final stream = ctx.stream(noteCodec, noteStreamId, noteId);
 
     final deletedCount = await stream.scan().fold(0, (count, ev) {
-      if (ev is NoteDeleted) {
+      if (ev is NoteTrashed) {
         return count + 1;
       } else if (ev is NoteRestored) {
         return count - 1;

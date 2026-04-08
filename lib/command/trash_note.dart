@@ -3,10 +3,10 @@ import 'package:notes_app_v0/event/note/_note_codec.dart';
 import 'package:notes_app_v0/event/note/note.dart';
 import 'package:notes_app_v0/stream_id/note_stream_id.dart';
 
-class DeleteNoteInput implements CommandInput {
+class TrashNoteInput implements CommandInput {
   final String noteId;
 
-  const DeleteNoteInput({required this.noteId});
+  const TrashNoteInput({required this.noteId});
 
   @override
   String get kind => 'deleteNote';
@@ -18,11 +18,11 @@ class DeleteNoteInput implements CommandInput {
 
   @override
   String toString() {
-    return 'DeleteNoteInput{noteId: $noteId}';
+    return 'TrashNoteInput{noteId: $noteId}';
   }
 }
 
-class DeleteNote implements Command<DeleteNoteInput> {
+class TrashNote implements Command<TrashNoteInput> {
   @override
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
@@ -36,7 +36,7 @@ class DeleteNote implements Command<DeleteNoteInput> {
       exists = true;
 
       switch (ev) {
-        case NoteDeleted():
+        case NoteTrashed():
           trashed = true;
           break;
         case NoteRestored():
@@ -54,6 +54,6 @@ class DeleteNote implements Command<DeleteNoteInput> {
       return ctx.nack('note already trashed');
     }
 
-    stream.append(NoteDeleted());
+    stream.append(NoteTrashed());
   }
 }

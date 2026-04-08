@@ -54,12 +54,6 @@ class NoteProjection implements Projection<NoteEvent, String> {
           ),
           metadata.localSequence,
         );
-      case NoteDeleted():
-        return _repo.getAndStore(
-          noteId,
-          metadata.localSequence,
-          (note) => note.copyWithTrashedValue(trashedAt: metadata.occuredAt),
-        );
       case NoteRestored():
         return _repo.getAndStore(
           noteId,
@@ -74,6 +68,12 @@ class NoteProjection implements Projection<NoteEvent, String> {
             titlePair: CrdtValueDateTimePair(newTitle, metadata.occuredAt),
             updatedAt: metadata.occuredAt,
           ),
+        );
+      case NoteTrashed():
+        return _repo.getAndStore(
+          noteId,
+          metadata.localSequence,
+          (note) => note.copyWithTrashedValue(trashedAt: metadata.occuredAt),
         );
     }
   }

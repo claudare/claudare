@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:notes_app_v0/command/create_note.dart';
-import 'package:notes_app_v0/command/delete_note.dart';
 import 'package:notes_app_v0/command/restore_note.dart';
+import 'package:notes_app_v0/command/trash_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
@@ -84,7 +84,7 @@ class NoteController extends ChangeNotifier {
       notifyListeners();
 
       await notesRuntime.commands.deleteNote.runThrowable(
-        DeleteNoteInput(noteId: _noteId!),
+        TrashNoteInput(noteId: _noteId!),
       );
 
       _trashedAt = notesRuntime.timeProvider.now();

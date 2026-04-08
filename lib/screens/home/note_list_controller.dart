@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:notes_app_v0/command/delete_note.dart';
+import 'package:notes_app_v0/command/trash_note.dart';
 import 'package:notes_app_v0/model/resolved_note.dart';
 import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
@@ -58,7 +58,7 @@ class NoteListController extends ChangeNotifier {
   Future<void> deleteNotes(List<String> noteIds) async {
     final promises = noteIds.map(
       (noteId) => notesRuntime.commands.deleteNote.runResult(
-        DeleteNoteInput(noteId: noteId),
+        TrashNoteInput(noteId: noteId),
       ),
     );
 

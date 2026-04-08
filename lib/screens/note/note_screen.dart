@@ -1,9 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/application/application_provider.dart';
-import 'package:notes_app_v0/command/create_note.dart';
-import 'package:notes_app_v0/command/delete_note.dart';
-import 'package:notes_app_v0/command/update_note_content.dart';
-import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/common.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
 import 'package:notes_app_v0/screens/note/note_controller.dart';
