@@ -12,25 +12,26 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 const appId = "TODO";
 
-final migrations =
-    SqliteMigrations()..add(
-      SqliteMigration(1, (tx) {
-        tx.execute('''CREATE TABLE stream(
+final migrations = SqliteMigrations(
+  migrationTable: "migrations_event_store",
+)..add(
+  SqliteMigration(1, (tx) {
+    tx.execute('''CREATE TABLE stream(
           stream_id STRING,
           version INTEGER,
           PRIMARY KEY (stream_id)
         );''');
-        tx.execute(
-          'CREATE INDEX idx_stream_version ON stream(stream_id, version);',
-        );
+    tx.execute(
+      'CREATE INDEX idx_stream_version ON stream(stream_id, version);',
+    );
 
-        // schema is the following:
-        // app_id for multi-app tenancy. Currently just set to "TODO"
-        // (app_id, stream_id, stream_version) for local consistency checks
-        // (app_id, device_id, causal_sequence) for sync, event dependency tracking
-        // (app_id, device_id, device_sequence) for sync, events are downloaded sequentially
-        // (local_sequence) for fully offline projection catchup and playback
-        tx.execute('''CREATE TABLE event(
+    // schema is the following:
+    // app_id for multi-app tenancy. Currently just set to "TODO"
+    // (app_id, stream_id, stream_version) for local consistency checks
+    // (app_id, device_id, causal_sequence) for sync, event dependency tracking
+    // (app_id, device_id, device_sequence) for sync, events are downloaded sequentially
+    // (local_sequence) for fully offline projection catchup and playback
+    tx.execute('''CREATE TABLE event(
           stream_id,
           stream_version INTEGER,
           kind,
@@ -43,35 +44,35 @@ final migrations =
           PRIMARY KEY (local_sequence)
         );'''); // app_sequence!
 
-        tx.execute(
-          'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
-        );
-        tx.execute(
-          'CREATE INDEX idx_causal_sequence ON event(device_id, causal_sequence);',
-        );
+    tx.execute(
+      'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
+    );
+    tx.execute(
+      'CREATE INDEX idx_causal_sequence ON event(device_id, causal_sequence);',
+    );
 
-        // clocks maintained by sqlite
-        tx.execute('''
+    // clocks maintained by sqlite
+    tx.execute('''
           CREATE VIEW next_device_sequence AS
           SELECT device_id, COALESCE(MAX(device_sequence), 0) + 1 AS next_seq
           FROM event
           GROUP BY device_id;
         ''');
 
-        tx.execute('''
+    tx.execute('''
           CREATE VIEW next_causal_sequence AS
           SELECT device_id, COALESCE(MAX(causal_sequence), 0) + 1 AS next_seq
           FROM event
           GROUP BY device_id;
         ''');
 
-        tx.execute('''
+    tx.execute('''
           CREATE VIEW next_local_sequence AS
           SELECT COALESCE(MAX(local_sequence), 0) + 1 AS next_seq
           FROM event;
         ''');
-      }),
-    );
+  }),
+);
 
 class EventDb {
   final IsolateSqlite _db;

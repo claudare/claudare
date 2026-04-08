@@ -7,6 +7,9 @@ export 'src/cqrs/command/command_run_result.dart';
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 export 'src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 export 'src/cqrs/cqrs_runtime/bound_command.dart';
+export 'src/cqrs/cqrs_runtime/runtime_repo/runtime_repo.dart';
+export 'src/cqrs/cqrs_runtime/runtime_repo/memory_runtime_repo.dart';
+export 'src/cqrs/cqrs_runtime/runtime_repo/sqlite_runtime_repo.dart';
 
 // event store
 export 'src/cqrs/event_store/event_store.dart';
@@ -40,6 +43,7 @@ export "src/cqrs/exception/command_serialization_exception.dart";
 export "src/cqrs/exception/concurrency_problem.dart";
 export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
+export 'src/cqrs/exception/runtime_repo_exception.dart';
 export 'src/cqrs/exception/stream_already_exists_exception.dart';
 export 'src/cqrs/exception/stream_already_locked_exception.dart';
 export "src/cqrs/exception/stream_not_found_exception.dart";
