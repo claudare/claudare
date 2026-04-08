@@ -33,6 +33,20 @@ class CommandRunResult {
 
   const CommandRunResult._concurrencyProblem()
     : this._(nackReason: null, exception: null, isConcurrencyProblem: true);
+
+  @override
+  String toString() {
+    if (isConcurrencyProblem) {
+      return 'CommandRunResult: ConcurrencyProblem';
+    }
+    if (nackReason != null) {
+      return 'CommandRunResult: NackReason: $nackReason';
+    }
+    if (exception != null) {
+      return 'CommandRunResult: Exception: $exception';
+    }
+    return 'CommandRunResult: Success';
+  }
 }
 
 /// Wraps command execution from a [Future]. Errors are available in the result.

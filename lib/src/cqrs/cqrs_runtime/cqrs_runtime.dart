@@ -1,3 +1,4 @@
+import 'package:core/id_generator.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/command/command_input.dart';
@@ -10,6 +11,7 @@ import 'package:core/src/cqrs/projection/projection_failure_state.dart';
 import 'package:core/src/cqrs/projection/projection_router.dart';
 import 'package:core/src/cqrs/projection/projection_runtime.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
+import 'package:core/time_provider.dart';
 
 /// [CqrsRuntime] is all in one place for local CQRS.
 /// This class will process commands and ensure that the projections get new events.
@@ -39,6 +41,9 @@ class CqrsRuntime {
             )
             .toList();
   }
+
+  TimeProvider get timeProvider => _config.timeProvider;
+  IdGenerator get idGenerator => _config.idGenerator;
 
   Future<void> catchupAllProjections() async {
     await Future.wait(
