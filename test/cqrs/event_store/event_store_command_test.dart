@@ -234,7 +234,7 @@ StoredCommandWrite _fakeCommand({
 }) {
   return StoredCommandWrite(
     deviceId: DeviceId(1),
-    encoded: EncodedCommand(kind: 'test', detail: '{}'),
+    encoded: EncodedCommand(kind: 'test', bytes: Uint8List.fromList([1, 2, 3])),
     startedAt: startedAt,
     completedAt: completedAt,
     result: CommandResult.success(),

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:core/src/cqrs/command/command_context_impl.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_envelope.dart';
@@ -19,6 +17,7 @@ import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
+import 'package:core/src/utils/is_json_exception_like_error.dart';
 
 class CommandExecutor {
   final EventStoreCommand _eventStore;
@@ -96,20 +95,14 @@ class CommandExecutor {
 
   EncodedCommand _encodeCommand<Input extends CommandInput>(Input input) {
     try {
-      return EncodedCommand(
-        kind: input.kind,
-        detail: jsonEncode(input.toJson()), // TODO: make this binary
+      return EncodedCommand(kind: input.kind, bytes: input.encode());
+    } on Exception catch (e, st) {
+      Error.throwWithStackTrace(
+        CommandSerializationException(e.toString(), error: e),
+        st,
       );
     } catch (e, st) {
-      // safety not here!
-      // if (JsonError.isJsonLikeError(e)) {
-      //   Error.throwWithStackTrace(
-      //     CommandSerializationException(e.toString(), error: e),
-      //     st,
-      //   );
-      // }
-
-      if (e is Exception) {
+      if (isJsonExceptionLikeError(e)) {
         Error.throwWithStackTrace(
           CommandSerializationException(e.toString(), error: e),
           st,

@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/exception/event_codec_exception.dart';
+import 'package:core/src/utils/is_json_exception_like_error.dart';
 
 class EventCodecSafe<Event> implements EventCodec<Event> {
   final EventCodec<Event> _codec;
@@ -18,7 +19,7 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         stackTrace: st,
       );
     } catch (e, st) {
-      if (_isExceptionLikeError(e)) {
+      if (isJsonExceptionLikeError(e)) {
         throw EventCodecException(
           "Failed to encode event (exception-like error)",
           direction: EventCodecDirection.encode,
@@ -43,7 +44,7 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         stackTrace: st,
       );
     } catch (e, st) {
-      if (_isExceptionLikeError(e)) {
+      if (isJsonExceptionLikeError(e)) {
         throw EventCodecException(
           "Failed to decode event of kind '${value.kind}' (exception-like error)",
           direction: EventCodecDirection.decode,
@@ -54,12 +55,4 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
       Error.throwWithStackTrace(e, st);
     }
   }
-}
-
-// these errors can happen when json is cast to objects
-// the application should not crash!
-bool _isExceptionLikeError(Object error) {
-  return error is TypeError ||
-      error is NoSuchMethodError ||
-      error is RangeError;
 }

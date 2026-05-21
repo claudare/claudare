@@ -1,4 +1,7 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:core/cqrs.dart';
+import 'package:core/utils.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
@@ -18,11 +21,11 @@ class TransferFundsBetweenAccountsInput implements CommandInput {
   String get kind => 'TransferFundsBetweenAccounts';
 
   @override
-  Map<String, dynamic> toJson() => {
+  Uint8List encode() => JsonConverter.encode({
     'fromAccountId': fromAccountId,
     'toAccountId': toAccountId,
     'amount': amount,
-  };
+  });
 }
 
 /// An example of using multiple streams + consistency check

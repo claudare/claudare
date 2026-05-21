@@ -17,7 +17,6 @@ class JsonConverter {
 }
 
 // converts errors to exceptions
-// DONT USE THIS!
 bool _isJsonLikeError(Object error) {
   return error is TypeError ||
       error is NoSuchMethodError ||

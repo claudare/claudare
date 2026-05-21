@@ -159,7 +159,7 @@ class MemoryEventStore implements EventStore {
       final memoryCommand = MemoryCommandInsert(
         deviceId: command.deviceId,
         kind: command.encoded.kind,
-        detail: command.encoded.detail,
+        detail: command.encoded.bytes,
         startedAt: command.startedAt,
         completedAt: command.completedAt,
         dependencies: appends.dependencies,
@@ -334,7 +334,7 @@ class MemoryEventInsert {
 
 class MemoryCommand {
   final String kind;
-  final String detail;
+  final Uint8List detail;
   final DateTime startedAt;
   final DateTime completedAt;
 
@@ -370,7 +370,7 @@ class MemoryCommandInsert {
   final DeviceId deviceId;
 
   final String kind;
-  final String detail;
+  final Uint8List detail;
   final DateTime startedAt;
   final DateTime completedAt;
   final EventDependency dependencies;

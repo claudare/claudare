@@ -1,4 +1,7 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:core/cqrs.dart';
+import 'package:core/utils.dart';
 
 import '../account_event/account.dart';
 import '../stream_id/account_stream_id.dart';
@@ -12,7 +15,7 @@ class OpenAccountInput implements CommandInput {
   String get kind => 'OpenAccount';
 
   @override
-  Map<String, dynamic> toJson() => {'name': name};
+  Uint8List encode() => JsonConverter.encode({'name': name});
 }
 
 class OpenAccount implements Command<OpenAccountInput> {

@@ -1,6 +1,8 @@
+import 'dart:typed_data' show Uint8List;
+
 class EncodedCommand {
   final String kind;
-  final String detail;
+  final Uint8List bytes;
 
-  const EncodedCommand({required this.kind, required this.detail});
+  const EncodedCommand({required this.kind, required this.bytes});
 }
