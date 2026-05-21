@@ -1,8 +1,6 @@
 import 'package:core/src/cqrs/event/encoded_event.dart';
-import 'package:core/src/utils/converter/json_converter.dart';
 
-/// Please use [JsonConverter] to do the encodings as that will
-/// catch any encoding errors and wrap them in [EncodeException] or [DecodeException]
+// encodes and decodes Uint8List bytes of the event
 abstract class EventCodec<T> {
   const EventCodec();
 
