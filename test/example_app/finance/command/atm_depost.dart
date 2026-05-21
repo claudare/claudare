@@ -1,5 +1,3 @@
-import 'dart:typed_data' show Uint8List;
-
 import 'package:core/cqrs.dart';
 import 'package:core/utils.dart';
 
@@ -16,8 +14,7 @@ class AtmDepositInput implements CommandInput {
   String get kind => 'atmDeposit';
 
   @override
-  Uint8List encode() =>
-      JsonConverter.encode({'accountId': accountId, 'amount': amount});
+  encode() => JsonConverter.encode({'accountId': accountId, 'amount': amount});
 }
 
 class AtmDeposit implements Command<AtmDepositInput> {
