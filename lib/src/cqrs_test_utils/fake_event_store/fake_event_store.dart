@@ -35,7 +35,7 @@ class FakeEventStore {
       deviceId: deviceIdToUse,
       streamId: streamPath,
       kind: encoded.kind,
-      detail: encoded.detail,
+      detail: encoded.bytes,
       streamVersion: null,
       occuredAt: occuredAt ?? _timeProvider.now(),
     );

@@ -58,7 +58,7 @@ class CommandTester {
         deviceId: _deviceId,
         streamId: streamPath,
         kind: encoded.kind,
-        detail: encoded.detail,
+        detail: encoded.bytes,
         occuredAt: _timeProvider.now(),
       ),
     );
@@ -81,7 +81,7 @@ class CommandTester {
         deviceId: _deviceId,
         streamId: streamIdPath,
         kind: encoded.kind,
-        detail: encoded.detail,
+        detail: encoded.bytes,
         occuredAt: _timeProvider.now(),
       ),
     );

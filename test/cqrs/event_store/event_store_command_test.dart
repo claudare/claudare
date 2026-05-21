@@ -69,7 +69,7 @@ void main() {
         expect(e.causalPair.deviceId, deviceId);
         expect(e.causalPair.sequence, 1);
         expect(e.encodedEvent.kind, 'test');
-        expect(e.encodedEvent.detail, Uint8List.fromList([1, 2, 3]));
+        expect(e.encodedEvent.bytes, Uint8List.fromList([1, 2, 3]));
         expect(e.occuredAt, t2);
       });
 
@@ -249,7 +249,7 @@ StoredEventCommandWrite _fakeEvent({
   return StoredEventCommandWrite(
     encodedEvent: EncodedEvent(
       kind: kind,
-      detail: Uint8List.fromList([1, 2, 3]),
+      bytes: Uint8List.fromList([1, 2, 3]),
     ),
     streamId: streamId,
 

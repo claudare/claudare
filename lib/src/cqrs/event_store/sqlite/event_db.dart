@@ -111,7 +111,7 @@ class EventDb {
       return StoredEventCommandRead(
         encodedEvent: EncodedEvent(
           kind: row[0] as String,
-          detail: row[1] as Uint8List,
+          bytes: row[1] as Uint8List,
         ),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(
           row[2] as int,
@@ -230,7 +230,7 @@ class EventDb {
             streamId,
             streamVersion + 1,
             event.encodedEvent.kind,
-            event.encodedEvent.detail,
+            event.encodedEvent.bytes,
             event.occuredAt.millisecondsSinceEpoch,
             deviceId.value,
             deviceId.value,
@@ -284,7 +284,7 @@ class EventDb {
           streamId: row[0] as String,
           encodedEvent: EncodedEvent(
             kind: row[1] as String,
-            detail: row[2] as Uint8List,
+            bytes: row[2] as Uint8List,
           ),
           occuredAt: DateTime.fromMillisecondsSinceEpoch(
             row[3] as int,

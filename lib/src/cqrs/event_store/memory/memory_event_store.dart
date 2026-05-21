@@ -204,7 +204,7 @@ class MemoryEventStore implements EventStore {
             deviceId: command.deviceId,
             streamId: streamIdStr,
             kind: event.encodedEvent.kind,
-            detail: event.encodedEvent.detail,
+            detail: event.encodedEvent.bytes,
             streamVersion: version,
             occuredAt: event.occuredAt,
           ),
@@ -288,14 +288,14 @@ class MemoryEvent {
     causalPair: DeviceIdSequencePair(deviceId, causalSequence),
     streamVersion: streamVersion,
 
-    encodedEvent: EncodedEvent(kind: kind, detail: detail),
+    encodedEvent: EncodedEvent(kind: kind, bytes: detail),
     occuredAt: createdAt,
   );
 
   StoredEventProjectionRead get asStoredEventProjectionRead =>
       StoredEventProjectionRead(
         streamId: streamId,
-        encodedEvent: EncodedEvent(kind: kind, detail: detail),
+        encodedEvent: EncodedEvent(kind: kind, bytes: detail),
         occuredAt: createdAt,
         localSequence: localSequence,
       );

@@ -31,21 +31,21 @@ class AccountCodec implements EventCodec<AccountEvent> {
     final detail = JsonConverter.encode(event.toJson());
     switch (event) {
       case AccountOpened():
-        return EncodedEvent(kind: AccountOpened.kind, detail: detail);
+        return EncodedEvent(kind: AccountOpened.kind, bytes: detail);
       case AccountAtmDeposited():
-        return EncodedEvent(kind: AccountAtmDeposited.kind, detail: detail);
+        return EncodedEvent(kind: AccountAtmDeposited.kind, bytes: detail);
       case AccountAtmWithdrawn():
-        return EncodedEvent(kind: AccountAtmWithdrawn.kind, detail: detail);
+        return EncodedEvent(kind: AccountAtmWithdrawn.kind, bytes: detail);
       case AccountInnerTransfer():
-        return EncodedEvent(kind: AccountInnerTransfer.kind, detail: detail);
+        return EncodedEvent(kind: AccountInnerTransfer.kind, bytes: detail);
       case AccountRenamed():
-        return EncodedEvent(kind: AccountRenamed.kind, detail: detail);
+        return EncodedEvent(kind: AccountRenamed.kind, bytes: detail);
     }
   }
 
   @override
   decode(encoded) {
-    final map = JsonConverter.decode(encoded.detail);
+    final map = JsonConverter.decode(encoded.bytes);
     switch (encoded.kind) {
       case AccountOpened.kind:
         return AccountOpened.fromJson(map);
