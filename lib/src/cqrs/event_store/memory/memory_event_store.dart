@@ -3,6 +3,7 @@ import 'dart:typed_data' show Uint8List;
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:core/src/cqrs/event_store/event_store_administration.dart';
 import 'package:core/utils.dart';
 import 'package:mutex/mutex.dart' show Mutex;
 
@@ -256,6 +257,23 @@ class MemoryEventStore implements EventStore {
     final localSequence = last?.localSequence ?? 0;
 
     return GetLocalLastEventResult(localSequence: localSequence);
+  }
+
+  @override
+  Future<GetStatisticsResult> getStatistics() async {
+    return GetStatisticsResult(
+      eventCount: _events.length,
+      storageSize: _events.fold(0, (acc, e) => acc + e.detail.length),
+    );
+  }
+
+  @override
+  Future<void> reset() async {
+    _events.clear();
+    _commands.clear();
+    _causalSequence.reset();
+    _commandDeviceSequences.reset();
+    _eventDeviceSequences.reset();
   }
 }
 

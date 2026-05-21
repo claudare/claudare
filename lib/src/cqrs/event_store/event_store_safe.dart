@@ -1,5 +1,6 @@
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
+import 'package:core/src/cqrs/event_store/event_store_administration.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
@@ -22,6 +23,7 @@ class EventStoreSafe implements EventStore {
     try {
       return _store.getStreamEvents(streamId, count, versionCursor);
     } catch (cause) {
+      // TODO: swallowing errors
       throw EventStoreException(
         "Failed to get stream events cursor for stream '$streamId'",
         cause: cause,
@@ -46,6 +48,8 @@ class EventStoreSafe implements EventStore {
     StoredCommandWrite command,
     StreamAppends appends,
   ) async {
+    assert(appends.isValid(), 'appends are not valid');
+
     try {
       final result = await _store.saveChanges(command, appends);
 
@@ -83,6 +87,24 @@ class EventStoreSafe implements EventStore {
         "Failed to get global last event",
         cause: cause,
       );
+    }
+  }
+
+  @override
+  Future<GetStatisticsResult> getStatistics() {
+    try {
+      return _store.getStatistics();
+    } catch (cause) {
+      throw EventStoreException("Failed to get statistics", cause: cause);
+    }
+  }
+
+  @override
+  Future<void> reset() {
+    try {
+      return _store.reset();
+    } catch (cause) {
+      throw EventStoreException("Failed to reset", cause: cause);
     }
   }
 }

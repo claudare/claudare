@@ -1,4 +1,3 @@
-import 'package:core/cqrs.dart';
 import 'package:core/id_generator.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
@@ -6,6 +5,7 @@ import 'package:core/src/cqrs/command/command_input.dart';
 import 'package:core/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:core/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
 import 'package:core/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
+import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
 import 'package:core/src/cqrs/projection/projection_failure_state.dart';

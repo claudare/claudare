@@ -18,6 +18,10 @@ class DeviceSequences {
     _vector[deviceSequence.deviceId] = deviceSequence.sequence;
   }
 
+  void reset() {
+    _vector.clear();
+  }
+
   // gets next autoincremental value
   // use only for the current device
   int nextSequence(DeviceId deviceId) {

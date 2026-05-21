@@ -56,6 +56,24 @@ class StreamAppends {
     : dependencies = EventDependency.empty(),
       localLocks = [],
       events = [];
+
+  /// For assertions, ensures that every inserted event has a lock. This is an internal detail
+  /// This behavior may change, to allow lock-free insertion
+  bool isValid() {
+    final streamIds = <String>{};
+
+    for (final event in events) {
+      streamIds.add(event.streamId);
+    }
+
+    for (final lock in localLocks) {
+      if (!streamIds.remove(lock.streamId)) {
+        return false;
+      }
+    }
+
+    return streamIds.isEmpty;
+  }
 }
 
 class StreamAppendOrder {

@@ -22,9 +22,9 @@ class CausalSequence {
     }
   }
 
-  void rollback(DeviceIdSequencePair causalSequence) {
-    _latestDevice = causalSequence.deviceId;
-    _latestSequence = causalSequence.sequence;
+  void reset() {
+    _latestDevice = DeviceId.zero();
+    _latestSequence = 0;
   }
 
   CausalSequence copy() {

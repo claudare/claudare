@@ -15,10 +15,3 @@ class JsonConverter {
     return jsonDecode(jsonString) as T;
   }
 }
-
-// converts errors to exceptions
-bool _isJsonLikeError(Object error) {
-  return error is TypeError ||
-      error is NoSuchMethodError ||
-      error is RangeError;
-}
