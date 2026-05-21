@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:core/cqrs.dart';
+import 'package:core/utils.dart';
 import 'package:notes_app_v0/event/note/note.dart';
 
 const noteCodec = NoteCodec();
@@ -10,38 +9,38 @@ class NoteCodec implements EventCodec<NoteEvent> {
 
   @override
   EncodedEvent encode(NoteEvent event) {
-    final detail = jsonEncode(event.toJson());
+    final bytes = JsonConverter.encode(event.toJson());
 
     switch (event) {
       case NoteContentUpdated():
-        return EncodedEvent(kind: NoteContentUpdated.kind, detail: detail);
+        return EncodedEvent(kind: NoteContentUpdated.kind, bytes: bytes);
       case NoteCreated():
-        return EncodedEvent(kind: NoteCreated.kind, detail: detail);
+        return EncodedEvent(kind: NoteCreated.kind, bytes: bytes);
       case NoteRestored():
-        return EncodedEvent(kind: NoteRestored.kind, detail: detail);
+        return EncodedEvent(kind: NoteRestored.kind, bytes: bytes);
       case NoteTitleUpdated():
-        return EncodedEvent(kind: NoteTitleUpdated.kind, detail: detail);
+        return EncodedEvent(kind: NoteTitleUpdated.kind, bytes: bytes);
       case NoteTrashed():
-        return EncodedEvent(kind: NoteTrashed.kind, detail: detail);
+        return EncodedEvent(kind: NoteTrashed.kind, bytes: bytes);
     }
   }
 
   @override
   NoteEvent decode(EncodedEvent encoded) {
-    final detail = jsonDecode(encoded.detail);
+    final detailMap = JsonConverter.decode(encoded.bytes);
 
     switch (encoded.kind) {
       case NoteContentUpdated.kind:
-        return NoteContentUpdated.fromJson(detail);
+        return NoteContentUpdated.fromJson(detailMap);
       case NoteCreated.kind:
-        return NoteCreated.fromJson(detail);
+        return NoteCreated.fromJson(detailMap);
       case NoteRestored.kind:
-        return NoteRestored.fromJson(detail);
+        return NoteRestored.fromJson(detailMap);
       case NoteTitleUpdated.kind:
-        return NoteTitleUpdated.fromJson(detail);
+        return NoteTitleUpdated.fromJson(detailMap);
       case NoteTrashed.oldKind: // migration!
       case NoteTrashed.kind:
-        return NoteTrashed.fromJson(detail);
+        return NoteTrashed.fromJson(detailMap);
       default:
         throw UnsupportedError('Unknown kind: ${encoded.kind}');
     }

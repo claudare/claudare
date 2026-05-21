@@ -1,4 +1,5 @@
 import 'package:core/cqrs.dart';
+import 'package:core/utils.dart';
 import 'package:notes_app_v0/event/note/_note_codec.dart';
 import 'package:notes_app_v0/event/note/note.dart';
 import 'package:notes_app_v0/stream_id/note_stream_id.dart';
@@ -16,8 +17,11 @@ class UpdateNoteContentInput implements CommandInput {
   String get kind => 'updateNoteContent';
 
   @override
-  Map<String, dynamic> toJson() {
-    return {'noteId': noteId, 'overrideContent': overrideContent};
+  encode() {
+    return JsonConverter.encode({
+      'noteId': noteId,
+      'overrideContent': overrideContent,
+    });
   }
 
   @override
