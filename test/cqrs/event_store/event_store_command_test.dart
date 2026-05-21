@@ -1,3 +1,5 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:core/cqrs_test_utils.dart';
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
@@ -67,7 +69,7 @@ void main() {
         expect(e.causalPair.deviceId, deviceId);
         expect(e.causalPair.sequence, 1);
         expect(e.encodedEvent.kind, 'test');
-        expect(e.encodedEvent.detail, '{}');
+        expect(e.encodedEvent.detail, Uint8List.fromList([1, 2, 3]));
         expect(e.occuredAt, t2);
       });
 
@@ -245,7 +247,10 @@ StoredEventCommandWrite _fakeEvent({
   required DateTime occuredAt,
 }) {
   return StoredEventCommandWrite(
-    encodedEvent: EncodedEvent(kind: kind, detail: '{}'),
+    encodedEvent: EncodedEvent(
+      kind: kind,
+      detail: Uint8List.fromList([1, 2, 3]),
+    ),
     streamId: streamId,
 
     occuredAt: occuredAt,

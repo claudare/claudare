@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/device_id_sequence_pair.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
@@ -17,9 +19,8 @@ final migrations = SqliteMigrations(
 )..add(
   SqliteMigration(1, (tx) {
     tx.execute('''CREATE TABLE stream(
-          stream_id STRING,
-          version INTEGER,
-          PRIMARY KEY (stream_id)
+          stream_id PRIMARY KEY NOT NULL,
+          version INTEGER NOT NULL
         );''');
     tx.execute(
       'CREATE INDEX idx_stream_version ON stream(stream_id, version);',
@@ -32,17 +33,16 @@ final migrations = SqliteMigrations(
     // (app_id, device_id, device_sequence) for sync, events are downloaded sequentially
     // (local_sequence) for fully offline projection catchup and playback
     tx.execute('''CREATE TABLE event(
-          stream_id,
-          stream_version INTEGER,
-          kind,
-          detail,
-          occured_at,
-          device_id,
-          device_sequence INTEGER,
-          causal_sequence INTEGER,
-          local_sequence INTEGER,
-          PRIMARY KEY (local_sequence)
-        );'''); // app_sequence!
+          local_sequence INTEGER PRIMARY KEY NOT NULL,
+          stream_id TEXT NOT NULL,
+          stream_version INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          detail BLOB NOT NULL,
+          occured_at INTEGER NOT NULL,
+          device_id INTEGER NOT NULL,
+          device_sequence INTEGER NOT NULL,
+          causal_sequence INTEGER NOT NULL
+          );'''); // app_sequence!
 
     tx.execute(
       'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
@@ -111,7 +111,7 @@ class EventDb {
       return StoredEventCommandRead(
         encodedEvent: EncodedEvent(
           kind: row[0] as String,
-          detail: row[1] as String,
+          detail: row[1] as Uint8List,
         ),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(
           row[2] as int,
@@ -284,7 +284,7 @@ class EventDb {
           streamId: row[0] as String,
           encodedEvent: EncodedEvent(
             kind: row[1] as String,
-            detail: row[2] as String,
+            detail: row[2] as Uint8List,
           ),
           occuredAt: DateTime.fromMillisecondsSinceEpoch(
             row[3] as int,

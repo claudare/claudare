@@ -1,6 +1,3 @@
-// wrap the codec to make it safe
-import 'dart:convert' show JsonUnsupportedObjectError;
-
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/exception/event_codec_exception.dart';
 
@@ -13,20 +10,6 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
   encode(value) {
     try {
       return _codec.encode(value);
-    } on JsonUnsupportedObjectError catch (e, st) {
-      throw EventCodecException(
-        'Failed to encode event: unsupported JSON object (possibly cyclic reference)',
-        direction: EventCodecDirection.encode,
-        error: e,
-        stackTrace: st,
-      );
-    } on FormatException catch (e, st) {
-      throw EventCodecException(
-        'Failed to encode event: invalid format',
-        direction: EventCodecDirection.encode,
-        error: e,
-        stackTrace: st,
-      );
     } on Exception catch (e, st) {
       throw EventCodecException(
         'Failed to encode event',
@@ -35,6 +18,15 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         stackTrace: st,
       );
     } catch (e, st) {
+      if (_isExceptionLikeError(e)) {
+        throw EventCodecException(
+          "Failed to encode event (exception-like error)",
+          direction: EventCodecDirection.encode,
+          error: e,
+          stackTrace: st,
+        );
+      }
+
       Error.throwWithStackTrace(e, st);
     }
   }
@@ -43,20 +35,6 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
   decode(value) {
     try {
       return _codec.decode(value);
-    } on FormatException catch (e, st) {
-      throw EventCodecException(
-        "Failed to decode event of kind '${value.kind}': invalid JSON format",
-        direction: EventCodecDirection.decode,
-        error: e,
-        stackTrace: st,
-      );
-    } on JsonUnsupportedObjectError catch (e, st) {
-      throw EventCodecException(
-        "Failed to decode event of kind '${value.kind}': unsupported JSON object",
-        direction: EventCodecDirection.decode,
-        error: e,
-        stackTrace: st,
-      );
     } on Exception catch (e, st) {
       throw EventCodecException(
         "Failed to decode event of kind '${value.kind}'",
@@ -65,7 +43,23 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         stackTrace: st,
       );
     } catch (e, st) {
+      if (_isExceptionLikeError(e)) {
+        throw EventCodecException(
+          "Failed to decode event of kind '${value.kind}' (exception-like error)",
+          direction: EventCodecDirection.decode,
+          error: e,
+          stackTrace: st,
+        );
+      }
       Error.throwWithStackTrace(e, st);
     }
   }
+}
+
+// these errors can happen when json is cast to objects
+// the application should not crash!
+bool _isExceptionLikeError(Object error) {
+  return error is TypeError ||
+      error is NoSuchMethodError ||
+      error is RangeError;
 }

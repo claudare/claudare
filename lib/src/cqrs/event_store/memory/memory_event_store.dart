@@ -1,6 +1,9 @@
+import 'dart:typed_data' show Uint8List;
+
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:core/utils.dart';
 import 'package:mutex/mutex.dart' show Mutex;
 
 import 'package:core/src/cqrs/causal_sequence.dart';
@@ -259,7 +262,7 @@ class MemoryEventStore implements EventStore {
 class MemoryEvent {
   final String streamId;
   final String kind;
-  final String detail;
+  final Uint8List detail;
   final DateTime createdAt;
 
   final DeviceId deviceId;
@@ -306,7 +309,7 @@ class MemoryEventInsert {
   final DeviceId deviceId;
   final String streamId;
   final String kind;
-  final String detail;
+  final Uint8List detail;
   final DateTime occuredAt;
   final int? streamVersion;
 
@@ -324,9 +327,9 @@ class MemoryEventInsert {
     required this.streamId,
     required this.occuredAt,
     this.kind = "test",
-    this.detail = "{}",
     this.streamVersion,
-  });
+    Uint8List? detail,
+  }) : detail = detail ?? JsonConverter.encode({});
 }
 
 class MemoryCommand {

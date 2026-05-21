@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:core/cqrs.dart';
 import 'package:core/src/cqrs/command/command_context_impl.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_envelope.dart';
+import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/id_generator/id_generator.dart';
 import 'package:core/src/time_provider/time_provider.dart';
 
@@ -19,8 +19,6 @@ import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
-
-import '../json_error.dart';
 
 class CommandExecutor {
   final EventStoreCommand _eventStore;
@@ -100,15 +98,16 @@ class CommandExecutor {
     try {
       return EncodedCommand(
         kind: input.kind,
-        detail: jsonEncode(input.toJson()),
+        detail: jsonEncode(input.toJson()), // TODO: make this binary
       );
     } catch (e, st) {
-      if (JsonError.isJsonLikeError(e)) {
-        Error.throwWithStackTrace(
-          CommandSerializationException(e.toString(), error: e),
-          st,
-        );
-      }
+      // safety not here!
+      // if (JsonError.isJsonLikeError(e)) {
+      //   Error.throwWithStackTrace(
+      //     CommandSerializationException(e.toString(), error: e),
+      //     st,
+      //   );
+      // }
 
       if (e is Exception) {
         Error.throwWithStackTrace(

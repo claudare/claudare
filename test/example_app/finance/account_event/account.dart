@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:core/cqrs.dart';
+import 'package:core/utils.dart';
 
 part 'account_atm_deposited.dart';
 part 'account_atm_withdrawn.dart';
@@ -27,7 +28,7 @@ class AccountCodec implements EventCodec<AccountEvent> {
 
   @override
   encode(event) {
-    final detail = jsonEncode(event.toJson());
+    final detail = JsonConverter.encode(event.toJson());
     switch (event) {
       case AccountOpened():
         return EncodedEvent(kind: AccountOpened.kind, detail: detail);
@@ -44,7 +45,7 @@ class AccountCodec implements EventCodec<AccountEvent> {
 
   @override
   decode(encoded) {
-    final map = jsonDecode(encoded.detail);
+    final map = JsonConverter.decode(encoded.detail);
     switch (encoded.kind) {
       case AccountOpened.kind:
         return AccountOpened.fromJson(map);

@@ -19,6 +19,6 @@ class ProjectionFailureState {
 
     // TODO: this needs to be available elsewhere.
     // there must be a runtime failure class keeping track of all projection errors.
-    print("PROJECTION ENCOUNTERED AN ERROR: $error; stack trace: $stackTrace");
+    // print("PROJECTION ENCOUNTERED AN ERROR: $error; stack trace: $stackTrace");
   }
 }
