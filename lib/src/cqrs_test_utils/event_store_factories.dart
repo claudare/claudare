@@ -52,6 +52,7 @@ class MemoryEventStoreFactory implements EventStoreFactory {
   Future<void> cleanup() async {}
 }
 
+// memory only
 class SqlEventStoreFactory implements EventStoreFactory {
   @override
   String get name => 'SQLite';
@@ -62,8 +63,8 @@ class SqlEventStoreFactory implements EventStoreFactory {
 
   @override
   Future<EventStore> create() async {
-    _db = IsolateSqlite(IsolateSqlite.memoryInitFn);
-    await _db.open();
+    _db = IsolateSqlite();
+    await _db.openInMemory();
 
     final es = SqliteEventStore(_db);
 

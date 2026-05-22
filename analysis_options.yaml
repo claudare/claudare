@@ -23,6 +23,8 @@ linter:
 analyzer:
   errors:
     unawaited_futures: error
+    dead_null_aware_expression: error
+    unnecessary_non_null_assertion: error
 
 # For more information about the core and recommended set of lints, see
 # https://dart.dev/go/core-lints

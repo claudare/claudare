@@ -20,16 +20,17 @@ class CqrsRuntime {
   late final SafeRuntimeRepo _runtimeRepo;
   late final List<ProjectionRuntime> _projectionRunners;
   final DeviceId _thisDeviceId;
-  final String _runtimeName;
+  final String runtimeName;
+  final int runtimeVersion;
   final CqrsRuntimeConfig _config;
 
   CqrsRuntime({
     required CqrsRuntimeConfig config,
     required DeviceId thisDeviceId,
-    required String runtimeName,
+    required this.runtimeName,
+    required this.runtimeVersion,
     required List<Projection> projectors,
   }) : _runtimeRepo = SafeRuntimeRepo(config.runtimeRepo),
-       _runtimeName = runtimeName,
        _thisDeviceId =
            thisDeviceId, // TODO: this needs to be loaded from enrollment
        _config = config {
@@ -52,20 +53,20 @@ class CqrsRuntime {
 
   // Hacky way to force reload.
   // Since runtime repo is involved, this is resilient to restarts
-  Future<void> forceReloadAllProjections() async {
-    final storedVersion = await _runtimeRepo.getRuntimeVersion(_runtimeName);
-
-    await _runtimeRepo.setRuntimeVersion(_runtimeName, 0);
-
-    await catchupAllProjections(storedVersion);
+  Future<void> rerunProjections() async {
+    await _catchupAllProjections(force: true);
   }
 
-  Future<void> catchupAllProjections(int currentVersion) async {
+  Future<void> initializeProjections() async {
+    await _catchupAllProjections(force: false);
+  }
+
+  Future<void> _catchupAllProjections({required bool force}) async {
     await _runtimeRepo.initialize(); // TODO: get me outa here
 
-    final storedVersion = await _runtimeRepo.getRuntimeVersion(_runtimeName);
+    final storedVersion = await _runtimeRepo.getRuntimeVersion(runtimeName);
 
-    final doReset = currentVersion != storedVersion;
+    final doReset = force || runtimeVersion != storedVersion;
 
     if (doReset) {
       await Future.wait(
@@ -78,7 +79,7 @@ class CqrsRuntime {
     );
 
     if (doReset) {
-      await _runtimeRepo.setRuntimeVersion(_runtimeName, currentVersion);
+      await _runtimeRepo.setRuntimeVersion(runtimeName, runtimeVersion);
     }
   }
 

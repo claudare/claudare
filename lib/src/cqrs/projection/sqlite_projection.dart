@@ -11,7 +11,7 @@ abstract class SqliteProjection<Event, StreamIdData> {
   Future<ProjectionCheckpoint> checkpoint(IsolateSqlite db);
 
   void apply(
-    Transaction tx,
+    SyncContext ctx,
     StreamIdData idData,
     Event event,
     EventMetadata metadata,

@@ -52,6 +52,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
   Future<void> resetProjection() async {
     try {
+      _queue.reset();
       await _projection.reset();
     } catch (error, stackTrace) {
       _failureState.capture(error, stackTrace);

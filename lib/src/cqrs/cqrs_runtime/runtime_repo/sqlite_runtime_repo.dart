@@ -13,7 +13,7 @@ class SqliteRuntimeRepo implements RuntimeRepo {
 
   @override
   Future<int> getRuntimeVersion(String runtimeName) async {
-    final value = await _db.queryValue<int>(
+    final value = await _db.queryValue<int?>(
       "SELECT version FROM runtime_repo_version WHERE runtime_name = ?",
       [runtimeName],
     );

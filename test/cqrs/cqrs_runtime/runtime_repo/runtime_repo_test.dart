@@ -54,8 +54,8 @@ void main() async {
   });
 
   await _testRuntimeRepo('sqlite', () async {
-    final db = IsolateSqlite(IsolateSqlite.memoryInitFn);
-    await db.open();
+    final db = IsolateSqlite();
+    await db.openInMemory();
     final repo = SqliteRuntimeRepo(db);
     await repo.initialize();
     return (repo: repo, cleanup: () async => await db.close());

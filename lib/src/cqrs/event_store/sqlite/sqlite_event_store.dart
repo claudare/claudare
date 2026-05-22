@@ -63,7 +63,7 @@ class SqliteEventStore implements EventStore {
       "SELECT COALESCE(SUM(LENGTH(detail)), 0) FROM event",
     );
 
-    return GetStatisticsResult(eventCount: count!, storageSize: storageSize!);
+    return GetStatisticsResult(eventCount: count, storageSize: storageSize);
   }
 
   @override

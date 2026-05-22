@@ -30,6 +30,7 @@ class FinanceApp {
       config: config,
       thisDeviceId: deviceId,
       runtimeName: 'finance-main',
+      runtimeVersion: 1,
       projectors: [accountSummaryProjection],
     );
 
@@ -57,7 +58,7 @@ class FinanceApp {
     // TODO: should the deviceId be loaded here and set on the runtime?
     // TODO: how to show progress? This could take a while.
 
-    await _cqrsRuntime.catchupAllProjections(1);
+    await _cqrsRuntime.initializeProjections();
   }
 }
 

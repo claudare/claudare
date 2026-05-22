@@ -8,9 +8,7 @@ import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
-import 'package:core/src/cqrs/event_store/event_store_administration.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/src/cqrs/pattern_filter.dart';
 import 'package:test/test.dart';
 
 void main() {

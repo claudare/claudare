@@ -38,7 +38,7 @@ class AsyncFIFOQueue<T> {
     // scheduleMicrotask(_processNext);
   }
 
-  void _reset() {
+  void reset() {
     // Call onDone for each queue item, this is called during failure
     // Error handling is in the [ProjectionRuntime]
     for (final item in _queue) {
@@ -70,7 +70,7 @@ class AsyncFIFOQueue<T> {
         })
         .catchError((Object e, StackTrace st) {
           _processing = false;
-          _reset();
+          reset();
 
           // Tasks are expected not to throw; propagate if they do.
           Error.throwWithStackTrace(e, st);

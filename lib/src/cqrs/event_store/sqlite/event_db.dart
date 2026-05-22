@@ -89,7 +89,7 @@ class EventDb {
     int versionCursor,
   ) async {
     // could transact here!
-    final originatingStreamVersion = await _db.queryValue<int>(
+    final originatingStreamVersion = await _db.queryValue<int?>(
       "SELECT version FROM stream WHERE stream_id = ?",
       [streamId],
     );
@@ -182,7 +182,7 @@ class EventDb {
     return await _db.transaction((tx) {
       var streamVersion = 0;
 
-      final streamVersionInDb = tx.queryValue<int>(
+      final streamVersionInDb = tx.queryValue<int?>(
         "SELECT version FROM stream WHERE stream_id = ? LIMIT 1",
 
         [streamId],
@@ -204,7 +204,7 @@ class EventDb {
 
       for (final event in appends.events) {
         // separate insertions for now to get it working
-        final localSequence = tx.queryValue<int>(
+        final localSequence = tx.queryValue<int?>(
           """INSERT INTO event (
             stream_id,
             stream_version,
@@ -301,7 +301,7 @@ class EventDb {
     PatternFilter patternFilter,
   ) async {
     final filterSql = patternToSQL(patternFilter);
-    final value = await _db.queryValue<int>("""SELECT
+    final value = await _db.queryValue<int?>("""SELECT
         local_sequence
       FROM event
       WHERE
