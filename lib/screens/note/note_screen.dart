@@ -27,7 +27,7 @@ class _NoteScreenState extends State<NoteScreen> {
   late TextEditingController _contentController;
   late FocusNode _contentFocus;
 
-  bool _flushed = true;
+  bool _flushing = false;
 
   @override
   void initState() {
@@ -79,12 +79,7 @@ class _NoteScreenState extends State<NoteScreen> {
     super.dispose();
   }
 
-  void _markDirty() {
-    _flushed = false;
-  }
-
   void _onTitleTextChange() {
-    _markDirty();
     _controller.submitTitleChange(_titleController.text);
   }
 
@@ -95,7 +90,6 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   void _onContentTextChange() {
-    _markDirty();
     _controller.submitContentChange(_contentController.text);
   }
 
@@ -106,8 +100,8 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _flushChanges() async {
-    if (_flushed) return;
-    _flushed = true;
+    if (_flushing) return;
+    _flushing = true;
 
     try {
       final applied = await _controller.flushChanges();
@@ -130,6 +124,8 @@ class _NoteScreenState extends State<NoteScreen> {
           duration: Duration(seconds: 10),
         ),
       );
+    } finally {
+      _flushing = false;
     }
   }
 

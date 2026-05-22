@@ -34,6 +34,6 @@ class CreateNote implements Command<CreateNoteInput> {
 
     stream.append(NoteCreated());
 
-    print('created note $noteId');
+    print('note $noteId created');
   }
 }

@@ -39,5 +39,7 @@ class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
     await stream.mustExist();
 
     stream.append(NoteTitleUpdated(noteId: noteId, newTitle: input.fullValue));
+
+    print('note $noteId title changed to ${input.fullValue}');
   }
 }

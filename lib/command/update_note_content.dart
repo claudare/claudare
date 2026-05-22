@@ -48,5 +48,7 @@ class UpdateNoteContent implements Command<UpdateNoteContentInput> {
     stream.append(
       NoteContentUpdated(noteId: noteId, newContent: input.overrideContent),
     );
+
+    print('note $noteId content changed to ${input.overrideContent}');
   }
 }

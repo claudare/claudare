@@ -12,8 +12,7 @@ class NoteController extends ChangeNotifier {
   String? _noteId;
 
   String _titleStored = ''; // title as it is stored in the database;
-  String _titleLatest =
-      ''; // current value of the controller. This is a "buffer" of changes before flush
+  String _titleLatest = '';
 
   String _contentStored = '';
   String _contentLatest = '';
@@ -128,7 +127,7 @@ class NoteController extends ChangeNotifier {
 
   /// Returns true if changes were applied. Throws on error
   Future<bool> flushChanges() async {
-    print('flushing changes');
+    print('flushing changes on note $_noteId');
 
     // do nothing if no note exists and nothing was changed
     if (_noteId == null && _titleLatest == '' && _contentLatest == '') {
