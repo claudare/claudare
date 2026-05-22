@@ -18,6 +18,14 @@ class ApplicationProvider extends InheritedWidget {
         .application;
   }
 
+  // https://www.wafrat.com/dependency-injection-in-flutter/
+  static ApplicationProvider ofInitStateContext(BuildContext context) {
+    return context
+            .getElementForInheritedWidgetOfExactType<ApplicationProvider>()!
+            .widget
+        as ApplicationProvider;
+  }
+
   @override
   bool updateShouldNotify(ApplicationProvider oldWidget) {
     return application != oldWidget.application;

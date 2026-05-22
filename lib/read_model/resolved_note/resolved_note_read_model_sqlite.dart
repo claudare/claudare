@@ -24,7 +24,7 @@ class ResolvedNoteReadModelSqlite implements ResolvedNoteReadModel {
     switch (category) {
       case ResolvedNoteQueryCategory.all:
         return '';
-      case ResolvedNoteQueryCategory.available:
+      case ResolvedNoteQueryCategory.notTrashed:
         return 'WHERE trashed_at IS NULL';
       case ResolvedNoteQueryCategory.trashed:
         return 'WHERE trashed_at IS NOT NULL';

@@ -23,7 +23,7 @@ class TestApplicationFactory implements ApplicationFactory {
   });
 
   @override
-  Future<Application> create() async {
+  Application create(_) {
     final idGenerator = mockIdGenerator ?? FakeIdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
 

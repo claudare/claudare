@@ -12,7 +12,7 @@ import 'package:path/path.dart' as path show join;
 import 'package:path_provider/path_provider.dart';
 
 class ProductionApplicationFactory implements ApplicationFactory {
-  static Future<String> _getDatabasePath() async {
+  static Future<String> getSupportDir() async {
     // on linux it is
     // /home/{USER}/.local/share/com.example.notes_app_v0
     final appDir = await getApplicationSupportDirectory();
@@ -20,22 +20,19 @@ class ProductionApplicationFactory implements ApplicationFactory {
       await appDir.create(recursive: true);
     }
 
-    return path.join(appDir.path, 'notes.db');
+    return appDir.path;
   }
 
   @override
-  Future<Application> create() async {
+  Application create(String supportDir) {
     final idGenerator = RandomIdGenerator();
     final timeProvider = SystemTimeProvider();
 
-    print('preparing to open db path');
-
-    // final sqliteDb = IsolateSqlite(IsolateSqlite.memoryInitFn);
-    final filename = await _getDatabasePath();
-
-    print('opening production database at $filename');
+    // print('opening production database at $filename');
     final sqliteDb = IsolateSqlite(() {
-      print('INSIDE INIT FILENAME $filename');
+      final filename = path.join(supportDir, 'notes.db');
+
+      print('using database at $filename');
       final db = sqlite3.open(filename);
 
       IsolateSqlite.enableOptimizations(db);

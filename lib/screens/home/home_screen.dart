@@ -3,6 +3,7 @@ import 'package:notes_app_v0/runtime/notes_runtime.dart';
 import 'package:notes_app_v0/screens/home/note_list_controller.dart';
 import 'package:notes_app_v0/screens/home/widget/note_list.dart';
 import 'package:notes_app_v0/screens/note/note_screen.dart';
+import 'package:notes_app_v0/screens/settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final NotesRuntime notesRuntime;
@@ -43,6 +44,14 @@ class _HomeScreenState extends State<HomeScreen> {
     await _controller.reloadNotes();
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
+    // this will rerun after push is over
+    await _controller.reloadNotes();
+  }
+
   Future<void> _newNote() async {
     await _openNote(null);
   }
@@ -54,6 +63,10 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text('Notes'),
         actions: [
           IconButton(icon: Icon(Icons.add), onPressed: () => _newNote()),
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () => _openSettings(),
+          ),
         ],
       ),
       body: NoteList(noteData: _controller.noteData, openNote: _openNote),

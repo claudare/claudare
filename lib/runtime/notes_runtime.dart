@@ -59,6 +59,10 @@ class NotesRuntime {
   Future<void> initialize() async {
     await _cqrsRuntime.catchupAllProjections(runtimeVersion);
   }
+
+  Future<void> reloadAllProjections() async {
+    await _cqrsRuntime.forceReloadAllProjections();
+  }
 }
 
 class CqrsCommands {

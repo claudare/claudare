@@ -8,6 +8,7 @@ import 'package:notes_app_v0/runtime/notes_runtime.dart';
 
 class Application {
   final IsolateSqlite sqliteDb;
+  // TODO: this should be an EventStore interface
   final SqliteEventStore eventStore;
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;

@@ -9,8 +9,8 @@ import 'package:notes_app_v0/screens/loading_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final applicationFactory = ProductionApplicationFactory();
-  final application = await applicationFactory.create();
+  final supportDir = await ProductionApplicationFactory.getSupportDir();
+  final application = ProductionApplicationFactory().create(supportDir);
 
   runApp(ApplicationProvider(application: application, child: const MyApp()));
 }

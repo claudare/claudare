@@ -247,7 +247,6 @@ class _NoteScreenState extends State<NoteScreen> {
                 ),
               ),
               SizedBox(height: 4),
-
               Row(
                 spacing: 8.0,
                 children: [
