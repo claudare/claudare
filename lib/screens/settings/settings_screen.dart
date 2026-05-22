@@ -30,11 +30,11 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _resetApplication(Application application) async {
     await application.eventStore.reset();
-    await application.notesRuntime.reloadAllProjections();
+    await application.notesRuntime.rerunProjections();
   }
 
   Future<void> _reloadAllProjections(Application application) async {
-    await application.notesRuntime.reloadAllProjections();
+    await application.notesRuntime.rerunProjections();
   }
 
   @override
@@ -68,7 +68,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               ListTile(
                 leading: Icon(Icons.refresh),
-                title: const Text('Reload projections'),
+                title: const Text('Rerun projections'),
                 onTap: () async {
                   await _reloadAllProjections(application);
                   if (!context.mounted) {

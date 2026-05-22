@@ -28,10 +28,10 @@ class ProductionApplicationFactory implements ApplicationFactory {
     final idGenerator = RandomIdGenerator();
     final timeProvider = SystemTimeProvider();
 
-    // print('opening production database at $filename');
-    final sqliteDb = IsolateSqlite(() {
-      final filename = path.join(supportDir, 'notes.db');
+    final filename = path.join(supportDir, 'notes.db');
+    print('opening production database at $filename');
 
+    final sqliteDb = IsolateSqlite(() {
       print('using database at $filename');
       final db = sqlite3.open(filename);
 

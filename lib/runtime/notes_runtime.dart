@@ -38,6 +38,7 @@ class NotesRuntime {
       projectors: [noteProjection],
       thisDeviceId: DeviceId.unassigned(),
       runtimeName: 'notes',
+      runtimeVersion: NotesRuntime.runtimeVersion,
     );
 
     commands = CqrsCommands(
@@ -57,11 +58,11 @@ class NotesRuntime {
   IdGenerator get idGenerator => _cqrsRuntime.idGenerator;
 
   Future<void> initialize() async {
-    await _cqrsRuntime.catchupAllProjections(runtimeVersion);
+    await _cqrsRuntime.initializeProjections();
   }
 
-  Future<void> reloadAllProjections() async {
-    await _cqrsRuntime.forceReloadAllProjections();
+  Future<void> rerunProjections() async {
+    await _cqrsRuntime.rerunProjections();
   }
 }
 
