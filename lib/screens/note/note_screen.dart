@@ -224,7 +224,7 @@ class _NoteScreenState extends State<NoteScreen> {
                 ),
                 focusNode: _titleFocus,
                 // TODO: this breaks tab order, sometimes
-                enabled: !_controller.isBusy && !_controller.isTrashed,
+                enabled: !_controller.isLoading && !_controller.isTrashed,
               ),
               SizedBox(height: 8),
               Expanded(
@@ -239,7 +239,7 @@ class _NoteScreenState extends State<NoteScreen> {
                   textAlignVertical: TextAlignVertical.top,
                   focusNode: _contentFocus,
                   // TODO: this breaks tab order, sometimes
-                  enabled: !_controller.isBusy && !_controller.isTrashed,
+                  enabled: !_controller.isLoading && !_controller.isTrashed,
                 ),
               ),
               SizedBox(height: 4),

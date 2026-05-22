@@ -8,6 +8,9 @@ class InternalNoteReadModelSqlite implements InternalNoteReadModel {
 
   const InternalNoteReadModelSqlite(this._db);
 
+  // TODO: this needs to be part of regular note read model
+  // fullNote read model
+  // with separate summary one
   @override
   Future<NoteData> getNote(String noteId) async {
     final value = await _db.queryRow(

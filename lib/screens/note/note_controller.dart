@@ -21,7 +21,7 @@ class NoteController extends ChangeNotifier {
   late DateTime _updatedAt;
   DateTime? _trashedAt;
 
-  bool _isBusy = false;
+  bool _isLoading = false;
 
   NoteController(this.notesRuntime) {
     final optimisitcTime = notesRuntime.timeProvider.now();
@@ -29,7 +29,7 @@ class NoteController extends ChangeNotifier {
     _updatedAt = optimisitcTime;
   }
 
-  bool get isBusy => _isBusy;
+  bool get isLoading => _isLoading;
 
   DateTime get createdAt => _createdAt;
   DateTime get updatedAt => _updatedAt;
@@ -37,14 +37,20 @@ class NoteController extends ChangeNotifier {
 
   bool get isTrashed => _trashedAt != null;
 
+  // TODO: I dont like that this could be null
   Future<LoadResolvedText> load(String? noteId) async {
-    if (noteId == null) return LoadResolvedText.empty();
-
-    _isBusy = true;
+    _isLoading = true;
     notifyListeners();
 
     try {
+      if (noteId == null) {
+        return LoadResolvedText.empty();
+      }
+
       final noteData = await notesRuntime.internalNoteReadModel.getNote(noteId);
+
+      assert(noteId == noteData.noteId);
+
       _noteId = noteData.noteId;
       _titleStored = noteData.title.value;
       _contentStored = noteData.content;
@@ -55,7 +61,7 @@ class NoteController extends ChangeNotifier {
       _titleLatest = _titleStored;
       _contentLatest = _contentStored;
     } finally {
-      _isBusy = false;
+      _isLoading = false;
       notifyListeners();
     }
 
@@ -79,9 +85,6 @@ class NoteController extends ChangeNotifier {
       // always flush changes internally before trashing?
       await flushChanges();
 
-      _isBusy = true;
-      notifyListeners();
-
       await notesRuntime.commands.deleteNote.runThrowable(
         TrashNoteInput(noteId: _noteId!),
       );
@@ -90,7 +93,6 @@ class NoteController extends ChangeNotifier {
 
       return true;
     } finally {
-      _isBusy = false;
       notifyListeners();
     }
   }
@@ -108,10 +110,6 @@ class NoteController extends ChangeNotifier {
     }
 
     try {
-      // no changes to flush here
-
-      _isBusy = true;
-      notifyListeners();
       await notesRuntime.commands.restoreNote.runThrowable(
         RestoreNoteInput(noteId: _noteId!),
       );
@@ -120,7 +118,6 @@ class NoteController extends ChangeNotifier {
 
       return true;
     } finally {
-      _isBusy = false;
       notifyListeners();
     }
   }
@@ -133,9 +130,6 @@ class NoteController extends ChangeNotifier {
     if (_noteId == null && _titleLatest == '' && _contentLatest == '') {
       return false;
     }
-
-    _isBusy = true;
-    notifyListeners();
 
     try {
       int changeCount = 0;
@@ -187,7 +181,6 @@ class NoteController extends ChangeNotifier {
 
       return true;
     } finally {
-      _isBusy = false;
       notifyListeners();
     }
   }
