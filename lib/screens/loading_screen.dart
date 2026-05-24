@@ -4,6 +4,7 @@ import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/screens/home/home_screen.dart';
+import 'package:notes_app_v0/util/get_application_directory.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -37,7 +38,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
     final application = ApplicationProvider.of(context);
 
     try {
-      await application.initialize();
+      final baseDir = await getApplicationDirectory();
+      await application.initialize(baseDir);
 
       try {
         await application.notesRuntime.commands.createNote.runThrowable(
@@ -60,7 +62,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
       if (!mounted) {
         throw Exception('not mounted after loading');
       }
-      Navigator.of(context).pushReplacement(
+      await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder:
               (context) => HomeScreen(notesRuntime: application.notesRuntime),

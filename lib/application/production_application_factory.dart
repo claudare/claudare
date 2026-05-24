@@ -8,7 +8,6 @@ import 'package:notes_app_v0/read_model/internal_note/internal_note_read_model_s
 import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model_sqlite.dart';
 import 'package:notes_app_v0/repo/note/sqlite_note_internal_repo.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
-import 'package:path/path.dart' as path show join;
 import 'package:path_provider/path_provider.dart';
 
 class ProductionApplicationFactory implements ApplicationFactory {
@@ -24,21 +23,11 @@ class ProductionApplicationFactory implements ApplicationFactory {
   }
 
   @override
-  Application create(String supportDir) {
+  Application create() {
     final idGenerator = RandomIdGenerator();
     final timeProvider = SystemTimeProvider();
 
-    final filename = path.join(supportDir, 'notes.db');
-    print('opening production database at $filename');
-
-    final sqliteDb = IsolateSqlite(() {
-      print('using database at $filename');
-      final db = sqlite3.open(filename);
-
-      IsolateSqlite.enableOptimizations(db);
-
-      return db;
-    });
+    final sqliteDb = IsolateSqlite();
     final eventStore = SqliteEventStore(sqliteDb);
     final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
 

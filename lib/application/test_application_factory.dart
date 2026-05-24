@@ -23,11 +23,11 @@ class TestApplicationFactory implements ApplicationFactory {
   });
 
   @override
-  Application create(_) {
+  Application create() {
     final idGenerator = mockIdGenerator ?? FakeIdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
 
-    final sqliteDb = IsolateSqlite(IsolateSqlite.memoryInitFn);
+    final sqliteDb = IsolateSqlite();
     final eventStore = SqliteEventStore(sqliteDb);
     final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
 

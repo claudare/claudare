@@ -27,7 +27,7 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   Future<ProjectionCheckpoint> checkpoint(IsolateSqlite db) async {
     // TODO: check that transactions error like this
     try {
-      final value = await db.queryValue<int>('SELECT value FROM checkpoint;');
+      final value = await db.queryValue<int?>('SELECT value FROM checkpoint;');
       return ProjectionCheckpoint(value ?? 0);
     } catch (e) {
       print('checkpoint get error. Probably not initialized? $e');
@@ -37,7 +37,7 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
 
   @override
   void apply(
-    Transaction tx,
+    SyncContext tx,
     String tagId,
     TagEvent event,
     EventMetadata metadata,

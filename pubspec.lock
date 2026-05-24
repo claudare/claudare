@@ -307,11 +307,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: "7eb503676a5ec3d21df2ae6f5ffdecf31cda15a6"
+      ref: "0.3.0"
+      resolved-ref: "423e6f9fbfc16e2eebb825f0e35aabe680c44f38"
       url: "git@github.com:claudare/isolate_sqlite.git"
     source: git
-    version: "0.2.3"
+    version: "0.3.0"
   jni:
     dependency: transitive
     description:

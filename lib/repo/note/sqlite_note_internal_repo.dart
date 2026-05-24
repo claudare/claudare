@@ -29,7 +29,7 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
         'SELECT COALESCE(MAX(_local_sequence), 0) FROM note;',
       );
 
-      return ProjectionCheckpoint(localSequence ?? 0);
+      return ProjectionCheckpoint(localSequence);
     } catch (e) {
       print('failure of checkpoint in SqliteNoteInternalRepo: $e');
       return ProjectionCheckpoint.notInitialized();

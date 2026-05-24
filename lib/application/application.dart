@@ -5,6 +5,7 @@ import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
+import 'package:path/path.dart' as path;
 
 class Application {
   final IsolateSqlite sqliteDb;
@@ -22,8 +23,10 @@ class Application {
     required this.notesRuntime,
   });
 
-  Future<void> initialize() async {
-    await sqliteDb.open();
+  Future<void> initialize(String applicationDirectory) async {
+    final dbFilename = path.join(applicationDirectory, 'notes.db');
+
+    await sqliteDb.open(dbFilename);
     await eventStore.migrate();
     await notesRuntime.initialize();
     // await Future.delayed(const Duration(seconds: 1));

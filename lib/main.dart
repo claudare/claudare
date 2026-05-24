@@ -4,13 +4,10 @@ import 'package:notes_app_v0/application/production_application_factory.dart';
 
 import 'package:notes_app_v0/screens/loading_screen.dart';
 
-// interesting alternative for async init, to run runApp() twice?
-// https://www.youtube.com/watch?v=kIJ7KX1PObw
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final supportDir = await ProductionApplicationFactory.getSupportDir();
-  final application = ProductionApplicationFactory().create(supportDir);
+  final application = ProductionApplicationFactory().create();
 
   runApp(ApplicationProvider(application: application, child: const MyApp()));
 }
