@@ -189,7 +189,7 @@ void main() {
     });
 
     test('serialization of changes', () {
-      final original = CrdtTextChange(1000, [
+      final original = CrdtTextChange([
         CrdtTextOpInsert(LogicalClock(0, 0), null, 'H'),
         CrdtTextOpInsert(LogicalClock(1, 0), LogicalClock(0, 0), 'i'),
       ]);

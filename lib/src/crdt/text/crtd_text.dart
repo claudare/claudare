@@ -124,14 +124,12 @@ class CrdtTextRow {
 // TODO: greatly improve efficiency by packing values with binary encoding and
 // RLE encoding
 class CrdtTextChange {
-  final Actor actor; // actor is not really needed here
   final List<CrdtTextOp> ops;
 
-  CrdtTextChange(this.actor, this.ops);
+  CrdtTextChange(this.ops);
 
   factory CrdtTextChange.fromJson(Map<String, dynamic> json) {
     return CrdtTextChange(
-      json['actor'],
       (json['ops'] as List<dynamic>)
           .map((e) => CrdtTextOp.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -139,7 +137,7 @@ class CrdtTextChange {
   }
 
   Map<String, dynamic> toJson() {
-    return {'actor': actor, 'ops': ops.map((e) => e.toJson()).toList()};
+    return {'ops': ops.map((e) => e.toJson()).toList()};
   }
 
   @override
@@ -528,10 +526,6 @@ class CrdtText {
   }
 
   void onExternalChange(CrdtTextChange change) {
-    if (change.actor == thisActorId) {
-      throw Exception('Only external changes are allowed, instead got local');
-    }
-
     // how many characters were inserted/deleted before the cursor
     // this is a relative offset
     // only matters if the current value was not deleted.
@@ -638,7 +632,7 @@ class CrdtText {
   }
 
   void _flushLocalChanges() {
-    flushLocalChanges(CrdtTextChange(thisActorId, localChanges));
+    flushLocalChanges(CrdtTextChange(localChanges));
     localChanges.clear();
   }
 
