@@ -14,4 +14,6 @@ abstract interface class ResolvedNoteReadModel {
     ResolvedNoteQueryCategory category,
     ResolvedNoteQueryOrder order,
   );
+
+  Future<ResolvedNote?> getById(String noteId);
 }

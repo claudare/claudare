@@ -2,10 +2,10 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/model/resolved_note.dart';
 import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
 
-class ResolvedNoteReadModelSqlite implements ResolvedNoteReadModel {
+class SqliteResolvedNoteReadModel implements ResolvedNoteReadModel {
   final IsolateSqlite _db;
 
-  const ResolvedNoteReadModelSqlite(this._db);
+  const SqliteResolvedNoteReadModel(this._db);
 
   String _orderWhereSql(ResolvedNoteQueryOrder order) {
     switch (order) {
@@ -57,5 +57,28 @@ class ResolvedNoteReadModelSqlite implements ResolvedNoteReadModel {
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<ResolvedNote?> getById(String noteId) async {
+    final row = await _db.queryRow(
+      'SELECT title, content, created_at, updated_at, trashed_at FROM note WHERE id = ? LIMIT 1;',
+      [noteId],
+    );
+    if (row == null) {
+      return null;
+    }
+
+    return ResolvedNote(
+      noteId: noteId,
+      title: row.field('title'),
+      content: row.field('content'),
+      createdAt: DateTime.parse(row.field<String>('created_at')),
+      updatedAt: DateTime.parse(row.field<String>('updated_at')),
+      trashedAt:
+          row.field<String?>('trashed_at') == null
+              ? null
+              : DateTime.parse(row.field<String>('trashed_at')),
+    );
   }
 }

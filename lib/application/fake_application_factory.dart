@@ -3,20 +3,19 @@ import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/application/application.dart';
-import 'package:notes_app_v0/read_model/internal_note/internal_note_read_model_sqlite.dart';
-import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model_sqlite.dart';
-import 'package:notes_app_v0/repo/note/sqlite_note_internal_repo.dart';
+import 'package:notes_app_v0/repo/note/sqlite_resolved_note_repo.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
 
+import '../repo/note/sqlite_note_projection_repo.dart';
 import 'application_factory.dart';
 
-class TestApplicationFactory implements ApplicationFactory {
+class FakeApplicationFactory implements ApplicationFactory {
   // TODO: mocking somehow?
   final NotesRuntime? mockNotesRuntime;
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
 
-  TestApplicationFactory({
+  FakeApplicationFactory({
     this.mockNotesRuntime,
     this.mockIdGenerator,
     this.mockTimeProvider,
@@ -39,9 +38,8 @@ class TestApplicationFactory implements ApplicationFactory {
       runtimeRepo: runtimeRepo,
     );
 
-    final noteInternalRepo = SqliteNoteInternalRepo(sqliteDb);
-    final resolvedNoteReadModel = ResolvedNoteReadModelSqlite(sqliteDb);
-    final internalNoteReadModel = InternalNoteReadModelSqlite(sqliteDb);
+    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
+    final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
 
     return Application(
       sqliteDb: sqliteDb,
@@ -50,9 +48,8 @@ class TestApplicationFactory implements ApplicationFactory {
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
         cqrsConfig: cqrsConfig,
-        noteInternalRepo: noteInternalRepo,
+        noteProjectionRepo: noteProjectionRepo,
         resolvedNoteReadModel: resolvedNoteReadModel,
-        internalNoteReadModel: internalNoteReadModel,
       ),
     );
   }

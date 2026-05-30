@@ -2,14 +2,13 @@ import 'package:core/cqrs.dart';
 import 'package:core/crdt.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes_app_v0/model/note_data.dart';
-import 'package:notes_app_v0/repo/note/note_internal_repo.dart';
-import 'package:notes_app_v0/repo/note/note_migrations.dart';
+import 'package:notes_app_v0/projection/note/note_projection_repo.dart';
+import 'package:notes_app_v0/repo/note/sqlite_note_migrations.dart';
 
-// Get and store repo style
-class SqliteNoteInternalRepo implements NoteInternalRepo {
+class SqliteNoteProjectionRepo implements NoteProjectionRepo {
   final IsolateSqlite _db;
 
-  const SqliteNoteInternalRepo(this._db);
+  const SqliteNoteProjectionRepo(this._db);
 
   @override
   Future<void> reset() async {
@@ -34,27 +33,6 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
       print('failure of checkpoint in SqliteNoteInternalRepo: $e');
       return ProjectionCheckpoint.notInitialized();
     }
-  }
-
-  @override
-  Future<NoteData?> get(String noteId) async {
-    final value = await _db.queryRow(
-      'SELECT id, title, title_updated_at, content, created_at, updated_at, trashed_at FROM note WHERE id = ? LIMIT 1;',
-      [noteId],
-    );
-    if (value == null) return null;
-
-    return NoteData(
-      noteId: value[0] as String,
-      title: CrdtValueLatestWriteWins<String>(
-        value[1] as String,
-        DateTime.parse(value[2] as String),
-      ),
-      content: value[3] as String,
-      createdAt: DateTime.parse(value[4] as String),
-      updatedAt: DateTime.parse(value[5] as String),
-      trashedAt: value[6] == null ? null : DateTime.parse(value[6] as String),
-    );
   }
 
   @override
@@ -85,13 +63,33 @@ class SqliteNoteInternalRepo implements NoteInternalRepo {
     );
   }
 
+  Future<NoteData?> _get(String noteId) async {
+    final value = await _db.queryRow(
+      'SELECT id, title, title_updated_at, content, created_at, updated_at, trashed_at FROM note WHERE id = ? LIMIT 1;',
+      [noteId],
+    );
+    if (value == null) return null;
+
+    return NoteData(
+      noteId: value[0] as String,
+      title: CrdtValueLatestWriteWins<String>(
+        value[1] as String,
+        DateTime.parse(value[2] as String),
+      ),
+      content: value[3] as String,
+      createdAt: DateTime.parse(value[4] as String),
+      updatedAt: DateTime.parse(value[5] as String),
+      trashedAt: value[6] == null ? null : DateTime.parse(value[6] as String),
+    );
+  }
+
   @override
   Future<void> getAndStore(
     String noteId,
     int localSequence,
     NoteData Function(NoteData) update,
   ) async {
-    final data = await get(noteId);
+    final data = await _get(noteId);
     if (data == null) {
       throw Exception('Note not found: $noteId');
     }

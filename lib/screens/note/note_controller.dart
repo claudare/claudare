@@ -47,12 +47,16 @@ class NoteController extends ChangeNotifier {
         return LoadResolvedText.empty();
       }
 
-      final noteData = await notesRuntime.internalNoteReadModel.getNote(noteId);
+      final noteData = await notesRuntime.resolvedNoteReadModel.getById(noteId);
+
+      if (noteData == null) {
+        throw StateError('Note not found');
+      }
 
       assert(noteId == noteData.noteId);
 
       _noteId = noteData.noteId;
-      _titleStored = noteData.title.value;
+      _titleStored = noteData.title;
       _contentStored = noteData.content;
       _createdAt = noteData.createdAt;
       _updatedAt = noteData.updatedAt;

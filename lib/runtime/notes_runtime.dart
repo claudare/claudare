@@ -8,30 +8,28 @@ import 'package:notes_app_v0/command/trash_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/projection/note/note_projection.dart';
-import 'package:notes_app_v0/read_model/internal_note/internal_note_read_model.dart';
+import 'package:notes_app_v0/projection/note/note_projection_repo.dart';
 import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
-import 'package:notes_app_v0/repo/note/note_internal_repo.dart';
 
 class NotesRuntime {
   static int runtimeVersion = 3;
 
   // the read model is exposed directly
   final ResolvedNoteReadModel resolvedNoteReadModel;
-  final InternalNoteReadModel internalNoteReadModel;
+  final NoteProjectionRepo noteProjectionRepo;
 
   late final CqrsRuntime _cqrsRuntime;
   late final CqrsCommands commands;
 
   NotesRuntime({
     required CqrsRuntimeConfig cqrsConfig,
-    required NoteInternalRepo noteInternalRepo,
+    required this.noteProjectionRepo,
     required this.resolvedNoteReadModel,
-    required this.internalNoteReadModel,
   }) {
     // where does the deviceId come from?
     // does it come during the init phase or fetched automatically inside the CqrsRuntime?
 
-    final noteProjection = NoteProjection(noteInternalRepo);
+    final noteProjection = NoteProjection(noteProjectionRepo);
 
     _cqrsRuntime = CqrsRuntime(
       config: cqrsConfig,
