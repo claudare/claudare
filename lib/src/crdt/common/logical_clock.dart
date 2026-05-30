@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'vector_logical_clock.dart';
+
 typedef Counter = int;
 typedef Actor = int;
 
@@ -14,127 +16,35 @@ class TestLogicalClockOffline {
 
   LogicalClock current() {
     assert(offlineCounter != -1, 'no value yet');
-    return LogicalClock(offlineCounter, actor);
+    return LogicalClock(counter: offlineCounter, actor: actor);
   }
 
   LogicalClock next() {
     offlineCounter++;
-    final newLogicalClock = LogicalClock(offlineCounter, actor);
+    final newLogicalClock = LogicalClock(counter: offlineCounter, actor: actor);
     return newLogicalClock;
   }
 
   void syncWithVectorClock(VectorLogicalClock vectorClock) {
     if (offlineCounter > 0) {
-      vectorClock.logicalClockUpdate(current());
+      vectorClock.mergeLogicalClockMutate(current());
     }
-    offlineCounter = vectorClock._maxCounterValue;
-  }
-}
-
-class LogicalClockGenerator {
-  final Actor actor;
-  final VectorLogicalClock _vectorClock;
-
-  LogicalClockGenerator(this._vectorClock, this.actor);
-
-  /// generates a new LogicalClock and updates vector clock
-  LogicalClock next() {
-    final count = _vectorClock._maxCounterValue;
-    final newLogicalClock = LogicalClock(count + 1, actor);
-    _vectorClock.logicalClockUpdate(newLogicalClock);
-    return newLogicalClock;
-  }
-}
-
-class VectorLogicalClock {
-  final Map<Actor, Counter> _vectorMap;
-  Counter _maxCounterValue;
-
-  VectorLogicalClock(this._vectorMap)
-    : _maxCounterValue = _vectorMap.values.reduce(max);
-
-  VectorLogicalClock.empty() : _vectorMap = {}, _maxCounterValue = -1;
-
-  factory VectorLogicalClock.fromLogicalClocks(List<LogicalClock> clocks) {
-    final map = <Actor, Counter>{};
-
-    for (final clock in clocks) {
-      map[clock.actor] = clock.counter;
-    }
-
-    return VectorLogicalClock(map);
-  }
-
-  // shortcut for generator-less operation
-  LogicalClock nextOpId(Actor actor) {
-    final count = _vectorMap[actor] ?? -1;
-    final newLogicalClock = LogicalClock(count + 1, actor);
-    logicalClockUpdate(newLogicalClock);
-    return newLogicalClock;
-  }
-
-  LogicalClockGenerator getGenerator(Actor actor) {
-    return LogicalClockGenerator(this, actor);
-  }
-
-  void logicalClockUpdate(LogicalClock clock) {
-    if (clock.counter > _maxCounterValue) {
-      _maxCounterValue = clock.counter;
-    }
-    _vectorMap[clock.actor] = clock.counter;
-  }
-
-  // dont use this really? most updates should happen through methods
-  int get maxCounterValue => _maxCounterValue;
-
-  LogicalClock operator [](Actor actor) {
-    // dont allow non-existing clocks?
-    final counter = _vectorMap[actor];
-    if (counter == null) {
-      throw Exception('actor $actor is not in vector logical clock');
-    }
-    return LogicalClock(counter, actor);
-  }
-
-  /// returns true if the value is less then or equal to the vector clock
-  bool isVisible(LogicalClock value) {
-    return _vectorMap[value.actor] != null &&
-        value.counter <= _vectorMap[value.actor]!;
-  }
-
-  factory VectorLogicalClock.fromJson(List<dynamic> json) {
-    final Map<Actor, Counter> out = {};
-    for (final entry in json) {
-      final lc = LogicalClock.fromString(entry);
-      out[lc.actor] = lc.counter;
-    }
-    return VectorLogicalClock(out);
-  }
-
-  List<String> toJson() =>
-      _vectorMap.entries
-          .map((entry) => LogicalClock(entry.value, entry.key).toString())
-          .toList();
-
-  @override
-  String toString() {
-    return '[VectorLogicalClock](${_vectorMap.entries.map((entry) => LogicalClock(entry.value, entry.key).toString()).join(', ')})';
+    offlineCounter = vectorClock.maxCounterValue;
   }
 }
 
 // Try to use hybrid logical clocks (HLCs)
 class LogicalClock {
-  final Counter counter;
   final Actor actor;
+  final Counter counter;
 
   /// creates a logical clock with counter and actor
-  const LogicalClock(this.counter, this.actor);
+  // const LogicalClock(this.counter, this.actor);
 
   /// or use this to avoid confusion
-  const LogicalClock.explicit({required Counter counter, required Actor actor})
-    : this(counter, actor);
+  const LogicalClock({required this.actor, required this.counter});
 
-  LogicalClock.zero(this.actor) : counter = 0;
+  const LogicalClock.zero({required this.actor}) : counter = 0;
 
   factory LogicalClock.fromString(String value) {
     final parts = value.split('-');
@@ -145,7 +55,7 @@ class LogicalClock {
     final counter = int.parse(parts[0]);
     final actor = int.parse(parts[1]);
 
-    return LogicalClock(counter, actor);
+    return LogicalClock(counter: counter, actor: actor);
   }
 
   // it neever needs to clone with actor, actor stays constant
@@ -156,7 +66,7 @@ class LogicalClock {
       assert(counter >= this.counter, 'counter should only increase');
     }
 
-    return LogicalClock(counter ?? this.counter, actor);
+    return LogicalClock(counter: counter ?? this.counter, actor: actor);
   }
 
   @override

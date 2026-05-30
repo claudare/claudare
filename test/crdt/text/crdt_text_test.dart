@@ -2,6 +2,11 @@ import 'dart:convert';
 
 import 'package:core/crdt.dart';
 import 'package:core/src/crdt/common/logical_clock.dart';
+import 'package:core/src/crdt/common/logical_clock_generator.dart';
+import 'package:core/src/crdt/common/vector_logical_clock.dart';
+import 'package:core/src/crdt/text/crdt_text_operation.dart';
+import 'package:core/src/crdt/text/crdt_text_resolver.dart';
+import 'package:core/src/crdt/text/crdt_text_row.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -18,45 +23,46 @@ void main() {
 
     test('ordered insertions', () {
       final a0 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'H'));
-      resolver.handleOp(CrdtTextOpInsert(aGen.next(), a0, 'i'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'H'));
+      resolver.handleOperation(CrdtTextOperationInsert(aGen.next(), a0, 'i'));
 
-      final value = resolver.getTextContentLatest();
+      final value = resolver.resolveToStringSlow();
       expect(value, equals('Hi'));
     });
 
     test('unordered insertions', () {
       final a0 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'H')); // 0a
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'H'));
 
       final a1 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, a0, 'l'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, a0, 'l'));
 
       final a2 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a2, a1, 'p'));
+      resolver.handleOperation(CrdtTextOperationInsert(a2, a1, 'p'));
+
+      expect(resolver.resolveToStringSlow(), equals('Hlp'));
 
       // late insertion
-      final a3 = aGen.next(); // 3a
-      resolver.handleOp(CrdtTextOpInsert(a3, a0, 'e'));
+      final a3 = aGen.next();
+      resolver.handleOperation(CrdtTextOperationInsert(a3, a0, 'e'));
 
-      final value = resolver.getTextContentLatest();
-      expect(value, equals('Help'));
+      expect(resolver.resolveToStringSlow(), equals('Help'));
     });
 
     test('deletions', () {
       final a0 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'H'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'H'));
 
       final a1 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, a0, 'u'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, a0, 'u'));
 
       final a2 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a2, a1, 'i'));
+      resolver.handleOperation(CrdtTextOperationInsert(a2, a1, 'i'));
 
       final a3 = aGen.next();
-      resolver.handleOp(CrdtTextOpDelete(a3, a1)); // 3a
+      resolver.handleOperation(CrdtTextOperationDelete(a3, a1)); // 3a
 
-      final value = resolver.getTextContentLatest();
+      final value = resolver.resolveToStringSlow();
       expect(value, equals('Hi'));
 
       final atTimeValue = resolver.debugGetContentAtVector(
@@ -68,17 +74,17 @@ void main() {
     // aka edge-case 1 below
     test('edge case insertion (between two afterId nulls)', () {
       final a0 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, '2'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, '2'));
       final a1 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, null, '1'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, null, '1'));
 
-      expect(resolver.getTextContentLatest(), equals('12'));
+      expect(resolver.resolveToStringSlow(), equals('12'));
 
       final a2 = aGen.next();
-      resolver.handleOp(CrdtTextOpInsert(a2, a1, '3'));
+      resolver.handleOperation(CrdtTextOperationInsert(a2, a1, '3'));
 
       // hmm, actual is 123
-      expect(resolver.getTextContentLatest(), equals('132'));
+      expect(resolver.resolveToStringSlow(), equals('132'));
     });
 
     // this test needs to be different
@@ -88,27 +94,27 @@ void main() {
       final bOffline = TestLogicalClockOffline.zero(1);
 
       final a0 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'H'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'H'));
 
       final a1 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, a0, 'e'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, a0, 'e'));
 
       final a2 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a2, a1, 'l'));
+      resolver.handleOperation(CrdtTextOperationInsert(a2, a1, 'l'));
 
       final a3 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a3, a2, 'o'));
+      resolver.handleOperation(CrdtTextOperationInsert(a3, a2, 'o'));
 
       aOffline.syncWithVectorClock(vectorClock);
       bOffline.syncWithVectorClock(vectorClock);
 
       final a4 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a4, a1, 'l'));
+      resolver.handleOperation(CrdtTextOperationInsert(a4, a1, 'l'));
 
       final b4 = bOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(b4, a3, '!'));
+      resolver.handleOperation(CrdtTextOperationInsert(b4, a3, '!'));
 
-      final value = resolver.getTextContentLatest();
+      final value = resolver.resolveToStringSlow();
       expect(value, equals('Hello!'));
     });
 
@@ -117,33 +123,44 @@ void main() {
       final bOffline = TestLogicalClockOffline.zero(1);
 
       final a0 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'y'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'y'));
 
       final a1 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, a0, 'e'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, a0, 'e'));
 
       aOffline.syncWithVectorClock(vectorClock);
       bOffline.syncWithVectorClock(vectorClock);
 
       final b2 = bOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(b2, null, 'b'));
+      resolver.handleOperation(CrdtTextOperationInsert(b2, null, 'b'));
 
-      final value = resolver.getTextContentLatest();
+      final value = resolver.resolveToStringSlow();
       expect(value, equals('bye'));
     });
 
     test('handles duplicate ops', () {
-      final op1 = CrdtTextOpInsert(LogicalClock(0, 0), null, 'H');
-      final op2 = CrdtTextOpInsert(LogicalClock(1, 0), LogicalClock(0, 0), 'i');
-      final op3 = CrdtTextOpDelete(LogicalClock(2, 0), LogicalClock(1, 0));
+      final op1 = CrdtTextOperationInsert(
+        LogicalClock(counter: 0, actor: 0),
+        null,
+        'H',
+      );
+      final op2 = CrdtTextOperationInsert(
+        LogicalClock(counter: 1, actor: 0),
+        LogicalClock(counter: 0, actor: 0),
+        'i',
+      );
+      final op3 = CrdtTextOperationDelete(
+        LogicalClock(counter: 2, actor: 0),
+        LogicalClock(counter: 1, actor: 0),
+      );
 
-      resolver.handleOp(op1);
-      resolver.handleOp(op2);
-      resolver.handleOp(op2);
-      resolver.handleOp(op3);
-      resolver.handleOp(op3);
+      resolver.handleOperation(op1);
+      resolver.handleOperation(op2);
+      resolver.handleOperation(op2);
+      resolver.handleOperation(op3);
+      resolver.handleOperation(op3);
 
-      final value = resolver.getTextContentLatest();
+      final value = resolver.resolveToStringSlow();
       expect(value, equals('H'));
     });
 
@@ -152,46 +169,32 @@ void main() {
       final bOffline = TestLogicalClockOffline.zero(1);
 
       final a0 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a0, null, 'a'));
+      resolver.handleOperation(CrdtTextOperationInsert(a0, null, 'a'));
 
       final a1 = aOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(a1, a0, 'b'));
+      resolver.handleOperation(CrdtTextOperationInsert(a1, a0, 'b'));
 
       aOffline.syncWithVectorClock(vectorClock);
       bOffline.syncWithVectorClock(vectorClock);
 
       final b2 = bOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(b2, null, 'c'));
+      resolver.handleOperation(CrdtTextOperationInsert(b2, null, 'c'));
 
       // nasty edge case...
       final b3 = bOffline.next();
-      resolver.handleOp(CrdtTextOpInsert(b3, b2, 'd'));
+      resolver.handleOperation(CrdtTextOperationInsert(b3, b2, 'd'));
 
-      final value = resolver.getTextContentLatest();
-      expect(value, equals('cdab'));
-    });
-
-    test('returns a subset of latest content', () {
-      // insert abc. delete b
-      resolver.handleOp(CrdtTextOpInsert(LogicalClock(0, 0), null, 'a'));
-      resolver.handleOp(
-        CrdtTextOpInsert(LogicalClock(1, 0), LogicalClock(0, 0), 'b'),
-      );
-      resolver.handleOp(
-        CrdtTextOpInsert(LogicalClock(2, 0), LogicalClock(1, 0), 'c'),
-      );
-      resolver.handleOp(
-        CrdtTextOpDelete(LogicalClock(3, 0), LogicalClock(1, 0)),
-      );
-
-      final value = resolver.getTextContentLatest(maxLen: 1);
-      expect(value, equals('a'));
+      expect(resolver.resolveToStringSlow(), equals('cdab'));
     });
 
     test('serialization of changes', () {
       final original = CrdtTextChange([
-        CrdtTextOpInsert(LogicalClock(0, 0), null, 'H'),
-        CrdtTextOpInsert(LogicalClock(1, 0), LogicalClock(0, 0), 'i'),
+        CrdtTextOperationInsert(LogicalClock(counter: 0, actor: 0), null, 'H'),
+        CrdtTextOperationInsert(
+          LogicalClock(counter: 1, actor: 0),
+          LogicalClock(counter: 0, actor: 0),
+          'i',
+        ),
       ]);
 
       final serialized = json.encode(original.toJson());
@@ -199,10 +202,13 @@ void main() {
 
       final deserialized = CrdtTextChange.fromJson(json.decode(serialized));
       expect(
-        deserialized.ops.first.toString(),
-        equals(original.ops.first.toString()),
+        deserialized.operations.first.toString(),
+        equals(original.operations.first.toString()),
       );
-      expect(original.ops.length, equals(deserialized.ops.length));
+      expect(
+        original.operations.length,
+        equals(deserialized.operations.length),
+      );
     });
   });
 
@@ -214,12 +220,32 @@ void main() {
       changeFlusher = TestChangeFlusher();
 
       // snapshot "Hello"
-      final snapshot = CrdtTextSnapshot.evaluateVectorClock([
-        CrdtTextRow(LogicalClock(0, 0), null, 'H', null),
-        CrdtTextRow(LogicalClock(1, 0), LogicalClock(0, 0), 'e', null),
-        CrdtTextRow(LogicalClock(2, 0), LogicalClock(1, 0), 'l', null),
-        CrdtTextRow(LogicalClock(3, 0), LogicalClock(2, 0), 'l', null),
-        CrdtTextRow(LogicalClock(4, 0), LogicalClock(3, 0), 'o', null),
+      final snapshot = CrdtTextSnapshot.withoutVectorClock([
+        CrdtTextRow(LogicalClock(counter: 0, actor: 0), null, 'H', null),
+        CrdtTextRow(
+          LogicalClock(counter: 1, actor: 0),
+          LogicalClock(counter: 0, actor: 0),
+          'e',
+          null,
+        ),
+        CrdtTextRow(
+          LogicalClock(counter: 2, actor: 0),
+          LogicalClock(counter: 1, actor: 0),
+          'l',
+          null,
+        ),
+        CrdtTextRow(
+          LogicalClock(counter: 3, actor: 0),
+          LogicalClock(counter: 2, actor: 0),
+          'l',
+          null,
+        ),
+        CrdtTextRow(
+          LogicalClock(counter: 4, actor: 0),
+          LogicalClock(counter: 3, actor: 1),
+          'o',
+          null,
+        ),
       ]);
 
       text = CrdtText.fromSnapshot(
