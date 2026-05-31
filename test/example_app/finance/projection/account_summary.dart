@@ -6,8 +6,10 @@ import '../stream_id/account_stream_id.dart';
 
 class AccountSummaryProjection implements Projection<AccountEvent, String> {
   final AccountsSummaryReadModel _repo;
+  final _failureHandler =
+      StandardProjectionFailureHandler(); // this must be created once!
 
-  const AccountSummaryProjection(this._repo);
+  AccountSummaryProjection(this._repo);
 
   @override
   String get name => 'account-summary';
@@ -17,6 +19,9 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
 
   @override
   get streamIdPattern => accountStreamId;
+
+  @override
+  get failureHandler => _failureHandler;
 
   @override
   Future<void> reset() async {

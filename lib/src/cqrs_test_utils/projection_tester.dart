@@ -1,9 +1,7 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/cqrs/projection/projection_failure_state.dart';
 
 class ProjectionTester<Event, StreamIdData> {
   final Projection<Event, StreamIdData> projection;
-  final ProjectionFailureState failureState = ProjectionFailureState();
   final List<_ProjectionTestEvent<Event, StreamIdData>> _events = [];
 
   ProjectionTester(this.projection);
@@ -73,7 +71,7 @@ class ProjectionTester<Event, StreamIdData> {
 
       return true;
     } catch (e, stackTrace) {
-      failureState.capture(e, stackTrace);
+      projection.failureHandler.capture(e, stackTrace);
       return false;
     }
   }

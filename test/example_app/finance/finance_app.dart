@@ -7,7 +7,9 @@ import 'command/open_account.dart';
 import 'command/rename_account.dart';
 import 'command/transfer_funds_between_accounts.dart';
 import 'projection/account_summary.dart';
+import 'projection/total_balance.dart';
 import 'read_model/accounts_summary_read_model.dart';
+import 'read_model/total_balance_read_model.dart';
 
 class FinanceApp {
   late final CqrsRuntime _cqrsRuntime;
@@ -19,19 +21,24 @@ class FinanceApp {
     required CqrsRuntimeConfig config,
     required DeviceId deviceId,
     required AccountsSummaryReadModel accountSummaryRepo,
+    required TotalBalanceReadModel totalBalanceRepo,
   }) {
     final accountSummaryProjection = AccountSummaryProjection(
       accountSummaryRepo,
     );
+    final totalBalanceProjection = TotalBalanceProjection(totalBalanceRepo);
 
-    readModel = ReadModels(accountsSummary: accountSummaryRepo);
+    readModel = ReadModels(
+      accountsSummary: accountSummaryRepo,
+      totalBalance: totalBalanceRepo,
+    );
 
     _cqrsRuntime = CqrsRuntime(
       config: config,
       thisDeviceId: deviceId,
       runtimeName: 'finance-main',
       runtimeVersion: 1,
-      projectors: [accountSummaryProjection],
+      projectors: [accountSummaryProjection, totalBalanceProjection],
     );
 
     command = Commands(
@@ -81,6 +88,7 @@ class Commands {
 
 class ReadModels {
   final AccountsSummaryReadModel accountsSummary;
+  final TotalBalanceReadModel totalBalance;
 
-  const ReadModels({required this.accountsSummary});
+  const ReadModels({required this.accountsSummary, required this.totalBalance});
 }

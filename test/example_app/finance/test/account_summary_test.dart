@@ -1,3 +1,4 @@
+import 'package:core/cqrs.dart';
 import 'package:core/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
@@ -24,7 +25,7 @@ void main() {
 
       expect(model.isInitialized, true);
       expect(ok, true);
-      expect(tester.failureState.hasError, false);
+      expect(tester.projection.failureHandler.hasErrored(), false);
     });
 
     test('applies all events', () async {
@@ -39,7 +40,7 @@ void main() {
       expect(model.isInitialized, true);
 
       expect(ok, true);
-      expect(tester.failureState.hasError, false);
+      expect(projection.failureHandler.hasErrored(), false);
 
       final accounts = await model.getAllSortedByNameDesc();
 
@@ -59,9 +60,12 @@ void main() {
       expect(model.isInitialized, true);
 
       expect(ok, false);
-      expect(tester.failureState.hasError, true);
-      // TODO: this is a bad user experience for sure
-      expect(tester.failureState.message, "Exception: invalid getAndStore id");
+      expect(projection.failureHandler.hasErrored(), true);
+      // TODO: this needs improvement for sure
+      final stdError =
+          (projection.failureHandler as StandardProjectionFailureHandler)
+              .error!;
+      expect(stdError.error.toString(), "Exception: invalid getAndStore id");
     });
   });
 }

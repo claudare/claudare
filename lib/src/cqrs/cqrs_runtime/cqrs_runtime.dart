@@ -8,7 +8,6 @@ import 'package:core/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
-import 'package:core/src/cqrs/projection/projection_failure_state.dart';
 import 'package:core/src/cqrs/projection/projection_router.dart';
 import 'package:core/src/cqrs/projection/projection_runtime.dart';
 import 'package:core/time_provider.dart';
@@ -39,11 +38,8 @@ class CqrsRuntime {
     _projectionRunners =
         projectors
             .map(
-              (projector) => ProjectionRuntime(
-                projector,
-                ProjectionFailureState(), // TODO: this needs to be more advanced
-                _config.eventStorePageSize,
-              ),
+              (projector) =>
+                  ProjectionRuntime(projector, _config.eventStorePageSize),
             )
             .toList();
   }
@@ -54,11 +50,15 @@ class CqrsRuntime {
   // Hacky way to force reload.
   // Since runtime repo is involved, this is resilient to restarts
   Future<void> rerunProjections() async {
+    print('runtime $runtimeName@$runtimeVersion: rerunning all projections');
     await _catchupAllProjections(force: true);
+    print('runtime $runtimeName@$runtimeVersion: rerunned all projections');
   }
 
   Future<void> initializeProjections() async {
+    print('runtime $runtimeName@$runtimeVersion: initializing all projections');
     await _catchupAllProjections(force: false);
+    print('runtime $runtimeName@$runtimeVersion: initialized all projections');
   }
 
   Future<void> _catchupAllProjections({required bool force}) async {
@@ -70,21 +70,28 @@ class CqrsRuntime {
 
     if (doReset) {
       await Future.wait(
-        _projectionRunners.map((runner) => runner.resetProjection()),
+        _projectionRunners.map((runner) {
+          print(
+            'runtime $runtimeName@$runtimeVersion: reseting projection: ${runner.projectionName}',
+          );
+          return runner.resetProjection();
+        }),
       );
     }
 
     await Future.wait(
-      _projectionRunners.map((runner) => runner.catchupSelfLoad(_eventStore)),
+      _projectionRunners.map((runner) {
+        print(
+          'runtime $runtimeName@$runtimeVersion: catching up projection: ${runner.projectionName}',
+        );
+
+        return runner.catchupSelfLoad(_eventStore);
+      }),
     );
 
     if (doReset) {
       await _runtimeRepo.setRuntimeVersion(runtimeName, runtimeVersion);
     }
-  }
-
-  Future<void> gracefulShutdown() async {
-    // TODO: wait for runners to complete
   }
 
   BoundCommand<Input> bindCommand<Input extends CommandInput>(

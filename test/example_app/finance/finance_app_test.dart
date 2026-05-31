@@ -1,5 +1,4 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
@@ -12,6 +11,7 @@ import 'command/rename_account.dart';
 import 'command/transfer_funds_between_accounts.dart';
 import 'finance_app.dart';
 import 'read_model/accounts_summary_read_model.dart';
+import 'read_model/total_balance_read_model.dart';
 
 void main() {
   group('Finance App Example', () {
@@ -22,6 +22,7 @@ void main() {
     late TimeProvider commandTimeProvider;
     late IdGenerator commandIdGenerator;
     late AccountsSummaryReadModel accountsSummaryRepo;
+    late TotalBalanceReadModel totalBalanceRepo;
     late FinanceApp app;
 
     setUp(() async {
@@ -30,6 +31,7 @@ void main() {
       commandTimeProvider = FakeTimeProviderStatic.zero();
       commandIdGenerator = FakeIdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
+      totalBalanceRepo = TotalBalanceReadModel();
 
       app = FinanceApp(
         config: CqrsRuntimeConfig(
@@ -41,6 +43,7 @@ void main() {
         ),
         deviceId: DeviceId(1),
         accountSummaryRepo: accountsSummaryRepo,
+        totalBalanceRepo: totalBalanceRepo,
       );
       await app.init();
     });
@@ -145,6 +148,30 @@ void main() {
 
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 20);
+    });
+
+    test("eventual consistency", () async {
+      final initialTotalBalance = await app.readModel.totalBalance.get();
+
+      expect(initialTotalBalance, 0);
+
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: "first"),
+      );
+      await app.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: "0", amount: 100),
+      );
+      await app.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: "0", amount: 50),
+      );
+
+      // TODO: currently no way to wait for the eventual projection to stop resolving
+      // this will need to be implemented, atleast for testing
+      await Future.delayed(Duration(milliseconds: 10));
+
+      final newTotalBalance = await app.readModel.totalBalance.get();
+
+      expect(newTotalBalance, 150);
     });
   });
 }

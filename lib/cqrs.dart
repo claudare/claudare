@@ -30,6 +30,9 @@ export 'src/cqrs/command/command_context.dart';
 export 'src/cqrs/projection/projection.dart';
 export 'src/cqrs/projection/projection_checkpoint.dart';
 export 'src/cqrs/projection/sqlite_projection.dart';
+export 'src/cqrs/projection/projection_failure_handler.dart';
+export 'src/cqrs/projection/failure_handler/standard_projection_failure_handler.dart';
+export 'src/cqrs/projection/failure_handler/throwing_projection_failure_handler.dart';
 
 // id pattern
 export 'src/cqrs/stream_id_pattern/stream_id_pattern.dart';
