@@ -44,7 +44,7 @@ dependencies:
   isolate_sqlite:
     git:
       url: git@github.com:claudare/isolate_sqlite.git
-      ref: 0.3.0
+      ref: 0.3.1
 
 dev_dependencies:
   flutter_test:

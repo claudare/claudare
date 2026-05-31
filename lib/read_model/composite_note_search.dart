@@ -13,7 +13,12 @@ class CompositeNoteSearch {
   Future<List<ResolvedNote>> queryComposite(
     String query,
     ResolvedNoteQueryCategory category,
+    ResolvedNoteQueryOrder order,
   ) async {
+    if (query.isEmpty) {
+      return _resolvedNoteReadModel.query(category, order);
+    }
+
     // first search
     final ids = await _searchReadModel.query(query);
 

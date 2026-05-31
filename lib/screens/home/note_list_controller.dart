@@ -10,6 +10,7 @@ class NoteListController extends ChangeNotifier {
   List<ResolvedNote> _noteData = [];
   ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.all;
   ResolvedNoteQueryOrder _order = ResolvedNoteQueryOrder.createdAtDescending;
+  String _search = '';
   bool _isLoading = false;
 
   NoteListController(this.notesRuntime);
@@ -33,6 +34,14 @@ class NoteListController extends ChangeNotifier {
     await reloadNotes();
   }
 
+  Future<void> setSearch(String search) async {
+    if (_search == search) return;
+
+    _search = search;
+
+    await reloadNotes();
+  }
+
   Future<void> reloadNotes() async {
     if (_isLoading) {
       throw Exception('Already loading');
@@ -42,7 +51,12 @@ class NoteListController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final data = await notesRuntime.resolvedNoteReadModel.query(
+      // final data = await notesRuntime.resolvedNoteReadModel.query(
+      //   _category,
+      //   _order,
+      // );
+      final data = await notesRuntime.compositeNoteSearch.queryComposite(
+        _search,
         _category,
         _order,
       );

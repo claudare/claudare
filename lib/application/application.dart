@@ -13,16 +13,14 @@ class Application {
 
   // TODO: this should be an EventStore interface
   final SqliteEventStore eventStore;
-  final IdGenerator idGenerator;
-  final TimeProvider timeProvider;
   final NotesRuntime notesRuntime;
 
   const Application({
     required this.sqliteDb,
     required this.searchDb,
     required this.eventStore,
-    required this.idGenerator,
-    required this.timeProvider,
+    required IdGenerator idGenerator,
+    required TimeProvider timeProvider,
     required this.notesRuntime,
   });
 

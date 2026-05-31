@@ -84,9 +84,11 @@ class SqliteResolvedNoteReadModel implements ResolvedNoteReadModel {
 
   @override
   Future<List<ResolvedNote>> getManyById(List<String> noteIds) async {
+    if (noteIds.isEmpty) return [];
+
     final rows = await _db.query('''
       SELECT
-        note_id, title, content, created_at, updated_at, trashed_at
+        id, title, content, created_at, updated_at, trashed_at
       FROM note
       WHERE id
       IN (${noteIds.map((_) => '?').join(', ')});''', noteIds);
@@ -94,7 +96,7 @@ class SqliteResolvedNoteReadModel implements ResolvedNoteReadModel {
     return rows
         .map(
           (row) => ResolvedNote(
-            noteId: row.field('note_id'),
+            noteId: row.field('id'),
             title: row.field('title'),
             content: row.field('content'),
             createdAt: DateTime.parse(row.field<String>('created_at')),

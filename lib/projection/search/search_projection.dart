@@ -13,11 +13,28 @@ class SearchProjection implements Projection<NoteEvent, String> {
   @override
   // TODO: for now search database is never cleared, as permanent delition is not implemented
   Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
+    print(
+      'applying search projection $noteId, sequence ${metadata.localSequence}',
+    );
     switch (event) {
       case NoteContentUpdated(:final newContent):
-        return _repo.upsertContent(noteId, newContent, metadata.localSequence);
+        return _repo.upsertContent(
+          UpsertInput(
+            noteId: noteId,
+            value: newContent,
+            timestamp: metadata.occuredAt,
+          ),
+          metadata.localSequence,
+        );
       case NoteTitleUpdated(:final newTitle):
-        return _repo.upsertTitle(noteId, newTitle, metadata.localSequence);
+        return _repo.upsertTitle(
+          UpsertInput(
+            noteId: noteId,
+            value: newTitle,
+            timestamp: metadata.occuredAt,
+          ),
+          metadata.localSequence,
+        );
 
       default:
         // no-op

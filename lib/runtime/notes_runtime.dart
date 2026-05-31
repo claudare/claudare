@@ -16,7 +16,7 @@ import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.d
 import 'package:notes_app_v0/read_model/search/search_read_model.dart';
 
 class NotesRuntime {
-  static int runtimeVersion = 4;
+  static int runtimeVersion = 7;
 
   // the read model is exposed directly
   final NoteProjectionRepo _noteProjectionRepo;

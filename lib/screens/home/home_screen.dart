@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onSearchTextChange(String text) {
     // search is its own popup?
 
-    print('SEARCHING $text');
+    _controller.setSearch(text);
   }
 
   @override
