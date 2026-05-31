@@ -81,4 +81,30 @@ class SqliteResolvedNoteReadModel implements ResolvedNoteReadModel {
               : DateTime.parse(row.field<String>('trashed_at')),
     );
   }
+
+  @override
+  Future<List<ResolvedNote>> getManyById(List<String> noteIds) async {
+    final rows = await _db.query('''
+      SELECT
+        note_id, title, content, created_at, updated_at, trashed_at
+      FROM note
+      WHERE id
+      IN (${noteIds.map((_) => '?').join(', ')});''', noteIds);
+
+    return rows
+        .map(
+          (row) => ResolvedNote(
+            noteId: row.field('note_id'),
+            title: row.field('title'),
+            content: row.field('content'),
+            createdAt: DateTime.parse(row.field<String>('created_at')),
+            updatedAt: DateTime.parse(row.field<String>('updated_at')),
+            trashedAt:
+                row.field<String?>('trashed_at') == null
+                    ? null
+                    : DateTime.parse(row.field<String>('trashed_at')),
+          ),
+        )
+        .toList();
+  }
 }

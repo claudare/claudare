@@ -89,7 +89,7 @@ class NoteController extends ChangeNotifier {
       // always flush changes internally before trashing?
       await flushChanges();
 
-      await notesRuntime.commands.deleteNote.runThrowable(
+      await notesRuntime.commands.trashNote.runThrowable(
         TrashNoteInput(noteId: _noteId!),
       );
 

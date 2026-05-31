@@ -9,31 +9,44 @@ import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
 import 'package:notes_app_v0/projection/note/note_projection.dart';
 import 'package:notes_app_v0/projection/note/note_projection_repo.dart';
+import 'package:notes_app_v0/projection/search/search_projection.dart';
+import 'package:notes_app_v0/projection/search/search_projection_repo.dart';
+import 'package:notes_app_v0/read_model/composite_note_search.dart';
 import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes_app_v0/read_model/search/search_read_model.dart';
 
 class NotesRuntime {
-  static int runtimeVersion = 3;
+  static int runtimeVersion = 4;
 
   // the read model is exposed directly
+  final NoteProjectionRepo _noteProjectionRepo;
+  final SearchProjectionRepo _searchProjectionRepo;
+
   final ResolvedNoteReadModel resolvedNoteReadModel;
-  final NoteProjectionRepo noteProjectionRepo;
+  final SearchReadModel searchReadModel;
 
   late final CqrsRuntime _cqrsRuntime;
   late final CqrsCommands commands;
 
+  late final CompositeNoteSearch compositeNoteSearch;
+
   NotesRuntime({
     required CqrsRuntimeConfig cqrsConfig,
-    required this.noteProjectionRepo,
+    required NoteProjectionRepo noteProjectionRepo,
     required this.resolvedNoteReadModel,
-  }) {
+    required SearchProjectionRepo searchProjectionRepo,
+    required this.searchReadModel,
+  }) : _noteProjectionRepo = noteProjectionRepo,
+       _searchProjectionRepo = searchProjectionRepo {
     // where does the deviceId come from?
     // does it come during the init phase or fetched automatically inside the CqrsRuntime?
 
-    final noteProjection = NoteProjection(noteProjectionRepo);
+    final noteProjection = NoteProjection(_noteProjectionRepo);
+    final searchProjection = SearchProjection(_searchProjectionRepo);
 
     _cqrsRuntime = CqrsRuntime(
       config: cqrsConfig,
-      projectors: [noteProjection],
+      projectors: [noteProjection, searchProjection],
       thisDeviceId: DeviceId.unassigned(),
       runtimeName: 'notes',
       runtimeVersion: NotesRuntime.runtimeVersion,
@@ -41,7 +54,7 @@ class NotesRuntime {
 
     commands = CqrsCommands(
       createNote: _cqrsRuntime.bindCommand(CreateNote(), [noteProjection]),
-      deleteNote: _cqrsRuntime.bindCommand(TrashNote(), [noteProjection]),
+      trashNote: _cqrsRuntime.bindCommand(TrashNote(), [noteProjection]),
       restoreNote: _cqrsRuntime.bindCommand(RestoreNote(), [noteProjection]),
       updateNoteContent: _cqrsRuntime.bindCommand(UpdateNoteContent(), [
         noteProjection,
@@ -49,6 +62,11 @@ class NotesRuntime {
       updateNoteTitle: _cqrsRuntime.bindCommand(UpdateNoteTitle(), [
         noteProjection,
       ]),
+    );
+
+    compositeNoteSearch = CompositeNoteSearch(
+      resolvedNoteReadModel,
+      searchReadModel,
     );
   }
 
@@ -62,18 +80,22 @@ class NotesRuntime {
   Future<void> rerunProjections() async {
     await _cqrsRuntime.rerunProjections();
   }
+
+  // commands can be implemented like this too? need to keep projections on top level
+  // BoundCommand<CreateNoteInput> get createNoteCommand =>
+  //     _cqrsRuntime.bindCommand(CreateNote(), []);
 }
 
 class CqrsCommands {
   final BoundCommand<CreateNoteInput> createNote;
-  final BoundCommand<TrashNoteInput> deleteNote;
+  final BoundCommand<TrashNoteInput> trashNote;
   final BoundCommand<RestoreNoteInput> restoreNote;
   final BoundCommand<UpdateNoteContentInput> updateNoteContent;
   final BoundCommand<UpdateNoteTitleInput> updateNoteTitle;
 
   const CqrsCommands({
     required this.createNote,
-    required this.deleteNote,
+    required this.trashNote,
     required this.restoreNote,
     required this.updateNoteContent,
     required this.updateNoteTitle,

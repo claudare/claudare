@@ -3,7 +3,7 @@ part of 'note.dart';
 class NoteTitleUpdated extends NoteEvent {
   static const String kind = 'note.title.updated';
 
-  final String noteId;
+  final String noteId; // TODO: this does not need to be here
   final String newTitle;
 
   const NoteTitleUpdated({required this.noteId, required this.newTitle});

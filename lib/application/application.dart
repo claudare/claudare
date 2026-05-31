@@ -9,6 +9,8 @@ import 'package:path/path.dart' as path;
 
 class Application {
   final IsolateSqlite sqliteDb;
+  final IsolateSqlite searchDb;
+
   // TODO: this should be an EventStore interface
   final SqliteEventStore eventStore;
   final IdGenerator idGenerator;
@@ -17,6 +19,7 @@ class Application {
 
   const Application({
     required this.sqliteDb,
+    required this.searchDb,
     required this.eventStore,
     required this.idGenerator,
     required this.timeProvider,
@@ -24,9 +27,12 @@ class Application {
   });
 
   Future<void> initialize(String applicationDirectory) async {
-    final dbFilename = path.join(applicationDirectory, 'notes.db');
+    final mainDbPath = path.join(applicationDirectory, 'notes.db');
+    await sqliteDb.open(mainDbPath);
 
-    await sqliteDb.open(dbFilename);
+    final searchDbPath = path.join(applicationDirectory, 'search.db');
+    await searchDb.open(searchDbPath);
+
     await eventStore.migrate();
     await notesRuntime.initialize();
     // await Future.delayed(const Duration(seconds: 1));

@@ -57,7 +57,7 @@ class NoteListController extends ChangeNotifier {
 
   Future<void> deleteNotes(List<String> noteIds) async {
     final promises = noteIds.map(
-      (noteId) => notesRuntime.commands.deleteNote.runResult(
+      (noteId) => notesRuntime.commands.trashNote.runResult(
         TrashNoteInput(noteId: noteId),
       ),
     );

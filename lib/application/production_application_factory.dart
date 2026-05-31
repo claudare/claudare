@@ -6,6 +6,7 @@ import 'package:notes_app_v0/application/application.dart';
 import 'package:notes_app_v0/application/application_factory.dart';
 import 'package:notes_app_v0/repo/note/sqlite_note_projection_repo.dart';
 import 'package:notes_app_v0/repo/note/sqlite_resolved_note_repo.dart';
+import 'package:notes_app_v0/repo/search/sqlite_search_repo.dart';
 import 'package:notes_app_v0/runtime/notes_runtime.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -41,8 +42,14 @@ class ProductionApplicationFactory implements ApplicationFactory {
     final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
     final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
 
+    final searchDb = IsolateSqlite();
+
+    final searchProjectionRepo = SqliteSearchRepo(searchDb);
+    final searchReadModel = SqliteSearchRepo(searchDb);
+
     return Application(
       sqliteDb: sqliteDb,
+      searchDb: searchDb,
       eventStore: eventStore,
       idGenerator: idGenerator,
       timeProvider: timeProvider,
@@ -50,6 +57,8 @@ class ProductionApplicationFactory implements ApplicationFactory {
         cqrsConfig: cqrsConfig,
         noteProjectionRepo: noteProjectionRepo,
         resolvedNoteReadModel: resolvedNoteReadModel,
+        searchProjectionRepo: searchProjectionRepo,
+        searchReadModel: searchReadModel,
       ),
     );
   }
