@@ -3,6 +3,7 @@ import 'package:notes_app_v0/application/application_provider.dart';
 import 'package:notes_app_v0/command/create_note.dart';
 import 'package:notes_app_v0/command/update_note_content.dart';
 import 'package:notes_app_v0/command/update_note_title.dart';
+import 'package:notes_app_v0/screens/error_screen.dart';
 import 'package:notes_app_v0/screens/home/home_screen.dart';
 import 'package:notes_app_v0/util/get_application_directory.dart';
 
@@ -15,15 +16,6 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   // progress state goes in here
-  String _error = '';
-
-  void _onError(dynamic error) {
-    setState(() {
-      _error = error.toString();
-    });
-
-    print('loading encountered an error: $error');
-  }
 
   @override
   void didChangeDependencies() {
@@ -41,6 +33,17 @@ class _LoadingScreenState extends State<LoadingScreen> {
       final baseDir = await getApplicationDirectory();
       await application.initialize(baseDir);
 
+      // TODO: implement proper error handling:
+      // https://docs.flutter.dev/testing/errors#handling-all-types-of-errors
+      // This will only work if there is an issue during initialization
+      application.notesRuntime.setFatalErrorHandler((error) {
+        print('FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted');
+
+        // TODO: the mount does not exist after navigation
+        if (!mounted) return;
+        navigateToErrorScreen(context, error.toString());
+      });
+
       try {
         await application.notesRuntime.commands.createNote.runThrowable(
           CreateNoteInput(noteId: 'test'),
@@ -56,7 +59,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
           ),
         );
       } catch (_) {
-        print('could not insert test data, it was probably already there?');
+        print('test data was not inserted');
       }
 
       if (!mounted) {
@@ -69,18 +72,14 @@ class _LoadingScreenState extends State<LoadingScreen> {
         ),
       );
     } catch (e) {
-      _onError(e);
+      if (!mounted) return;
+      print('error in initialization: $e');
+      navigateToErrorScreen(context, e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_error.isNotEmpty) {
-      return Scaffold(
-        body: Center(child: Text(_error, style: TextStyle(color: Colors.red))),
-      );
-    }
-
     return Scaffold(body: CircularProgressIndicator());
 
     // return Scaffold(

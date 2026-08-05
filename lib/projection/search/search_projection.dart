@@ -7,8 +7,9 @@ import 'package:notes_app_v0/stream_id/note_stream_id.dart';
 // what if more then one event type is needed?
 class SearchProjection implements Projection<NoteEvent, String> {
   final SearchProjectionRepo _repo;
+  final StandardProjectionFailureHandler _failureHandler;
 
-  const SearchProjection(this._repo);
+  const SearchProjection(this._repo, this._failureHandler);
 
   @override
   // TODO: for now search database is never cleared, as permanent delition is not implemented
@@ -60,4 +61,7 @@ class SearchProjection implements Projection<NoteEvent, String> {
 
   @override
   StreamIdPattern<String> get streamIdPattern => noteStreamId;
+
+  @override
+  ProjectionFailureHandler get failureHandler => _failureHandler;
 }

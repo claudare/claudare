@@ -11,8 +11,9 @@ import 'note_projection_repo.dart';
 /// and the granular CRDT changes. 2 separate read models are used to query it.
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;
+  final StandardProjectionFailureHandler _failureHandler;
 
-  const NoteProjection(this._repo);
+  const NoteProjection(this._repo, this._failureHandler);
 
   @override
   String get name => 'note.complete';
@@ -22,6 +23,9 @@ class NoteProjection implements Projection<NoteEvent, String> {
 
   @override
   StreamIdPattern<String> get streamIdPattern => noteStreamId;
+
+  @override
+  ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
   Future<void> reset() async {
