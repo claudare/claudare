@@ -53,7 +53,7 @@ Stream<StoredEventCommandRead> _scanAll(StreamEventReader reader) async* {
   }
 }
 
-_appendCount(MemoryEventStore store, int count) {
+void _appendCount(MemoryEventStore store, int count) {
   for (var i = 0; i < count; i++) {
     store.testInsertEvent(
       MemoryEventInsert.minimal(

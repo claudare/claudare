@@ -1,5 +1,4 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/cqrs/projection/projection_failure_handler.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract class SqliteProjection<Event, StreamIdData> {

@@ -114,7 +114,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
   _FakeProjectionRuntime({required this.affected, this.immediateDone = true});
 
   @override
-  bool shouldProcess(_, __) => affected;
+  bool shouldProcess(_, _) => affected;
 
   @override
   void enqueue(EventEnvelope event, {void Function()? onDone}) {
