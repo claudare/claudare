@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import '../id_generator.dart';
 import 'random_source.dart';
 
-/// Cryptographically secure RNG (production default).
+/// Secure RNG used by the production ID generator.
 class SecureRandomSource extends RandomSource {
   const SecureRandomSource();
 

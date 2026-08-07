@@ -6,9 +6,7 @@ import 'random_source/random_source.dart';
 
 import 'random_source/secure_random_source.dart';
 
-// 16 bytes (128 bits) random ID generator.
-// Uses secure source by default, but this should not be used for
-// cryptographic operations. Use libsodium instead.
+/// Generates random 16-byte identifiers.
 class RandomIdGenerator implements IdGenerator {
   final RandomSource randomSource;
 
