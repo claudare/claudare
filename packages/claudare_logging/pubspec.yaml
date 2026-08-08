@@ -1,0 +1,15 @@
+name: claudare_logging
+description: Explicit logging abstractions for Claudare packages.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  logging: ^1.3.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.24.0

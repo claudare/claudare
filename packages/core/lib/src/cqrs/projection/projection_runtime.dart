@@ -7,16 +7,28 @@ import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/cqrs/projection/projection_sink.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:core/src/utils/async_fifo_queue.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 
 import 'projection_failure_handler.dart';
 
 class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   final Projection<TEvents, TIdData> _projection;
   final int _pageSize;
+  final Logger _logger;
+  final String _runtimeName;
+  final int _runtimeVersion;
 
   late final AsyncFIFOQueue<QueueItem<TEvents, TIdData>> _queue;
 
-  ProjectionRuntime(this._projection, this._pageSize) {
+  ProjectionRuntime(
+    this._projection,
+    this._pageSize, {
+    required Logger logger,
+    required String runtimeName,
+    required int runtimeVersion,
+  }) : _logger = logger,
+       _runtimeName = runtimeName,
+       _runtimeVersion = runtimeVersion {
     _queue = AsyncFIFOQueue<QueueItem<TEvents, TIdData>>(
       (v) => _handleApply(v),
     );
@@ -75,8 +87,9 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
       if (!checkpoint.isProjectionInitialized) {
         // make sure when tables are created and ready to return zero value instead of null.
-        print(
-          "Warning: Projection ${_projection.name} was not initialized when catchupSelfLoad was called",
+        _logger.warning(
+          'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
+          'was not initialized during catch-up; resetting it',
         );
         await _projection.reset();
       }

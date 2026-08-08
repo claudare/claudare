@@ -38,8 +38,13 @@ class CqrsRuntime {
     _projectionRunners =
         projectors
             .map(
-              (projector) =>
-                  ProjectionRuntime(projector, _config.eventStorePageSize),
+              (projector) => ProjectionRuntime(
+                projector,
+                _config.eventStorePageSize,
+                logger: _config.logger,
+                runtimeName: runtimeName,
+                runtimeVersion: runtimeVersion,
+              ),
             )
             .toList();
   }
@@ -50,15 +55,23 @@ class CqrsRuntime {
   // Hacky way to force reload.
   // Since runtime repo is involved, this is resilient to restarts
   Future<void> rerunProjections() async {
-    print('runtime $runtimeName@$runtimeVersion: rerunning all projections');
+    _config.logger.info(
+      'runtime $runtimeName@$runtimeVersion: rerunning all projections',
+    );
     await _catchupAllProjections(force: true);
-    print('runtime $runtimeName@$runtimeVersion: rerunned all projections');
+    _config.logger.info(
+      'runtime $runtimeName@$runtimeVersion: reran all projections',
+    );
   }
 
   Future<void> initializeProjections() async {
-    print('runtime $runtimeName@$runtimeVersion: initializing all projections');
+    _config.logger.info(
+      'runtime $runtimeName@$runtimeVersion: initializing all projections',
+    );
     await _catchupAllProjections(force: false);
-    print('runtime $runtimeName@$runtimeVersion: initialized all projections');
+    _config.logger.info(
+      'runtime $runtimeName@$runtimeVersion: initialized all projections',
+    );
   }
 
   Future<void> _catchupAllProjections({required bool force}) async {
@@ -71,8 +84,8 @@ class CqrsRuntime {
     if (doReset) {
       await Future.wait(
         _projectionRunners.map((runner) {
-          print(
-            'runtime $runtimeName@$runtimeVersion: reseting projection: ${runner.projectionName}',
+          _config.logger.debug(
+            'runtime $runtimeName@$runtimeVersion: resetting projection: ${runner.projectionName}',
           );
           return runner.resetProjection();
         }),
@@ -81,7 +94,7 @@ class CqrsRuntime {
 
     await Future.wait(
       _projectionRunners.map((runner) {
-        print(
+        _config.logger.debug(
           'runtime $runtimeName@$runtimeVersion: catching up projection: ${runner.projectionName}',
         );
 

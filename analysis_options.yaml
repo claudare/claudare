@@ -15,7 +15,9 @@ include: package:lints/recommended.yaml
 
 linter:
   rules:
+    - avoid_print
     - camel_case_types
+    - depend_on_referenced_packages
     - unawaited_futures
 
 analyzer:
@@ -29,4 +31,3 @@ analyzer:
 
 # For additional information about configuring this file, see
 # https://dart.dev/guides/language/analysis-options
-

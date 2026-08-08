@@ -2,6 +2,7 @@ import 'package:core/cqrs.dart';
 import 'package:core/src/device_id.dart';
 import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:test/test.dart';
 
 import 'command/atm_depost.dart';
@@ -37,6 +38,7 @@ void main() {
         config: CqrsRuntimeConfig(
           eventStore: eventStore,
           runtimeRepo: runtimeRepo,
+          logger: const NoopLogger(),
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
           eventStorePageSize: 10,
@@ -92,9 +94,6 @@ void main() {
 
       final secondAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(secondAccounts, hasLength(2));
-
-      // print("FIRST: ${secondAccounts.first}");
-      // print("SECOND: ${secondAccounts.last}");
 
       expect(secondAccounts.first.name, equals("renamed"));
       expect(secondAccounts.first.balance, 70);
