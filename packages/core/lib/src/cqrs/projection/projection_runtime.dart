@@ -121,7 +121,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   }
 
   Future<void> _handleApply(QueueItem<TEvents, TIdData> item) async {
-    assert(!projectionFailureHandler.hasErrored(), "must not apply on error");
+    assert(!projectionFailureHandler.hasErrored(), 'must not apply on error');
     if (projectionFailureHandler.hasErrored()) {
       return;
     }

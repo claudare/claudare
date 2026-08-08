@@ -56,7 +56,7 @@ class EventStoreSafe implements EventStore {
     } on ConcurrencyProblem {
       throw ConcurrencyProblem();
     } catch (cause) {
-      throw EventStoreException("Failed to multi append events", cause: cause);
+      throw EventStoreException('Failed to multi append events', cause: cause);
     }
   }
 
@@ -69,7 +69,7 @@ class EventStoreSafe implements EventStore {
     try {
       return await _store.getLocalEvents(patternFilter, sequenceNumber, count);
     } catch (cause) {
-      throw EventStoreException("Failed to get global events", cause: cause);
+      throw EventStoreException('Failed to get global events', cause: cause);
     }
   }
 
@@ -81,7 +81,7 @@ class EventStoreSafe implements EventStore {
       return await _store.getLocalLastEvent(patternFilter);
     } catch (cause) {
       throw EventStoreException(
-        "Failed to get global last event",
+        'Failed to get global last event',
         cause: cause,
       );
     }
@@ -92,7 +92,7 @@ class EventStoreSafe implements EventStore {
     try {
       return await _store.getStatistics();
     } catch (cause) {
-      throw EventStoreException("Failed to get statistics", cause: cause);
+      throw EventStoreException('Failed to get statistics', cause: cause);
     }
   }
 
@@ -101,7 +101,7 @@ class EventStoreSafe implements EventStore {
     try {
       await _store.reset();
     } catch (cause) {
-      throw EventStoreException("Failed to reset", cause: cause);
+      throw EventStoreException('Failed to reset', cause: cause);
     }
   }
 }

@@ -27,7 +27,7 @@ class StandardProjectionFailureHandler implements ProjectionFailureHandler {
   @override
   void capture(Object error, StackTrace stackTrace) {
     if (_stdError != null) {
-      throw StateError("StandardProjectionFailureHandler already has an error");
+      throw StateError('StandardProjectionFailureHandler already has an error');
     }
 
     // only first error will be saved

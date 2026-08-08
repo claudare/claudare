@@ -321,7 +321,7 @@ class MemoryEvent {
 
   @override
   String toString() =>
-      "MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $streamVersion)";
+      'MemoryEvent(streamId: $streamId, kind: $kind, detail: $detail, createdAt: $createdAt, deviceId: $deviceId, deviceSequence: $deviceSequence, causalSequence: $causalSequence, localSequence: $localSequence, localVersion: $streamVersion)';
 }
 
 class MemoryEventInsert {
@@ -345,7 +345,7 @@ class MemoryEventInsert {
     required this.deviceId,
     required this.streamId,
     required this.occuredAt,
-    this.kind = "test",
+    this.kind = 'test',
     this.streamVersion,
     Uint8List? detail,
   }) : detail = detail ?? JsonConverter.encode({});
@@ -382,7 +382,7 @@ class MemoryCommand {
 
   @override
   String toString() =>
-      "MemoryCommand(kind: $kind, detail: $detail, startedAt: $startedAt, completedAt: $completedAt, dependencies: $dependencies, deviceId: $deviceId, deviceSequence: $deviceSequence, localSequence: $localSequence, nackReason: $nackReason, exception: $exception)";
+      'MemoryCommand(kind: $kind, detail: $detail, startedAt: $startedAt, completedAt: $completedAt, dependencies: $dependencies, deviceId: $deviceId, deviceSequence: $deviceSequence, localSequence: $localSequence, nackReason: $nackReason, exception: $exception)';
 }
 
 class MemoryCommandInsert {

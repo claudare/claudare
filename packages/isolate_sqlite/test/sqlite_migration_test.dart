@@ -19,7 +19,7 @@ void main() {
       ..add(
         SqliteMigration(1, (tx) {
           tx.execute('CREATE TABLE t1 (id TEXT PRIMARY KEY, name STRING)');
-          tx.execute("CREATE INDEX idx_name ON t1(name);");
+          tx.execute('CREATE INDEX idx_name ON t1(name);');
         }),
       )
       ..add(
@@ -63,7 +63,7 @@ void main() {
       ..add(
         SqliteMigration(1, (tx) async {
           tx.execute('CREATE TABLE t1 (id TEXT PRIMARY KEY, name STRING)');
-          tx.execute("CREATE INDEX idx_name ON t1(name);");
+          tx.execute('CREATE INDEX idx_name ON t1(name);');
           tx.execute('INSERT INTO t1 (id, name) VALUES (?, ?)', ['1', 'Alice']);
           tx.execute('INSERT INTO t1 (id, name) VALUES (?, ?)', ['2', 'Bob']);
         }),

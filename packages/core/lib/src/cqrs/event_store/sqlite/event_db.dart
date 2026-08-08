@@ -13,10 +13,10 @@ import 'package:core/src/device_id.dart';
 import 'package:core/utils.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
-const appId = "TODO";
+const appId = 'TODO';
 
 final migrations =
-    SqliteMigrations(migrationTable: "migrations_event_store")
+    SqliteMigrations(migrationTable: 'migrations_event_store')
       ..add(
         SqliteMigration(1, (tx) {
           tx.execute('''CREATE TABLE stream(
@@ -110,7 +110,7 @@ class EventDb {
   ) async {
     // could transact here!
     final originatingStreamVersion = await _db.queryValue<int?>(
-      "SELECT version FROM stream WHERE stream_id = ?",
+      'SELECT version FROM stream WHERE stream_id = ?',
       [streamId],
     );
 
@@ -119,7 +119,7 @@ class EventDb {
     }
 
     final eventsResult = await _db.query(
-      "SELECT kind, detail, occured_at, device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? AND stream_version > ? ORDER BY stream_version ASC LIMIT ?",
+      'SELECT kind, detail, occured_at, device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? AND stream_version > ? ORDER BY stream_version ASC LIMIT ?',
       [streamId, versionCursor, count],
     );
 
@@ -153,7 +153,7 @@ class EventDb {
 
   Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
     final row = await _db.queryRow(
-      "SELECT device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? ORDER BY stream_version DESC LIMIT 1",
+      'SELECT device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? ORDER BY stream_version DESC LIMIT 1',
       [streamId],
     );
 
@@ -220,7 +220,7 @@ class EventDb {
         }
 
         final localSequence = tx.queryValue<int?>(
-          """INSERT INTO event (
+          '''INSERT INTO event (
             stream_id,
             stream_version,
             kind,
@@ -240,7 +240,7 @@ class EventDb {
             COALESCE((SELECT next_seq FROM next_device_sequence WHERE device_id = ?), 1),
             COALESCE((SELECT next_seq FROM next_causal_sequence WHERE device_id = ?), 1),
             (SELECT next_seq FROM next_local_sequence)
-          ) RETURNING local_sequence; """,
+          ) RETURNING local_sequence; ''',
           [
             event.streamId,
             currentVersion + 1,
@@ -322,7 +322,7 @@ class EventDb {
   ) async {
     final filterSql = patternToSQL(patternFilter);
     final values = await _db.query(
-      """SELECT
+      '''SELECT
         stream_id,
         kind,
         detail,
@@ -333,7 +333,7 @@ class EventDb {
         $filterSql AND
         local_sequence > ?
       ORDER BY local_sequence ASC
-      LIMIT ?;""",
+      LIMIT ?;''',
       [sequenceNumber, count],
     );
 
@@ -361,13 +361,13 @@ class EventDb {
     PatternFilter patternFilter,
   ) async {
     final filterSql = patternToSQL(patternFilter);
-    final value = await _db.queryValue<int?>("""SELECT
+    final value = await _db.queryValue<int?>('''SELECT
         local_sequence
       FROM event
       WHERE
         $filterSql
       ORDER BY local_sequence DESC
-      LIMIT 1;""");
+      LIMIT 1;''');
 
     return GetLocalLastEventResult(localSequence: value ?? 0);
   }

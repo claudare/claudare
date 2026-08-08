@@ -22,7 +22,7 @@ class GlobalEventReader {
   }
 
   StoredEventProjectionRead? next() {
-    assert(_current != null, "No iterator available");
+    assert(_current != null, 'No iterator available');
 
     if (!_current!.moveNext()) {
       return null;

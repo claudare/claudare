@@ -50,7 +50,7 @@ void main() {
 
   tearDown(() => repo.db.close());
 
-  group("errors", () {
+  group('errors', () {
     test('SqliteException is returned in full', () async {
       await repo.insert('1', 'first');
 
@@ -58,16 +58,16 @@ void main() {
         await repo.insert('1', 'dupe');
         fail('should have thrown');
       } on SqliteException catch (e) {
-        expect(e.message, "UNIQUE constraint failed: t.id");
-        expect(e.explanation, "constraint failed (code 1555)");
+        expect(e.message, 'UNIQUE constraint failed: t.id');
+        expect(e.explanation, 'constraint failed (code 1555)');
         expect(
           e.extendedResultCode,
           SqlExtendedError.SQLITE_CONSTRAINT_PRIMARYKEY,
         );
         expect(e.resultCode, 19);
         expect(e.offset, isNull);
-        expect(e.operation, "executing statement");
-        expect(e.causingStatement, "INSERT INTO t (id, val) VALUES (?, ?)");
+        expect(e.operation, 'executing statement');
+        expect(e.causingStatement, 'INSERT INTO t (id, val) VALUES (?, ?)');
         expect(e.parametersToStatement, equals(['1', 'dupe']));
       }
     });

@@ -42,5 +42,5 @@ class EventDependency {
   );
 
   @override
-  String toString() => "EventDependency(vector: $_vector)";
+  String toString() => 'EventDependency(vector: $_vector)';
 }

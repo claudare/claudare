@@ -50,26 +50,26 @@ void main() {
       await app.init();
     });
 
-    test("app initializes", () async {});
+    test('app initializes', () async {});
 
-    test("rough happy path", () async {
+    test('rough happy path', () async {
       // first ops
       await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: "first"),
+        OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "0", amount: 100),
+        AtmDepositInput(accountId: '0', amount: 100),
       );
       await app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "0", amount: 10),
+        AtmWithdrawalInput(accountId: '0', amount: 10),
       );
 
       final firstAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(firstAccounts, hasLength(1));
-      expect(firstAccounts.first.name, equals("first"));
+      expect(firstAccounts.first.name, equals('first'));
       expect(
         firstAccounts.first.accountId,
-        "0",
+        '0',
       ); // TODO: work on better testing for this
       expect(firstAccounts.first.balance, 90);
       expect(firstAccounts.first.transactionCount, 2);
@@ -78,37 +78,37 @@ void main() {
 
       // second ops
       await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: "second"),
+        OpenAccountInput(name: 'second'),
       );
 
       await app.command.transferFundsBetweenAccounts.runThrowable(
         TransferFundsBetweenAccountsInput(
-          fromAccountId: "0",
-          toAccountId: "1",
+          fromAccountId: '0',
+          toAccountId: '1',
           amount: 20,
         ),
       );
       await app.command.renameAccount.runThrowable(
-        RenameAccountInput(accountId: "0", newName: "renamed"),
+        RenameAccountInput(accountId: '0', newName: 'renamed'),
       );
 
       final secondAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(secondAccounts, hasLength(2));
 
-      expect(secondAccounts.first.name, equals("renamed"));
+      expect(secondAccounts.first.name, equals('renamed'));
       expect(secondAccounts.first.balance, 70);
 
-      expect(secondAccounts.last.name, equals("second"));
+      expect(secondAccounts.last.name, equals('second'));
       expect(secondAccounts.last.balance, 20);
     });
 
-    test("handles negative balance operations", () async {
+    test('handles negative balance operations', () async {
       await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: "first"),
+        OpenAccountInput(name: 'first'),
       );
       expect(
         () => app.command.atmWithdrawal.runThrowable(
-          AtmWithdrawalInput(accountId: "0", amount: 40),
+          AtmWithdrawalInput(accountId: '0', amount: 40),
         ),
         throwsA(
           isA<CommandNack>().having(
@@ -120,19 +120,19 @@ void main() {
       );
     });
 
-    test("handles concurrency errors", () async {
+    test('handles concurrency errors', () async {
       await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: "first"),
+        OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "0", amount: 100),
+        AtmDepositInput(accountId: '0', amount: 100),
       );
 
       final f1 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "0", amount: 80),
+        AtmWithdrawalInput(accountId: '0', amount: 80),
       );
       final f2 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: "0", amount: 80),
+        AtmWithdrawalInput(accountId: '0', amount: 80),
       );
 
       // Attach handlers immediately. Ugly but works
@@ -149,19 +149,19 @@ void main() {
       expect(accounts.single.balance, 20);
     });
 
-    test("eventual consistency", () async {
+    test('eventual consistency', () async {
       final initialTotalBalance = await app.readModel.totalBalance.get();
 
       expect(initialTotalBalance, 0);
 
       await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: "first"),
+        OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "0", amount: 100),
+        AtmDepositInput(accountId: '0', amount: 100),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: "0", amount: 50),
+        AtmDepositInput(accountId: '0', amount: 50),
       );
 
       // TODO: currently no way to wait for the eventual projection to stop resolving

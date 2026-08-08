@@ -25,21 +25,21 @@ void main() {
         await factory.cleanup();
       });
 
-      test("get empty stream events", () async {
-        final res = await store.getStreamEvents("non-existing", 10, 0);
+      test('get empty stream events', () async {
+        final res = await store.getStreamEvents('non-existing', 10, 0);
 
         expect(res.originatingStreamVersion, 0);
         expect(res.events.length, 0);
       });
 
-      test("get empty stream info", () async {
-        final res = await store.getStreamInfo("non-existing");
+      test('get empty stream info', () async {
+        final res = await store.getStreamInfo('non-existing');
 
         expect(res, isNull);
       });
 
-      test("single insertion", () async {
-        final streamId = "test";
+      test('single insertion', () async {
+        final streamId = 'test';
         final deviceId = DeviceId(1);
         final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
         final t1 = DateTime.fromMillisecondsSinceEpoch(1000, isUtc: true);
@@ -53,7 +53,7 @@ void main() {
               StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
             ],
             events: [
-              _fakeEvent(streamId: streamId, kind: "test", occuredAt: t2),
+              _fakeEvent(streamId: streamId, kind: 'test', occuredAt: t2),
             ],
           ),
         );
@@ -73,8 +73,8 @@ void main() {
         expect(e.occuredAt, t2);
       });
 
-      test("get stream events", () async {
-        final streamId = "test";
+      test('get stream events', () async {
+        final streamId = 'test';
         final t0 = DateTime.fromMillisecondsSinceEpoch(0);
         final t1 = DateTime.fromMillisecondsSinceEpoch(1000);
         final t2 = DateTime.fromMillisecondsSinceEpoch(2000);
@@ -87,8 +87,8 @@ void main() {
               StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
             ],
             events: [
-              _fakeEvent(streamId: streamId, kind: "test-1", occuredAt: t2),
-              _fakeEvent(streamId: streamId, kind: "test-2", occuredAt: t2),
+              _fakeEvent(streamId: streamId, kind: 'test-1', occuredAt: t2),
+              _fakeEvent(streamId: streamId, kind: 'test-2', occuredAt: t2),
             ],
           ),
         );
@@ -102,7 +102,7 @@ void main() {
         expect(res.causalSequencePair.sequence, 2);
       });
 
-      group("pagination", () {
+      group('pagination', () {
         late String streamId;
         late DateTime t0;
 
@@ -125,7 +125,7 @@ void main() {
                     6,
                     (i) => _fakeEvent(
                       streamId: streamId,
-                      kind: "event-$i",
+                      kind: 'event-$i',
                       occuredAt: t0,
                     ),
                   ).toList(),
@@ -135,21 +135,21 @@ void main() {
           expect(insertRes.orders, hasLength(6));
         });
 
-        test("in the beginning", () async {
+        test('in the beginning', () async {
           final getRes = await store.getStreamEvents(streamId, 2, 0);
           final events = getRes.events.toList();
 
           expect(getRes.originatingStreamVersion, 6);
           expect(getRes.events.length, 2);
 
-          expect(events[0].encodedEvent.kind, "event-0");
-          expect(events[1].encodedEvent.kind, "event-1");
+          expect(events[0].encodedEvent.kind, 'event-0');
+          expect(events[1].encodedEvent.kind, 'event-1');
 
           expect(events[0].streamVersion, 1);
           expect(events[1].streamVersion, 2);
         });
 
-        test("in the middle", () async {
+        test('in the middle', () async {
           final getRes = await store.getStreamEvents(streamId, 2, 2);
           final events = getRes.events.toList();
 
@@ -163,7 +163,7 @@ void main() {
           expect(events[1].streamVersion, 4);
         });
 
-        test("in the end", () async {
+        test('in the end', () async {
           final getRes = await store.getStreamEvents(streamId, 99, 4);
           final events = getRes.events.toList();
 
@@ -178,7 +178,7 @@ void main() {
         });
       });
 
-      test("concurrency check", () async {
+      test('concurrency check', () async {
         final streamId = 'test';
         final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
@@ -190,7 +190,7 @@ void main() {
               StreamLocalLock(streamId: streamId, originatingStreamVersion: 0),
             ],
             events: [
-              _fakeEvent(streamId: streamId, kind: "event-0", occuredAt: t0),
+              _fakeEvent(streamId: streamId, kind: 'event-0', occuredAt: t0),
             ],
           ),
         );
@@ -210,7 +210,7 @@ void main() {
                 ),
               ],
               events: [
-                _fakeEvent(streamId: streamId, kind: "event-1", occuredAt: t0),
+                _fakeEvent(streamId: streamId, kind: 'event-1', occuredAt: t0),
               ],
             ),
           ),

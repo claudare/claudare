@@ -8,7 +8,7 @@ class FakeIdGeneratorSequential implements IdGenerator {
 
   @override
   String generateId() {
-    return "${sequence++}";
+    return '${sequence++}';
   }
 
   @override

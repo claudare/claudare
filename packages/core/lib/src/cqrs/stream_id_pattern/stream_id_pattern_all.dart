@@ -3,7 +3,7 @@ import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class StreamIdPatternAll extends StreamIdPattern<String> {
   @override
-  final String pattern = "*";
+  final String pattern = '*';
 
   @override
   final PatternFilter filter = PatternFilter.any();

@@ -23,18 +23,18 @@ Future<void> _testRuntimeRepo(
       await cleanup();
     });
 
-    test("gets zero version", () async {
-      final version = await repo.getRuntimeVersion("test");
+    test('gets zero version', () async {
+      final version = await repo.getRuntimeVersion('test');
       expect(version, 0);
     });
 
-    test("sets new version", () async {
+    test('sets new version', () async {
       await repo.setRuntimeVersion('test', 88);
       final version = await repo.getRuntimeVersion('test');
       expect(version, 88);
     });
 
-    test("updates to version", () async {
+    test('updates to version', () async {
       await repo.setRuntimeVersion('test', 1);
       var version = await repo.getRuntimeVersion('test');
       expect(version, 1);

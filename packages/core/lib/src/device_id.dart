@@ -65,5 +65,5 @@ class DeviceId implements Comparable<DeviceId> {
   }
 
   @override
-  String toString() => "DeviceId(value: $value)";
+  String toString() => 'DeviceId(value: $value)';
 }

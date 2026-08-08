@@ -48,9 +48,9 @@ These instructions apply to the entire repository.
 - Pass logging through the explicit `Logger` abstraction required by `core`.
   Use `NoopLogger` or `RecordingLogger` where output is intentionally suppressed
   or inspected, rather than adding ad-hoc prints.
-- Preserve the configured analyzer rules. Dart packages should include the root
-  `analysis_options.yaml`; Flutter apps may retain Flutter-specific lint setup
-  while keeping the repository's strict analyzer errors.
+- Preserve the configured analyzer rules. Every app and package must inherit
+  the root `analysis_options.yaml`; keep shared lint and analyzer policy at the
+  repository root rather than duplicating or overriding it in workspace members.
 
 ## Validation
 

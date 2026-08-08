@@ -84,7 +84,7 @@ class AccountsSummaryReadModel {
   Future<void> store(String accountId, AccountSummary summary) async {
     // should check everywhere
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     assert(accountId == summary.accountId);
@@ -96,14 +96,14 @@ class AccountsSummaryReadModel {
     AccountSummary Function(AccountSummary summary) update,
   ) async {
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     final summary = await get(accountId);
     if (summary == null) {
       // He does not throw, uses zero value instead
       // I dont want to define zero values as it could be dangerous in long-term
-      throw Exception("invalid getAndStore id");
+      throw Exception('invalid getAndStore id');
     }
 
     await store(accountId, update(summary));
@@ -113,7 +113,7 @@ class AccountsSummaryReadModel {
 
   Future<AccountSummary?> get(String accountId) async {
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     return summaries[accountId];
@@ -122,7 +122,7 @@ class AccountsSummaryReadModel {
   // implement whatever query capability
   Future<List<AccountSummary>> getAllSortedByNameDesc() async {
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     return summaries.values.toList()..sort((a, b) => a.name.compareTo(b.name));
@@ -130,7 +130,7 @@ class AccountsSummaryReadModel {
 
   Future<List<AccountSummary>> getAllSortedByBalanceDesc() async {
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     return summaries.values.toList()

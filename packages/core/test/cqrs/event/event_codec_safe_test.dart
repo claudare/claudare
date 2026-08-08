@@ -41,7 +41,7 @@ void main() {
 
     // simple all in one test
     test('json roundtrip okay', () {
-      final og = TestEvent(str: "okay");
+      final og = TestEvent(str: 'okay');
 
       final encoded = safe.encode(og);
       final decoded = safe.decode(encoded);
@@ -62,7 +62,7 @@ void main() {
     test('json decode Error is wrapped', () {
       final encoded = EncodedEvent(
         kind: 'test',
-        bytes: JsonConverter.encode({"str": 123}), // number instead of string
+        bytes: JsonConverter.encode({'str': 123}), // number instead of string
       );
 
       expect(() => safe.decode(encoded), throwsA(isA<EventCodecException>()));

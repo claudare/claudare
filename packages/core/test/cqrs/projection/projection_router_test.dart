@@ -136,7 +136,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
 
 EventEnvelope _fakeEvent({required int sequence}) {
   return EventEnvelope(
-    streamIdStr: "",
+    streamIdStr: '',
     streamIdData: null,
     streamIdPattern: StreamIdPatternAll(),
     event: null,

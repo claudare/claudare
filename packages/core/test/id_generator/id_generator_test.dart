@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('IdGenerator', () {
-    test("secure random (default)", () {
+    test('secure random (default)', () {
       final generator = RandomIdGenerator();
 
       // bruteforce it
@@ -16,8 +16,8 @@ void main() {
     test('seeded', () {
       final generator = RandomIdGenerator(randomSource: SeededRandomSource(0));
 
-      expect(generator.generateId(), "jwEcs37HXgmZafciKLgzfg");
-      expect(generator.generateId(), "we2AndvvXh2ESinwvOr-fg");
+      expect(generator.generateId(), 'jwEcs37HXgmZafciKLgzfg');
+      expect(generator.generateId(), 'we2AndvvXh2ESinwvOr-fg');
     });
 
     test('sequential', () {
@@ -25,9 +25,9 @@ void main() {
         randomSource: SequentialRandomSource(),
       );
 
-      expect(generator.generateId(), "AAAAAAAAAAAAAAAAAAAAAA");
-      expect(generator.generateId(), "AAAAAAAAAAAAAAAAAAAAAQ");
-      expect(generator.generateId(), "AAAAAAAAAAAAAAAAAAAAAg");
+      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAA');
+      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAQ');
+      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAg');
     });
 
     test('fake sequential produces deterministic bytes', () {

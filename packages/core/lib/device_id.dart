@@ -1,3 +1,3 @@
 library;
 
-export "src/device_id.dart";
+export 'src/device_id.dart';

@@ -7,7 +7,7 @@ void main() {
   setUp(() async {
     iso = IsolateSqlite();
     await iso.openInMemory();
-    await iso.execute("CREATE TABLE test (id TEXT PRIMARY KEY);");
+    await iso.execute('CREATE TABLE test (id TEXT PRIMARY KEY);');
   });
 
   tearDown(() async {

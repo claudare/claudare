@@ -31,7 +31,7 @@ class TotalBalanceReadModel {
   Future<void> store(int value, int localSequence) async {
     // should check everywhere
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     await Future.delayed(Duration.zero);
@@ -44,7 +44,7 @@ class TotalBalanceReadModel {
 
   Future<int> get() async {
     if (!_isInitialized) {
-      throw StateError("read model not initialized");
+      throw StateError('read model not initialized');
     }
 
     await Future.delayed(Duration.zero);

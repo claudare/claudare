@@ -41,5 +41,5 @@ class StreamIdPatternWildcard extends StreamIdPattern<String> {
   }
 
   @override
-  String toPath(String data) => "$_prefix$data";
+  String toPath(String data) => '$_prefix$data';
 }

@@ -56,7 +56,7 @@ class AccountCodec implements EventCodec<AccountEvent> {
       case AccountRenamed.kind:
         return AccountRenamed.fromJson(map);
       default:
-        throw Exception("unknown event kind ${encoded.kind}");
+        throw Exception('unknown event kind ${encoded.kind}');
     }
   }
 }

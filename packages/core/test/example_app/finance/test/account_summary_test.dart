@@ -31,10 +31,10 @@ void main() {
     test('applies all events', () async {
       final ok =
           await tester
-              .withEvent("1", AccountOpened(name: "first"))
-              .withEvent("1", AccountAtmDeposited(amount: 40))
-              .withEvent("2", AccountOpened(name: "second"))
-              .withEvent("2", AccountRenamed(newName: "second-renamed"))
+              .withEvent('1', AccountOpened(name: 'first'))
+              .withEvent('1', AccountAtmDeposited(amount: 40))
+              .withEvent('2', AccountOpened(name: 'second'))
+              .withEvent('2', AccountRenamed(newName: 'second-renamed'))
               .run();
 
       expect(model.isInitialized, true);
@@ -46,8 +46,8 @@ void main() {
 
       expect(accounts.length, 2);
 
-      expect(accounts[0].name, "first");
-      expect(accounts[1].name, "second-renamed");
+      expect(accounts[0].name, 'first');
+      expect(accounts[1].name, 'second-renamed');
 
       expect(accounts[0].balance, 40);
       expect(accounts[1].balance, 0);
@@ -55,7 +55,7 @@ void main() {
 
     test('handles errors', () async {
       final ok =
-          await tester.withEvent("1", AccountAtmDeposited(amount: 9001)).run();
+          await tester.withEvent('1', AccountAtmDeposited(amount: 9001)).run();
 
       expect(model.isInitialized, true);
 
@@ -65,7 +65,7 @@ void main() {
       final stdError =
           (projection.failureHandler as StandardProjectionFailureHandler)
               .error!;
-      expect(stdError.error.toString(), "Exception: invalid getAndStore id");
+      expect(stdError.error.toString(), 'Exception: invalid getAndStore id');
     });
   });
 }

@@ -57,10 +57,10 @@ class SqliteEventStore implements EventStore {
 
   @override
   Future<GetStatisticsResult> getStatistics() async {
-    final count = await _iso.queryValue<int>("SELECT COUNT(*) FROM event");
+    final count = await _iso.queryValue<int>('SELECT COUNT(*) FROM event');
     // not accurate, but okay for now
     final storageSize = await _iso.queryValue<int>(
-      "SELECT COALESCE(SUM(LENGTH(detail)), 0) FROM event",
+      'SELECT COALESCE(SUM(LENGTH(detail)), 0) FROM event',
     );
 
     return GetStatisticsResult(eventCount: count, storageSize: storageSize);
@@ -69,9 +69,9 @@ class SqliteEventStore implements EventStore {
   @override
   Future<void> reset() async {
     await _iso.transaction((tx) {
-      tx.execute("DELETE FROM command_record");
-      tx.execute("DELETE FROM event");
-      tx.execute("DELETE FROM stream");
+      tx.execute('DELETE FROM command_record');
+      tx.execute('DELETE FROM event');
+      tx.execute('DELETE FROM stream');
     });
   }
 }

@@ -9,10 +9,10 @@ class PatternFilter {
   const PatternFilter.exact(this.pattern) : type = PatternFilterType.exact;
   const PatternFilter.startsWith(this.pattern)
     : type = PatternFilterType.startsWith;
-  const PatternFilter.any() : type = PatternFilterType.any, pattern = "*";
+  const PatternFilter.any() : type = PatternFilterType.any, pattern = '*';
 
   factory PatternFilter.fromString(String value) {
-    final catchAllIndex = value.indexOf("*");
+    final catchAllIndex = value.indexOf('*');
     if (catchAllIndex == -1) {
       return PatternFilter.exact(value);
     }
@@ -28,7 +28,7 @@ class PatternFilter {
   }
 
   bool doesMatchPath(String path) {
-    if (path == "*") {
+    if (path == '*') {
       return true;
     }
 
@@ -46,11 +46,11 @@ class PatternFilter {
   String toString() {
     switch (type) {
       case PatternFilterType.any:
-        return "PatternFilter.any()";
+        return 'PatternFilter.any()';
       case PatternFilterType.startsWith:
-        return "PatternFilter.startsWith($pattern)";
+        return 'PatternFilter.startsWith($pattern)';
       case PatternFilterType.exact:
-        return "PatternFilter.exact($pattern)";
+        return 'PatternFilter.exact($pattern)';
     }
   }
 }

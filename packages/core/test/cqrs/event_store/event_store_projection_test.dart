@@ -16,14 +16,14 @@ void main() {
         await factory.cleanup();
       });
 
-      test("get empty global events", () async {
+      test('get empty global events', () async {
         final res = await store.getLocalEvents(PatternFilter.any(), 0, 10);
 
         expect(res.sequenceNumberCursor, isNull);
         expect(res.events.length, 0);
       });
 
-      test("get empty last global event", () async {
+      test('get empty last global event', () async {
         final res = await store.getLocalLastEvent(PatternFilter.any());
 
         expect(res.localSequence, 0);

@@ -51,18 +51,18 @@ void main() {
     await db.close();
   });
 
-  group("onIsolateInit", () {
-    test("side-effects work across isolate boundaries", () async {
-      expect(await db.queryValue('SELECT next_id()'), "100");
-      expect(await db.queryValue('SELECT next_id()'), "101");
-      expect(await db.queryValue('SELECT next_id()'), "102");
+  group('onIsolateInit', () {
+    test('side-effects work across isolate boundaries', () async {
+      expect(await db.queryValue('SELECT next_id()'), '100');
+      expect(await db.queryValue('SELECT next_id()'), '101');
+      expect(await db.queryValue('SELECT next_id()'), '102');
     });
 
-    test("can use arguments", () async {
+    test('can use arguments', () async {
       expect(await db.queryValue('SELECT double_it(42)'), 84);
     });
 
-    test("can access sideeffects", () async {
+    test('can access sideeffects', () async {
       expect(await db.queryValue('SELECT is_ios()'), 0);
     });
   });

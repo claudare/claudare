@@ -28,14 +28,14 @@ void main() {
     test('happy path', () async {
       commandTester.withEvent(
         accountStreamId,
-        "123",
+        '123',
         accountCodec,
-        AccountOpened(name: "test"),
+        AccountOpened(name: 'test'),
       );
 
       final result = await commandTester.run(
         AtmDeposit(),
-        AtmDepositInput(accountId: "123", amount: 42),
+        AtmDepositInput(accountId: '123', amount: 42),
       );
 
       expect(result.success, isTrue);
@@ -43,7 +43,7 @@ void main() {
       final events = await commandTester.getWrittenEvents(
         accountCodec,
         accountStreamId,
-        "123",
+        '123',
       );
       expect(events, hasLength(1));
       expect(events.first, isA<AccountAtmDeposited>());
@@ -54,7 +54,7 @@ void main() {
     test('exception', () async {
       final result = await commandTester.run(
         AtmDeposit(),
-        AtmDepositInput(accountId: "123", amount: 42),
+        AtmDepositInput(accountId: '123', amount: 42),
       );
 
       expect(result.success, isFalse);
@@ -67,18 +67,18 @@ void main() {
     // also withEvent (untyped!!!)
     test('nack', () async {
       commandTester.withEvent2(
-        "account/123",
+        'account/123',
         accountCodec,
-        AccountOpened(name: "test"),
+        AccountOpened(name: 'test'),
       );
 
       final result = await commandTester.run(
         AtmDeposit(),
-        AtmDepositInput(accountId: "123", amount: -999),
+        AtmDepositInput(accountId: '123', amount: -999),
       );
 
       expect(result.success, isFalse);
-      expect(result.nackReason, "amount must be positive");
+      expect(result.nackReason, 'amount must be positive');
       expect(result.exception, null);
     });
   });

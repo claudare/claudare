@@ -10,7 +10,7 @@ void main() {
     db = IsolateSqlite();
     await db.openInMemory();
     await db.execute(
-      "CREATE TABLE test (text TEXT PRIMARY KEY NOT NULL, integer INTEGER NOT NULL, real REAL NOT NULL, blob BLOB NOT NULL, nullable INTEGER);",
+      'CREATE TABLE test (text TEXT PRIMARY KEY NOT NULL, integer INTEGER NOT NULL, real REAL NOT NULL, blob BLOB NOT NULL, nullable INTEGER);',
     );
   });
 
@@ -22,11 +22,11 @@ void main() {
     final blob = Uint8List.fromList([1, 2, 3]);
 
     await db.execute(
-      "INSERT INTO test (text, integer, real, blob, nullable) VALUES (?, ?, ?, ?, ?)",
+      'INSERT INTO test (text, integer, real, blob, nullable) VALUES (?, ?, ?, ?, ?)',
       ['sqlite', 2, 3.0, blob, null],
     );
 
-    final result = await db.queryRow("SELECT * FROM test WHERE text = ?", [
+    final result = await db.queryRow('SELECT * FROM test WHERE text = ?', [
       'sqlite',
     ]);
 

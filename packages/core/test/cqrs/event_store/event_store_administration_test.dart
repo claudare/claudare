@@ -24,11 +24,11 @@ void main() {
         await factory.cleanup();
       });
 
-      test("statistics", () async {
+      test('statistics', () async {
         final saveResult = await store.saveChanges(
           StoredCommandWrite(
             deviceId: DeviceId(9),
-            encoded: EncodedCommand(kind: "test", bytes: Uint8List(0)),
+            encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
             startedAt: DateTime.now(),
             completedAt: DateTime.now(),
             result: CommandResult.success(),
@@ -61,11 +61,11 @@ void main() {
         expect(statistics.storageSize, equals(10));
       });
 
-      test("reset", () async {
+      test('reset', () async {
         final saveResult = await store.saveChanges(
           StoredCommandWrite(
             deviceId: DeviceId(9),
-            encoded: EncodedCommand(kind: "test", bytes: Uint8List(0)),
+            encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
             startedAt: DateTime.now(),
             completedAt: DateTime.now(),
             result: CommandResult.success(),
