@@ -11,10 +11,7 @@ environment:
 # Add regular dependencies here.
 dependencies:
   mutex: ^3.1.0
-  isolate_sqlite:
-    git:
-      url: git@github.com:claudare/isolate_sqlite.git
-      ref: 0.3.1
+  isolate_sqlite: ^0.3.1
 dev_dependencies:
   lints: ^6.1.0
   test: ^1.24.0

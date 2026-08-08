@@ -153,15 +153,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.5"
-  isolate_sqlite:
-    dependency: transitive
-    description:
-      path: "."
-      ref: "0.3.1"
-      resolved-ref: "93f5498fa82af26b5d743f2f9a1bf5b5440c9e36"
-      url: "git@github.com:claudare/isolate_sqlite.git"
-    source: git
-    version: "0.3.1"
   lints:
     dependency: transitive
     description:

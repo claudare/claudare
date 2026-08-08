@@ -1,6 +1,7 @@
 name: isolate_sqlite
 description: Run an SQLite database in the isolate the easy way.
 version: 0.3.1
+resolution: workspace
 repository: https://github.com/claudare/isolate_sqlite
 license: MIT
 
