@@ -18,17 +18,16 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         error: e,
         stackTrace: st,
       );
-    } catch (e, st) {
-      if (isJsonExceptionLikeError(e)) {
+    } catch (error, stackTrace) {
+      if (isJsonExceptionLikeError(error)) {
         throw EventCodecException(
-          "Failed to encode event (exception-like error)",
+          'Failed to encode event',
           direction: EventCodecDirection.encode,
-          error: e,
-          stackTrace: st,
+          error: error,
+          stackTrace: stackTrace,
         );
       }
-
-      Error.throwWithStackTrace(e, st);
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -43,16 +42,16 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
         error: e,
         stackTrace: st,
       );
-    } catch (e, st) {
-      if (isJsonExceptionLikeError(e)) {
+    } catch (error, stackTrace) {
+      if (isJsonExceptionLikeError(error)) {
         throw EventCodecException(
-          "Failed to decode event of kind '${value.kind}' (exception-like error)",
+          "Failed to decode event of kind '${value.kind}'",
           direction: EventCodecDirection.decode,
-          error: e,
-          stackTrace: st,
+          error: error,
+          stackTrace: stackTrace,
         );
       }
-      Error.throwWithStackTrace(e, st);
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 }

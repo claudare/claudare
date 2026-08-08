@@ -17,6 +17,7 @@ import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
+import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/utils/is_json_exception_like_error.dart';
 
 class CommandExecutor {
@@ -63,21 +64,18 @@ class CommandExecutor {
 
     try {
       await command.handle(input, context);
-    } on ConcurrencyProblem catch (_) {
-      // Do nothing on concurrency problem
-      throw ConcurrencyProblem();
-    } catch (cause, stackTrace) {
-      if (cause is Exception) {
-        await _saveFailedCommand(
-          startedAt,
-          input,
-          CommandResult.exception(exception: cause),
-        );
+    } on ConcurrencyProblem {
+      rethrow;
+    } on EventStoreException {
+      rethrow;
+    } on Exception catch (cause) {
+      await _saveFailedCommand(
+        startedAt,
+        input,
+        CommandResult.exception(exception: cause),
+      );
 
-        throw CommandExecutionException(cause.toString(), cause: cause);
-      }
-
-      Error.throwWithStackTrace(cause, stackTrace);
+      throw CommandExecutionException(cause.toString(), cause: cause);
     }
 
     if (nacker.message != null) {
@@ -101,15 +99,14 @@ class CommandExecutor {
         CommandSerializationException(e.toString(), error: e),
         st,
       );
-    } catch (e, st) {
-      if (isJsonExceptionLikeError(e)) {
+    } catch (error, stackTrace) {
+      if (isJsonExceptionLikeError(error)) {
         Error.throwWithStackTrace(
-          CommandSerializationException(e.toString(), error: e),
-          st,
+          CommandSerializationException(error.toString(), error: error),
+          stackTrace,
         );
       }
-
-      Error.throwWithStackTrace(e, st);
+      Error.throwWithStackTrace(error, stackTrace);
     }
   }
 
@@ -149,30 +146,21 @@ class CommandExecutor {
     }, growable: false);
   }
 
-  /// saves command that fails. This never throws!
   Future<void> _saveFailedCommand<Input extends CommandInput>(
     DateTime startedAt,
     Input input,
     CommandResult result,
   ) async {
-    try {
-      final encoded = _encodeCommand(input);
+    final encoded = _encodeCommand(input);
 
-      final issuedCommand = StoredCommandWrite(
-        deviceId: _thisDeviceId,
-        encoded: encoded,
-        startedAt: startedAt,
-        completedAt: _timeProvider.now(),
-        result: result,
-      );
+    final issuedCommand = StoredCommandWrite(
+      deviceId: _thisDeviceId,
+      encoded: encoded,
+      startedAt: startedAt,
+      completedAt: _timeProvider.now(),
+      result: result,
+    );
 
-      await _eventStore.saveChanges(issuedCommand, StreamAppends.empty());
-    } on Exception catch (e) {
-      // do nothing... or stongly log somehow?
-      // TODO: remove me: no logging is desirable...
-      print('failed to save failed command: $e');
-    } catch (_) {
-      rethrow;
-    }
+    await _eventStore.saveChanges(issuedCommand, StreamAppends.empty());
   }
 }

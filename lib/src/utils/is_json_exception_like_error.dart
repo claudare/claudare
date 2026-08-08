@@ -1,5 +1,4 @@
-// these errors can happen when json is cast to objects
-// the application should not crash!
+/// JSON decoding can surface these runtime errors for malformed data.
 bool isJsonExceptionLikeError(Object error) {
   return error is TypeError ||
       error is NoSuchMethodError ||

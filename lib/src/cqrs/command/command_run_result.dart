@@ -63,7 +63,5 @@ Future<CommandRunResult> wrapCommandExecutionFuture(Future<void> future) async {
     return CommandRunResult._exception(exception: e.cause);
   } on Exception catch (e) {
     return CommandRunResult._exception(exception: e);
-  } catch (e, stackTrace) {
-    Error.throwWithStackTrace(e, stackTrace);
   }
 }

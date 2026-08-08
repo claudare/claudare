@@ -59,7 +59,7 @@ void main() {
       expect(() => safe.decode(encoded), throwsArgumentError);
     });
 
-    test('json decode exception-like error', () {
+    test('json decode Error is wrapped', () {
       final encoded = EncodedEvent(
         kind: 'test',
         bytes: JsonConverter.encode({"str": 123}), // number instead of string
