@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:notes_app_v0/model/note_data.dart';
+import 'package:notes/model/note_data.dart';
 
 // Get and store repo style
 abstract interface class NoteProjectionRepo {

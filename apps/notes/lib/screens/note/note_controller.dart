@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/command/create_note.dart';
-import 'package:notes_app_v0/command/restore_note.dart';
-import 'package:notes_app_v0/command/trash_note.dart';
-import 'package:notes_app_v0/command/update_note_content.dart';
-import 'package:notes_app_v0/command/update_note_title.dart';
-import 'package:notes_app_v0/runtime/notes_runtime.dart';
+import 'package:notes/command/create_note.dart';
+import 'package:notes/command/restore_note.dart';
+import 'package:notes/command/trash_note.dart';
+import 'package:notes/command/update_note_content.dart';
+import 'package:notes/command/update_note_title.dart';
+import 'package:notes/runtime/notes_runtime.dart';
 
 class NoteController extends ChangeNotifier {
   final NotesRuntime notesRuntime;

@@ -1,9 +1,9 @@
 import 'package:core/cqrs.dart';
 import 'package:core/crdt.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes_app_v0/model/note_data.dart';
-import 'package:notes_app_v0/projection/note/note_projection_repo.dart';
-import 'package:notes_app_v0/repo/note/sqlite_note_migrations.dart';
+import 'package:notes/model/note_data.dart';
+import 'package:notes/projection/note/note_projection_repo.dart';
+import 'package:notes/repo/note/sqlite_note_migrations.dart';
 
 class SqliteNoteProjectionRepo implements NoteProjectionRepo {
   final IsolateSqlite _db;

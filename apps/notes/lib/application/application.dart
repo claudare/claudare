@@ -4,7 +4,7 @@ import 'package:core/cqrs.dart';
 import 'package:core/id_generator.dart';
 import 'package:core/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes_app_v0/runtime/notes_runtime.dart';
+import 'package:notes/runtime/notes_runtime.dart';
 import 'package:path/path.dart' as path;
 
 class Application {

@@ -1,6 +1,6 @@
 {
-    "name": "notes_app_v0",
-    "short_name": "notes_app_v0",
+    "name": "notes",
+    "short_name": "notes",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

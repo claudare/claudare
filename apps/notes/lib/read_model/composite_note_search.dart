@@ -1,7 +1,7 @@
 // quick and dirty combination of two different dbs
-import 'package:notes_app_v0/model/resolved_note.dart';
-import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
-import 'package:notes_app_v0/read_model/search/search_read_model.dart';
+import 'package:notes/model/resolved_note.dart';
+import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes/read_model/search/search_read_model.dart';
 
 /// TODO: this is temporary...
 class CompositeNoteSearch {

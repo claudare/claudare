@@ -1,8 +1,8 @@
 import 'package:core/cqrs.dart';
 import 'package:core/utils.dart';
-import 'package:notes_app_v0/event/note/_note_codec.dart';
-import 'package:notes_app_v0/event/note/note.dart';
-import 'package:notes_app_v0/stream_id/note_stream_id.dart';
+import 'package:notes/event/note/_note_codec.dart';
+import 'package:notes/event/note/note.dart';
+import 'package:notes/stream_id/note_stream_id.dart';
 
 class CreateNoteInput implements CommandInput {
   final String noteId;

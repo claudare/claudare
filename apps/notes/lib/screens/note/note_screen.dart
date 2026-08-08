@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/common.dart';
-import 'package:notes_app_v0/runtime/notes_runtime.dart';
-import 'package:notes_app_v0/screens/note/note_controller.dart';
+import 'package:notes/common.dart';
+import 'package:notes/runtime/notes_runtime.dart';
+import 'package:notes/screens/note/note_controller.dart';
 
 class NoteScreen extends StatefulWidget {
   final NotesRuntime notesRuntime;

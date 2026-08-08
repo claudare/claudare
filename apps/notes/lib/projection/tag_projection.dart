@@ -1,10 +1,13 @@
 import 'package:core/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes_app_v0/event/tag/_tag_codec.dart';
-import 'package:notes_app_v0/event/tag/tag.dart';
-import 'package:notes_app_v0/stream_id/tag_stream_id.dart';
+import 'package:notes/event/tag/_tag_codec.dart';
+import 'package:notes/event/tag/tag.dart';
+import 'package:notes/stream_id/tag_stream_id.dart';
 
 class TagProjection extends SqliteProjection<TagEvent, String> {
+  final StandardProjectionFailureHandler _failureHandler =
+      StandardProjectionFailureHandler();
+
   @override
   String get name => 'tags';
 
@@ -13,6 +16,9 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
 
   @override
   EventCodec<TagEvent> get eventCodec => tagCodec;
+
+  @override
+  ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
   Future<void> reset(IsolateSqlite db) async {

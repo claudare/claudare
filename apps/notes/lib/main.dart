@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/application/application_provider.dart';
-import 'package:notes_app_v0/application/production_application_factory.dart';
+import 'package:notes/application/application_provider.dart';
+import 'package:notes/application/production_application_factory.dart';
 
-import 'package:notes_app_v0/screens/loading_screen.dart';
+import 'package:notes/screens/loading_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

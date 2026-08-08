@@ -1,4 +1,4 @@
-import 'package:notes_app_v0/model/resolved_note.dart';
+import 'package:notes/model/resolved_note.dart';
 
 enum ResolvedNoteQueryOrder {
   createdAtDescending,

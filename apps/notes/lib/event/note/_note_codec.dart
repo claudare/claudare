@@ -1,6 +1,6 @@
 import 'package:core/cqrs.dart';
 import 'package:core/utils.dart';
-import 'package:notes_app_v0/event/note/note.dart';
+import 'package:notes/event/note/note.dart';
 
 const noteCodec = NoteCodec();
 

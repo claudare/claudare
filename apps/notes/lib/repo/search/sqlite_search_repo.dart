@@ -1,7 +1,7 @@
 import 'package:core/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes_app_v0/projection/search/search_projection_repo.dart';
-import 'package:notes_app_v0/read_model/search/search_read_model.dart';
+import 'package:notes/projection/search/search_projection_repo.dart';
+import 'package:notes/read_model/search/search_read_model.dart';
 
 final _migrations =
     SqliteMigrations(migrationTable: '_migrations')

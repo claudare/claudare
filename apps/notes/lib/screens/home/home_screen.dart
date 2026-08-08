@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/runtime/notes_runtime.dart';
-import 'package:notes_app_v0/screens/home/note_list_controller.dart';
-import 'package:notes_app_v0/screens/home/widget/note_list.dart';
-import 'package:notes_app_v0/screens/note/note_screen.dart';
-import 'package:notes_app_v0/screens/settings/settings_screen.dart';
+import 'package:notes/runtime/notes_runtime.dart';
+import 'package:notes/screens/home/note_list_controller.dart';
+import 'package:notes/screens/home/widget/note_list.dart';
+import 'package:notes/screens/note/note_screen.dart';
+import 'package:notes/screens/settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final NotesRuntime notesRuntime;

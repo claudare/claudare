@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/model/resolved_note.dart';
-import 'package:notes_app_v0/screens/home/widget/note_list_item.dart';
+import 'package:notes/model/resolved_note.dart';
+import 'package:notes/screens/home/widget/note_list_item.dart';
 
 class NoteList extends StatelessWidget {
   final Future<void> Function(String? noteId) openNote;

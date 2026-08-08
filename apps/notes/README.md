@@ -1,1 +1,1 @@
-# notes_app_v0
+# notes

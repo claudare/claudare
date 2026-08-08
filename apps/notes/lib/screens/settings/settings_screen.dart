@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:notes_app_v0/application/application.dart';
-import 'package:notes_app_v0/application/application_provider.dart';
-import 'package:notes_app_v0/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes/application/application.dart';
+import 'package:notes/application/application_provider.dart';
+import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
 
 class SettingsData {
   final int eventCount;
