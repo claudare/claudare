@@ -1,0 +1,5 @@
+# to exclude e2e from testing use
+# dart test -x e2e
+
+tags:
+  e2e: {}
