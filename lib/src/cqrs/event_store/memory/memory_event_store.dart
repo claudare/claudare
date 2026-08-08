@@ -99,8 +99,8 @@ class MemoryEventStore implements EventStore {
       startedAt: value.startedAt,
       completedAt: value.completedAt,
       dependencies: value.dependencies,
-      exception: null,
-      nackReason: null,
+      exception: value.exception,
+      nackReason: value.nackReason,
     );
 
     _commands.add(command);
@@ -169,6 +169,7 @@ class MemoryEventStore implements EventStore {
       );
 
       if (appends.events.isEmpty) {
+        _insertCommand(memoryCommand);
         return SaveChangesResult.empty();
       }
 

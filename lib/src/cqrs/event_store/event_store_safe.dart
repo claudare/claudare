@@ -7,8 +7,6 @@ import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
 
-// TODO: separate to projection vs commnd
-// TODO: rename to Adapter
 class EventStoreSafe implements EventStore {
   final EventStore _store;
 
@@ -19,11 +17,10 @@ class EventStoreSafe implements EventStore {
     String streamId,
     int count,
     int versionCursor,
-  ) {
+  ) async {
     try {
-      return _store.getStreamEvents(streamId, count, versionCursor);
+      return await _store.getStreamEvents(streamId, count, versionCursor);
     } catch (cause) {
-      // TODO: swallowing errors
       throw EventStoreException(
         "Failed to get stream events cursor for stream '$streamId'",
         cause: cause,
@@ -32,9 +29,9 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetStreamInfoResult?> getStreamInfo(String streamId) {
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
     try {
-      return _store.getStreamInfo(streamId);
+      return await _store.getStreamInfo(streamId);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream info for stream '$streamId' (last)",
@@ -68,9 +65,9 @@ class EventStoreSafe implements EventStore {
     PatternFilter patternFilter,
     int sequenceNumber,
     int count,
-  ) {
+  ) async {
     try {
-      return _store.getLocalEvents(patternFilter, sequenceNumber, count);
+      return await _store.getLocalEvents(patternFilter, sequenceNumber, count);
     } catch (cause) {
       throw EventStoreException("Failed to get global events", cause: cause);
     }
@@ -79,9 +76,9 @@ class EventStoreSafe implements EventStore {
   @override
   Future<GetLocalLastEventResult> getLocalLastEvent(
     PatternFilter patternFilter,
-  ) {
+  ) async {
     try {
-      return _store.getLocalLastEvent(patternFilter);
+      return await _store.getLocalLastEvent(patternFilter);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get global last event",
@@ -91,18 +88,18 @@ class EventStoreSafe implements EventStore {
   }
 
   @override
-  Future<GetStatisticsResult> getStatistics() {
+  Future<GetStatisticsResult> getStatistics() async {
     try {
-      return _store.getStatistics();
+      return await _store.getStatistics();
     } catch (cause) {
       throw EventStoreException("Failed to get statistics", cause: cause);
     }
   }
 
   @override
-  Future<void> reset() {
+  Future<void> reset() async {
     try {
-      return _store.reset();
+      await _store.reset();
     } catch (cause) {
       throw EventStoreException("Failed to reset", cause: cause);
     }

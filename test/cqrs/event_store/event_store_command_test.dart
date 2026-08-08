@@ -224,6 +224,106 @@ void main() {
         expect(readRes.events, hasLength(1));
         expect(readRes.events.first.encodedEvent.kind, 'event-0');
       });
+
+      test(
+        'multi-stream insertion preserves event order and versions',
+        () async {
+          final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
+          final result = await store.saveChanges(
+            _fakeCommand(startedAt: t0, completedAt: t0),
+            StreamAppends(
+              dependencies: EventDependency.empty(),
+              localLocks: const [
+                StreamLocalLock(
+                  streamId: 'account/a',
+                  originatingStreamVersion: 0,
+                ),
+                StreamLocalLock(
+                  streamId: 'account/b',
+                  originatingStreamVersion: 0,
+                ),
+              ],
+              events: [
+                _fakeEvent(streamId: 'account/a', kind: 'a-1', occuredAt: t0),
+                _fakeEvent(streamId: 'account/b', kind: 'b-1', occuredAt: t0),
+                _fakeEvent(streamId: 'account/a', kind: 'a-2', occuredAt: t0),
+              ],
+            ),
+          );
+
+          expect(result.orders.map((order) => order.localSequence), [1, 2, 3]);
+          expect(
+            (await store.getStreamInfo('account/a'))!.originatingStreamVersion,
+            2,
+          );
+          expect(
+            (await store.getStreamInfo('account/b'))!.originatingStreamVersion,
+            1,
+          );
+          expect(
+            (await store.getStreamEvents(
+              'account/a',
+              10,
+              0,
+            )).events.map((event) => event.encodedEvent.kind),
+            ['a-1', 'a-2'],
+          );
+        },
+      );
+
+      test('stale multi-stream locks roll back every event', () async {
+        final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
+        await store.saveChanges(
+          _fakeCommand(startedAt: t0, completedAt: t0),
+          StreamAppends(
+            dependencies: EventDependency.empty(),
+            localLocks: const [
+              StreamLocalLock(
+                streamId: 'account/a',
+                originatingStreamVersion: 0,
+              ),
+            ],
+            events: [
+              _fakeEvent(streamId: 'account/a', kind: 'a-1', occuredAt: t0),
+            ],
+          ),
+        );
+
+        await expectLater(
+          store.saveChanges(
+            _fakeCommand(startedAt: t0, completedAt: t0),
+            StreamAppends(
+              dependencies: EventDependency.empty(),
+              localLocks: const [
+                StreamLocalLock(
+                  streamId: 'account/a',
+                  originatingStreamVersion: 0,
+                ),
+                StreamLocalLock(
+                  streamId: 'account/b',
+                  originatingStreamVersion: 0,
+                ),
+              ],
+              events: [
+                _fakeEvent(streamId: 'account/a', kind: 'a-2', occuredAt: t0),
+                _fakeEvent(streamId: 'account/b', kind: 'b-1', occuredAt: t0),
+              ],
+            ),
+          ),
+          throwsA(isA<ConcurrencyProblem>()),
+        );
+
+        expect(
+          (await store.getStreamEvents('account/a', 10, 0)).events,
+          hasLength(1),
+        );
+        expect(
+          (await store.getStreamEvents('account/b', 10, 0)).events,
+          isEmpty,
+        );
+      });
     });
   }
 }

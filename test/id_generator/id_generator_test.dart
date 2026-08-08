@@ -29,5 +29,30 @@ void main() {
       expect(generator.generateId(), "AAAAAAAAAAAAAAAAAAAAAQ");
       expect(generator.generateId(), "AAAAAAAAAAAAAAAAAAAAAg");
     });
+
+    test('fake sequential produces deterministic bytes', () {
+      final generator = FakeIdGeneratorSequential();
+
+      expect(generator.generateBytes(), List<int>.filled(16, 0));
+      expect(generator.generateBytes(), [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+      ]);
+      expect(generator.generateId(), '2');
+    });
   });
 }

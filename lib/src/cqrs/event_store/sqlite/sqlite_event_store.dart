@@ -69,6 +69,7 @@ class SqliteEventStore implements EventStore {
   @override
   Future<void> reset() async {
     await _iso.transaction((tx) {
+      tx.execute("DELETE FROM command_record");
       tx.execute("DELETE FROM event");
       tx.execute("DELETE FROM stream");
     });

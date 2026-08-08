@@ -13,7 +13,12 @@ class FakeIdGeneratorSequential implements IdGenerator {
 
   @override
   Uint8List generateBytes() {
-    // TODO: implement generateBytes
-    throw UnimplementedError();
+    final out = Uint8List(IdGenerator.byteLength);
+    var value = sequence++;
+    for (var i = out.length - 1; i >= 0; i--) {
+      out[i] = value & 0xFF;
+      value >>= 8;
+    }
+    return out;
   }
 }
