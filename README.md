@@ -1,146 +1,100 @@
-# Example workspaces
+# Claudare
 
-An example [Dart pub workspace](https://dart.dev/tools/pub/workspaces) containing
-Flutter applications in `apps/` and shared Dart packages in `packages/`.
+Claudare is a Dart Pub workspace developing a reusable core for Dart and
+Flutter applications. Core is a logical layer that will span multiple packages.
+It currently includes CQRS, SQLite isolation, logging, IDs, time, and small
+CRDT helpers.
 
-The root `pubspec.yaml` discovers members with these globs:
+`apps/notes` is the first prototype consumer of that infrastructure. It exists
+to exercise core behavior through a real Flutter application. It is not the
+definition of Claudare's architecture or a promise that future applications
+will use the same domain model, storage layout, or UI.
 
-```yaml
-workspace:
-  - apps/*
-  - packages/*
-```
+It is not an offline-sync or encrypted-notes product yet. There is no working
+replication, device enrollment, event encryption, blob storage, or backup.
+Those boundaries are intentional documentation constraints: do not describe
+them as implemented without corresponding source and validation evidence.
 
-Every member must set `resolution: workspace`. Pub then uses one dependency
-resolution, one `pubspec.lock`, and one `.dart_tool/package_config.json` at the
-repository root.
+## Workspace map
 
-## Fresh development setup
+| Path | Purpose |
+| --- | --- |
+| `packages/core` | Current CQRS, IDs, time, and CRDT portion of the reusable core |
+| `packages/isolate_sqlite` | SQLite connection owner running database callbacks in a dedicated isolate |
+| `packages/claudare_logging` | Shared explicit logging abstraction |
+| `apps/notes` | First Flutter prototype consumer of the core packages |
+| `docs` | Source-backed architecture, implementation, security, and improvement guidance |
 
-[FVM](https://fvm.app/) must already be installed and available on `PATH`.
-From the repository root:
+The root `pubspec.yaml` discovers `apps/*` and `packages/*`. Every member uses
+`resolution: workspace`; compatible version constraints resolve other members
+locally. Pub owns one root lockfile.
+
+## Start here
+
+Read these documents in order when working on the repository:
+
+1. [AGENTS.md](AGENTS.md) for repository rules and validation boundaries.
+2. [Core wiring conventions](CONVENTIONS.md) for contracts, implementations,
+   errors, and code-writing practices.
+3. [Core architecture](docs/ARCHITECTURE_COMMON.md) for the reusable CQRS,
+   CRDT, SQLite, and logging contracts.
+4. [Application architecture](docs/ARCHITECTURE_APPS.md) for how an application
+   composes and consumes the core.
+5. [Application patterns](docs/APP_PATTERNS.md) for event codecs and their
+   application-owned layout.
+6. [Implementation](docs/IMPLEMENTATION.md) for actual behavior and known
+   limitations.
+7. [Security](docs/SECURITY.md) before making confidentiality, sync, or
+   identity claims.
+8. [Improvements](docs/IMPROVEMENTS.md) for source-backed next work.
+
+## Setup and run
+
+FVM must be installed and on `PATH`. From the workspace root:
 
 ```sh
-# Install the Flutter version pinned in .fvmrc.
 fvm install
-
-# Resolve dependencies for the entire workspace.
 fvm flutter pub get
-
-# Check that the local Flutter installation and platform toolchains are ready.
 fvm flutter doctor
 ```
 
-This is a mixed Dart and Flutter workspace, so use `fvm flutter pub get` at its
-root. It resolves the shared lockfile and runs Flutter's post-processing for the
-Flutter members. Do not run `pub get` separately in every app or package.
-
-## Analysis and tests
-
-Analyze the entire workspace from its root:
+Run the notes prototype with the pinned Flutter SDK:
 
 ```sh
-fvm dart analyze
-```
-
-Run every Dart package test and then every Flutter app test from the workspace
-root:
-
-```sh
-./scripts/test.sh
-```
-
-To test only one member, run the appropriate test command from that member's
-directory:
-
-```sh
-(cd packages/hello_world && fvm dart test)
-(cd apps/hello_world_app && fvm flutter test)
-```
-
-## Run a Flutter application
-
-Change into the application's directory and use the pinned Flutter SDK:
-
-```sh
-cd apps/hello_world_app
+cd apps/notes
 fvm flutter run
 ```
 
-## Use pub
+## Validate
 
-Choose the pub command based on the member receiving the dependency:
-
-- For a plain Dart package, use `fvm dart pub`.
-- For a Flutter app or Flutter package, use `fvm flutter pub`.
-- At this mixed workspace's root, use `fvm flutter pub get`.
-
-Both commands use the same Pub package manager. The Flutter form also performs
-the Flutter-specific setup required by apps and plugins. When in doubt, just run
-`flutter` commands.
-
-### Add a package from pub.dev
-
-Dependencies belong to the workspace member that imports them, not to the root
-package. From the repository root, use `-C` to select a Dart package:
+For a code change, analyze the workspace and run the relevant tests. The full
+test script runs Dart tests in every package and Flutter tests in every app.
 
 ```sh
-fvm dart pub add http -C packages/hello_world
+fvm dart analyze
+./scripts/test.sh
 ```
 
-For a Flutter application, use Flutter's pub command from the app directory:
-
-```sh
-(cd apps/hello_world_app && fvm flutter pub add url_launcher)
-```
-
-Prefix a development-only dependency with `dev:`:
-
-```sh
-fvm dart pub add dev:mocktail -C packages/hello_world
-```
-
-These commands update the selected member's `pubspec.yaml` and refresh the
-workspace's shared dependency resolution.
-
-### Depend on another workspace package
-
-Use the local package name with a version constraint that matches its `version`.
-For example, this adds `hello_world` to `hello_world_app`:
-
-```sh
-(cd apps/hello_world_app && fvm flutter pub add hello_world@^1.0.0)
-```
-
-This produces the following dependency in the consuming app:
-
-```yaml
-dependencies:
-  hello_world: ^1.0.0
-```
-
-Do not add a relative `path:` dependency between workspace members. Pub detects
-`hello_world` as a workspace member and resolves the compatible local package
-automatically.
-
-## Add another app or package
-
-Create new members below the existing globbed directories:
-
-```sh
-fvm flutter create apps/my_app
-fvm dart create --template=package packages/my_package
-```
-
-Add this top-level field to each generated member's `pubspec.yaml`:
-
-```yaml
-resolution: workspace
-```
-
-Then resolve the mixed workspace from the repository root:
+For dependency or workspace changes, first resolve from the root and confirm
+the discovered members:
 
 ```sh
 fvm flutter pub get
 fvm dart pub workspace list
+fvm dart analyze
+./scripts/test.sh
 ```
+
+For documentation-only changes, inspect the diff and run:
+
+```sh
+git diff --check
+```
+
+## Pub workflow
+
+Add a dependency to the member that imports it. Use `fvm dart pub` for plain
+Dart packages and `fvm flutter pub` for Flutter applications. Do not manually
+edit `pubspec.lock`, use relative `path:` dependencies between members, or run
+separate root-level resolves for each member. After changing dependencies,
+resolve the mixed workspace from the root with `fvm flutter pub get`.

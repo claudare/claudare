@@ -8,9 +8,9 @@ These instructions apply to the entire repository.
 - `packages/core` contains the shared CQRS and domain infrastructure.
 - `packages/isolate_sqlite` contains the isolated SQLite implementation.
 - `packages/claudare_logging` contains the shared logging abstractions.
-- `docs` contains repository-wide architecture, implementation, security, and
-  study documents. Keep package- or app-specific documentation beside its
-  owner.
+- `docs` contains repository-wide, source-backed architecture, implementation,
+  security, and improvement documents. Keep package- or app-specific
+  documentation beside its owner.
 - The root `pubspec.yaml` discovers members through `apps/*` and `packages/*`.
   Every member must declare `resolution: workspace`.
 
@@ -41,6 +41,14 @@ These instructions apply to the entire repository.
 
 ## Code and ownership
 
+- Avoid em-dashes and unnecessary comments in code. Never use an em-dash in
+  code comments or user-facing text. Do not add extra descriptive or help
+  messages when implementing a UI feature unless asked. Do not use strong or
+  expressive language that has no meaning.
+- Follow [CONVENTIONS.md](CONVENTIONS.md) for Core wiring, contracts,
+  implementations, entrypoint boundaries, exceptions, and defensive
+  invariants. Its conventions apply to new and modified code; existing
+  deviations do not require refactoring unless the task calls for it.
 - Applications may depend on shared packages; shared packages must not depend
   on applications.
 - Keep foundational logging in `claudare_logging`, SQLite isolate behavior in
@@ -51,6 +59,27 @@ These instructions apply to the entire repository.
 - Preserve the configured analyzer rules. Every app and package must inherit
   the root `analysis_options.yaml`; keep shared lint and analyzer policy at the
   repository root rather than duplicating or overriding it in workspace members.
+
+## Current architecture and documentation
+
+- Core is Claudare's reusable, application-independent foundation. It will
+  span multiple packages. Today, `packages/core` owns CQRS, IDs, time, and CRDT
+  helpers; `isolate_sqlite` owns SQLite isolation; `claudare_logging` owns
+  logging. `apps/notes` is the first prototype consumer, not the architectural
+  center.
+- Do not claim replication, device enrollment, encryption, blob storage,
+  backup, or production security. These are not implemented in the current
+  workspace. `DeviceId.unassigned()` is still used by the notes runtime.
+- Treat root `README.md` and `docs/*.md` as AI orientation material: state
+  ownership, supported behavior, limitations, and validation evidence
+  explicitly. Reinspect source before changing an implemented/planned status;
+  do not retain historical claims about removed packages or old paths.
+- Keep repository-wide Core wiring guidance in `CONVENTIONS.md`; architecture,
+  implementation, and improvement documents should link to it instead of
+  duplicating its normative implementation advice.
+- When changing public behavior, package ownership, validation commands, or
+  security posture, update the applicable root documentation in the same
+  change. Correct all in-repository documentation links when moving a document.
 
 ## Validation
 
