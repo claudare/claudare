@@ -1,4 +1,4 @@
-import 'package:core/crdt.dart';
+import 'package:crdt/crdt.dart';
 
 /// [NoteData] is the full internal, CRDT-centric data representation
 class NoteData {

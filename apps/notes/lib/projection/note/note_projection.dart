@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/crdt.dart';
+import 'package:crdt/crdt.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/model/note_data.dart';

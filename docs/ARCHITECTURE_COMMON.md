@@ -4,9 +4,9 @@
 
 Core is the reusable, application-independent foundation of Claudare. It will
 span multiple packages as the system grows. Today, `packages/core` contains the
-CQRS runtime and foundational domain helpers, `packages/isolate_sqlite` owns
-the SQLite isolation boundary, and `packages/claudare_logging` provides the
-logging abstraction.
+CQRS runtime and foundational domain helpers, `packages/crdt` contains CRDT
+value helpers, `packages/isolate_sqlite` owns the SQLite isolation boundary,
+and `packages/claudare_logging` provides the logging abstraction.
 
 The current core supports local event-sourced applications. It does not provide
 replication, network transport, cryptography, device membership, blob storage,
@@ -72,7 +72,7 @@ treat read-model data as the source of truth.
 
 ## CRDT helpers
 
-`core/crdt.dart` currently exports only a timestamp-based latest-write-wins
+`crdt/crdt.dart` exports only a timestamp-based latest-write-wins
 value and its value/timestamp pair. Merging keeps an incoming value when its
 timestamp is equal to or later than the current timestamp.
 

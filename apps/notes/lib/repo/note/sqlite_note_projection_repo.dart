@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/crdt.dart';
+import 'package:crdt/crdt.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/model/note_data.dart';
 import 'package:notes/projection/note/note_projection_repo.dart';

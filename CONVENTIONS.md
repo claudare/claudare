@@ -2,10 +2,10 @@
 
 ## Scope
 
-Core is Claudare's reusable, application-independent logical layer. It spans
-`packages/core`, `packages/isolate_sqlite`, and `packages/claudare_logging` as
-needed. `apps/notes` is a prototype consumer that exercises the layer; it does
-not define Core's architecture or public API for future applications.
+Core is Claudare's reusable, application-independent logical layer. All shared
+packages are referred to as Core. `apps/notes` is a prototype consumer that
+exercises the layer; it does not define Core's architecture or public API for
+future applications.
 
 These conventions apply to new and modified code. Existing deviations are
 context for future work, not a refactoring requirement by themselves.

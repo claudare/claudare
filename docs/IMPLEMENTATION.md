@@ -8,8 +8,9 @@ describes executable source paths, not completed runtime verification.
 ## Core package layout
 
 Core is the reusable, application-independent layer. It will span multiple
-packages. Today, its CQRS portion is in `packages/core`; `isolate_sqlite` and
-`claudare_logging` provide core SQLite and logging boundaries.
+packages. Today, its CQRS portion is in `packages/core`, its CRDT value helpers
+are in `packages/crdt`, and `isolate_sqlite` and `claudare_logging` provide
+core SQLite and logging boundaries.
 
 See [CONVENTIONS.md](../CONVENTIONS.md) for the wiring conventions that govern
 new or modified Core code.
@@ -18,7 +19,8 @@ new or modified Core code.
 
 `packages/core` exposes command inputs and handlers, stream contexts, event
 codecs, memory and SQLite event stores, projection runtime, runtime-version
-repositories, ID generators, time providers, CRDT helpers, and test utilities.
+repositories, ID generators, time providers, and test utilities. `packages/crdt`
+exposes the timestamp-based CRDT helpers.
 
 A command uses `CommandContext` to access typed streams, declare locks, append
 events, nack invalid input, request IDs, and read the current time.
