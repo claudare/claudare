@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/id_generator.dart';
+import 'package:id_generator/id_generator.dart';
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/command/command_nacker.dart';
 import 'package:core/src/cqrs/command/command_stream.dart';

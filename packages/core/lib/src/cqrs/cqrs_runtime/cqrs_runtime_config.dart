@@ -1,6 +1,6 @@
 import 'package:core/src/cqrs/cqrs_runtime/runtime_repo/runtime_repo.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';
-import 'package:core/src/id_generator/id_generator.dart';
+import 'package:id_generator/id_generator.dart';
 import 'package:core/src/time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 

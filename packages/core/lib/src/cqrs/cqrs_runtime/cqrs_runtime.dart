@@ -1,4 +1,4 @@
-import 'package:core/id_generator.dart';
+import 'package:id_generator/id_generator.dart';
 import 'package:core/src/cqrs/command/command.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/command/command_input.dart';

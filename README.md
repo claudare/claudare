@@ -19,8 +19,9 @@ them as implemented without corresponding source and validation evidence.
 
 | Path | Purpose |
 | --- | --- |
-| `packages/core` | Current CQRS, IDs, and time portion of the reusable core |
+| `packages/core` | Current CQRS and time portion of the reusable core |
 | `packages/crdt` | Timestamp-based CRDT value helpers |
+| `packages/id_generator` | 128-bit ID generator contract and implementations |
 | `packages/isolate_sqlite` | SQLite connection owner running database callbacks in a dedicated isolate |
 | `packages/claudare_logging` | Shared explicit logging abstraction |
 | `apps/notes` | First Flutter prototype consumer of the core packages |

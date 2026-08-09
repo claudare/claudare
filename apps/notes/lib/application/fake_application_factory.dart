@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/id_generator.dart';
+import 'package:id_generator/id_generator.dart';
 import 'package:core/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';

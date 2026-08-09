@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:core/src/id_generator/id_generator.dart';
+import 'package:id_generator/src/id_generator.dart';
 
 class IdGeneratorSequential implements IdGenerator {
   int _value = 0;
