@@ -18,7 +18,7 @@ void main() {
 
     setUp(() {
       timeProvider = FakeTimeProviderStatic.unixMilliseconds(0);
-      idGenerator = FakeIdGeneratorSequential();
+      idGenerator = IdGeneratorSequential();
       commandTester = CommandTester(
         timeProvider: timeProvider,
         idGenerator: idGenerator,

@@ -16,6 +16,8 @@ import 'read_model/total_balance_read_model.dart';
 
 void main() {
   group('Finance App Example', () {
+    const firstAccountId = 'AAAAAAAAAAAAAAAAAAAAAA';
+    const secondAccountId = 'AAAAAAAAAAAAAAAAAAAAAQ';
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     late MemoryEventStore eventStore;
@@ -30,7 +32,7 @@ void main() {
       eventStore = MemoryEventStore();
       runtimeRepo = MemoryRuntimeRepo();
       commandTimeProvider = FakeTimeProviderStatic.zero();
-      commandIdGenerator = FakeIdGeneratorSequential();
+      commandIdGenerator = IdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
       totalBalanceRepo = TotalBalanceReadModel();
 
@@ -58,10 +60,10 @@ void main() {
         OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: '0', amount: 100),
+        AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
       await app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: '0', amount: 10),
+        AtmWithdrawalInput(accountId: firstAccountId, amount: 10),
       );
 
       final firstAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
@@ -69,7 +71,7 @@ void main() {
       expect(firstAccounts.first.name, equals('first'));
       expect(
         firstAccounts.first.accountId,
-        '0',
+        firstAccountId,
       ); // TODO: work on better testing for this
       expect(firstAccounts.first.balance, 90);
       expect(firstAccounts.first.transactionCount, 2);
@@ -83,13 +85,13 @@ void main() {
 
       await app.command.transferFundsBetweenAccounts.runThrowable(
         TransferFundsBetweenAccountsInput(
-          fromAccountId: '0',
-          toAccountId: '1',
+          fromAccountId: firstAccountId,
+          toAccountId: secondAccountId,
           amount: 20,
         ),
       );
       await app.command.renameAccount.runThrowable(
-        RenameAccountInput(accountId: '0', newName: 'renamed'),
+        RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
       );
 
       final secondAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
@@ -108,7 +110,7 @@ void main() {
       );
       expect(
         () => app.command.atmWithdrawal.runThrowable(
-          AtmWithdrawalInput(accountId: '0', amount: 40),
+          AtmWithdrawalInput(accountId: firstAccountId, amount: 40),
         ),
         throwsA(
           isA<CommandNack>().having(
@@ -125,14 +127,14 @@ void main() {
         OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: '0', amount: 100),
+        AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
 
       final f1 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: '0', amount: 80),
+        AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
       );
       final f2 = app.command.atmWithdrawal.runThrowable(
-        AtmWithdrawalInput(accountId: '0', amount: 80),
+        AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
       );
 
       // Attach handlers immediately. Ugly but works
@@ -158,10 +160,10 @@ void main() {
         OpenAccountInput(name: 'first'),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: '0', amount: 100),
+        AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
       await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: '0', amount: 50),
+        AtmDepositInput(accountId: firstAccountId, amount: 50),
       );
 
       // TODO: currently no way to wait for the eventual projection to stop resolving

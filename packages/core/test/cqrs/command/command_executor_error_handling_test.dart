@@ -142,7 +142,7 @@ CommandExecutor _executor(EventStoreCommand store) {
   return CommandExecutor(
     eventStore: store,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
-    idGenerator: FakeIdGeneratorSequential(),
+    idGenerator: IdGeneratorSequential(),
     thisDeviceId: DeviceId(1),
     pageSize: 10,
   );

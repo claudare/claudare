@@ -25,7 +25,7 @@ class FakeApplicationFactory implements ApplicationFactory {
 
   @override
   Application create() {
-    final idGenerator = mockIdGenerator ?? FakeIdGeneratorSequential();
+    final IdGenerator idGenerator = mockIdGenerator ?? IdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
 
     final sqliteDb = IsolateSqlite();

@@ -25,7 +25,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
 
   @override
   Application create() {
-    final idGenerator = RandomIdGenerator();
+    final IdGenerator idGenerator = IdGeneratorSecure();
     final timeProvider = SystemTimeProvider();
 
     final sqliteDb = IsolateSqlite();

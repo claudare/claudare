@@ -1,10 +1,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-// Could use just base64url while removing trailing `==`
 abstract interface class IdGenerator {
   static const int byteLength = 16;
-  static const int stringLength = 22; // fixed width for 128-bit in Base58
+  static const int stringLength = 22;
 
   Uint8List generateBytes();
   String generateId();
@@ -35,7 +34,6 @@ abstract interface class IdGenerator {
       );
     }
 
-    // base64 decoder expects proper padding
     final padded = '$value==';
 
     Uint8List bytes;
@@ -48,7 +46,6 @@ abstract interface class IdGenerator {
       bytes.length == byteLength,
       'Decoded bytes length invalid: expected $byteLength, got ${bytes.length}',
     );
-    // keeping this just in case
     if (bytes.length != byteLength) {
       throw FormatException(
         'Decoded bytes length invalid: expected $byteLength, got ${bytes.length}',
