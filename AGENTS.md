@@ -14,7 +14,8 @@ These instructions apply to the entire repository.
 - Shared packages must not depend on applications. `apps/notes` is a prototype
   consumer, not the architectural center.
 - Keep repository-wide, source-backed documentation in `docs`; keep package-
-  and app-specific documentation beside its owner.
+  and app-specific documentation beside its owner. Markdown files in `ideas`
+  should not be used as documentation.
 - The root `pubspec.yaml` discovers `apps/*` and `packages/*`. Every member must
   declare `resolution: workspace` and inherit the root `analysis_options.yaml`.
 
