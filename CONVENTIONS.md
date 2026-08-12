@@ -1,59 +1,35 @@
 # Core wiring conventions
 
-## Scope
-
-Core is Claudare's reusable, application-independent logical layer. All shared
-packages are referred to as Core. `apps/notes` is a prototype consumer that
-exercises the layer; it does not define Core's architecture or public API for
-future applications.
-
-These conventions apply to new and modified code. Existing deviations are
-context for future work, not a refactoring requirement by themselves.
+Core is Claudare's reusable, application-independent logical layer across shared
+packages. `apps/notes` consumes Core but does not define its architecture or API.
+These conventions apply to new and modified code, not unrelated existing
+deviations.
 
 ## Contracts and implementations
 
-Public package entrypoints are consumer boundaries. Applications and other
-packages import Core's exported libraries, not `src` internals. Core
-implementation and white-box tests may use internals where that is necessary.
-
-Design contracts as small, composable capabilities. Aggregate interfaces
-compose those capabilities without exposing concrete storage or runtime
-details.
-
-Use constructor injection for storage, time, IDs, logging, and similar
-collaborators. Name production, in-memory, and deterministic test substitutes
-by role, such as `Memory`, `Fake`, `System`, `Random`, `Seeded`, and
-`Sequential`.
-
-In-memory implementations are the authoritative behavior references. Every
-side-effecting implementation, including SQLite, must match them. Add parity
-or table-driven tests when an interface has multiple implementations or a
-behavioral edge case would otherwise be easy to diverge.
-
-Prefer `abstract interface class` for contracts. Name a contract for its
-domain, without an added `Repository`, `Service`, `Implementation`, or similar
-suffix. Prefix a concrete type with that domain name, such as `MemoryEventStore`.
-
-Prefer one class per file. Related interface types may share a file, as may a
-cohesive domain group such as CQRS events. Put implementations in nested
-folders when that clarifies ownership, or keep a flat layout when it is simpler.
-
-Use `*_safe.dart` wrappers for assertions and exception translation. Keep
-package exceptions in a shared exception folder rather than distributing them
-among feature files.
+- Treat public package entrypoints as consumer boundaries. Consumers must not
+  import `src`; Core implementations and white-box tests may do so when needed.
+- Prefer small, composable `abstract interface class` contracts. Aggregate
+  interfaces may compose capabilities but must not expose storage or runtime
+  details.
+- Name contracts for their domain without suffixes such as `Repository`,
+  `Service`, or `Implementation`. Prefix concrete types with the domain name,
+  such as `MemoryEventStore`.
+- Inject storage, time, IDs, logging, and similar collaborators through
+  constructors. Name substitutes by role, such as `Memory`, `Fake`, `System`,
+  `Random`, `Seeded`, or `Sequential`.
+- Treat in-memory implementations as behavioral references. Side-effecting
+  implementations must match them; add parity or table-driven tests where
+  implementations or edge cases could diverge.
+- Prefer one class per file. Related interfaces or cohesive domain types may
+  share a file. Use nested implementation folders only when they clarify
+  ownership.
+- Use `*_safe.dart` wrappers for assertions and exception translation. Keep
+  package exceptions in a shared exception folder.
 
 ## Errors and invariants
 
-Catch `Exception` values when recovery or translation is needed. Let `Error`
-values propagate, preserving their debugging signal. Preserve stack traces
-when translating exceptions. Narrow handling for known encoding or decoding
-errors is allowed when it adds useful context without hiding unrelated faults.
-
-Use assertions for defensive invariants.
-
-## Writing and UI
-
-Avoid em-dashes and unnecessary comments in code. Never use an em-dash in
-code comments or user-facing text. Do not add extra descriptive or help
-messages when implementing a UI feature unless asked. Do not use strong or
-expressive language that has no meaning.
+- Catch `Exception` only for recovery or translation. Let `Error` propagate.
+- Preserve stack traces when translating exceptions. Narrow handling of known
+  encoding or decoding failures may add context but must not hide other faults.
+- Use assertions for defensive invariants.
