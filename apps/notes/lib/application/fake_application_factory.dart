@@ -16,17 +16,20 @@ class FakeApplicationFactory implements ApplicationFactory {
   final NotesRuntime? mockNotesRuntime;
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
+  final Logger? mockLogger;
 
   FakeApplicationFactory({
     this.mockNotesRuntime,
     this.mockIdGenerator,
     this.mockTimeProvider,
+    this.mockLogger,
   });
 
   @override
   Application create() {
     final IdGenerator idGenerator = mockIdGenerator ?? IdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
+    final logger = mockLogger ?? const NoopLogger();
 
     final sqliteDb = IsolateSqlite();
     final eventStore = SqliteEventStore(sqliteDb);
@@ -35,13 +38,13 @@ class FakeApplicationFactory implements ApplicationFactory {
     final cqrsConfig = CqrsRuntimeConfig(
       idGenerator: idGenerator,
       timeProvider: timeProvider,
-      logger: const NoopLogger(),
+      logger: logger,
       eventStorePageSize: 20,
       eventStore: eventStore,
       runtimeRepo: runtimeRepo,
     );
 
-    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
+    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb, logger);
     final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
 
     final searchDb = IsolateSqlite();

@@ -1,5 +1,6 @@
 import 'package:core/cqrs.dart';
 import 'package:core/utils.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/stream_id/note_stream_id.dart';
@@ -31,6 +32,10 @@ class UpdateNoteContentInput implements CommandInput {
 }
 
 class UpdateNoteContent implements Command<UpdateNoteContentInput> {
+  final Logger _logger;
+
+  const UpdateNoteContent(this._logger);
+
   @override
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
@@ -49,6 +54,6 @@ class UpdateNoteContent implements Command<UpdateNoteContentInput> {
       NoteContentUpdated(noteId: noteId, newContent: input.overrideContent),
     );
 
-    print('note $noteId content changed to ${input.overrideContent}');
+    _logger.debug('note $noteId content updated');
   }
 }

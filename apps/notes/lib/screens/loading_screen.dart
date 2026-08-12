@@ -21,7 +21,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    print('LoadingScreen didChangeDependencies');
+    final application = ApplicationProvider.of(context);
+    application.notesRuntime.logger.debug(
+      'LoadingScreen didChangeDependencies',
+    );
 
     _initApplication();
   }
@@ -37,7 +40,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
       // https://docs.flutter.dev/testing/errors#handling-all-types-of-errors
       // This will only work if there is an issue during initialization
       application.notesRuntime.setFatalErrorHandler((error) {
-        print('FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted');
+        application.notesRuntime.logger.error(
+          'FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted',
+          error,
+        );
 
         // TODO: the mount does not exist after navigation
         if (!mounted) return;
@@ -58,8 +64,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 'this is an example note data inserted at the intialization. Application development on track! :)',
           ),
         );
-      } catch (_) {
-        print('test data was not inserted');
+      } catch (error, stackTrace) {
+        application.notesRuntime.logger.debug(
+          'test data was not inserted',
+          error,
+          stackTrace,
+        );
       }
 
       if (!mounted) {
@@ -71,10 +81,14 @@ class _LoadingScreenState extends State<LoadingScreen> {
               (context) => HomeScreen(notesRuntime: application.notesRuntime),
         ),
       );
-    } catch (e) {
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      print('error in initialization: $e');
-      navigateToErrorScreen(context, e.toString());
+      application.notesRuntime.logger.error(
+        'error in initialization: $error',
+        error,
+        stackTrace,
+      );
+      navigateToErrorScreen(context, error.toString());
     }
   }
 

@@ -27,6 +27,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
   Application create() {
     final IdGenerator idGenerator = IdGeneratorSecure();
     final timeProvider = SystemTimeProvider();
+    final logger = ConsoleLogger(name: 'notes', minimumLevel: LogLevel.debug);
 
     final sqliteDb = IsolateSqlite();
     final eventStore = SqliteEventStore(sqliteDb);
@@ -35,13 +36,13 @@ class ProductionApplicationFactory implements ApplicationFactory {
     final cqrsConfig = CqrsRuntimeConfig(
       idGenerator: idGenerator,
       timeProvider: timeProvider,
-      logger: const NoopLogger(),
+      logger: logger,
       eventStorePageSize: 20,
       eventStore: eventStore,
       runtimeRepo: runtimeRepo,
     );
 
-    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
+    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb, logger);
     final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
 
     final searchDb = IsolateSqlite();

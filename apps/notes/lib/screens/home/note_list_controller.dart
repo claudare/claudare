@@ -61,8 +61,12 @@ class NoteListController extends ChangeNotifier {
         _order,
       );
       _noteData = data;
-    } catch (e) {
-      print('ERROR LOADING NOTES: $e');
+    } catch (error, stackTrace) {
+      notesRuntime.logger.error(
+        'Failed to load notes: $error',
+        error,
+        stackTrace,
+      );
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -80,7 +84,7 @@ class NoteListController extends ChangeNotifier {
 
     for (final result in results) {
       if (!result.success) {
-        print('Failed to delete note: $result');
+        notesRuntime.logger.warning('Failed to delete note: $result');
       }
     }
 

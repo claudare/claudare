@@ -1,4 +1,5 @@
 import 'package:core/cqrs.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/projection/search/search_projection_repo.dart';
@@ -8,13 +9,14 @@ import 'package:notes/stream_id/note_stream_id.dart';
 class SearchProjection implements Projection<NoteEvent, String> {
   final SearchProjectionRepo _repo;
   final StandardProjectionFailureHandler _failureHandler;
+  final Logger _logger;
 
-  const SearchProjection(this._repo, this._failureHandler);
+  const SearchProjection(this._repo, this._failureHandler, this._logger);
 
   @override
   // TODO: for now search database is never cleared, as permanent delition is not implemented
   Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
-    print(
+    _logger.debug(
       'applying search projection $noteId, sequence ${metadata.localSequence}',
     );
     switch (event) {

@@ -39,9 +39,6 @@ class _NoteScreenState extends State<NoteScreen> {
     _titleFocus = FocusNode();
     _titleFocus.addListener(_onTitleFocusChange);
     _titleFocus.onKeyEvent = (node, event) {
-      // print(
-      //   'title focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
-      // );
       return KeyEventResult.ignored;
     };
 
@@ -51,9 +48,6 @@ class _NoteScreenState extends State<NoteScreen> {
     _contentFocus = FocusNode();
     _contentFocus.addListener(_onContentFocusChange);
     _contentFocus.onKeyEvent = (node, event) {
-      // print(
-      //   'content focus event: node.hasFocus ${node.hasFocus} key: ${event.logicalKey}',
-      // );
       return KeyEventResult.ignored;
     };
 
@@ -180,7 +174,7 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   void _onPopInvokedWithResult() async {
-    print('invoking pop with result');
+    widget.notesRuntime.logger.debug('invoking pop with result');
     await _flushChanges();
   }
 

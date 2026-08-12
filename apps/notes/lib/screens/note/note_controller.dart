@@ -81,7 +81,7 @@ class NoteController extends ChangeNotifier {
     }
 
     if (_trashedAt != null) {
-      print('Duplicate note trashing detected');
+      notesRuntime.logger.warning('Duplicate note trashing detected');
       return false;
     }
 
@@ -109,7 +109,7 @@ class NoteController extends ChangeNotifier {
     }
 
     if (_trashedAt == null) {
-      print('Duplicate note restoration detected');
+      notesRuntime.logger.warning('Duplicate note restoration detected');
       return false;
     }
 
@@ -128,7 +128,7 @@ class NoteController extends ChangeNotifier {
 
   /// Returns true if changes were applied. Throws on error
   Future<bool> flushChanges() async {
-    print('flushing changes on note $_noteId');
+    notesRuntime.logger.debug('flushing changes on note $_noteId');
 
     // do nothing if no note exists and nothing was changed
     if (_noteId == null && _titleLatest == '' && _contentLatest == '') {

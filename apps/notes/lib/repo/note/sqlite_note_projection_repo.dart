@@ -1,5 +1,6 @@
 import 'package:core/cqrs.dart';
 import 'package:crdt/crdt.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/model/note_data.dart';
 import 'package:notes/projection/note/note_projection_repo.dart';
@@ -7,12 +8,15 @@ import 'package:notes/repo/note/sqlite_note_migrations.dart';
 
 class SqliteNoteProjectionRepo implements NoteProjectionRepo {
   final IsolateSqlite _db;
+  final Logger _logger;
+  final SqliteMigrations _migrations;
 
-  const SqliteNoteProjectionRepo(this._db);
+  SqliteNoteProjectionRepo(this._db, this._logger)
+    : _migrations = createNoteMigrations(_logger);
 
   @override
   Future<void> reset() async {
-    await noteMigrations.migrate(_db);
+    await _migrations.migrate(_db);
 
     await _db.transaction((tx) {
       // reset only after the migrations were applied!
@@ -29,8 +33,12 @@ class SqliteNoteProjectionRepo implements NoteProjectionRepo {
       );
 
       return ProjectionCheckpoint(localSequence);
-    } catch (e) {
-      print('failure of checkpoint in SqliteNoteInternalRepo: $e');
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'failure of checkpoint in SqliteNoteInternalRepo: $error',
+        error,
+        stackTrace,
+      );
       return ProjectionCheckpoint.notInitialized();
     }
   }

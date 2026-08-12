@@ -1,12 +1,16 @@
 import 'package:core/cqrs.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/event/tag/_tag_codec.dart';
 import 'package:notes/event/tag/tag.dart';
 import 'package:notes/stream_id/tag_stream_id.dart';
 
 class TagProjection extends SqliteProjection<TagEvent, String> {
+  final Logger _logger;
   final StandardProjectionFailureHandler _failureHandler =
       StandardProjectionFailureHandler();
+
+  TagProjection(this._logger);
 
   @override
   String get name => 'tags';
@@ -35,8 +39,12 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
     try {
       final value = await db.queryValue<int?>('SELECT value FROM checkpoint;');
       return ProjectionCheckpoint(value ?? 0);
-    } catch (e) {
-      print('checkpoint get error. Probably not initialized? $e');
+    } catch (error, stackTrace) {
+      _logger.warning(
+        'checkpoint get error. Probably not initialized? $error',
+        error,
+        stackTrace,
+      );
       return ProjectionCheckpoint.notInitialized();
     }
   }

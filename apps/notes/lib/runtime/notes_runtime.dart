@@ -2,6 +2,7 @@ import 'package:core/cqrs.dart';
 import 'package:core/device_id.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
@@ -24,6 +25,7 @@ class NotesRuntime {
 
   final ResolvedNoteReadModel resolvedNoteReadModel;
   final SearchReadModel searchReadModel;
+  final Logger logger;
 
   late final CqrsRuntime _cqrsRuntime;
   late final CqrsCommands commands;
@@ -37,7 +39,8 @@ class NotesRuntime {
     required this.resolvedNoteReadModel,
     required SearchProjectionRepo searchProjectionRepo,
     required this.searchReadModel,
-  }) : _noteProjectionRepo = noteProjectionRepo,
+  }) : logger = cqrsConfig.logger,
+       _noteProjectionRepo = noteProjectionRepo,
        _searchProjectionRepo = searchProjectionRepo {
     // where does the deviceId come from?
     // does it come during the init phase or fetched automatically inside the CqrsRuntime?
@@ -66,6 +69,7 @@ class NotesRuntime {
     final searchProjection = SearchProjection(
       _searchProjectionRepo,
       fatalErrorHandler,
+      logger,
     );
 
     _cqrsRuntime = CqrsRuntime(
@@ -77,13 +81,15 @@ class NotesRuntime {
     );
 
     commands = CqrsCommands(
-      createNote: _cqrsRuntime.bindCommand(CreateNote(), [noteProjection]),
-      trashNote: _cqrsRuntime.bindCommand(TrashNote(), [noteProjection]),
-      restoreNote: _cqrsRuntime.bindCommand(RestoreNote(), [noteProjection]),
-      updateNoteContent: _cqrsRuntime.bindCommand(UpdateNoteContent(), [
+      createNote: _cqrsRuntime.bindCommand(CreateNote(logger), [
         noteProjection,
       ]),
-      updateNoteTitle: _cqrsRuntime.bindCommand(UpdateNoteTitle(), [
+      trashNote: _cqrsRuntime.bindCommand(TrashNote(), [noteProjection]),
+      restoreNote: _cqrsRuntime.bindCommand(RestoreNote(), [noteProjection]),
+      updateNoteContent: _cqrsRuntime.bindCommand(UpdateNoteContent(logger), [
+        noteProjection,
+      ]),
+      updateNoteTitle: _cqrsRuntime.bindCommand(UpdateNoteTitle(logger), [
         noteProjection,
       ]),
     );

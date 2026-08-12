@@ -1,8 +1,11 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
-final noteMigrations = SqliteMigrations(migrationTable: 'migrations_note')..add(
+SqliteMigrations createNoteMigrations(Logger logger) => SqliteMigrations(
+  migrationTable: 'migrations_note',
+)..add(
   SqliteMigration(1, (tx) {
-    print('applying note table read model migrations');
+    logger.debug('applying note table read model migrations');
     // timestamps are strings
     tx.execute('''CREATE TABLE note (
       id STRING PRIMARY KEY,
