@@ -1,7 +1,7 @@
 import 'package:core/cqrs.dart';
 import 'package:core/device_id.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:core/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';

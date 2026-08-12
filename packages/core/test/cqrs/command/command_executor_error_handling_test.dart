@@ -14,7 +14,7 @@ import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/device_id.dart';
-import 'package:core/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 import 'package:test/test.dart';
 
 void main() {

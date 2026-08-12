@@ -10,7 +10,7 @@ import 'package:core/src/device_id.dart';
 import 'package:core/src/cqrs/event_store/event_store_safe.dart';
 import 'package:core/src/cqrs/projection/projection_router.dart';
 import 'package:core/src/cqrs/projection/projection_runtime.dart';
-import 'package:core/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 
 /// [CqrsRuntime] is all in one place for local CQRS.
 /// This class will process commands and ensure that the projections get new events.

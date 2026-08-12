@@ -3,7 +3,7 @@ import 'package:core/device_id.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
-import 'package:core/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 
 // Max integer value. This is a hacky solution.
 // https://stackoverflow.com/a/75928881

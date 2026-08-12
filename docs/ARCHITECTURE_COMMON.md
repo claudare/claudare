@@ -5,9 +5,9 @@
 Core is the reusable, application-independent foundation of Claudare. It will
 span multiple packages as the system grows. Today, `packages/core` contains the
 CQRS runtime and foundational domain helpers, `packages/id_generator` owns ID
-generation, `packages/crdt` contains CRDT value helpers,
-`packages/isolate_sqlite` owns the SQLite isolation boundary, and
-`packages/claudare_logging` provides the logging abstraction.
+generation, `packages/time_provider` owns time providers, `packages/crdt`
+contains CRDT value helpers, `packages/isolate_sqlite` owns the SQLite isolation
+boundary, and `packages/claudare_logging` provides the logging abstraction.
 
 The current core supports local event-sourced applications. It does not provide
 replication, network transport, cryptography, device membership, blob storage,

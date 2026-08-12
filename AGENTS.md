@@ -7,6 +7,7 @@ These instructions apply to the entire repository.
 - `apps/*` are the Flutter applications.
 - `packages/core` contains the shared CQRS and domain infrastructure.
 - `packages/id_generator` contains ID generator contracts and implementations.
+- `packages/time_provider` contains time provider contracts and implementations.
 - `packages/isolate_sqlite` contains the isolated SQLite implementation.
 - `packages/claudare_logging` contains the shared logging abstractions.
 - `docs` contains repository-wide, source-backed architecture, implementation,
@@ -64,8 +65,8 @@ These instructions apply to the entire repository.
 ## Current architecture and documentation
 
 - Core is Claudare's reusable, application-independent foundation. It will
-  span multiple packages. Today, `packages/core` owns CQRS and time,
-  `id_generator` owns ID generation, `crdt` owns CRDT helpers,
+  span multiple packages. Today, `packages/core` owns CQRS, `id_generator` owns
+  ID generation, `time_provider` owns time providers, `crdt` owns CRDT helpers,
   `isolate_sqlite` owns SQLite isolation, and `claudare_logging` owns logging.
   `apps/notes` is the first prototype consumer, not the architectural center.
 - Do not claim replication, device enrollment, encryption, blob storage,

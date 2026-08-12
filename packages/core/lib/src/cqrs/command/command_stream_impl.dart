@@ -1,4 +1,4 @@
-import 'package:core/src/time_provider/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 
 import 'package:core/src/cqrs/command/command_appends.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';

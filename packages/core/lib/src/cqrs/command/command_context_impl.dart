@@ -6,7 +6,7 @@ import 'package:core/src/cqrs/command/command_stream.dart';
 import 'package:core/src/cqrs/command/command_stream_impl.dart';
 import 'package:core/src/cqrs/event/event_codec_safe.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/time_provider.dart';
+import 'package:time_provider/time_provider.dart';
 
 class CommandContextImpl implements CommandContext {
   final EventStoreCommand _eventStore;

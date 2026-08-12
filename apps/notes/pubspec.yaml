@@ -39,6 +39,7 @@ dependencies:
   core: ^1.0.0
   crdt: ^1.0.0
   id_generator: ^1.0.0
+  time_provider: ^1.0.0
   path_provider: ^2.1.5
   path: ^1.9.1
   restart_app: ^1.3.2

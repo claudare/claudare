@@ -32,8 +32,8 @@ contracts but does not define the architecture or public API for other apps.
 
 ## Boundaries
 
-- Core owns reusable CQRS and support contracts; `id_generator` owns ID
-  generation, and `crdt` owns CRDT value helpers.
+- Core owns reusable CQRS contracts; `id_generator` owns ID generation,
+  `time_provider` owns time providers, and `crdt` owns CRDT value helpers.
 - Applications provide domain codecs, projections, storage selection, UI, and
   lifecycle.
 - Notes is a prototype consumer of core.
