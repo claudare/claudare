@@ -1,5 +1,5 @@
-import 'package:core/src/device_id.dart';
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'device_id.dart';
+import 'device_id_sequence_pair.dart';
 
 /// [CausalSequence] keeps track of the latest causal order based on device ids.
 /// It allows to generate next causaly consistent sequence.

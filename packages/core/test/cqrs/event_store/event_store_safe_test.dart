@@ -11,7 +11,7 @@ import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
-import 'package:core/src/device_id.dart';
+import 'package:common/common.dart';
 import 'package:test/test.dart';
 
 void main() {

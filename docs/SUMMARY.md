@@ -5,9 +5,9 @@
 Claudare is developing a reusable core for Dart and Flutter applications. Core
 is a logical layer that will span multiple packages. It currently provides
 local event-sourced command handling, optimistic stream locks, memory/SQLite
-event stores, replayable projections, runtime-version rebuilds, IDs, time,
-logging, SQLite isolation, and limited CRDT helpers in the separate `crdt`
-package.
+event stores, replayable projections, runtime-version rebuilds, shared device
+and sequence primitives, IDs, time, logging, SQLite isolation, and limited CRDT
+helpers in the separate `crdt` package.
 
 `apps/notes` is the first prototype consumer. It gives feedback on core
 contracts but does not define the architecture or public API for other apps.
@@ -32,8 +32,9 @@ contracts but does not define the architecture or public API for other apps.
 
 ## Boundaries
 
-- Core owns reusable CQRS contracts; `id_generator` owns ID generation,
-  `time_provider` owns time providers, and `crdt` owns CRDT value helpers.
+- Core owns reusable CQRS contracts; `common` owns shared device, sequence, and
+  serialization primitives; `id_generator` owns ID generation, `time_provider`
+  owns time providers, and `crdt` owns CRDT value helpers.
 - Applications provide domain codecs, projections, storage selection, UI, and
   lifecycle.
 - Notes is a prototype consumer of core.

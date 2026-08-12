@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:core/cqrs.dart';
 import 'package:core/src/cqrs/event/event_codec_safe.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 
 class TestEvent {
   String str;

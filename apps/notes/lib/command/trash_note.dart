@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/stream_id/note_stream_id.dart';

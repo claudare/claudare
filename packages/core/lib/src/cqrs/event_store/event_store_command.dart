@@ -1,5 +1,5 @@
 import 'package:core/src/cqrs/command/stored_command_write.dart';
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';

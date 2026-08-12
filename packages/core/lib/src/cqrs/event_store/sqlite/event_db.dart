@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:core/src/cqrs/command/stored_command_write.dart';
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
@@ -9,8 +9,6 @@ import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/event_store_projection.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';
-import 'package:core/src/device_id.dart';
-import 'package:core/utils.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 const appId = 'TODO';

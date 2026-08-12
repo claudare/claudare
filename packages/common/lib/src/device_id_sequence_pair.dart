@@ -1,4 +1,4 @@
-import 'package:core/src/device_id.dart';
+import 'device_id.dart';
 
 // TODO: add type enum to check that it is either causal or device specific
 class DeviceIdSequencePair {

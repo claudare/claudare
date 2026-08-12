@@ -7,8 +7,7 @@ import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
-import 'package:core/utils.dart';
-import 'package:core/src/device_id.dart';
+import 'package:common/common.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 

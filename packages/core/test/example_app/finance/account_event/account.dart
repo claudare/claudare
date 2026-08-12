@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 
 part 'account_atm_deposited.dart';
 part 'account_atm_withdrawn.dart';

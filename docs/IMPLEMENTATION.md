@@ -9,7 +9,8 @@ describes executable source paths, not completed runtime verification.
 
 Core is the reusable, application-independent layer. It will span multiple
 packages. Today, its CQRS portion is in `packages/core`, its CRDT value helpers
-are in `packages/crdt`, its ID generators are in `packages/id_generator`, its
+are in `packages/crdt`, its shared device, sequence, and serialization primitives
+are in `packages/common`, its ID generators are in `packages/id_generator`, its
 time providers are in `packages/time_provider`, and `isolate_sqlite` and
 `claudare_logging` provide core SQLite and logging boundaries.
 
@@ -22,6 +23,8 @@ new or modified Core code.
 codecs, memory and SQLite event stores, projection runtime, runtime-version
 repositories, and test utilities. `packages/id_generator` exposes the ID
 generator contract and secure, seeded, sequential, and static implementations.
+`packages/common` exposes device IDs, device/causal sequence helpers, and JSON
+byte conversion.
 `packages/time_provider` exposes the time provider contract, system clock, and
 deterministic static implementation. `packages/crdt` exposes the
 timestamp-based CRDT helpers.

@@ -5,7 +5,7 @@ import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';
 import 'package:core/src/cqrs/event_store/memory/memory_event_store.dart';
-import 'package:core/src/device_id.dart';
+import 'package:common/common.dart';
 import 'package:test/test.dart';
 
 void main() {

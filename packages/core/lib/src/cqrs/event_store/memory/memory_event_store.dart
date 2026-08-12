@@ -4,13 +4,9 @@ import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_read.dart';
 import 'package:core/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:core/src/cqrs/event_store/event_store_administration.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 import 'package:mutex/mutex.dart' show Mutex;
 
-import 'package:core/src/cqrs/causal_sequence.dart';
-import 'package:core/src/device_id.dart';
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
-import 'package:core/src/cqrs/device_sequences.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event_store/event_store.dart';

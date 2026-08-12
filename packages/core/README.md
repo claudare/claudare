@@ -1,6 +1,8 @@
 ## claudare core
 
-In this repo common shared functionality is implemented.
+CQRS contracts, runtimes, event stores, and projection infrastructure for the
+Claudare workspace. Shared device, sequence, and JSON primitives are provided by
+the `common` package.
 
 ## serialization
 

@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/src/device_id.dart';
+import 'package:common/common.dart';
 
 import 'command/atm_depost.dart';
 import 'command/atm_withdrawal.dart';

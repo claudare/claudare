@@ -6,7 +6,7 @@ import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';
 import 'package:core/src/cqrs/event/stored_event_command_write.dart';
 import 'package:core/src/cqrs/exception/concurrency_problem.dart';
-import 'package:core/src/device_id.dart';
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 import 'package:core/src/cqrs/event/event_dependency.dart';
 import 'package:core/src/cqrs/event_store/event_store_command.dart';

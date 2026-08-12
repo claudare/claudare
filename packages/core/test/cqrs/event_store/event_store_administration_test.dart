@@ -2,7 +2,7 @@ import 'dart:typed_data' show Uint8List;
 
 import 'package:core/cqrs.dart';
 import 'package:core/cqrs_test_utils.dart';
-import 'package:core/device_id.dart';
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/command/command_result.dart';
 import 'package:core/src/cqrs/command/encoded_command.dart';
 import 'package:core/src/cqrs/command/stored_command_write.dart';

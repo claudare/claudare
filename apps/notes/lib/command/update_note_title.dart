@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';

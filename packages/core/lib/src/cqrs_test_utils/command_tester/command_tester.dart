@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/device_id.dart';
+import 'package:common/common.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:core/src/cqrs/command/command_executor.dart';
 import 'package:core/src/cqrs/pattern_filter.dart';

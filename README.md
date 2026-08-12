@@ -2,8 +2,8 @@
 
 Claudare is a Dart Pub workspace developing a reusable core for Dart and
 Flutter applications. Core is a logical layer that will span multiple packages.
-It currently includes CQRS, SQLite isolation, logging, IDs, time, and small
-CRDT helpers across shared packages.
+It currently includes CQRS, common device and sequence primitives, SQLite
+isolation, logging, IDs, time, and small CRDT helpers across shared packages.
 
 `apps/notes` is the first prototype consumer of that infrastructure. It exists
 to exercise core behavior through a real Flutter application. It is not the
@@ -20,6 +20,7 @@ them as implemented without corresponding source and validation evidence.
 | Path | Purpose |
 | --- | --- |
 | `packages/core` | CQRS portion of the reusable core |
+| `packages/common` | Shared device, sequence, and serialization primitives |
 | `packages/crdt` | Timestamp-based CRDT value helpers |
 | `packages/id_generator` | 128-bit ID generator contract and implementations |
 | `packages/time_provider` | Time provider contract and implementations |
@@ -39,8 +40,8 @@ Read these documents in order when working on the repository:
 1. [AGENTS.md](AGENTS.md) for repository rules and validation boundaries.
 2. [Core wiring conventions](CONVENTIONS.md) for contracts, implementations,
    errors, and code-writing practices.
-3. [Core architecture](docs/ARCHITECTURE_COMMON.md) for the reusable CQRS,
-   CRDT, SQLite, and logging contracts.
+3. [Core architecture](docs/ARCHITECTURE_COMMON.md) for the reusable common,
+   CQRS, CRDT, SQLite, and logging contracts.
 4. [Application architecture](docs/ARCHITECTURE_APPS.md) for how an application
    composes and consumes the core.
 5. [Application patterns](docs/APP_PATTERNS.md) for event codecs and their

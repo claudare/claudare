@@ -1,4 +1,4 @@
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/event/encoded_event.dart';
 
 /// events that are read from event store for the command processing

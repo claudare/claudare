@@ -1,5 +1,5 @@
 import 'package:core/cqrs.dart';
-import 'package:core/utils.dart';
+import 'package:common/common.dart';
 import 'package:notes/event/tag/tag.dart';
 
 const tagCodec = TagCodec();

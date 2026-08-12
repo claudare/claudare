@@ -1,5 +1,5 @@
-import 'package:core/src/device_id.dart';
-import 'package:core/src/cqrs/device_id_sequence_pair.dart';
+import 'device_id.dart';
+import 'device_id_sequence_pair.dart';
 
 /// [DeviceSequences] keeps track of the autoincrementing sequences for each device.
 /// Used in sync to make sure that all commands and events are applied in device-local order.
@@ -39,13 +39,10 @@ class DeviceSequences {
       _vector.entries.map((e) => [e.key.toJson(), e.value]).toList();
 
   // ugly but okay
-  static DeviceSequences fromJson(List<List<dynamic>> json) =>
-      DeviceSequences()
-        .._vector.addAll(
-          Map.fromEntries(
-            json.map(
-              (e) => MapEntry(DeviceId.fromJson(e[0] as int), e[1] as int),
-            ),
-          ),
-        );
+  static DeviceSequences fromJson(List<List<dynamic>> json) => DeviceSequences()
+    .._vector.addAll(
+      Map.fromEntries(
+        json.map((e) => MapEntry(DeviceId.fromJson(e[0] as int), e[1] as int)),
+      ),
+    );
 }
