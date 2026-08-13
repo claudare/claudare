@@ -27,7 +27,6 @@ melos:
       private: true
       exec:
         command: dart test --reporter failures-only
-        concurrency: 4
         failFast: true
       packageFilters:
         flutter: false
@@ -35,7 +34,6 @@ melos:
       private: true
       exec:
         command: flutter test --no-pub --reporter failures-only
-        concurrency: 4
         failFast: true
       packageFilters:
         flutter: true
