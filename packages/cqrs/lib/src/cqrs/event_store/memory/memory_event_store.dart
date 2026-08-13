@@ -239,7 +239,11 @@ class MemoryEventStore implements EventStore {
             .map((e) => e.asStoredEventProjectionRead)
             .toList();
 
-    return GetLocalEventsResult(events: paginated, sequenceNumberCursor: null);
+    return GetLocalEventsResult(
+      events: paginated,
+      sequenceNumberCursor:
+          paginated.isNotEmpty ? paginated.last.localSequence : null,
+    );
   }
 
   @override

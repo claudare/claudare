@@ -7,6 +7,8 @@ import 'package:test/test.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 
 void main() {
+  final timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
   group('StreamAppends', () {
     test('empty is valid', () async {
       final appends = StreamAppends.empty();
@@ -22,12 +24,12 @@ void main() {
           StoredEventCommandWrite(
             streamId: 'test',
             encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
-            occuredAt: DateTime.now(),
+            occuredAt: timestamp,
           ),
           StoredEventCommandWrite(
             streamId: 'test',
             encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
-            occuredAt: DateTime.now(),
+            occuredAt: timestamp,
           ),
         ],
       );

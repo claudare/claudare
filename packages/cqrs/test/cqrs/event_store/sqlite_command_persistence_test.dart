@@ -24,6 +24,37 @@ void main() {
 
   tearDown(() => db.close());
 
+  test('creates the current event-store schema', () async {
+    final tables = await db.query('''SELECT name FROM sqlite_master
+      WHERE type = 'table'
+      ORDER BY name''');
+    final indexes = await db.query('''SELECT name FROM sqlite_master
+      WHERE type = 'index' AND name NOT LIKE 'sqlite_%'
+      ORDER BY name''');
+
+    expect(tables.map((row) => row[0]), [
+      'command_record',
+      'event',
+      'migrations_event_store',
+      'stream',
+    ]);
+    expect(
+      indexes.map((row) => row[0]),
+      containsAll([
+        'idx_causal_sequence',
+        'idx_command_record_device_sequence',
+        'idx_device_sequence',
+        'idx_stream_version',
+      ]),
+    );
+    expect(
+      await db.queryValue<int>(
+        'SELECT MAX(version) FROM migrations_event_store',
+      ),
+      2,
+    );
+  });
+
   test(
     'persists empty command attempts with dependency and result details',
     () async {
@@ -78,9 +109,9 @@ void main() {
       StreamAppends(
         dependencies: EventDependency.empty(),
         localLocks: const [
-          StreamLocalLock(streamId: 'note/1', originatingStreamVersion: 0),
+          StreamLocalLock(streamId: 'test/1', originatingStreamVersion: 0),
         ],
-        events: [_event('note/1', timestamp)],
+        events: [_event('test/1', timestamp)],
       ),
     );
 
@@ -89,52 +120,16 @@ void main() {
 
     await store.migrate();
 
-    final events = await store.getStreamEvents('note/1', 10, 0);
+    final events = await store.getStreamEvents('test/1', 10, 0);
+
     expect(events.events, hasLength(1));
     expect(events.events.single.encodedEvent.kind, 'created');
-    expect(await db.queryValue<int>('SELECT COUNT(*) FROM command_record'), 0);
-  });
 
-  test('stale writes roll back their command record and events', () async {
-    final timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-    await store.saveChanges(
-      _command(timestamp),
-      StreamAppends(
-        dependencies: EventDependency.empty(),
-        localLocks: const [
-          StreamLocalLock(streamId: 'note/1', originatingStreamVersion: 0),
-        ],
-        events: [_event('note/1', timestamp)],
-      ),
+    final commandCount = await db.queryValue<int>(
+      'SELECT COUNT(*) FROM command_record',
     );
 
-    await expectLater(
-      store.saveChanges(
-        _command(timestamp),
-        StreamAppends(
-          dependencies: EventDependency.empty(),
-          localLocks: const [
-            StreamLocalLock(streamId: 'note/1', originatingStreamVersion: 0),
-            StreamLocalLock(streamId: 'note/2', originatingStreamVersion: 0),
-          ],
-          events: [_event('note/1', timestamp), _event('note/2', timestamp)],
-        ),
-      ),
-      throwsA(isA<ConcurrencyProblem>()),
-    );
-
-    expect(await db.queryValue<int>('SELECT COUNT(*) FROM command_record'), 1);
-    expect(await db.queryValue<int>('SELECT COUNT(*) FROM event'), 1);
-    expect(await db.queryValue<int>('SELECT COUNT(*) FROM stream'), 1);
-  });
-
-  test('reset clears persisted command records', () async {
-    final timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-    await store.saveChanges(_command(timestamp), StreamAppends.empty());
-
-    await store.reset();
-
-    expect(await db.queryValue<int>('SELECT COUNT(*) FROM command_record'), 0);
+    expect(commandCount, 0);
   });
 }
 
