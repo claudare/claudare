@@ -17,17 +17,18 @@ them as implemented without corresponding source and validation evidence.
 
 ## Workspace map
 
-| Path | Purpose |
-| --- | --- |
-| `packages/core` | CQRS portion of the reusable core |
-| `packages/common` | Shared device, sequence, and serialization primitives |
-| `packages/crdt` | Timestamp-based CRDT value helpers |
-| `packages/id_generator` | 128-bit ID generator contract and implementations |
-| `packages/time_provider` | Time provider contract and implementations |
-| `packages/isolate_sqlite` | SQLite connection owner running database callbacks in a dedicated isolate |
-| `packages/claudare_logging` | Shared explicit logging abstraction |
-| `apps/notes` | First Flutter prototype consumer of the core packages |
-| `docs` | Source-backed architecture, implementation, security, and improvement guidance |
+| Path                        | Purpose                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| `packages/core`             | CQRS portion of the reusable core                                              |
+| `packages/common`           | Shared device, sequence, and serialization primitives                          |
+| `packages/crdt`             | Timestamp-based CRDT value helpers                                             |
+| `packages/id_generator`     | 128-bit ID generator contract and implementations                              |
+| `packages/time_provider`    | Time provider contract and implementations                                     |
+| `packages/queue`            | Multiple queue implementations                                                 |
+| `packages/isolate_sqlite`   | SQLite connection owner running database callbacks in a dedicated isolate      |
+| `packages/claudare_logging` | Shared explicit logging abstraction                                            |
+| `apps/notes`                | First Flutter prototype consumer of the core packages                          |
+| `docs`                      | Source-backed architecture, implementation, security, and improvement guidance |
 
 The root `pubspec.yaml` discovers `apps/*` and `packages/*`. Every member uses
 `resolution: workspace`; compatible version constraints resolve other members

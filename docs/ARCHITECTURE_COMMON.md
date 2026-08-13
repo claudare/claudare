@@ -61,9 +61,8 @@ parity-testing conventions that govern changes to that contract.
 A `Projection` names its event codec and stream-ID pattern, owns a checkpoint,
 can reset its derived state, and applies decoded events with metadata.
 `ProjectionRuntime` catches up by querying events after the checkpoint and
-routes live committed events through a FIFO queue. Projection errors make the
-derived state unhealthy; the event history remains available for repair by
-reset/replay.
+routes live committed events to projections. Projection errors make the derived
+state unhealthy; the event history remains available for repair by reset/replay.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.

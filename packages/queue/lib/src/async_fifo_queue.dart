@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:collection';
 
 typedef AsyncQueueTask<T> = Future<void> Function(T value);
@@ -32,15 +31,9 @@ class AsyncFIFOQueue<T> {
     _size++;
 
     _processNext();
-
-    // Could use microtasks to mirror js implementation
-    // Im gonna try without it
-    // scheduleMicrotask(_processNext);
   }
 
   void reset() {
-    // Call onDone for each queue item, this is called during failure
-    // Error handling is in the [ProjectionRuntime]
     for (final item in _queue) {
       item.onDone?.call();
     }
@@ -72,7 +65,6 @@ class AsyncFIFOQueue<T> {
           _processing = false;
           reset();
 
-          // Tasks are expected not to throw; propagate if they do.
           Error.throwWithStackTrace(e, st);
         });
   }

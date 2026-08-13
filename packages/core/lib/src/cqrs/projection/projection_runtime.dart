@@ -6,8 +6,8 @@ import 'package:core/src/cqrs/event_store/global_event_reader.dart';
 import 'package:core/src/cqrs/projection/projection.dart';
 import 'package:core/src/cqrs/projection/projection_sink.dart';
 import 'package:core/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
-import 'package:core/src/utils/async_fifo_queue.dart';
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:queue/queue.dart';
 
 import 'projection_failure_handler.dart';
 
