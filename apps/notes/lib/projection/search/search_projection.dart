@@ -1,4 +1,4 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';

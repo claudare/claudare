@@ -3,7 +3,7 @@
 ## Purpose and ownership
 
 Core is the reusable, application-independent foundation of Claudare. It will
-span multiple packages as the system grows. Today, `packages/core` contains the
+span multiple packages as the system grows. Today, `packages/cqrs` contains the
 CQRS runtime, `packages/common` owns shared device, sequence, and serialization
 primitives, `packages/id_generator` owns ID generation, `packages/time_provider`
 owns time providers, `packages/crdt` contains CRDT value helpers,

@@ -6,7 +6,7 @@ These instructions apply to the entire repository.
 
 - `apps/*` contains Flutter applications. Use short package names and
   `com.claudare.<app>` for every platform application identifier.
-- Shared packages own their respective concerns: `core` owns CQRS and domain
+- Shared packages own their respective concerns: `cqrs` owns CQRS and domain
   infrastructure, `common` owns shared device, sequence, and serialization
   primitives, `id_generator` owns IDs, `time_provider` owns time, `crdt` owns
   CRDT helpers, `isolate_sqlite` owns SQLite isolation, and `claudare_logging`

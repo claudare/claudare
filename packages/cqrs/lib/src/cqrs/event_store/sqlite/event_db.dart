@@ -1,0 +1,385 @@
+import 'dart:typed_data';
+
+import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/event/encoded_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store_projection.dart';
+import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
+import 'package:isolate_sqlite/isolate_sqlite.dart';
+
+const appId = 'TODO';
+
+final migrations =
+    SqliteMigrations(migrationTable: 'migrations_event_store')
+      ..add(
+        SqliteMigration(1, (tx) {
+          tx.execute('''CREATE TABLE stream(
+          stream_id PRIMARY KEY NOT NULL,
+          version INTEGER NOT NULL
+        );''');
+          tx.execute(
+            'CREATE INDEX idx_stream_version ON stream(stream_id, version);',
+          );
+
+          // schema is the following:
+          // app_id for multi-app tenancy. Currently just set to "TODO"
+          // (app_id, stream_id, stream_version) for local consistency checks
+          // (app_id, device_id, causal_sequence) for sync, event dependency tracking
+          // (app_id, device_id, device_sequence) for sync, events are downloaded sequentially
+          // (local_sequence) for fully offline projection catchup and playback
+          tx.execute('''CREATE TABLE event(
+          local_sequence INTEGER PRIMARY KEY NOT NULL,
+          stream_id TEXT NOT NULL,
+          stream_version INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          detail BLOB NOT NULL,
+          occured_at INTEGER NOT NULL,
+          device_id INTEGER NOT NULL,
+          device_sequence INTEGER NOT NULL,
+          causal_sequence INTEGER NOT NULL
+          );'''); // app_sequence!
+
+          tx.execute(
+            'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
+          );
+          tx.execute(
+            'CREATE INDEX idx_causal_sequence ON event(device_id, causal_sequence);',
+          );
+
+          // clocks maintained by sqlite
+          tx.execute('''
+          CREATE VIEW next_device_sequence AS
+          SELECT device_id, COALESCE(MAX(device_sequence), 0) + 1 AS next_seq
+          FROM event
+          GROUP BY device_id;
+        ''');
+
+          tx.execute('''
+          CREATE VIEW next_causal_sequence AS
+          SELECT device_id, COALESCE(MAX(causal_sequence), 0) + 1 AS next_seq
+          FROM event
+          GROUP BY device_id;
+        ''');
+
+          tx.execute('''
+          CREATE VIEW next_local_sequence AS
+          SELECT COALESCE(MAX(local_sequence), 0) + 1 AS next_seq
+          FROM event;
+        ''');
+        }),
+      )
+      ..add(
+        SqliteMigration(2, (tx) {
+          tx.execute('''CREATE TABLE command_record(
+          local_sequence INTEGER PRIMARY KEY NOT NULL,
+          device_id INTEGER NOT NULL,
+          device_sequence INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          detail BLOB NOT NULL,
+          started_at INTEGER NOT NULL,
+          completed_at INTEGER NOT NULL,
+          dependencies BLOB NOT NULL,
+          nack_reason TEXT,
+          exception TEXT
+        );''');
+          tx.execute(
+            'CREATE INDEX idx_command_record_device_sequence ON command_record(device_id, device_sequence);',
+          );
+        }),
+      );
+
+class EventDb {
+  final IsolateSqlite _db;
+
+  const EventDb(this._db);
+
+  Future<void> migrate() async {
+    await migrations.migrate(_db);
+  }
+
+  Future<GetStreamEventsResult> getStreamEvents(
+    String streamId,
+    int count,
+    int versionCursor,
+  ) async {
+    // could transact here!
+    final originatingStreamVersion = await _db.queryValue<int?>(
+      'SELECT version FROM stream WHERE stream_id = ?',
+      [streamId],
+    );
+
+    if (originatingStreamVersion == null) {
+      return GetStreamEventsResult(originatingStreamVersion: 0, events: []);
+    }
+
+    final eventsResult = await _db.query(
+      'SELECT kind, detail, occured_at, device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? AND stream_version > ? ORDER BY stream_version ASC LIMIT ?',
+      [streamId, versionCursor, count],
+    );
+
+    final events = List<StoredEventCommandRead>.generate(eventsResult.length, (
+      i,
+    ) {
+      final row = eventsResult[i];
+
+      return StoredEventCommandRead(
+        encodedEvent: EncodedEvent(
+          kind: row[0] as String,
+          bytes: row[1] as Uint8List,
+        ),
+        occuredAt: DateTime.fromMillisecondsSinceEpoch(
+          row[2] as int,
+          isUtc: true,
+        ),
+        causalPair: DeviceIdSequencePair(
+          DeviceId(row[3] as int),
+          row[4] as int,
+        ),
+        streamVersion: row[5] as int,
+      );
+    });
+
+    return GetStreamEventsResult(
+      originatingStreamVersion: originatingStreamVersion,
+      events: events,
+    );
+  }
+
+  Future<GetStreamInfoResult?> getStreamInfo(String streamId) async {
+    final row = await _db.queryRow(
+      'SELECT device_id, causal_sequence, stream_version FROM event WHERE stream_id = ? ORDER BY stream_version DESC LIMIT 1',
+      [streamId],
+    );
+
+    if (row == null) {
+      return null;
+    }
+
+    return GetStreamInfoResult(
+      causalSequencePair: DeviceIdSequencePair(
+        DeviceId(row[0] as int),
+        row[1] as int,
+      ),
+      originatingStreamVersion: row[2] as int,
+    );
+  }
+
+  Future<SaveChangesResult> saveChanges(
+    StoredCommandWrite command,
+    StreamAppends appends,
+  ) async {
+    return await _db.transaction((tx) {
+      _saveCommand(tx, command, appends);
+
+      if (appends.events.isEmpty) {
+        return SaveChangesResult.empty();
+      }
+
+      final streamVersions = <String, int>{};
+      final newStreams = <String>{};
+
+      for (final lock in appends.localLocks) {
+        final storedVersion = tx.queryValue<int?>(
+          'SELECT version FROM stream WHERE stream_id = ? LIMIT 1',
+          [lock.streamId],
+        );
+        final currentVersion = storedVersion ?? 0;
+
+        if (lock.originatingStreamVersion != currentVersion) {
+          throw ConcurrencyProblem();
+        }
+
+        streamVersions[lock.streamId] = currentVersion;
+        if (storedVersion == null) {
+          newStreams.add(lock.streamId);
+        }
+      }
+
+      for (final streamId in newStreams) {
+        tx.execute('INSERT INTO stream (stream_id, version) VALUES (?, 0)', [
+          streamId,
+        ]);
+      }
+
+      final result = SaveChangesResult(orders: []);
+
+      for (final event in appends.events) {
+        final currentVersion = streamVersions[event.streamId];
+        if (currentVersion == null) {
+          throw ArgumentError.value(
+            event.streamId,
+            'event.streamId',
+            'Every appended event must have a stream lock',
+          );
+        }
+
+        final localSequence = tx.queryValue<int?>(
+          '''INSERT INTO event (
+            stream_id,
+            stream_version,
+            kind,
+            detail,
+            occured_at,
+            device_id,
+            device_sequence,
+            causal_sequence,
+            local_sequence
+          ) VALUES (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            COALESCE((SELECT next_seq FROM next_device_sequence WHERE device_id = ?), 1),
+            COALESCE((SELECT next_seq FROM next_causal_sequence WHERE device_id = ?), 1),
+            (SELECT next_seq FROM next_local_sequence)
+          ) RETURNING local_sequence; ''',
+          [
+            event.streamId,
+            currentVersion + 1,
+            event.encodedEvent.kind,
+            event.encodedEvent.bytes,
+            event.occuredAt.millisecondsSinceEpoch,
+            command.deviceId.value,
+            command.deviceId.value,
+            command.deviceId.value,
+          ],
+        );
+
+        if (localSequence == null) {
+          throw StateError('localSequence is null');
+        }
+
+        result.orders.add(StreamAppendOrder(localSequence: localSequence));
+        streamVersions[event.streamId] = currentVersion + 1;
+      }
+
+      for (final entry in streamVersions.entries) {
+        tx.execute('UPDATE stream SET version = ? WHERE stream_id = ?', [
+          entry.value,
+          entry.key,
+        ]);
+      }
+
+      return result;
+    });
+  }
+
+  void _saveCommand(
+    dynamic tx,
+    StoredCommandWrite command,
+    StreamAppends appends,
+  ) {
+    tx.execute(
+      '''INSERT INTO command_record (
+          local_sequence,
+          device_id,
+          device_sequence,
+          kind,
+          detail,
+          started_at,
+          completed_at,
+          dependencies,
+          nack_reason,
+          exception
+        ) VALUES (
+          (SELECT COALESCE(MAX(local_sequence), 0) + 1 FROM command_record),
+          ?,
+          (SELECT COALESCE(MAX(device_sequence), 0) + 1 FROM command_record WHERE device_id = ?),
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?,
+          ?
+        );''',
+      [
+        command.deviceId.value,
+        command.deviceId.value,
+        command.encoded.kind,
+        command.encoded.bytes,
+        command.startedAt.millisecondsSinceEpoch,
+        command.completedAt.millisecondsSinceEpoch,
+        JsonConverter.encode(appends.dependencies.toJson()),
+        command.result.nackReason,
+        command.result.exception?.toString(),
+      ],
+    );
+  }
+
+  Future<GetLocalEventsResult> getLocalEvents(
+    PatternFilter patternFilter,
+    int sequenceNumber,
+    int count,
+  ) async {
+    final filterSql = patternToSQL(patternFilter);
+    final values = await _db.query(
+      '''SELECT
+        stream_id,
+        kind,
+        detail,
+        occured_at,
+        local_sequence
+      FROM event
+      WHERE
+        $filterSql AND
+        local_sequence > ?
+      ORDER BY local_sequence ASC
+      LIMIT ?;''',
+      [sequenceNumber, count],
+    );
+
+    return GetLocalEventsResult(
+      events: List<StoredEventProjectionRead>.generate(values.length, (i) {
+        final row = values[i];
+        return StoredEventProjectionRead(
+          streamId: row[0] as String,
+          encodedEvent: EncodedEvent(
+            kind: row[1] as String,
+            bytes: row[2] as Uint8List,
+          ),
+          occuredAt: DateTime.fromMillisecondsSinceEpoch(
+            row[3] as int,
+            isUtc: true,
+          ),
+          localSequence: row[4] as int,
+        );
+      }),
+      sequenceNumberCursor: values.isNotEmpty ? values.last[4] as int : null,
+    );
+  }
+
+  Future<GetLocalLastEventResult> getLocalLastEvent(
+    PatternFilter patternFilter,
+  ) async {
+    final filterSql = patternToSQL(patternFilter);
+    final value = await _db.queryValue<int?>('''SELECT
+        local_sequence
+      FROM event
+      WHERE
+        $filterSql
+      ORDER BY local_sequence DESC
+      LIMIT 1;''');
+
+    return GetLocalLastEventResult(localSequence: value ?? 0);
+  }
+}
+
+String patternToSQL(PatternFilter filter) {
+  switch (filter.type) {
+    case PatternFilterType.any:
+      return '1 = 1';
+    case PatternFilterType.exact:
+      final value = filter.pattern;
+      return 'stream_id = $value';
+    case PatternFilterType.startsWith:
+      final prefix = filter.pattern;
+      return "stream_id LIKE '$prefix%'";
+  }
+}

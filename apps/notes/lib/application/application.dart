@@ -1,6 +1,6 @@
 // [Application] is the top-level class that holds everything needed to initialize
 // the application and to do local state
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';

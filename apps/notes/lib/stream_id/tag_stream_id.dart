@@ -1,3 +1,3 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 
 final tagStreamId = StreamIdPatternWildcard('tag/*');

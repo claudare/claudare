@@ -66,6 +66,6 @@ When adding an event to an existing family:
 4. Update the commands and projections that own its behavior.
 5. Add codec and replay coverage for the new event.
 
-The finance example in `packages/core/test/example_app/finance/account_event`
+The finance example in `packages/cqrs/test/example_app/finance/account_event`
 is a test-only reference for this organization. Applications own their own
 event families and codecs.

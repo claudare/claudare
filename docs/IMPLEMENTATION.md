@@ -8,7 +8,7 @@ describes executable source paths, not completed runtime verification.
 ## Core package layout
 
 Core is the reusable, application-independent layer. It will span multiple
-packages. Today, its CQRS portion is in `packages/core`, its CRDT value helpers
+packages. Today, its CQRS portion is in `packages/cqrs`, its CRDT value helpers
 are in `packages/crdt`, its shared device, sequence, and serialization primitives
 are in `packages/common`, its ID generators are in `packages/id_generator`, its
 time providers are in `packages/time_provider`, and `isolate_sqlite` and
@@ -19,7 +19,7 @@ new or modified Core code.
 
 ## CQRS implementation
 
-`packages/core` exposes command inputs and handlers, stream contexts, event
+`packages/cqrs` exposes command inputs and handlers, stream contexts, event
 codecs, memory and SQLite event stores, projection runtime, runtime-version
 repositories, and test utilities. `packages/id_generator` exposes the ID
 generator contract and secure, seeded, sequential, and static implementations.

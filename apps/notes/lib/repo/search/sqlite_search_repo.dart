@@ -1,4 +1,4 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/projection/search/search_projection_repo.dart';
 import 'package:notes/read_model/search/search_read_model.dart';

@@ -1,4 +1,4 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:notes/event/note/note.dart';
 

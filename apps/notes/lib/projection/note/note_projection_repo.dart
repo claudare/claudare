@@ -1,4 +1,4 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:notes/model/note_data.dart';
 
 // Get and store repo style

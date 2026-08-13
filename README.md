@@ -19,7 +19,7 @@ them as implemented without corresponding source and validation evidence.
 
 | Path                        | Purpose                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------ |
-| `packages/core`             | CQRS portion of the reusable core                                              |
+| `packages/cqrs`             | CQRS portion of the reusable core                                              |
 | `packages/common`           | Shared device, sequence, and serialization primitives                          |
 | `packages/crdt`             | Timestamp-based CRDT value helpers                                             |
 | `packages/id_generator`     | 128-bit ID generator contract and implementations                              |

@@ -1,4 +1,4 @@
-import 'package:core/cqrs.dart';
+import 'package:cqrs/cqrs.dart';
 
 class UpsertInput {
   final String noteId;
