@@ -109,4 +109,17 @@ void main() {
       'values': [1, true, null],
     });
   });
+
+  test('identifies JSON-like runtime errors', () {
+    expect(isJsonExceptionLikeError(TypeError()), isTrue);
+    expect(
+      isJsonExceptionLikeError(
+        NoSuchMethodError.withInvocation(Object(), Invocation.getter(#value)),
+      ),
+      isTrue,
+    );
+    expect(isJsonExceptionLikeError(RangeError('out of range')), isTrue);
+    expect(isJsonExceptionLikeError(FormatException('invalid')), isFalse);
+    expect(isJsonExceptionLikeError(StateError('invalid')), isFalse);
+  });
 }

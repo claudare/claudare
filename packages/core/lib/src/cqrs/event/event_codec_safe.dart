@@ -1,6 +1,6 @@
+import 'package:common/common.dart';
 import 'package:core/src/cqrs/event/event_codec.dart';
 import 'package:core/src/cqrs/exception/event_codec_exception.dart';
-import 'package:core/src/utils/is_json_exception_like_error.dart';
 
 class EventCodecSafe<Event> implements EventCodec<Event> {
   final EventCodec<Event> _codec;

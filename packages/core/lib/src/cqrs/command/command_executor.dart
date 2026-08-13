@@ -18,7 +18,6 @@ import 'package:core/src/cqrs/exception/command_execution_exception.dart';
 import 'package:core/src/cqrs/exception/command_nack.dart';
 import 'package:core/src/cqrs/exception/command_serialization_exception.dart';
 import 'package:core/src/cqrs/exception/event_store_exception.dart';
-import 'package:core/src/utils/is_json_exception_like_error.dart';
 
 class CommandExecutor {
   final EventStoreCommand _eventStore;
