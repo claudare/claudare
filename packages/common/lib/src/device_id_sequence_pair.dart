@@ -1,5 +1,7 @@
 import 'device_id.dart';
 
+// TODO: this is a duplicate of the causal sequence, but it is not mutatable
+// this should use better names
 class DeviceIdSequencePair {
   final DeviceId deviceId;
   final int sequence;
