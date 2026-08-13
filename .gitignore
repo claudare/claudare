@@ -6,3 +6,7 @@
 .dart_tool/
 build/
 coverage/
+
+# IntelliJ generated files
+.idea/
+*.iml

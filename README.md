@@ -73,11 +73,11 @@ fvm flutter run
 ## Validate
 
 For a code change, analyze the workspace and run the relevant tests. The full
-test script runs Dart tests in every package and Flutter tests in every app.
+Melos test command runs Dart package tests in parallel, then Flutter app tests.
 
 ```sh
 fvm dart analyze
-./scripts/test.sh
+fvm dart run melos run test
 ```
 
 For dependency or workspace changes, first resolve from the root and confirm
@@ -87,8 +87,12 @@ the discovered members:
 fvm flutter pub get
 fvm dart pub workspace list
 fvm dart analyze
-./scripts/test.sh
+fvm dart run melos run test
 ```
+
+Flutter tests run with `--no-pub` to keep their output concise. After changing
+dependencies, run `fvm flutter pub get` or `fvm dart run melos bootstrap` before
+testing.
 
 For documentation-only changes, inspect the diff and run:
 

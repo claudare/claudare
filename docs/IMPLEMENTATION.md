@@ -78,4 +78,4 @@ data, and search behavior are prototype details, not core contracts.
 The repository has Dart tests for core commands, stores, projections, finance
 examples, logging, and SQLite isolation. The notes smoke test does not exercise
 product behavior. Run root analysis plus relevant member tests while iterating;
-use `./scripts/test.sh` for cross-workspace work.
+use `fvm dart run melos run test` for cross-workspace work.

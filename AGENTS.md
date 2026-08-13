@@ -63,12 +63,15 @@ For workspace or dependency changes, run:
 fvm flutter pub get
 fvm dart pub workspace list
 fvm dart analyze
-./scripts/test.sh
+fvm dart run melos run test
 ```
 
-`scripts/test.sh` runs every package and application test. For code changes within
-one member, run root analysis and its relevant tests; use the full script for
-cross-workspace code changes. For documentation-only changes, inspect the diff and
-run `git diff --check`; analysis and tests are unnecessary unless generated docs
-or executable examples changed. Report only checks actually run, categorized as
-static checks, tests, builds, or runtime verification.
+The project-local Melos test command runs every package and application test,
+with up to four member suites running in parallel. Flutter tests use `--no-pub`,
+so run `fvm flutter pub get` or `fvm dart run melos bootstrap` after dependency
+changes. For code changes within one member, run root analysis and its relevant
+tests; use the full Melos command for cross-workspace code changes. For
+documentation-only changes, inspect the diff and run `git diff --check`;
+analysis and tests are unnecessary unless generated docs or executable examples
+changed. Report only checks actually run, categorized as static checks, tests,
+builds, or runtime verification.
