@@ -15,9 +15,7 @@ class CqrsRuntimeConfig {
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;
 
-  /// Size for the pagination of event store queries, usually leave to defaults
-  /// This is an awkward parameter tbh... Maybe its defined by the runtime rather then
-  /// the runtime user?
+  // FIXME: make this a config option inside the [EventStore]
   final int eventStorePageSize;
 
   const CqrsRuntimeConfig({

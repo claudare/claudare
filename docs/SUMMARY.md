@@ -14,21 +14,21 @@ contracts but does not define the architecture or public API for other apps.
 
 ## Core capability matrix
 
-| Capability | Current status |
-| --- | --- |
-| Typed commands and optimistic stream locks | Implemented |
-| Memory and SQLite local event stores | Implemented |
-| Replayable application-defined projections | Implemented |
-| Consistent and eventual projection routing | Implemented |
-| Runtime-version projection rebuild | Implemented |
-| Timestamp latest-write-wins helper | Implemented with local-only limits |
-| SQLite isolate boundary | Implemented |
-| Explicit logging abstraction | Implemented |
-| Replication/import/export | Not implemented |
-| Authenticated device identity | Not implemented |
-| Deterministic replicated convergence | Not implemented |
-| Event/database encryption | Not implemented |
-| Blob storage or backup | Not implemented |
+| Capability                                 | Current status                     |
+| ------------------------------------------ | ---------------------------------- |
+| Typed commands and optimistic stream locks | Implemented                        |
+| Memory and SQLite local event stores       | Implemented                        |
+| Replayable application-defined projections | Implemented                        |
+| Consistent and eventual projection routing | Implemented                        |
+| Runtime-version projection rebuild         | Implemented                        |
+| Timestamp latest-write-wins helper         | Implemented with local-only limits |
+| SQLite isolate boundary                    | Implemented                        |
+| Explicit logging abstraction               | Implemented                        |
+| Replication/import/export                  | Not implemented                    |
+| Authenticated device identity              | Not implemented                    |
+| Deterministic replicated convergence       | Not implemented                    |
+| Event/database encryption                  | Not implemented                    |
+| Blob storage or backup                     | Not implemented                    |
 
 ## Boundaries
 
@@ -48,6 +48,8 @@ contracts but does not define the architecture or public API for other apps.
 
 ## Documentation map
 
+- [ARCHITECTURE_ECOSYSTEM.md](ARCHITECTURE_ECOSYSTEM.md): general overview of
+  the Claudare project.
 - [ARCHITECTURE_COMMON.md](ARCHITECTURE_COMMON.md): reusable core contracts.
 - [ARCHITECTURE_APPS.md](ARCHITECTURE_APPS.md): application composition.
 - [APP_PATTERNS.md](APP_PATTERNS.md): application-owned event codecs and

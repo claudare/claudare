@@ -45,12 +45,8 @@ themselves through reset and replay.
 
 ## Current core limits
 
-- `PatternFilter` is interpolated into SQLite queries; exact filters are not
-  quoted and prefix values are not escaped.
 - SQLite migration markers use `db.execute` rather than the transaction
   context, so schema work and its marker are not atomic.
-- Memory and SQLite implementations need shared parity tests for command
-  records, locks, multi-stream changes, paging, reset, and error translation.
 - Runtime lifecycle, projection queue draining, degraded state, and shutdown
   are not explicit public behavior.
 - Device and causal sequences are local values, not authenticated identity,

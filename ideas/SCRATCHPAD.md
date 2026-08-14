@@ -8,16 +8,29 @@ in one place. For better defined and conrete documentation read markdowns at
 
 - Postfix the class with `Mutable`?
 
+## TODOs
+
+- Generate localSequences and logical clocks in code. Run everything inside a
+  mutex (an async queue) and rollback ids on failures. It is extremely important
+  that no "holes" are present in sequential ids.
+- Remove the sequence from the async_fifo_queue. Add queueWait method for a
+  Future return like a mutex.
+- Create prod and testing `CqrsRuntimeConfig`. Rename to
+  `CqrsRuntimeDependencies`.
+- Move the event fetch page size outside the `EventStore`.
+
 ## Maybe todo's?
 
 - Current device id is 0.
 - Map device public key to locally incrementable uint device id.
 - Define protocols as sync state machines.
 - Try to define as many constants as possible. Fail on violations.
-- No central centralization mentality (optimization) for now. All data is
-  encrypted and sent to to all devices separately; Events or blobs. Everyone
+- No central server. Peer to peer communication only.
+- No encryption of the stored data. However, the data is encrypted in transit
+  only and sent to to all devices separately; Events or blobs: every device
   stores everything.
-- Push vs pull for sync... Not sure, but I am leaning towards the push model.
+- Push model for sync. The blob protocol is insired by Bittorrent: uses want,
+  interested,
 
 ## Interesting libraries
 

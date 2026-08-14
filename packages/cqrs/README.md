@@ -1,6 +1,6 @@
 # cqrs
 
-CQRS infrastructure for the Claudare workspace.
+CQRS implementation for the Claudare workspace.
 
 ## Validation
 
