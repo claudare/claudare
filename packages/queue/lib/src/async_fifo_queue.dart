@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:collection';
 
 typedef AsyncQueueTask<T> = Future<void> Function(T value);
@@ -20,6 +21,12 @@ class AsyncFIFOQueue<T> {
     _size++;
 
     _processNext();
+  }
+
+  Future<void> enqueueAndWait(T value) {
+    final completer = Completer<void>();
+    enqueue(value, onDone: completer.complete);
+    return completer.future;
   }
 
   void reset() {

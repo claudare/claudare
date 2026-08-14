@@ -13,8 +13,6 @@ in one place. For better defined and conrete documentation read markdowns at
 - Generate localSequences and logical clocks in code. Run everything inside a
   mutex (an async queue) and rollback ids on failures. It is extremely important
   that no "holes" are present in sequential ids.
-- Remove the sequence from the async_fifo_queue. Add queueWait method for a
-  Future return like a mutex.
 - Create prod and testing `CqrsRuntimeConfig`. Rename to
   `CqrsRuntimeDependencies`.
 - Move the event fetch page size outside the `EventStore`.
