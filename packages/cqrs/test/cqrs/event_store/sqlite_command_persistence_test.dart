@@ -120,7 +120,7 @@ void main() {
 
     await store.migrate();
 
-    final events = await store.getStreamEvents('test/1', 10, 0);
+    final events = await store.getStreamEvents('test/1', 0);
 
     expect(events.events, hasLength(1));
     expect(events.events.single.encodedEvent.kind, 'created');

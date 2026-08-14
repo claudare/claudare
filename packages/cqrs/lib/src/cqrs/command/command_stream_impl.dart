@@ -17,7 +17,6 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
   final EventStoreCommand _eventStore;
   final CommandAppends _appends;
   final EventCodec<Event> _codec;
-  final int _pageSize;
   final String _streamId;
   final IdData _streamIdData;
   final StreamIdPattern<IdData> _streamIdPattern;
@@ -29,7 +28,6 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
     this._eventStore,
     this._appends,
     this._codec,
-    this._pageSize,
     this._streamId,
     this._streamIdData,
     this._streamIdPattern,
@@ -53,7 +51,7 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
   Stream<Event> scan() async* {
     _tryLock();
 
-    final reader = StreamEventReader(_eventStore, _streamId, _pageSize);
+    final reader = StreamEventReader(_eventStore, _streamId);
     final dependencies = EventDependency.empty();
 
     try {

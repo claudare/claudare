@@ -13,7 +13,6 @@ import 'projection_failure_handler.dart';
 
 class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   final Projection<TEvents, TIdData> _projection;
-  final int _pageSize;
   final Logger _logger;
   final String _runtimeName;
   final int _runtimeVersion;
@@ -21,8 +20,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   late final AsyncFIFOQueue<QueueItem<TEvents, TIdData>> _queue;
 
   ProjectionRuntime(
-    this._projection,
-    this._pageSize, {
+    this._projection, {
     required Logger logger,
     required String runtimeName,
     required int runtimeVersion,
@@ -96,7 +94,6 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
       final reader = GlobalEventReader(
         eventStore,
         _projection.streamIdPattern.filter,
-        _pageSize,
         checkpoint.localSequence,
       );
 

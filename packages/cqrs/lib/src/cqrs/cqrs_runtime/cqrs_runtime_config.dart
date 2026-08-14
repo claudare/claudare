@@ -15,15 +15,11 @@ class CqrsRuntimeConfig {
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;
 
-  // FIXME: make this a config option inside the [EventStore]
-  final int eventStorePageSize;
-
   const CqrsRuntimeConfig({
     required this.eventStore,
     required this.runtimeRepo,
     required this.logger,
     required this.idGenerator,
     required this.timeProvider,
-    this.eventStorePageSize = 20,
   });
 }

@@ -18,10 +18,10 @@ void main() {
   final store = EventStoreSafe(_FailingEventStore());
 
   test('wraps asynchronous event-store failures', () async {
-    await _expectWrapped(store.getStreamEvents('stream', 1, 0));
+    await _expectWrapped(store.getStreamEvents('stream', 0));
     await _expectWrapped(store.getStreamInfo('stream'));
     await _expectWrapped(store.saveChanges(_command(), StreamAppends.empty()));
-    await _expectWrapped(store.getLocalEvents(PatternFilter.any(), 0, 1));
+    await _expectWrapped(store.getLocalEvents(PatternFilter.any(), 0));
     await _expectWrapped(store.getLocalLastEvent(PatternFilter.any()));
     await _expectWrapped(store.getStatistics());
     await _expectWrapped(store.reset());
@@ -67,7 +67,6 @@ class _FailingEventStore extends MemoryEventStore {
   @override
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
-    int count,
     int versionCursor,
   ) async => _fail();
 
@@ -84,7 +83,6 @@ class _FailingEventStore extends MemoryEventStore {
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
-    int count,
   ) async => _fail();
 
   @override

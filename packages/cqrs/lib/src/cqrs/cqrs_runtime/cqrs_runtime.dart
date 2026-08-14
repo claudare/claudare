@@ -40,7 +40,6 @@ class CqrsRuntime {
             .map(
               (projector) => ProjectionRuntime(
                 projector,
-                _config.eventStorePageSize,
                 logger: _config.logger,
                 runtimeName: runtimeName,
                 runtimeVersion: runtimeVersion,
@@ -116,7 +115,6 @@ class CqrsRuntime {
       timeProvider: _config.timeProvider,
       idGenerator: _config.idGenerator,
       thisDeviceId: _thisDeviceId,
-      pageSize: _config.eventStorePageSize,
     );
 
     final consistentRunners = <ProjectionRuntime>[];
@@ -151,7 +149,6 @@ class CqrsRuntime {
       timeProvider: _config.timeProvider,
       idGenerator: _config.idGenerator,
       thisDeviceId: _thisDeviceId,
-      pageSize: _config.eventStorePageSize,
     );
 
     final consistentRunners = <ProjectionRuntime>[];

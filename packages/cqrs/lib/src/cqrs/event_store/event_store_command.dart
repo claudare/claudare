@@ -93,8 +93,7 @@ class SaveChangesResult {
 abstract interface class EventStoreCommand {
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
-    int count,
-    int streamVersionCursor, // TODO: reorder before count
+    int streamVersionCursor,
   );
 
   /// TODO: I dont like this name + nullable return type

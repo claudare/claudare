@@ -32,7 +32,7 @@ void main() {
       tearDown(() => session.close());
 
       test('empty reads and stream information', () async {
-        final streamEvents = await store.getStreamEvents('missing', 10, 0);
+        final streamEvents = await store.getStreamEvents('missing', 0);
 
         expect(streamEvents.originatingStreamVersion, 0);
         expect(streamEvents.events, isEmpty);
@@ -44,7 +44,6 @@ void main() {
         final localEvents = await store.getLocalEvents(
           const PatternFilter.any(),
           0,
-          10,
         );
 
         expect(localEvents.events, isEmpty);
@@ -197,7 +196,7 @@ void main() {
           ),
         );
 
-        final first = await store.getStreamEvents('test/1', 2, 0);
+        final first = await store.getStreamEvents('test/1', 0);
 
         expect(first.originatingStreamVersion, 5);
         expect(first.events.map((event) => event.encodedEvent.kind), [
@@ -206,7 +205,7 @@ void main() {
         ]);
         expect(first.events.map((event) => event.streamVersion), [1, 2]);
 
-        final second = await store.getStreamEvents('test/1', 2, 2);
+        final second = await store.getStreamEvents('test/1', 2);
 
         expect(second.events.map((event) => event.encodedEvent.kind), [
           'event-2',
@@ -214,7 +213,7 @@ void main() {
         ]);
         expect(second.events.map((event) => event.streamVersion), [3, 4]);
 
-        final last = await store.getStreamEvents('test/1', 2, 4);
+        final last = await store.getStreamEvents('test/1', 4);
 
         expect(last.events.single.encodedEvent.kind, 'event-4');
         expect(last.events.single.streamVersion, 5);
@@ -243,23 +242,22 @@ void main() {
           final first = await store.getLocalEvents(
             const PatternFilter.any(),
             0,
-            1,
           );
 
-          expect(first.events.single.encodedEvent.kind, 'first');
-          expect(first.events.single.localSequence, 1);
-          expect(first.sequenceNumberCursor, 1);
+          expect(first.events.map((event) => event.encodedEvent.kind), [
+            'first',
+            'second',
+          ]);
+          expect(first.events.map((event) => event.localSequence), [1, 2]);
+          expect(first.sequenceNumberCursor, 2);
 
           final second = await store.getLocalEvents(
             const PatternFilter.any(),
             first.sequenceNumberCursor!,
-            1,
           );
 
-          expect(second.events.single.encodedEvent.kind, 'second');
-          expect(second.events.single.streamId, 'other/1');
-          expect(second.events.single.localSequence, 2);
-          expect(second.sequenceNumberCursor, 2);
+          expect(second.events, isEmpty);
+          expect(second.sequenceNumberCursor, isNull);
         });
 
         test('prefix', () async {
@@ -287,7 +285,6 @@ void main() {
           final events = await store.getLocalEvents(
             const PatternFilter.startsWith('test/'),
             0,
-            2,
           );
 
           expect(events.events, hasLength(1));
@@ -331,7 +328,7 @@ void main() {
 
           expect(result.orders.map((order) => order.localSequence), [1, 2, 3]);
 
-          final a = await store.getStreamEvents('account/a', 10, 0);
+          final a = await store.getStreamEvents('account/a', 0);
 
           expect(a.events.map((event) => event.streamVersion), [1, 2]);
           expect(a.events.map((event) => event.causalPair.sequence), [1, 3]);
@@ -340,22 +337,24 @@ void main() {
             isTrue,
           );
 
-          final b = await store.getStreamEvents('account/b', 10, 0);
+          final b = await store.getStreamEvents('account/b', 0);
 
           expect(b.events.single.streamVersion, 1);
           expect(b.events.single.causalPair.sequence, 2);
 
-          final all = await store.getLocalEvents(
-            const PatternFilter.any(),
-            0,
-            10,
-          );
+          final all = await store.getLocalEvents(const PatternFilter.any(), 0);
 
           expect(all.events.map((event) => event.encodedEvent.kind), [
             'a-1',
             'b-1',
-            'a-2',
           ]);
+
+          final remaining = await store.getLocalEvents(
+            const PatternFilter.any(),
+            all.sequenceNumberCursor!,
+          );
+
+          expect(remaining.events.single.encodedEvent.kind, 'a-2');
 
           final aInfo = await store.getStreamInfo('account/a');
 
@@ -403,11 +402,11 @@ void main() {
           throwsA(isA<ConcurrencyProblem>()),
         );
 
-        final a = await store.getStreamEvents('account/a', 10, 0);
+        final a = await store.getStreamEvents('account/a', 0);
 
         expect(a.events, hasLength(1));
 
-        final b = await store.getStreamEvents('account/b', 10, 0);
+        final b = await store.getStreamEvents('account/b', 0);
 
         expect(b.events, isEmpty);
 
@@ -463,7 +462,7 @@ void main() {
 
         expect(result.orders.single.localSequence, 1);
 
-        final streamEvents = await store.getStreamEvents('test/1', 1, 0);
+        final streamEvents = await store.getStreamEvents('test/1', 0);
 
         final event = streamEvents.events.single;
         expect(event.streamVersion, 1);

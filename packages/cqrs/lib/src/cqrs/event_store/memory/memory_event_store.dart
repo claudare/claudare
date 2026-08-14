@@ -24,9 +24,12 @@ class MemoryEventStore implements EventStore {
   final DeviceSequences _eventDeviceSequences = DeviceSequences();
   final Mutex writeTransaction = Mutex(); // TO emulate SQLITE transactions
 
+  final int _eventFetchPageSize;
   final void Function()? _onChange;
 
-  MemoryEventStore({void Function()? onChange}) : _onChange = onChange;
+  MemoryEventStore({int eventFetchPageSize = 10, void Function()? onChange})
+    : _eventFetchPageSize = eventFetchPageSize,
+      _onChange = onChange;
 
   void _emitChange() {
     _onChange?.call();
@@ -109,7 +112,6 @@ class MemoryEventStore implements EventStore {
   @override
   Future<GetStreamEventsResult> getStreamEvents(
     String streamIdStr,
-    int count,
     int versionCursor,
   ) {
     final all = _getStreamEvents(streamIdStr);
@@ -118,7 +120,7 @@ class MemoryEventStore implements EventStore {
     final paginated =
         all
             .skipWhile((e) => e.streamVersion <= versionCursor)
-            .take(count)
+            .take(_eventFetchPageSize)
             .map((e) => e.asStoredEventCommandRead)
             .toList();
 
@@ -229,13 +231,12 @@ class MemoryEventStore implements EventStore {
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
-    int count,
   ) async {
     final paginated =
         _events
             .skipWhile((e) => e.localSequence <= sequenceNumber)
             .where((e) => patternFilter.doesMatchPath(e.streamId))
-            .take(count)
+            .take(_eventFetchPageSize)
             .map((e) => e.asStoredEventProjectionRead)
             .toList();
 

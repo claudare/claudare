@@ -15,11 +15,10 @@ class EventStoreSafe implements EventStore {
   @override
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
-    int count,
     int versionCursor,
   ) async {
     try {
-      return await _store.getStreamEvents(streamId, count, versionCursor);
+      return await _store.getStreamEvents(streamId, versionCursor);
     } catch (cause) {
       throw EventStoreException(
         "Failed to get stream events cursor for stream '$streamId'",
@@ -64,10 +63,9 @@ class EventStoreSafe implements EventStore {
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
-    int count,
   ) async {
     try {
-      return await _store.getLocalEvents(patternFilter, sequenceNumber, count);
+      return await _store.getLocalEvents(patternFilter, sequenceNumber);
     } catch (cause) {
       throw EventStoreException('Failed to get global events', cause: cause);
     }

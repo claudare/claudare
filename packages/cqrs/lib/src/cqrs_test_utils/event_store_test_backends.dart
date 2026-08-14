@@ -46,19 +46,28 @@ class EventStoreTestCommandRecord {
 }
 
 class MemoryEventStoreTestBackend implements EventStoreTestBackend {
-  const MemoryEventStoreTestBackend();
+  final int? eventFetchPageSize;
+
+  const MemoryEventStoreTestBackend({this.eventFetchPageSize});
 
   @override
   String get name => 'memory';
 
   @override
   Future<EventStoreTestSession> open() async {
-    return _MemoryEventStoreTestSession(MemoryEventStore());
+    final pageSize = eventFetchPageSize;
+    final store =
+        pageSize == null
+            ? MemoryEventStore()
+            : MemoryEventStore(eventFetchPageSize: pageSize);
+    return _MemoryEventStoreTestSession(store);
   }
 }
 
 class SqliteEventStoreTestBackend implements EventStoreTestBackend {
-  const SqliteEventStoreTestBackend();
+  final int eventFetchPageSize;
+
+  const SqliteEventStoreTestBackend({required this.eventFetchPageSize});
 
   @override
   String get name => 'sqlite';
@@ -68,7 +77,10 @@ class SqliteEventStoreTestBackend implements EventStoreTestBackend {
     final database = IsolateSqlite();
     await database.openInMemory();
 
-    final store = SqliteEventStore(database);
+    final store = SqliteEventStore(
+      database,
+      eventFetchPageSize: eventFetchPageSize,
+    );
     await store.migrate();
 
     return _SqliteEventStoreTestSession(store, database);
@@ -76,8 +88,8 @@ class SqliteEventStoreTestBackend implements EventStoreTestBackend {
 }
 
 const eventStoreTestBackends = <EventStoreTestBackend>[
-  MemoryEventStoreTestBackend(),
-  SqliteEventStoreTestBackend(),
+  MemoryEventStoreTestBackend(eventFetchPageSize: 2),
+  SqliteEventStoreTestBackend(eventFetchPageSize: 2),
 ];
 
 class _MemoryEventStoreTestSession implements EventStoreTestSession {

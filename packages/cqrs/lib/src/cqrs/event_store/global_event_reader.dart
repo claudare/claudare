@@ -5,7 +5,6 @@ import 'package:cqrs/src/cqrs/pattern_filter.dart';
 // TODO: refactor to use lists as well
 class GlobalEventReader {
   final EventStoreProjection _underlying;
-  final int _pageSize;
   final PatternFilter _patternFilter;
 
   Iterator<StoredEventProjectionRead>? _current;
@@ -15,7 +14,6 @@ class GlobalEventReader {
   GlobalEventReader(
     this._underlying,
     this._patternFilter,
-    this._pageSize,
     int localSequenceCursor,
   ) {
     _localSequenceCursor = localSequenceCursor;
@@ -42,7 +40,6 @@ class GlobalEventReader {
     final result = await _underlying.getLocalEvents(
       _patternFilter,
       _localSequenceCursor!,
-      _pageSize,
     );
 
     _current = result.events.iterator;

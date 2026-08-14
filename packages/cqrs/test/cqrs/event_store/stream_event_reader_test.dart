@@ -13,8 +13,8 @@ void main() {
     const pageSize = 2;
 
     setUp(() {
-      store = MemoryEventStore();
-      reader = StreamEventReader(store, streamId, pageSize);
+      store = MemoryEventStore(eventFetchPageSize: pageSize);
+      reader = StreamEventReader(store, streamId);
     });
 
     test('handles empty result', () async {

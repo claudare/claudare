@@ -15,7 +15,6 @@ in one place. For better defined and conrete documentation read markdowns at
   that no "holes" are present in sequential ids.
 - Create prod and testing `CqrsRuntimeConfig`. Rename to
   `CqrsRuntimeDependencies`.
-- Move the event fetch page size outside the `EventStore`.
 
 ## Maybe todo's?
 

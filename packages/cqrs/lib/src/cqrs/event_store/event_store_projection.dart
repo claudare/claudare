@@ -21,7 +21,6 @@ abstract interface class EventStoreProjection {
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
-    int count,
   );
   Future<GetLocalLastEventResult> getLocalLastEvent(
     PatternFilter patternFilter,

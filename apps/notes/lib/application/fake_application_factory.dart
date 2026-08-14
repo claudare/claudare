@@ -39,7 +39,6 @@ class FakeApplicationFactory implements ApplicationFactory {
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       logger: logger,
-      eventStorePageSize: 20,
       eventStore: eventStore,
       runtimeRepo: runtimeRepo,
     );

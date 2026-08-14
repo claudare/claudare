@@ -144,7 +144,6 @@ CommandExecutor _executor(EventStoreCommand store) {
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     idGenerator: IdGeneratorSequential(),
     thisDeviceId: DeviceId(1),
-    pageSize: 10,
   );
 }
 

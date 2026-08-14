@@ -43,7 +43,6 @@ void main() {
           logger: const NoopLogger(),
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
-          eventStorePageSize: 10,
         ),
         deviceId: DeviceId(1),
         accountSummaryRepo: accountsSummaryRepo,

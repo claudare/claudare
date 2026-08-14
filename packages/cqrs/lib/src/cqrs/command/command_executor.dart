@@ -25,19 +25,16 @@ class CommandExecutor {
   final IdGenerator _idGenerator;
 
   final DeviceId _thisDeviceId;
-  final int _pageSize;
 
   const CommandExecutor({
     required EventStoreCommand eventStore,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     required DeviceId thisDeviceId,
-    required int pageSize,
   }) : _idGenerator = idGenerator,
        _timeProvider = timeProvider,
        _eventStore = eventStore,
-       _thisDeviceId = thisDeviceId,
-       _pageSize = pageSize;
+       _thisDeviceId = thisDeviceId;
 
   Future<List<EventEnvelope>> executeThrowable<Input extends CommandInput>(
     Command<Input> command,
@@ -58,7 +55,6 @@ class CommandExecutor {
       nacker: nacker,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
-      pageSize: _pageSize,
     );
 
     try {

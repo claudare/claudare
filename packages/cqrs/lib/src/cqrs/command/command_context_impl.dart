@@ -14,7 +14,6 @@ class CommandContextImpl implements CommandContext {
   final CommandNacker _nacker;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
-  final int _pageSize;
 
   const CommandContextImpl({
     required EventStoreCommand eventStore,
@@ -22,13 +21,11 @@ class CommandContextImpl implements CommandContext {
     required CommandNacker nacker,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
-    required int pageSize,
   }) : _eventStore = eventStore,
        _appends = appends,
        _nacker = nacker,
        _timeProvider = timeProvider,
-       _idGenerator = idGenerator,
-       _pageSize = pageSize;
+       _idGenerator = idGenerator;
 
   @override
   CommandStream<TEvent, TData> stream<TEvent, TData>(
@@ -42,7 +39,6 @@ class CommandContextImpl implements CommandContext {
       _eventStore,
       _appends,
       safeEventCodec,
-      _pageSize,
       streamId,
       streamData,
       streamIdPattern,

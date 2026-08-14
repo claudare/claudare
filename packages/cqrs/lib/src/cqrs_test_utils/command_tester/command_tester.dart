@@ -26,7 +26,8 @@ class CommandTester {
     DeviceId deviceId = const DeviceId.unassigned(),
   }) : _timeProvider = timeProvider,
        _idGenerator = idGenerator,
-       _eventStore = eventStore ?? MemoryEventStore(),
+       _eventStore =
+           eventStore ?? MemoryEventStore(eventFetchPageSize: _maxIntValue),
        _deviceId = deviceId;
 
   void _ensureRan() {
@@ -107,7 +108,6 @@ class CommandTester {
     final values = await _eventStore.getLocalEvents(
       PatternFilter.exact(streamIdPath),
       _preRunLastLocalSequence!,
-      _maxIntValue,
     );
 
     return values.events
@@ -131,7 +131,6 @@ class CommandTester {
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
       thisDeviceId: _deviceId,
-      pageSize: _maxIntValue,
     );
 
     // envelopes are ingored

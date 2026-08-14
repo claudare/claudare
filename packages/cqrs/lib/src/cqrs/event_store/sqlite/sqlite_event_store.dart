@@ -10,8 +10,12 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 class SqliteEventStore implements EventStore {
   final EventDb _eventDb;
   final IsolateSqlite _iso;
+  final int _eventFetchPageSize;
 
-  SqliteEventStore(IsolateSqlite iso) : _eventDb = EventDb(iso), _iso = iso;
+  SqliteEventStore(IsolateSqlite iso, {int eventFetchPageSize = 50})
+    : _eventDb = EventDb(iso),
+      _iso = iso,
+      _eventFetchPageSize = eventFetchPageSize;
 
   Future<void> migrate() async {
     await _eventDb.migrate();
@@ -20,10 +24,13 @@ class SqliteEventStore implements EventStore {
   @override
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
-    int count,
     int versionCursor,
   ) {
-    return _eventDb.getStreamEvents(streamId, count, versionCursor);
+    return _eventDb.getStreamEvents(
+      streamId,
+      _eventFetchPageSize,
+      versionCursor,
+    );
   }
 
   @override
@@ -43,9 +50,12 @@ class SqliteEventStore implements EventStore {
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
-    int count,
   ) {
-    return _eventDb.getLocalEvents(patternFilter, sequenceNumber, count);
+    return _eventDb.getLocalEvents(
+      patternFilter,
+      sequenceNumber,
+      _eventFetchPageSize,
+    );
   }
 
   @override
