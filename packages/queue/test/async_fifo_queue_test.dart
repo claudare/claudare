@@ -18,12 +18,10 @@ void main() {
       };
     });
 
-    queue.enqueue(1, 1, onDone: () => completed.add(1));
-    queue.enqueue(2, 2, onDone: () => completed.add(2));
+    queue.enqueue(1, onDone: () => completed.add(1));
+    queue.enqueue(2, onDone: () => completed.add(2));
 
     expect(started, [1]);
-    expect(queue.currentSequence, 0);
-    expect(queue.latestSequence, 2);
     expect(queue.size, 2);
     expect(queue.isEmpty, isFalse);
 
@@ -33,7 +31,6 @@ void main() {
 
     expect(started, [1, 2]);
     expect(completed, [1]);
-    expect(queue.currentSequence, 1);
     expect(queue.size, 1);
 
     secondTask.complete();
@@ -41,17 +38,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(completed, [1, 2]);
-    expect(queue.currentSequence, 2);
     expect(queue.size, 0);
     expect(queue.isEmpty, isTrue);
-  });
-
-  test('requires strictly increasing sequence values', () {
-    final queue = AsyncFIFOQueue<int>((_) async {});
-
-    queue.enqueue(1, 2, onDone: null);
-
-    expect(() => queue.enqueue(2, 2, onDone: null), throwsArgumentError);
-    expect(() => queue.enqueue(3, 1, onDone: null), throwsArgumentError);
   });
 }

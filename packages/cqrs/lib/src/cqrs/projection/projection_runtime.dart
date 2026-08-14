@@ -52,7 +52,6 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
         event: eventEnvelope.event,
         meta: eventEnvelope.metadata,
       ),
-      eventEnvelope.metadata.localSequence,
       onDone: onDone,
     );
   }
