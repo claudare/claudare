@@ -1,8 +1,6 @@
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/global_event_reader.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
@@ -91,24 +89,17 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
         await _projection.reset();
       }
 
-      final reader = GlobalEventReader(
-        eventStore,
+      final reader = eventStore.getGlobalReader(
         _projection.streamIdPattern.filter,
         checkpoint.localSequence,
       );
 
-      // paginate
-      while (await reader.loadMore()) {
-        StoredEventProjectionRead? e;
-        while ((e = reader.next()) != null) {
-          final event = _projection.eventCodec.decode(e!.encodedEvent);
+      await for (final e in reader.scan()) {
+        final event = _projection.eventCodec.decode(e.encodedEvent);
 
-          final aggregateIdData = _projection.streamIdPattern.toData(
-            e.streamId,
-          );
+        final aggregateIdData = _projection.streamIdPattern.toData(e.streamId);
 
-          await _projection.apply(aggregateIdData, event, e.eventMetadata);
-        }
+        await _projection.apply(aggregateIdData, event, e.eventMetadata);
       }
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);

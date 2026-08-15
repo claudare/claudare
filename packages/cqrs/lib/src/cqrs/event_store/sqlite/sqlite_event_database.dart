@@ -9,6 +9,7 @@ import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
@@ -115,7 +116,7 @@ class SqliteEventDatabase implements EventDatabase {
       0;
 
   @override
-  Future<List<StoredEventCommandRead>> getStreamEvents(
+  Future<PaginatedResult<StoredEventCommandRead>> getStreamEvents(
     String streamId,
     int streamVersionCursor,
     int count,
@@ -126,7 +127,7 @@ class SqliteEventDatabase implements EventDatabase {
       ORDER BY stream_version ASC LIMIT ?''',
       [streamId, streamVersionCursor, count],
     );
-    return [
+    final events = [
       for (final row in rows)
         StoredEventCommandRead(
           encodedEvent: EncodedEvent(
@@ -137,10 +138,14 @@ class SqliteEventDatabase implements EventDatabase {
           streamVersion: row[3] as int,
         ),
     ];
+    return PaginatedResult(
+      data: events,
+      next: events.isEmpty ? null : events.last.streamVersion,
+    );
   }
 
   @override
-  Future<GetLocalEventsResult> getLocalEvents(
+  Future<PaginatedResult<StoredEventProjectionRead>> getLocalEvents(
     PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
@@ -164,9 +169,9 @@ class SqliteEventDatabase implements EventDatabase {
           localSequence: row[4] as int,
         ),
     ];
-    return GetLocalEventsResult(
-      events: events,
-      sequenceNumberCursor: events.isEmpty ? null : events.last.localSequence,
+    return PaginatedResult(
+      data: events,
+      next: events.isEmpty ? null : events.last.localSequence,
     );
   }
 

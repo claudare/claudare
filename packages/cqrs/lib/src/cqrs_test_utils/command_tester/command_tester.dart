@@ -103,14 +103,12 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final values = await _eventStore.getLocalEvents(
+    final reader = _eventStore.getGlobalReader(
       PatternFilter.exact(streamIdPath),
       _preRunLastLocalSequence!,
     );
 
-    return values.events
-        .map((e) => eventCodec.decode(e.encodedEvent))
-        .toList(growable: false);
+    return reader.scan().map((e) => eventCodec.decode(e.encodedEvent)).toList();
   }
 
   Future<void> run<Input extends CommandInput>(

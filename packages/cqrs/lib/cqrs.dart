@@ -13,6 +13,8 @@ export 'src/cqrs/event_store/event_store.dart';
 export 'src/cqrs/event_store/event_database.dart';
 export 'src/cqrs/event_store/command_id.dart';
 export 'src/cqrs/event_store/event_id.dart';
+export 'src/cqrs/event_store/paginated_read_result.dart';
+export 'src/cqrs/event_store/paginated_reader.dart';
 export 'src/cqrs/event_store/memory/memory_event_database.dart';
 export 'src/cqrs/event_store/sqlite/sqlite_event_database.dart';
 

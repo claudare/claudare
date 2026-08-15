@@ -12,6 +12,7 @@ import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:test/test.dart';
 
 final _startedAt = DateTime.fromMillisecondsSinceEpoch(100, isUtc: true);
@@ -325,6 +326,31 @@ void main() {
           )).map((value) => value.localSequence),
           [3],
         );
+      });
+
+      test('scans stream and filtered global readers across pages', () async {
+        await _appendOne(store, streamId: 'one', kind: 'one-a');
+        await _appendOne(store, streamId: 'two', kind: 'two');
+        await _appendOne(
+          store,
+          streamId: 'one',
+          kind: 'one-b',
+          originatingVersion: 1,
+        );
+
+        final streamEvents = await store.getStreamReader('one').scan().toList();
+        expect(streamEvents.map((event) => event.encodedEvent.kind), [
+          'one-a',
+          'one-b',
+        ]);
+
+        final globalEvents =
+            await store
+                .getGlobalReader(PatternFilter.exact('one'), 1)
+                .scan()
+                .toList();
+        expect(globalEvents.map((event) => event.encodedEvent.kind), ['one-b']);
+        expect(globalEvents.single.localSequence, 3);
       });
 
       test('resets applied and orphan pending state', () async {

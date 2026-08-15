@@ -5,6 +5,8 @@ import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
+import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
+import 'package:cqrs/src/cqrs/event_store/paginated_reader.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
@@ -12,16 +14,6 @@ import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:mutex/mutex.dart';
 
 enum StageReplicatedCommandResult { staged, alreadyPresent }
-
-class GetStreamEventsResult {
-  final int originatingStreamVersion; // 0 is no events in this aggregate
-  final List<StoredEventCommandRead> events;
-
-  GetStreamEventsResult({
-    required this.originatingStreamVersion,
-    required this.events,
-  });
-}
 
 class GetStreamInfoResult {
   final int originatingStreamVersion;
@@ -85,16 +77,6 @@ class SaveChangesResult {
   SaveChangesResult.empty() : orders = [];
 }
 
-class GetLocalEventsResult {
-  final List<StoredEventProjectionRead> events;
-  final int? sequenceNumberCursor; // TODO: this should not be needed...
-
-  const GetLocalEventsResult({
-    required this.events,
-    required this.sequenceNumberCursor,
-  });
-}
-
 class GetLocalLastEventResult {
   final int localSequence;
 
@@ -124,29 +106,6 @@ class EventStore {
     } on Exception catch (cause) {
       throw EventStoreException(
         'Failed to migrate event database',
-        cause: cause,
-      );
-    }
-  });
-
-  Future<GetStreamEventsResult> getStreamEvents(
-    String streamId,
-    int streamVersionCursor,
-  ) => _mutex.protectRead(() async {
-    try {
-      final version = await _database.getStreamVersion(streamId);
-      final events = await _database.getStreamEvents(
-        streamId,
-        streamVersionCursor,
-        _eventFetchPageSize,
-      );
-      return GetStreamEventsResult(
-        originatingStreamVersion: version,
-        events: events,
-      );
-    } on Exception catch (cause) {
-      throw EventStoreException(
-        "Failed to get stream events for '$streamId'",
         cause: cause,
       );
     }
@@ -398,14 +357,46 @@ class EventStore {
         }
       });
 
-  Future<GetLocalEventsResult> getLocalEvents(
+  PaginatedReader<StoredEventCommandRead> getStreamReader(String streamId) =>
+      PaginatedReader(
+        (cursor) => _readStreamPage(streamId, cursor),
+        initialCursor: 0,
+      );
+
+  Future<PaginatedResult<StoredEventCommandRead>> _readStreamPage(
+    String streamId,
+    int streamVersionCursor,
+  ) => _mutex.protectRead(() async {
+    try {
+      return await _database.getStreamEvents(
+        streamId,
+        streamVersionCursor,
+        _eventFetchPageSize,
+      );
+    } on Exception catch (cause) {
+      throw EventStoreException(
+        "Failed to get stream events for '$streamId'",
+        cause: cause,
+      );
+    }
+  });
+
+  PaginatedReader<StoredEventProjectionRead> getGlobalReader(
     PatternFilter patternFilter,
-    int sequenceNumber,
+    int localSequenceCursor,
+  ) => PaginatedReader(
+    (cursor) => _readGlobalPage(patternFilter, cursor),
+    initialCursor: localSequenceCursor,
+  );
+
+  Future<PaginatedResult<StoredEventProjectionRead>> _readGlobalPage(
+    PatternFilter patternFilter,
+    int localSequenceCursor,
   ) => _mutex.protectRead(() async {
     try {
       return await _database.getLocalEvents(
         patternFilter,
-        sequenceNumber,
+        localSequenceCursor,
         _eventFetchPageSize,
       );
     } on Exception catch (cause) {

@@ -4,9 +4,11 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class EventDatabaseState {
@@ -192,12 +194,12 @@ abstract interface class EventDatabase {
   Future<void> migrate();
   Future<EventDatabaseState> getState();
   Future<int> getStreamVersion(String streamId);
-  Future<List<StoredEventCommandRead>> getStreamEvents(
+  Future<PaginatedResult<StoredEventCommandRead>> getStreamEvents(
     String streamId,
     int streamVersionCursor,
     int count,
   );
-  Future<GetLocalEventsResult> getLocalEvents(
+  Future<PaginatedResult<StoredEventProjectionRead>> getLocalEvents(
     PatternFilter patternFilter,
     int localSequenceCursor,
     int count,

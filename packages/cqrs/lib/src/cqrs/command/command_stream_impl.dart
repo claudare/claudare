@@ -3,7 +3,6 @@ import 'package:time_provider/time_provider.dart';
 import 'package:cqrs/src/cqrs/command/command_appends.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_found_exception.dart';
@@ -50,16 +49,21 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
   Stream<Event> scan() async* {
     _tryLock();
 
-    final reader = StreamEventReader(_eventStore, _streamId);
+    final reader = _eventStore.getStreamReader(_streamId);
+    var streamVersion = 0;
 
     try {
-      while (await reader.loadMore()) {
-        for (final e in reader.currentPage) {
-          yield _codec.decode(e.encodedEvent);
-        }
+      await for (final event in reader.scan()) {
+        streamVersion = event.streamVersion;
+        yield _codec.decode(event.encodedEvent);
       }
     } finally {
-      _appends.locks.add(reader.streamLock);
+      _appends.locks.add(
+        StreamLocalLock(
+          streamId: _streamId,
+          originatingStreamVersion: streamVersion,
+        ),
+      );
     }
   }
 

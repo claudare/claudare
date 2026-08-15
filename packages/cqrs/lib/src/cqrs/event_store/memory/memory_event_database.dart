@@ -5,6 +5,7 @@ import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class MemoryEventDatabase implements EventDatabase {
@@ -53,28 +54,34 @@ class MemoryEventDatabase implements EventDatabase {
       _streamVersions[streamId] ?? 0;
 
   @override
-  Future<List<StoredEventCommandRead>> getStreamEvents(
+  Future<PaginatedResult<StoredEventCommandRead>> getStreamEvents(
     String streamId,
     int streamVersionCursor,
     int count,
-  ) async => _events
-      .where(
-        (event) =>
-            event.streamId == streamId &&
-            event.streamVersion > streamVersionCursor,
-      )
-      .take(count)
-      .map(
-        (event) => StoredEventCommandRead(
-          encodedEvent: event.encodedEvent,
-          occuredAt: event.occuredAt,
-          streamVersion: event.streamVersion,
-        ),
-      )
-      .toList(growable: false);
+  ) async {
+    final events = _events
+        .where(
+          (event) =>
+              event.streamId == streamId &&
+              event.streamVersion > streamVersionCursor,
+        )
+        .take(count)
+        .map(
+          (event) => StoredEventCommandRead(
+            encodedEvent: event.encodedEvent,
+            occuredAt: event.occuredAt,
+            streamVersion: event.streamVersion,
+          ),
+        )
+        .toList(growable: false);
+    return PaginatedResult(
+      data: events,
+      next: events.isEmpty ? null : events.last.streamVersion,
+    );
+  }
 
   @override
-  Future<GetLocalEventsResult> getLocalEvents(
+  Future<PaginatedResult<StoredEventProjectionRead>> getLocalEvents(
     PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
@@ -95,9 +102,9 @@ class MemoryEventDatabase implements EventDatabase {
           ),
         )
         .toList(growable: false);
-    return GetLocalEventsResult(
-      events: events,
-      sequenceNumberCursor: events.isEmpty ? null : events.last.localSequence,
+    return PaginatedResult(
+      data: events,
+      next: events.isEmpty ? null : events.last.localSequence,
     );
   }
 
