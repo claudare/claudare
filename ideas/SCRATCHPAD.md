@@ -10,11 +10,18 @@ in one place. For better defined and conrete documentation read markdowns at
 
 ## TODOs
 
-- Generate localSequences and logical clocks in code. Run everything inside a
-  mutex (an async queue) and rollback ids on failures. It is extremely important
+- Generate localSequences and logical clocks in code. Run everything inside an
+  exclusive mutex and rollback ids on failures. It is extremely important
   that no "holes" are present in sequential ids.
 - Create prod and testing `CqrsRuntimeConfig`. Rename to
   `CqrsRuntimeDependencies`.
+- Add a RW mutex to the `MemoryEventStore`, and use it for read operations too?
+  Or maybe the mutex here is not needed and concurrency is enforced outside?
+- Rethrow the original errors. Good point to fix is `ConcurrencyProblem` in the
+  event store safe.
+- Do not save failed command exceptions. like `CommandResult.exception(exception: cause)`.
+  Exceptions are just rethrown (or the case of CommandExecutor they are not
+  caught. Add a comment where command is handled)
 
 ## Maybe todo's?
 

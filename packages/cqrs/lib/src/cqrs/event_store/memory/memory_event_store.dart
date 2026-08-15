@@ -35,8 +35,6 @@ class MemoryEventStore implements EventStore {
     _onChange?.call();
   }
 
-  // testing specigfic functions... dont rely on them
-
   MemoryEvent testInsertEvent(MemoryEventInsert value) {
     final event = _insertEvent(value);
 
