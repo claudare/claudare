@@ -8,7 +8,6 @@ import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class EventDatabaseState {

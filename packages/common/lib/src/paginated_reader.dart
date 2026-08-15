@@ -1,4 +1,9 @@
-import 'package:cqrs/src/cqrs/event_store/paginated_read_result.dart';
+class PaginatedResult<T> {
+  final List<T> data;
+  final int? next;
+
+  const PaginatedResult({required this.data, required this.next});
+}
 
 typedef ReadPage<T> = Future<PaginatedResult<T>> Function(int cursor);
 
@@ -7,26 +12,32 @@ class PaginatedReader<T> {
 
   List<T> _currentPage = const [];
   int? _cursor;
-  bool _hasScanned = false;
 
   PaginatedReader(ReadPage<T> readPage, {int initialCursor = 0})
     : _readPage = readPage,
       _cursor = initialCursor;
 
-  Stream<T> scan() async* {
-    if (_hasScanned) {
-      throw StateError('scan can only be run once');
-    }
-    _hasScanned = true;
+  List<T> get currentPage => _currentPage;
 
-    while (await _loadMore()) {
-      for (final event in _currentPage) {
-        yield event;
+  Stream<T> scan() async* {
+    while (await loadMore()) {
+      for (final value in _currentPage) {
+        yield value;
       }
     }
   }
 
-  Future<bool> _loadMore() async {
+  /// Loads the next page and reports whether it contains values.
+  ///
+  /// Usage example:
+  /// ```dart
+  /// while (await reader.loadMore()) {
+  ///   for (final value in reader.currentPage) {
+  ///     // use value
+  ///   }
+  /// }
+  /// ```
+  Future<bool> loadMore() async {
     final cursor = _cursor;
     if (cursor == null) return false;
 
