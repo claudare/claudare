@@ -1,4 +1,8 @@
 import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/event/applied_event.dart';
+import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
