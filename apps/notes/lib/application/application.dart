@@ -25,6 +25,8 @@ class Application {
 
   Future<void> initialize(String applicationDirectory) async {
     final mainDbPath = path.join(applicationDirectory, 'notes.db');
+    // temporary logger usage
+    notesRuntime.logger.debug('main database path: $mainDbPath');
     await sqliteDb.open(mainDbPath);
 
     final searchDbPath = path.join(applicationDirectory, 'search.db');
