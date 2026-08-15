@@ -12,7 +12,6 @@ const int _maxIntValue = -1 >>> 1;
 
 // TODO: this currently relies on MemoryEventStore
 class CommandTester {
-  final DeviceId _deviceId;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final MemoryEventStore _eventStore;
@@ -23,12 +22,10 @@ class CommandTester {
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     MemoryEventStore? eventStore,
-    DeviceId deviceId = const DeviceId.unassigned(),
   }) : _timeProvider = timeProvider,
        _idGenerator = idGenerator,
        _eventStore =
-           eventStore ?? MemoryEventStore(eventFetchPageSize: _maxIntValue),
-       _deviceId = deviceId;
+           eventStore ?? MemoryEventStore(eventFetchPageSize: _maxIntValue);
 
   void _ensureRan() {
     if (_preRunLastLocalSequence == null) {
@@ -56,7 +53,7 @@ class CommandTester {
     final streamPath = streamIdPattern.toPath(streamData);
     _eventStore.testInsertEvent(
       MemoryEventInsert(
-        deviceId: _deviceId,
+        deviceId: const DeviceId.self(),
         streamId: streamPath,
         kind: encoded.kind,
         detail: encoded.bytes,
@@ -79,7 +76,7 @@ class CommandTester {
 
     _eventStore.testInsertEvent(
       MemoryEventInsert(
-        deviceId: _deviceId,
+        deviceId: const DeviceId.self(),
         streamId: streamIdPath,
         kind: encoded.kind,
         detail: encoded.bytes,
@@ -130,7 +127,6 @@ class CommandTester {
       eventStore: _eventStore,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
-      thisDeviceId: _deviceId,
     );
 
     // envelopes are ingored

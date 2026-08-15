@@ -1,5 +1,4 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 
 import 'command/atm_depost.dart';
 import 'command/atm_withdrawal.dart';
@@ -19,7 +18,6 @@ class FinanceApp {
 
   FinanceApp({
     required CqrsRuntimeDependencies dependencies,
-    required DeviceId deviceId,
     required AccountsSummaryReadModel accountSummaryRepo,
     required TotalBalanceReadModel totalBalanceRepo,
   }) {
@@ -35,7 +33,6 @@ class FinanceApp {
 
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
-      thisDeviceId: deviceId,
       runtimeName: 'finance-main',
       runtimeVersion: 1,
       projectors: [accountSummaryProjection, totalBalanceProjection],

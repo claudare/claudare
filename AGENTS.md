@@ -47,8 +47,7 @@ These instructions apply to the entire repository.
 ## Documentation
 
 - Do not claim replication, device enrollment, encryption, blob storage, backup,
-  or production security. They are not implemented. The notes runtime still uses
-  `DeviceId.unassigned()`.
+  or production security. They are not implemented.
 - Treat the root and package `README.md` and `docs/*.md` as AI orientation
   material. State ownership, supported behavior, limitations, and actual
   validation evidence.

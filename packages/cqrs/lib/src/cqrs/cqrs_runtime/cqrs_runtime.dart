@@ -6,7 +6,6 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store_safe.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
@@ -18,20 +17,16 @@ class CqrsRuntime {
   late final EventStoreSafe _eventStore;
   late final SafeRuntimeRepo _runtimeRepo;
   late final List<ProjectionRuntime> _projectionRunners;
-  final DeviceId _thisDeviceId;
   final String runtimeName;
   final int runtimeVersion;
   final CqrsRuntimeDependencies _dependencies;
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
-    required DeviceId thisDeviceId,
     required this.runtimeName,
     required this.runtimeVersion,
     required List<Projection> projectors,
   }) : _runtimeRepo = SafeRuntimeRepo(dependencies.runtimeRepo),
-       _thisDeviceId =
-           thisDeviceId, // TODO: this needs to be loaded from enrollment
        _dependencies = dependencies {
     _eventStore = EventStoreSafe(dependencies.eventStore);
 
@@ -114,7 +109,6 @@ class CqrsRuntime {
       eventStore: _eventStore,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
-      thisDeviceId: _thisDeviceId,
     );
 
     final consistentRunners = <ProjectionRuntime>[];
@@ -148,7 +142,6 @@ class CqrsRuntime {
       eventStore: _eventStore,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
-      thisDeviceId: _thisDeviceId,
     );
 
     final consistentRunners = <ProjectionRuntime>[];

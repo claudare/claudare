@@ -8,7 +8,7 @@ class CausalSequence {
   DeviceId _latestDevice;
   int _latestSequence;
 
-  CausalSequence() : _latestDevice = DeviceId.zero(), _latestSequence = 0;
+  CausalSequence() : _latestDevice = DeviceId.self(), _latestSequence = 0;
 
   CausalSequence.fromSequencePair(DeviceIdSequencePair causalSequence)
     : _latestDevice = causalSequence.deviceId,
@@ -23,7 +23,7 @@ class CausalSequence {
   }
 
   void reset() {
-    _latestDevice = DeviceId.zero();
+    _latestDevice = DeviceId.self();
     _latestSequence = 0;
   }
 

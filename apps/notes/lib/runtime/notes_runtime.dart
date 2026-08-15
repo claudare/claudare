@@ -1,5 +1,4 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
@@ -75,7 +74,6 @@ class NotesRuntime {
     _cqrsRuntime = CqrsRuntime(
       dependencies: cqrsDependencies,
       projectors: [noteProjection, searchProjection],
-      thisDeviceId: DeviceId.unassigned(),
       runtimeName: 'notes',
       runtimeVersion: NotesRuntime.runtimeVersion,
     );

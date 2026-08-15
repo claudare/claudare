@@ -1,32 +1,27 @@
 import 'dart:typed_data';
 
+/// A database-local device identifier.
+///
+/// Zero identifies the current device. Positive values identify other devices
+/// and can be assigned incrementally within the local database.
 class DeviceId implements Comparable<DeviceId> {
   static const int _maxDeviceIdValue = 0xFFFF; // u16
 
   final int value;
 
-  const DeviceId(this.value)
-    : assert(
-        value >= 0 && value < _maxDeviceIdValue,
-        'incorrect deviceId $value, expected a value in 0-${_maxDeviceIdValue - 1} range',
-      );
-
-  factory DeviceId.validated(int value) {
+  factory DeviceId(int value) {
     if (value < 0 || value >= _maxDeviceIdValue) {
       throw FormatException(
         'incorrect deviceId $value, expected a value in 0-${_maxDeviceIdValue - 1} range',
       );
     }
-    return DeviceId(value);
+    return DeviceId._(value);
   }
 
-  /// Creates a DeviceId with zero value. That means there is no device
-  /// equivalent to a "null device".
-  const DeviceId.zero() : value = 0;
+  const DeviceId._(this.value);
 
-  /// Special kind to unassigned device. Could be used pre-sync in fully offline operation?
-  /// When sync is enabled it must be in the range of  1...u16-1.
-  const DeviceId.unassigned() : value = 0xFFFF - 1;
+  /// Identifies the current device, encoded as zero in its local database.
+  const DeviceId.self() : this._(0);
 
   @override
   bool operator ==(Object other) {
@@ -53,7 +48,7 @@ class DeviceId implements Comparable<DeviceId> {
   }
 
   factory DeviceId.fromJson(int json) {
-    return DeviceId.validated(json);
+    return DeviceId(json);
   }
 
   Uint8List toBytes() {

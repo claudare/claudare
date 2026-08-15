@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:common/common.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
@@ -13,7 +14,6 @@ import 'package:cqrs/src/cqrs/exception/command_nack.dart';
 import 'package:cqrs/src/cqrs/exception/command_serialization_exception.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
-import 'package:common/common.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:test/test.dart';
 
@@ -47,6 +47,17 @@ void main() {
 
     expect(store.testAllCommands, hasLength(1));
     expect(store.testAllCommands.single.nackReason, 'not allowed');
+  });
+
+  test('records the current device as zero', () async {
+    final store = MemoryEventStore();
+
+    await expectLater(
+      _executor(store).executeThrowable(const _NackingCommand(), _Input()),
+      throwsA(isA<CommandNack>()),
+    );
+
+    expect(store.testAllCommands.single.deviceId, const DeviceId.self());
   });
 
   test('does not record concurrency problems', () async {
@@ -143,7 +154,6 @@ CommandExecutor _executor(EventStoreCommand store) {
     eventStore: store,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     idGenerator: IdGeneratorSequential(),
-    thisDeviceId: DeviceId(1),
   );
 }
 

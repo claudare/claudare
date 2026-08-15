@@ -5,15 +5,16 @@ import 'package:test/test.dart';
 
 void main() {
   group('DeviceId', () {
-    test('validates supported values', () {
-      expect(DeviceId.validated(1), const DeviceId(1));
-      expect(DeviceId.validated(0xFFFF - 1), const DeviceId.unassigned());
-      expect(() => DeviceId.validated(-1), throwsFormatException);
-      expect(() => DeviceId.validated(0xFFFF), throwsFormatException);
+    test('default constructor validates supported values', () {
+      expect(DeviceId(0), const DeviceId.self());
+      expect(DeviceId(1).value, 1);
+      expect(DeviceId(0xFFFF - 1).value, 0xFFFF - 1);
+      expect(() => DeviceId(-1), throwsFormatException);
+      expect(() => DeviceId(0xFFFF), throwsFormatException);
     });
 
     test('round trips JSON and little-endian bytes', () {
-      const deviceId = DeviceId(0x1234);
+      final deviceId = DeviceId(0x1234);
 
       expect(DeviceId.fromJson(deviceId.toJson()), deviceId);
       expect(deviceId.toBytes(), Uint8List.fromList([0x34, 0x12]));
@@ -24,12 +25,12 @@ void main() {
   group('DeviceIdSequencePair', () {
     test('compares by device and sequence', () {
       expect(
-        const DeviceIdSequencePair(DeviceId(3), 8),
-        const DeviceIdSequencePair(DeviceId(3), 8),
+        DeviceIdSequencePair(DeviceId(3), 8),
+        DeviceIdSequencePair(DeviceId(3), 8),
       );
       expect(
-        const DeviceIdSequencePair(DeviceId(3), 8),
-        isNot(const DeviceIdSequencePair(DeviceId(4), 8)),
+        DeviceIdSequencePair(DeviceId(3), 8),
+        isNot(DeviceIdSequencePair(DeviceId(4), 8)),
       );
     });
   });
@@ -40,30 +41,30 @@ void main() {
 
       expect(
         sequence.current(),
-        const DeviceIdSequencePair(DeviceId.zero(), 0),
+        const DeviceIdSequencePair(DeviceId.self(), 0),
       );
 
-      sequence.sync(const DeviceIdSequencePair(DeviceId(5), 99));
+      sequence.sync(DeviceIdSequencePair(DeviceId(5), 99));
 
       expect(
-        sequence.next(const DeviceId(6)),
-        const DeviceIdSequencePair(DeviceId(6), 100),
+        sequence.next(DeviceId(6)),
+        DeviceIdSequencePair(DeviceId(6), 100),
       );
       expect(sequence.copy().current(), sequence.current());
     });
 
     test('ignores an older synced sequence and resets to zero', () {
       final sequence = CausalSequence.fromSequencePair(
-        const DeviceIdSequencePair(DeviceId(5), 4),
+        DeviceIdSequencePair(DeviceId(5), 4),
       );
 
-      sequence.sync(const DeviceIdSequencePair(DeviceId(6), 3));
-      expect(sequence.current(), const DeviceIdSequencePair(DeviceId(5), 4));
+      sequence.sync(DeviceIdSequencePair(DeviceId(6), 3));
+      expect(sequence.current(), DeviceIdSequencePair(DeviceId(5), 4));
 
       sequence.reset();
       expect(
         sequence.current(),
-        const DeviceIdSequencePair(DeviceId.zero(), 0),
+        const DeviceIdSequencePair(DeviceId.self(), 0),
       );
     });
   });
@@ -72,23 +73,20 @@ void main() {
     test('tracks and validates each device independently', () {
       final sequences = DeviceSequences();
 
-      expect(sequences.nextSequence(const DeviceId(1)), 1);
-      expect(sequences.nextSequence(const DeviceId(1)), 2);
-      expect(sequences.nextSequence(const DeviceId(2)), 1);
+      expect(sequences.nextSequence(DeviceId(1)), 1);
+      expect(sequences.nextSequence(DeviceId(1)), 2);
+      expect(sequences.nextSequence(DeviceId(2)), 1);
+      expect(sequences.isInOrder(DeviceIdSequencePair(DeviceId(1), 3)), isTrue);
       expect(
-        sequences.isInOrder(const DeviceIdSequencePair(DeviceId(1), 3)),
-        isTrue,
-      );
-      expect(
-        () => sequences.apply(const DeviceIdSequencePair(DeviceId(1), 4)),
+        () => sequences.apply(DeviceIdSequencePair(DeviceId(1), 4)),
         throwsStateError,
       );
     });
 
     test('round trips JSON and resets', () {
       final sequences = DeviceSequences()
-        ..apply(const DeviceIdSequencePair(DeviceId(1), 1))
-        ..apply(const DeviceIdSequencePair(DeviceId(2), 1));
+        ..apply(DeviceIdSequencePair(DeviceId(1), 1))
+        ..apply(DeviceIdSequencePair(DeviceId(2), 1));
 
       final restored = DeviceSequences.fromJson(sequences.toJson());
       expect(restored.vector, sequences.vector);

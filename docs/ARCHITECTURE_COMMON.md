@@ -48,9 +48,11 @@ write.
 
 Local sequence is the ordering used for a store's projection replay. Stream
 version is the optimistic-concurrency boundary for one stream. Device and
-causal sequence values are local primitives only; without stable authenticated
-identity, import/export, deduplication, and deterministic conflict rules, they
-are not a distributed protocol.
+causal sequence values are local primitives only. Device ID zero identifies the
+current device, while positive IDs are available for incrementally assigned
+other devices in that database. Without stable authenticated identity,
+import/export, deduplication, and deterministic conflict rules, these values are
+not a distributed protocol.
 
 The in-memory and SQLite stores currently implement the same `EventStore`
 contract. See [CONVENTIONS.md](../CONVENTIONS.md) for the implementation and

@@ -1,5 +1,4 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
@@ -44,7 +43,6 @@ void main() {
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
         ),
-        deviceId: DeviceId(1),
         accountSummaryRepo: accountsSummaryRepo,
         totalBalanceRepo: totalBalanceRepo,
       );
