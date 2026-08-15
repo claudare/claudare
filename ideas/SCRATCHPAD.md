@@ -6,12 +6,13 @@ in one place. For better defined and conrete documentation read markdowns at
 
 ## Interesting ideas
 
-- Postfix the class with `Mutable`?
+- Postfix the mutating classes with `Mutable`?
 
 ## TODOs
 
 - Rethrow the original errors. Good point to fix is `ConcurrencyProblem` in the
   event store safe.
+
 ## Maybe todo's?
 
 - Map peer identity to a database-local integer device ID before CQRS import.
@@ -23,8 +24,12 @@ in one place. For better defined and conrete documentation read markdowns at
 - No encryption of the stored data. However, the data is encrypted in transit
   only and sent to to all devices separately; Events or blobs: every device
   stores everything.
-- Push model for sync. The blob protocol is insired by Bittorrent: uses want,
-  interested,
+- Push model for event sync. Replicate commands and events out of order. Use the
+  ids as unique identifiers. Use them for deduplication.
+- Pull model for blob sync. Get inspired by by Bittorrent protocol: use want,
+  interested, choked, and unchoked concepts.
+- Remove the string interpolations from `StreamIdPattern`. Instead use
+  `id` and `kind`. ID and kind are always a strings?
 
 ## Interesting libraries
 
