@@ -11,8 +11,8 @@ export 'src/cqrs/cqrs_runtime/runtime_repo/sqlite_runtime_repo.dart';
 // event store
 export 'src/cqrs/event_store/event_store.dart';
 export 'src/cqrs/event_store/event_database.dart';
-export 'src/cqrs/event_store/command_id.dart';
-export 'src/cqrs/event_store/event_id.dart';
+export 'src/cqrs/command/command_id.dart';
+export 'src/cqrs/event/event_id.dart';
 export 'src/cqrs/event_store/memory/memory_event_database.dart';
 export 'src/cqrs/event_store/sqlite/sqlite_event_database.dart';
 

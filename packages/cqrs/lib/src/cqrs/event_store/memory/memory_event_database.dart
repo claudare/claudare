@@ -1,9 +1,9 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
-import 'package:cqrs/src/cqrs/event_store/command_id.dart';
+import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
-import 'package:cqrs/src/cqrs/event_store/event_id.dart';
+import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 

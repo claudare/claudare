@@ -1,5 +1,5 @@
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/event_store/command_id.dart';
+import 'package:cqrs/src/cqrs/command/command_id.dart';
 
 class EventId extends Dot {
   final int index;
