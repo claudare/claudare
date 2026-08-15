@@ -1,6 +1,4 @@
 import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
-import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/event/event_dependency.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
 
@@ -15,17 +13,9 @@ class GetStreamEventsResult {
 }
 
 class GetStreamInfoResult {
-  /// Used for the dependency tracking
-  final DeviceIdSequencePair causalSequencePair;
-
-  /// Used for concurrency check on stream level.
-  /// Maybe no-consistency checks will be needed?
   final int originatingStreamVersion;
 
-  const GetStreamInfoResult({
-    required this.causalSequencePair,
-    required this.originatingStreamVersion,
-  });
+  const GetStreamInfoResult({required this.originatingStreamVersion});
 }
 
 class StreamLocalLock {
@@ -42,20 +32,14 @@ class StreamLocalLock {
 }
 
 class StreamAppends {
-  final EventDependency dependencies;
+  // FIXME: add this here
+  // final EncodedCommand encoded;
   final List<StreamLocalLock> localLocks;
   final List<StoredEventCommandWrite> events;
 
-  const StreamAppends({
-    required this.dependencies,
-    required this.localLocks,
-    required this.events,
-  });
+  const StreamAppends({required this.localLocks, required this.events});
 
-  StreamAppends.empty()
-    : dependencies = EventDependency.empty(),
-      localLocks = [],
-      events = [];
+  StreamAppends.empty() : localLocks = [], events = [];
 
   /// For assertions, ensures that every inserted event has a lock. This is an internal detail
   /// This behavior may change, to allow lock-free insertion
@@ -96,10 +80,6 @@ abstract interface class EventStoreCommand {
     int streamVersionCursor,
   );
 
-  /// TODO: I dont like this name + nullable return type
-  /// This method must return information on the last event of the stream.
-  /// The information is used to lock the stream for appends and to ensure
-  /// causal ordering after replication.
   Future<GetStreamInfoResult?> getStreamInfo(String streamId);
 
   Future<SaveChangesResult> saveChanges(

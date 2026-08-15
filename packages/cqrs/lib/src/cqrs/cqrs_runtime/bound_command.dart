@@ -1,7 +1,6 @@
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
-import 'package:cqrs/src/cqrs/command/command_run_result.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 
 // TODO: Should automatic retries be implemented here?
@@ -29,10 +28,6 @@ class BoundCommand<Input extends CommandInput> {
 
     _eventualRouter.dispatch(liveEvents);
     await _consistentRouter.dispatchAndWait(liveEvents);
-  }
-
-  Future<CommandRunResult> runResult(Input input) async {
-    return wrapCommandExecutionFuture(runThrowable(input));
   }
 }
 

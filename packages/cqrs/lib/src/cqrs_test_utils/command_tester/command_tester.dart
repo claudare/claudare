@@ -1,7 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:id_generator/id_generator.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
+import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -10,22 +15,23 @@ import 'package:time_provider/time_provider.dart';
 // It may have issues, and could silently fail.
 const int _maxIntValue = -1 >>> 1;
 
-// TODO: this currently relies on MemoryEventStore
 class CommandTester {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
-  final MemoryEventStore _eventStore;
+  final EventStore _eventStore;
+  final List<StoredEventCommandWrite> _seedEvents = [];
 
   int? _preRunLastLocalSequence;
 
   CommandTester({
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
-    MemoryEventStore? eventStore,
+    EventStore? eventStore,
   }) : _timeProvider = timeProvider,
        _idGenerator = idGenerator,
        _eventStore =
-           eventStore ?? MemoryEventStore(eventFetchPageSize: _maxIntValue);
+           eventStore ??
+           EventStore(MemoryEventDatabase(), eventFetchPageSize: _maxIntValue);
 
   void _ensureRan() {
     if (_preRunLastLocalSequence == null) {
@@ -51,12 +57,10 @@ class CommandTester {
     final encoded = eventCodec.encode(event);
 
     final streamPath = streamIdPattern.toPath(streamData);
-    _eventStore.testInsertEvent(
-      MemoryEventInsert(
-        deviceId: const DeviceId.self(),
+    _seedEvents.add(
+      StoredEventCommandWrite(
         streamId: streamPath,
-        kind: encoded.kind,
-        detail: encoded.bytes,
+        encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
       ),
     );
@@ -74,12 +78,10 @@ class CommandTester {
 
     final encoded = eventCodec.encode(event);
 
-    _eventStore.testInsertEvent(
-      MemoryEventInsert(
-        deviceId: const DeviceId.self(),
+    _seedEvents.add(
+      StoredEventCommandWrite(
         streamId: streamIdPath,
-        kind: encoded.kind,
-        detail: encoded.bytes,
+        encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
       ),
     );
@@ -112,13 +114,13 @@ class CommandTester {
         .toList(growable: false);
   }
 
-  /// Returns true on succeess, false on failure.
-  /// If failure is encountered, check [nackMessage] and [error].
-  Future<CommandRunResult> run<Input extends CommandInput>(
+  Future<void> run<Input extends CommandInput>(
     Command<Input> command,
     Input input,
   ) async {
     _ensureNotRan();
+
+    await _flushSeeds();
 
     final res = await _eventStore.getLocalLastEvent(PatternFilter.any());
     _preRunLastLocalSequence = res.localSequence;
@@ -129,9 +131,34 @@ class CommandTester {
       idGenerator: _idGenerator,
     );
 
-    // envelopes are ingored
-    return await wrapCommandExecutionFuture(
-      executer.executeThrowable(command, input),
-    );
+    await executer.executeThrowable(command, input);
+  }
+
+  // TODO: this can be cleaned up
+  Future<void> _flushSeeds() async {
+    for (final event in _seedEvents) {
+      final info = await _eventStore.getStreamInfo(event.streamId);
+      final timestamp = _timeProvider.now();
+      await _eventStore.saveChanges(
+        StoredCommandWrite(
+          encoded: EncodedCommand(
+            kind: 'command-tester-seed',
+            bytes: Uint8List(0),
+          ),
+          startedAt: timestamp,
+          completedAt: timestamp,
+        ),
+        StreamAppends(
+          localLocks: [
+            StreamLocalLock(
+              streamId: event.streamId,
+              originatingStreamVersion: info?.originatingStreamVersion ?? 0,
+            ),
+          ],
+          events: [event],
+        ),
+      );
+    }
+    _seedEvents.clear();
   }
 }

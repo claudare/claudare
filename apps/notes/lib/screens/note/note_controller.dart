@@ -50,7 +50,7 @@ class NoteController extends ChangeNotifier {
       final noteData = await notesRuntime.resolvedNoteReadModel.getById(noteId);
 
       if (noteData == null) {
-        throw StateError('Note not found');
+        throw Exception('Note not found');
       }
 
       assert(noteId == noteData.noteId);
@@ -75,7 +75,7 @@ class NoteController extends ChangeNotifier {
   /// Trashes the note.
   Future<bool> trash() async {
     if (_noteId == null) {
-      throw StateError(
+      throw Exception(
         'Cannot delete a note that has not been loaded or does not exist',
       );
     }
@@ -103,7 +103,7 @@ class NoteController extends ChangeNotifier {
 
   Future<bool> restore() async {
     if (_noteId == null) {
-      throw StateError(
+      throw Exception(
         'Cannot restore a note that has not been loaded or does not exist',
       );
     }

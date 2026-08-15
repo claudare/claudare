@@ -61,7 +61,7 @@ class NoteListController extends ChangeNotifier {
         _order,
       );
       _noteData = data;
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       notesRuntime.logger.error(
         'Failed to load notes: $error',
         error,
@@ -75,18 +75,12 @@ class NoteListController extends ChangeNotifier {
 
   Future<void> deleteNotes(List<String> noteIds) async {
     final promises = noteIds.map(
-      (noteId) => notesRuntime.commands.trashNote.runResult(
+      (noteId) => notesRuntime.commands.trashNote.runThrowable(
         TrashNoteInput(noteId: noteId),
       ),
     );
 
-    final results = await Future.wait(promises);
-
-    for (final result in results) {
-      if (!result.success) {
-        notesRuntime.logger.warning('Failed to delete note: $result');
-      }
-    }
+    await Future.wait(promises);
 
     await reloadNotes();
   }

@@ -1,19 +1,26 @@
+import 'dart:typed_data';
+
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
-import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/event_store/memory/memory_event_store.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
+import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:cqrs/src/cqrs/event/encoded_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('StreamEventReader', () {
-    late MemoryEventStore store;
+    late EventStore store;
     late StreamEventReader reader;
 
     const streamId = 'test';
     const pageSize = 2;
 
     setUp(() {
-      store = MemoryEventStore(eventFetchPageSize: pageSize);
+      store = EventStore(MemoryEventDatabase(), eventFetchPageSize: pageSize);
       reader = StreamEventReader(store, streamId);
     });
 
@@ -23,7 +30,7 @@ void main() {
     });
 
     test('handles exact amount', () async {
-      _appendCount(store, pageSize);
+      await _appendCount(store, pageSize);
 
       final events = await _scanAll(reader).toList();
       expect(events, hasLength(pageSize));
@@ -32,7 +39,7 @@ void main() {
     });
 
     test('handles more', () async {
-      _appendCount(store, pageSize + 1);
+      await _appendCount(store, pageSize + 1);
 
       final events = await _scanAll(reader).toList();
 
@@ -53,14 +60,25 @@ Stream<StoredEventCommandRead> _scanAll(StreamEventReader reader) async* {
   }
 }
 
-void _appendCount(MemoryEventStore store, int count) {
+Future<void> _appendCount(EventStore store, int count) async {
   for (var i = 0; i < count; i++) {
-    store.testInsertEvent(
-      MemoryEventInsert.minimal(
-        deviceId: DeviceId(1),
-        streamId: 'test',
-        kind: 'event-$i',
-        occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+    await store.saveChanges(
+      StoredCommandWrite(
+        encoded: EncodedCommand(kind: 'command-$i', bytes: Uint8List(0)),
+        startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      ),
+      StreamAppends(
+        localLocks: [
+          StreamLocalLock(streamId: 'test', originatingStreamVersion: i),
+        ],
+        events: [
+          StoredEventCommandWrite(
+            streamId: 'test',
+            encodedEvent: EncodedEvent(kind: 'event-$i', bytes: Uint8List(0)),
+            occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+          ),
+        ],
       ),
     );
   }

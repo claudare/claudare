@@ -107,7 +107,7 @@ class _NoteScreenState extends State<NoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Note saved'), duration: Duration(seconds: 1)),
       );
-    } catch (e) {
+    } on Exception catch (e) {
       if (!mounted) {
         return;
       }
@@ -133,7 +133,7 @@ class _NoteScreenState extends State<NoteScreen> {
         SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
       );
       Navigator.of(context).pop();
-    } catch (e) {
+    } on Exception catch (e) {
       if (!mounted) {
         return;
       }
@@ -159,7 +159,7 @@ class _NoteScreenState extends State<NoteScreen> {
           duration: Duration(seconds: 1),
         ),
       );
-    } catch (e) {
+    } on Exception catch (e) {
       if (!mounted) {
         return;
       }

@@ -1,12 +1,12 @@
 # Application patterns
 
-This guide describes application-owned patterns built on Core. It does not add
-Core APIs or require every application to use the same domain layout.
+This guide describes application-owned patterns built on CQRS. It does not add
+CQRS APIs or require every application to use the same domain layout.
 
 ## Event codecs
 
 An event codec is the boundary between an application's typed domain events
-and Core's stored `EncodedEvent` values. Define one codec for each closed domain
+and CQRS's stored `EncodedEvent` values. Define one codec for each closed domain
 event family. The codec encodes an event's payload and event kind for storage,
 then uses that kind to recreate the correct event subtype during replay.
 
@@ -23,7 +23,7 @@ and projections are wired.
 
 ## Event-family layout
 
-Keep each event family beside its domain rather than in Core. A typical layout
+Keep each event family beside its domain rather than in CQRS. A typical layout
 is:
 
 ```text

@@ -9,8 +9,8 @@ describes executable source paths, not completed runtime verification.
 
 Core is the reusable, application-independent layer. It will span multiple
 packages. Today, its CQRS portion is in `packages/cqrs`, its CRDT value helpers
-are in `packages/crdt`, its shared device, sequence, and serialization primitives
-are in `packages/common`, its ID generators are in `packages/id_generator`, its
+are in `packages/crdt`, its shared causal and serialization primitives are in
+`packages/common`, its ID generators are in `packages/id_generator`, its
 time providers are in `packages/time_provider`, and `isolate_sqlite` and
 `claudare_logging` provide core SQLite and logging boundaries.
 
@@ -20,20 +20,34 @@ new or modified Core code.
 ## CQRS implementation
 
 `packages/cqrs` exposes command inputs and handlers, stream contexts, event
-codecs, memory and SQLite event stores, projection runtime, runtime-version
+codecs, a mutexed event store, memory and SQLite event databases, projection runtime, runtime-version
 repositories, and test utilities. `packages/id_generator` exposes the ID
 generator contract and secure, seeded, sequential, and static implementations.
-`packages/common` exposes device IDs, device/causal sequence helpers, and JSON
-byte conversion.
+`packages/common` exposes dots, integer-keyed version vectors, and JSON byte
+conversion. CQRS owns `CommandId` and indexed `EventId`.
 `packages/time_provider` exposes the time provider contract, system clock, and
 deterministic static implementation. `packages/crdt` exposes the
 timestamp-based CRDT helpers.
 
 A command uses `CommandContext` to access typed streams, declare locks, append
-events, nack invalid input, request IDs, and read the current time.
-`CommandExecutor` serializes the command, records its result, and calls
-`EventStore.saveChanges`. The SQLite implementation persists command records,
-stream heads, encoded events, and sequences in one transaction.
+events, request IDs, and read the current time. `CommandExecutor` serializes
+successful event-producing commands through `CommandCodecSafe` and calls
+`EventStore.saveChanges`. Command handling exceptions propagate unchanged and
+are not serialized or stored. Applications may use the exported
+`CommandException` convention for non-fatal command rejection, or any other
+`Exception`. `CommandExecutor` supplies database-local device ID zero and
+`EventStore` allocates the next origin command sequence, receiver-local
+command/event sequences, and stream versions under a read/write mutex.
+
+Replicated command metadata and replicated events have separate flat models and
+staging calls. Pending events have no command foreign key, so event-first,
+partial, mixed-command, and out-of-order delivery are accepted. Promotion is an
+explicit atomic operation that remains pending until command metadata,
+dependency, next-origin ordering, and the complete indexed event set are ready.
+Applied commands are paged by receiver-local command sequence; applied events
+are queried separately by `CommandId` for ordered transport export. SQLite
+derives the causal frontier with `MAX(sequence)` grouped by device ID from
+applied commands; memory derives the same value rather than caching it.
 
 `CqrsRuntime` creates projection runners, initializes or rebuilds them from
 stored runtime version state, and routes committed events. Applications choose
@@ -49,8 +63,9 @@ themselves through reset and replay.
   context, so schema work and its marker are not atomic.
 - Runtime lifecycle, projection queue draining, degraded state, and shutdown
   are not explicit public behavior.
-- Device and causal sequences are local values, not authenticated identity,
-  replication order, or replay protection.
+- Integer device IDs are database-local and are not authenticated identity.
+  Version vectors and pending storage do not provide transport, peer identity,
+  replay authentication, or application convergence.
 
 ## Core support packages
 
@@ -65,7 +80,7 @@ error-handling conventions.
 ## Prototype evidence
 
 `apps/notes` is the first consumer used to develop and exercise core. It
-composes the CQRS runtime, SQLite event store, application-defined projections,
+composes the CQRS runtime, SQLite event database/store pair, application-defined projections,
 and query models. Its note domain, table layout, UI behavior, fixed startup
 data, and search behavior are prototype details, not core contracts.
 

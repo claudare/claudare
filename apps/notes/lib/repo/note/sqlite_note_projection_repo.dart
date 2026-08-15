@@ -33,7 +33,7 @@ class SqliteNoteProjectionRepo implements NoteProjectionRepo {
       );
 
       return ProjectionCheckpoint(localSequence);
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       _logger.warning(
         'failure of checkpoint in SqliteNoteInternalRepo: $error',
         error,

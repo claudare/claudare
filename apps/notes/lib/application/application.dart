@@ -11,8 +11,7 @@ class Application {
   final IsolateSqlite sqliteDb;
   final IsolateSqlite searchDb;
 
-  // TODO: this should be an EventStore interface
-  final SqliteEventStore eventStore;
+  final EventStore eventStore;
   final NotesRuntime notesRuntime;
 
   const Application({

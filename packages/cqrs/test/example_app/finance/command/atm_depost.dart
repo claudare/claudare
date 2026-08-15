@@ -21,7 +21,7 @@ class AtmDeposit implements Command<AtmDepositInput> {
   @override
   Future<void> handle(input, ctx) async {
     if (input.amount <= 0) {
-      return ctx.nack('amount must be positive');
+      throw const CommandException('amount must be positive');
     }
 
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);

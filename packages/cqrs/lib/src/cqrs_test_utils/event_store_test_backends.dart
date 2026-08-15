@@ -1,8 +1,4 @@
-import 'dart:typed_data';
-
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/event/event_dependency.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreTestBackend {
@@ -13,181 +9,92 @@ abstract interface class EventStoreTestBackend {
 
 abstract interface class EventStoreTestSession {
   EventStore get store;
+  EventDatabase get database;
 
-  Future<List<EventStoreTestCommandRecord>> readCommandRecords();
+  Future<List<AppliedCommand>> readAppliedCommands();
 
   Future<void> close();
 }
 
-class EventStoreTestCommandRecord {
-  final int localSequence;
-  final DeviceId deviceId;
-  final int deviceSequence;
-  final String kind;
-  final Uint8List detail;
-  final DateTime startedAt;
-  final DateTime completedAt;
-  final EventDependency dependencies;
-  final String? nackReason;
-  final String? exception;
-
-  const EventStoreTestCommandRecord({
-    required this.localSequence,
-    required this.deviceId,
-    required this.deviceSequence,
-    required this.kind,
-    required this.detail,
-    required this.startedAt,
-    required this.completedAt,
-    required this.dependencies,
-    required this.nackReason,
-    required this.exception,
-  });
-}
-
-class MemoryEventStoreTestBackend implements EventStoreTestBackend {
+class MemoryEventDatabaseTestBackend implements EventStoreTestBackend {
   final int? eventFetchPageSize;
 
-  const MemoryEventStoreTestBackend({this.eventFetchPageSize});
+  const MemoryEventDatabaseTestBackend({this.eventFetchPageSize});
 
   @override
   String get name => 'memory';
 
   @override
   Future<EventStoreTestSession> open() async {
-    final pageSize = eventFetchPageSize;
-    final store =
-        pageSize == null
-            ? MemoryEventStore()
-            : MemoryEventStore(eventFetchPageSize: pageSize);
-    return _MemoryEventStoreTestSession(store);
+    final database = MemoryEventDatabase();
+    final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
+    await store.migrate();
+    return _MemoryEventDatabaseTestSession(store, database);
   }
 }
 
-class SqliteEventStoreTestBackend implements EventStoreTestBackend {
-  final int eventFetchPageSize;
+class SqliteEventDatabaseTestBackend implements EventStoreTestBackend {
+  final int? eventFetchPageSize;
 
-  const SqliteEventStoreTestBackend({required this.eventFetchPageSize});
+  const SqliteEventDatabaseTestBackend({this.eventFetchPageSize});
 
   @override
   String get name => 'sqlite';
 
   @override
   Future<EventStoreTestSession> open() async {
-    final database = IsolateSqlite();
-    await database.openInMemory();
-
-    final store = SqliteEventStore(
-      database,
-      eventFetchPageSize: eventFetchPageSize,
-    );
+    final sqlite = IsolateSqlite();
+    await sqlite.openInMemory();
+    final database = SqliteEventDatabase(sqlite);
+    final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
     await store.migrate();
-
-    return _SqliteEventStoreTestSession(store, database);
+    return _SqliteEventDatabaseTestSession(store, database, sqlite);
   }
 }
 
 const eventStoreTestBackends = <EventStoreTestBackend>[
-  MemoryEventStoreTestBackend(eventFetchPageSize: 2),
-  SqliteEventStoreTestBackend(eventFetchPageSize: 2),
+  MemoryEventDatabaseTestBackend(eventFetchPageSize: 2),
+  SqliteEventDatabaseTestBackend(eventFetchPageSize: 2),
 ];
 
-class _MemoryEventStoreTestSession implements EventStoreTestSession {
-  final MemoryEventStore _store;
+class _MemoryEventDatabaseTestSession implements EventStoreTestSession {
+  @override
+  final EventStore store;
+  @override
+  final MemoryEventDatabase database;
   bool _closed = false;
 
-  _MemoryEventStoreTestSession(this._store);
+  _MemoryEventDatabaseTestSession(this.store, this.database);
 
   @override
-  EventStore get store => _store;
-
-  @override
-  Future<List<EventStoreTestCommandRecord>> readCommandRecords() async {
-    return [
-      for (final command in _store.testAllCommands)
-        EventStoreTestCommandRecord(
-          localSequence: command.localSequence,
-          deviceId: command.deviceId,
-          deviceSequence: command.deviceSequence,
-          kind: command.kind,
-          detail: command.detail,
-          startedAt: command.startedAt,
-          completedAt: command.completedAt,
-          dependencies: command.dependencies,
-          nackReason: command.nackReason,
-          exception: command.exception?.toString(),
-        ),
-    ];
-  }
+  Future<List<AppliedCommand>> readAppliedCommands() =>
+      database.getAppliedCommands(0, -1 >>> 1);
 
   @override
   Future<void> close() async {
-    if (_closed) {
-      return;
-    }
+    if (_closed) return;
     _closed = true;
   }
 }
 
-class _SqliteEventStoreTestSession implements EventStoreTestSession {
-  final SqliteEventStore _store;
-  final IsolateSqlite _database;
+class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
+  @override
+  final EventStore store;
+  @override
+  final SqliteEventDatabase database;
+  final IsolateSqlite _sqlite;
   bool _closed = false;
 
-  _SqliteEventStoreTestSession(this._store, this._database);
+  _SqliteEventDatabaseTestSession(this.store, this.database, this._sqlite);
 
   @override
-  EventStore get store => _store;
-
-  @override
-  Future<List<EventStoreTestCommandRecord>> readCommandRecords() async {
-    final rows = await _database.query('''SELECT
-      local_sequence,
-      device_id,
-      device_sequence,
-      kind,
-      detail,
-      started_at,
-      completed_at,
-      dependencies,
-      nack_reason,
-      exception
-    FROM command_record
-    ORDER BY local_sequence ASC''');
-
-    return [
-      for (final row in rows)
-        EventStoreTestCommandRecord(
-          localSequence: row[0] as int,
-          deviceId: DeviceId(row[1] as int),
-          deviceSequence: row[2] as int,
-          kind: row[3] as String,
-          detail: row[4] as Uint8List,
-          startedAt: DateTime.fromMillisecondsSinceEpoch(
-            row[5] as int,
-            isUtc: true,
-          ),
-          completedAt: DateTime.fromMillisecondsSinceEpoch(
-            row[6] as int,
-            isUtc: true,
-          ),
-          dependencies: EventDependency.fromJson(
-            JsonConverter.decode<List<dynamic>>(
-              row[7] as Uint8List,
-            ).cast<List<dynamic>>(),
-          ),
-          nackReason: row[8] as String?,
-          exception: row[9] as String?,
-        ),
-    ];
-  }
+  Future<List<AppliedCommand>> readAppliedCommands() =>
+      database.getAppliedCommands(0, -1 >>> 1);
 
   @override
   Future<void> close() async {
-    if (_closed) {
-      return;
-    }
+    if (_closed) return;
     _closed = true;
-    await _database.close();
+    await _sqlite.close();
   }
 }

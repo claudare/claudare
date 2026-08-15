@@ -70,7 +70,7 @@ class ProjectionTester<Event, StreamIdData> {
       }
 
       return true;
-    } catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       projection.failureHandler.capture(e, stackTrace);
       return false;
     }

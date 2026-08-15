@@ -41,11 +41,12 @@ class RestoreNote implements Command<RestoreNoteInput> {
     });
 
     if (deletedCount == 0) {
-      return ctx.nack('note was not trashed');
+      throw Exception('note was not trashed');
     }
     if (deletedCount > 1) {
       // hhh, this should never happen, why do I check?
-      return ctx.nack('note was trashed multiple times');
+      // careful with throwing errors!
+      throw StateError('note was trashed multiple times');
     }
 
     stream.append(NoteRestored());

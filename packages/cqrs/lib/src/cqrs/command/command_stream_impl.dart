@@ -2,7 +2,6 @@ import 'package:time_provider/time_provider.dart';
 
 import 'package:cqrs/src/cqrs/command/command_appends.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
-import 'package:cqrs/src/cqrs/event/event_dependency.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:cqrs/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
@@ -52,17 +51,14 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
     _tryLock();
 
     final reader = StreamEventReader(_eventStore, _streamId);
-    final dependencies = EventDependency.empty();
 
     try {
       while (await reader.loadMore()) {
         for (final e in reader.currentPage) {
-          dependencies.add(e.causalPair);
           yield _codec.decode(e.encodedEvent);
         }
       }
     } finally {
-      _appends.dependencies.merge(dependencies);
       _appends.locks.add(reader.streamLock);
     }
   }
@@ -80,7 +76,6 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
       return;
     }
 
-    _appends.dependencies.add(info.causalSequencePair);
     _appends.locks.add(
       StreamLocalLock(
         streamId: _streamId,
@@ -100,7 +95,6 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
       throw StreamNotFoundException(_streamId);
     }
 
-    _appends.dependencies.add(info.causalSequencePair);
     _appends.locks.add(
       StreamLocalLock(
         streamId: _streamId,

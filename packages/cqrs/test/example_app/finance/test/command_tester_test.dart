@@ -33,12 +33,10 @@ void main() {
         AccountOpened(name: 'test'),
       );
 
-      final result = await commandTester.run(
+      await commandTester.run(
         AtmDeposit(),
         AtmDepositInput(accountId: '123', amount: 42),
       );
-
-      expect(result.success, isTrue);
 
       final events = await commandTester.getWrittenEvents(
         accountCodec,
@@ -51,35 +49,36 @@ void main() {
     });
 
     // try to append to event that does not exist
-    test('exception', () async {
-      final result = await commandTester.run(
-        AtmDeposit(),
-        AtmDepositInput(accountId: '123', amount: 42),
+    test('propagates exception', () async {
+      await expectLater(
+        commandTester.run(
+          AtmDeposit(),
+          AtmDepositInput(accountId: '123', amount: 42),
+        ),
+        throwsA(isA<StreamNotFoundException>()),
       );
-
-      expect(result.success, isFalse);
-
-      expect(result.exception, isA<StreamNotFoundException>());
-      expect(result.nackReason, null);
     });
 
-    // testing nack handling
-    // also withEvent (untyped!!!)
-    test('nack', () async {
+    test('propagates application validation exception', () async {
       commandTester.withEvent2(
         'account/123',
         accountCodec,
         AccountOpened(name: 'test'),
       );
 
-      final result = await commandTester.run(
-        AtmDeposit(),
-        AtmDepositInput(accountId: '123', amount: -999),
+      await expectLater(
+        commandTester.run(
+          AtmDeposit(),
+          AtmDepositInput(accountId: '123', amount: -999),
+        ),
+        throwsA(
+          isA<CommandException>().having(
+            (exception) => exception.message,
+            'message',
+            'amount must be positive',
+          ),
+        ),
       );
-
-      expect(result.success, isFalse);
-      expect(result.nackReason, 'amount must be positive');
-      expect(result.exception, null);
     });
   });
 }

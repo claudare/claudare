@@ -1,7 +1,6 @@
 import 'dart:typed_data' show Uint8List;
 
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/event/event_dependency.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
 import 'package:test/test.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
@@ -18,7 +17,6 @@ void main() {
 
     test('no lock', () async {
       final appends = StreamAppends(
-        dependencies: EventDependency.empty(),
         localLocks: [],
         events: [
           StoredEventCommandWrite(
@@ -39,7 +37,6 @@ void main() {
 
     test('no events', () async {
       final appends = StreamAppends(
-        dependencies: EventDependency.empty(),
         localLocks: [
           StreamLocalLock(streamId: 'test', originatingStreamVersion: 42),
         ],

@@ -1,11 +1,11 @@
 # common
 
-Shared device, sequence, and serialization primitives for the Claudare
-workspace.
+Shared causal and serialization primitives for the Claudare workspace.
 
-`common.dart` exports device IDs, device/causal sequence helpers, and the JSON
-byte converter. These primitives do not provide authenticated device identity
-or a replication protocol.
+`common.dart` exports dots, version vectors, and the JSON byte converter. A dot
+uses an unrestricted database-local integer device ID and a positive sequence.
+Version vectors serialize integer keys in deterministic order.
 
-Device IDs are local to a database. Zero always identifies the current device;
-positive values are available for incrementally assigned other devices.
+These primitives do not provide authenticated device identity or a replication
+protocol. Peer communication owns translation from stable peer identity to
+database-local integer IDs.

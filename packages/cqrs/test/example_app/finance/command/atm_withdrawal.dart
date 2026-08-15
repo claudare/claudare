@@ -24,7 +24,7 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
   @override
   Future<void> handle(input, ctx) async {
     if (input.amount <= 0) {
-      return ctx.nack('amount must be positive');
+      throw const CommandException('amount must be positive');
     }
 
     final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
@@ -53,7 +53,7 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
     final newBalance = balance - input.amount;
 
     if (newBalance < 0) {
-      return ctx.nack('insufficient funds');
+      throw const CommandException('insufficient funds');
     }
 
     stream.append(AccountAtmWithdrawn(amount: input.amount));

@@ -2,7 +2,6 @@ import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store_projection.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
-// TODO: refactor to use lists as well
 class GlobalEventReader {
   final EventStoreProjection _underlying;
   final PatternFilter _patternFilter;

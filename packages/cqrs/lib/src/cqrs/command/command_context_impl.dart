@@ -1,7 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_appends.dart';
-import 'package:cqrs/src/cqrs/command/command_nacker.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/command/command_stream_impl.dart';
 import 'package:cqrs/src/cqrs/event/event_codec_safe.dart';
@@ -11,19 +10,16 @@ import 'package:time_provider/time_provider.dart';
 class CommandContextImpl implements CommandContext {
   final EventStoreCommand _eventStore;
   final CommandAppends _appends;
-  final CommandNacker _nacker;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
 
   const CommandContextImpl({
     required EventStoreCommand eventStore,
     required CommandAppends appends,
-    required CommandNacker nacker,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
   }) : _eventStore = eventStore,
        _appends = appends,
-       _nacker = nacker,
        _timeProvider = timeProvider,
        _idGenerator = idGenerator;
 
@@ -44,11 +40,6 @@ class CommandContextImpl implements CommandContext {
       streamIdPattern,
       _timeProvider,
     );
-  }
-
-  @override
-  void nack(String message) {
-    _nacker.nack(message);
   }
 
   @override

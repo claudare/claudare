@@ -1,7 +1,7 @@
 import 'package:cqrs/src/cqrs/projection/projection_failure_handler.dart';
 
 class StandardError {
-  final Object error;
+  final Exception error;
   final StackTrace stackTrace;
 
   const StandardError({required this.error, required this.stackTrace});
@@ -25,7 +25,7 @@ class StandardProjectionFailureHandler implements ProjectionFailureHandler {
   bool hasErrored() => _stdError != null;
 
   @override
-  void capture(Object error, StackTrace stackTrace) {
+  void capture(Exception error, StackTrace stackTrace) {
     if (_stdError != null) {
       throw StateError('StandardProjectionFailureHandler already has an error');
     }

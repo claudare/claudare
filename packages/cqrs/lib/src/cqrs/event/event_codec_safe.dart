@@ -1,4 +1,3 @@
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/exception/event_codec_exception.dart';
 
@@ -9,25 +8,20 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
 
   @override
   encode(value) {
+    final kind = value.runtimeType.toString();
     try {
       return _codec.encode(value);
-    } on Exception catch (e, st) {
-      throw EventCodecException(
-        'Failed to encode event',
-        direction: EventCodecDirection.encode,
-        error: e,
-        stackTrace: st,
-      );
     } catch (error, stackTrace) {
-      if (isJsonExceptionLikeError(error)) {
-        throw EventCodecException(
-          'Failed to encode event',
+      Error.throwWithStackTrace(
+        EventCodecException(
+          'Failed to encode event of kind $kind',
           direction: EventCodecDirection.encode,
+          kind: kind,
           error: error,
           stackTrace: stackTrace,
-        );
-      }
-      Error.throwWithStackTrace(error, stackTrace);
+        ),
+        stackTrace,
+      );
     }
   }
 
@@ -35,23 +29,17 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
   decode(value) {
     try {
       return _codec.decode(value);
-    } on Exception catch (e, st) {
-      throw EventCodecException(
-        "Failed to decode event of kind '${value.kind}'",
-        direction: EventCodecDirection.decode,
-        error: e,
-        stackTrace: st,
-      );
     } catch (error, stackTrace) {
-      if (isJsonExceptionLikeError(error)) {
-        throw EventCodecException(
-          "Failed to decode event of kind '${value.kind}'",
+      Error.throwWithStackTrace(
+        EventCodecException(
+          'Failed to decode event of kind ${value.kind}',
           direction: EventCodecDirection.decode,
+          kind: value.kind,
           error: error,
           stackTrace: stackTrace,
-        );
-      }
-      Error.throwWithStackTrace(error, stackTrace);
+        ),
+        stackTrace,
+      );
     }
   }
 }

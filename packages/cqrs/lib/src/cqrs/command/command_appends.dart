@@ -1,5 +1,4 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
-import 'package:cqrs/src/cqrs/event/event_dependency.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
@@ -51,13 +50,8 @@ class CommandAppendEvent<Event, IdData> {
 }
 
 class CommandAppends {
-  final EventDependency dependencies;
   final List<StreamLocalLock> locks;
   final List<CommandAppendEvent> appendEvents; // could be dynamic?
 
-  const CommandAppends({
-    required this.dependencies,
-    required this.locks,
-    required this.appendEvents,
-  });
+  const CommandAppends({required this.locks, required this.appendEvents});
 }

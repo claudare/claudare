@@ -67,7 +67,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     try {
       _queue.reset();
       await _projection.reset();
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
       return;
     }
@@ -110,7 +110,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
           await _projection.apply(aggregateIdData, event, e.eventMetadata);
         }
       }
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
       return;
     }
@@ -124,7 +124,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
     try {
       await _projection.apply(item.aggregateIdData, item.event, item.meta);
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
     }
   }

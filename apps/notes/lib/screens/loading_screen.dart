@@ -64,7 +64,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 'this is an example note data inserted at the intialization. Application development on track! :)',
           ),
         );
-      } catch (error, stackTrace) {
+      } on Exception catch (error, stackTrace) {
         application.notesRuntime.logger.debug(
           'test data was not inserted',
           error,
@@ -81,7 +81,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
               (context) => HomeScreen(notesRuntime: application.notesRuntime),
         ),
       );
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       if (!mounted) return;
       application.notesRuntime.logger.error(
         'error in initialization: $error',

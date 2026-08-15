@@ -4,8 +4,8 @@
 
 Core is the reusable, application-independent foundation of Claudare. It will
 span multiple packages as the system grows. Today, `packages/cqrs` contains the
-CQRS runtime, `packages/common` owns shared device, sequence, and serialization
-primitives, `packages/id_generator` owns ID generation, `packages/time_provider`
+CQRS runtime, `packages/common` owns shared causal and serialization primitives,
+`packages/id_generator` owns ID generation, `packages/time_provider`
 owns time providers, `packages/crdt` contains CRDT value helpers,
 `packages/isolate_sqlite` owns the SQLite isolation boundary, and
 `packages/claudare_logging` provides the logging abstraction.
@@ -22,16 +22,16 @@ Command input
       -> CommandStream reads and optimistic locks
       -> appended encoded events
   -> EventStore.saveChanges
-      -> durable command/event records
+      -> EventDatabase atomic command/event records
   -> ProjectionRuntime replay and live routing
       -> application-owned read models
 ```
 
-`CommandContext` supplies typed stream access, nacking, new IDs, and current
-time. A command locks a stream by reading it and records expected stream
-versions. `CommandExecutor` serializes the command, captures a success/nack/
-exception result, and sends the command plus all stream appends to the event
-store.
+`CommandContext` supplies typed stream access, new IDs, and current time. A
+command locks a stream by reading it and records expected stream versions.
+`CommandExecutor` sends successful event-producing commands to the event store.
+Application exceptions propagate unchanged and are not persisted. Successful
+commands without events are discarded.
 
 `CqrsRuntime` constructs projection runners and uses a stored runtime version
 to decide when projections must reset and replay. It separates consistent
@@ -40,23 +40,37 @@ models are disposable derived state.
 
 ## Event-store contract
 
-The common `EventStore` combines command, projection-read, and administration
-operations. Its implementations are memory-backed and SQLite-backed. The SQLite
-implementation stores stream heads, encoded events, command records, and
-local/device/causal sequence values in one database transaction for a command
-write.
+`EventStore` owns locking, optimistic stream checks, causal-frontier
+advancement, and receiver-local sequence allocation. It wraps a raw
+`EventDatabase`; memory and SQLite databases accept resolved records and write
+them atomically without generating identifiers.
 
-Local sequence is the ordering used for a store's projection replay. Stream
-version is the optimistic-concurrency boundary for one stream. Device and
-causal sequence values are local primitives only. Device ID zero identifies the
-current device, while positive IDs are available for incrementally assigned
-other devices in that database. Without stable authenticated identity,
-import/export, deduplication, and deterministic conflict rules, these values are
-not a distributed protocol.
+Each replicated command has a CQRS-owned `CommandId`, a causal `dependency`,
+encoded command data, timestamps, and a positive event count. Each replicated
+event has an `EventId`, stream ID, encoded event data, and occurrence time.
+`CommandId` extends the common `Dot`; `EventId` adds its zero-based index within
+the command.
 
-The in-memory and SQLite stores currently implement the same `EventStore`
-contract. See [CONVENTIONS.md](../CONVENTIONS.md) for the implementation and
-parity-testing conventions that govern changes to that contract.
+Commands and events are transported and staged separately. Events may arrive
+before command metadata, in arbitrary order, and mixed across command IDs.
+Byte-identical retransmission is idempotent while changed content under an
+existing ID is rejected. Explicit promotion waits for the command dependency,
+the next origin sequence, and exactly the indexed events `0..eventCount - 1`.
+Promotion assigns receiver-local event sequences and stream versions in event
+index order, then writes one flat applied command and its flat events atomically.
+
+Event `local_sequence` orders projection replay. Receiver-local command
+sequence orders export and diagnostics. `stream_version` is only a local
+optimistic-concurrency boundary. Applied events retain device ID, command
+sequence, and event index for transport export. Local command execution uses
+database-local device ID zero. Peer communication must translate stable peer
+identity into unrestricted integer device IDs before records reach CQRS.
+Transport and promotion scheduling remain outside CQRS.
+
+CQRS does not merge, reject, or globally order causally concurrent commands.
+Applications own out-of-date event semantics, and the core makes no replicated
+convergence claim. The in-memory and SQLite databases share one behavioral
+contract.
 
 ## Projection contract
 
@@ -100,8 +114,7 @@ error-handling conventions are defined in
 ## Limits of the current core
 
 Core is suitable for local CQRS experiments, not security or sync claims.
-Before extending it to multiple devices, specify stable event identity,
-authenticated membership, canonical import/export, idempotent deduplication,
-causal buffering, deterministic domain merges, resource limits, and a reviewed
-cryptographic design. See [IMPROVEMENTS.md](IMPROVEMENTS.md) for the required
-order of work.
+Before enabling transport, specify authenticated membership, canonical wire
+encoding, pending scheduling and bounds, application convergence rules,
+resource limits, and a reviewed cryptographic design. See
+[IMPROVEMENTS.md](IMPROVEMENTS.md) for the required order of work.

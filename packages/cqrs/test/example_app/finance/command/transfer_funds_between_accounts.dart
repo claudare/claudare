@@ -15,7 +15,7 @@ class TransferFundsBetweenAccountsInput implements CommandInput {
     required this.fromAccountId,
     required this.toAccountId,
     required this.amount,
-  }) : assert(amount > 0);
+  });
 
   @override
   String get kind => 'TransferFundsBetweenAccounts';
@@ -34,7 +34,7 @@ class TransferFundsBetweenAccounts
   @override
   Future<void> handle(input, ctx) async {
     if (input.amount <= 0) {
-      return ctx.nack('amount must be positive');
+      throw const CommandException('amount must be positive');
     }
 
     final fromStream = ctx.stream(
@@ -62,7 +62,7 @@ class TransferFundsBetweenAccounts
     final newFromBalance = fromBalance - input.amount;
 
     if (newFromBalance < 0) {
-      return ctx.nack('insufficient funds');
+      throw const CommandException('insufficient funds');
     }
 
     fromStream.append(

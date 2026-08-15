@@ -12,7 +12,6 @@ import '../repo/note/sqlite_note_projection_repo.dart';
 import 'application_factory.dart';
 
 class FakeApplicationFactory implements ApplicationFactory {
-  // TODO: mocking somehow?
   final NotesRuntime? mockNotesRuntime;
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
@@ -32,7 +31,7 @@ class FakeApplicationFactory implements ApplicationFactory {
     final logger = mockLogger ?? const NoopLogger();
 
     final sqliteDb = IsolateSqlite();
-    final eventStore = SqliteEventStore(sqliteDb);
+    final eventStore = EventStore(SqliteEventDatabase(sqliteDb));
     final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
 
     final cqrsDependencies = CqrsRuntimeDependencies(

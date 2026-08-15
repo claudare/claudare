@@ -10,10 +10,8 @@ abstract interface class IdGenerator {
 
   static String bytesToString(Uint8List bytes) {
     if (bytes.length != byteLength) {
-      throw ArgumentError.value(
-        bytes.length,
-        'bytes.length',
-        'Expected exactly $byteLength bytes',
+      throw FormatException(
+        'Invalid byte length: expected $byteLength, got ${bytes.length}',
       );
     }
 

@@ -6,7 +6,6 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_safe.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:time_provider/time_provider.dart';
@@ -14,7 +13,6 @@ import 'package:time_provider/time_provider.dart';
 /// [CqrsRuntime] is all in one place for local CQRS.
 /// This class will process commands and ensure that the projections get new events.
 class CqrsRuntime {
-  late final EventStoreSafe _eventStore;
   late final SafeRuntimeRepo _runtimeRepo;
   late final List<ProjectionRuntime> _projectionRunners;
   final String runtimeName;
@@ -28,8 +26,6 @@ class CqrsRuntime {
     required List<Projection> projectors,
   }) : _runtimeRepo = SafeRuntimeRepo(dependencies.runtimeRepo),
        _dependencies = dependencies {
-    _eventStore = EventStoreSafe(dependencies.eventStore);
-
     _projectionRunners =
         projectors
             .map(
@@ -92,7 +88,7 @@ class CqrsRuntime {
           'runtime $runtimeName@$runtimeVersion: catching up projection: ${runner.projectionName}',
         );
 
-        return runner.catchupSelfLoad(_eventStore);
+        return runner.catchupSelfLoad(_dependencies.eventStore);
       }),
     );
 
@@ -106,7 +102,7 @@ class CqrsRuntime {
     List<Projection> consistentProjectors,
   ) {
     final executor = CommandExecutor(
-      eventStore: _eventStore,
+      eventStore: _dependencies.eventStore,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
     );
@@ -139,7 +135,7 @@ class CqrsRuntime {
     List<Projection> consistentProjectors,
   ) {
     final executor = CommandExecutor(
-      eventStore: _eventStore,
+      eventStore: _dependencies.eventStore,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
     );

@@ -8,7 +8,6 @@ abstract interface class CommandContext {
     StreamIdPattern<TData> streamIdPattern,
     TData streamData,
   );
-  void nack(String message);
   String newId();
   DateTime currentTime();
 }

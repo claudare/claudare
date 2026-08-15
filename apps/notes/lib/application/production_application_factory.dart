@@ -30,7 +30,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
     final logger = ConsoleLogger(name: 'notes', minimumLevel: LogLevel.debug);
 
     final sqliteDb = IsolateSqlite();
-    final eventStore = SqliteEventStore(sqliteDb);
+    final eventStore = EventStore(SqliteEventDatabase(sqliteDb));
     final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
 
     final cqrsDependencies = CqrsRuntimeDependencies(

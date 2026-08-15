@@ -20,18 +20,10 @@ migration marker through `db.execute`. Record the marker with `tx.execute`,
 validate unique/increasing migration versions, and add reopen/interruption
 tests. A migration must be all applied or safely retried.
 
-### Bind event filters safely
+### Harden event filters
 
-`EventDb.patternToSQL` interpolates exact and prefix `PatternFilter` values.
-Return an SQL fragment plus bound values, define explicit `LIKE` escaping, and
-test quotes, `%`, `_`, Unicode, and exact/prefix semantics.
-
-### Establish store parity
-
-Define shared behavioral tests for `MemoryEventStore` and `SqliteEventStore`:
-stream locks, multi-stream writes, no-op/nacked commands, pagination, reset,
-command records, dependencies, and async error translation. Fix any store that
-cannot meet the one documented contract.
+Event database filters use bound values. Define explicit `LIKE` escaping and
+add quotes, `%`, `_`, Unicode, and exact/prefix edge-case tests.
 
 ### Make projection lifecycle explicit
 
@@ -58,10 +50,11 @@ internals.
 
 ### Separate local and replicated concepts
 
-Document the meaning and limits of local sequence, stream version, device
-sequence, causal sequence, command records, and dependencies. Do not treat
-current fields as a replication protocol before the import/export contract
-exists.
+Keep event local sequence, command local sequence, and stream version separate
+from `CommandId`, indexed `EventId`, and `VersionVector`. The flat persistence
+model and separate command/event staging are implemented, but do not constitute
+a complete replication protocol without transport, identity, scheduling, and
+resource-bound contracts.
 
 ### Use prototype feedback correctly
 
@@ -73,11 +66,11 @@ UI behavior in the app unless another application needs the same abstraction.
 
 ### Specify the replicated change model
 
-Before implementing network code, define canonical, versioned change bytes;
-stable event/change identity; author and sequence constraints; dependencies;
-durable deduplication; idempotent import/export; and an explicit buffering rule
-for unmet dependencies. Keep local projection sequence separate from replicated
-identity/order.
+Before implementing network code, define canonical versioned command/event
+bytes, authenticated device identity and database-local integer translation,
+bounded orphan and pending scheduling, range exchange, and resumable
+import/export. Preserve idempotent `CommandId` and `EventId` handling and keep
+receiver-local order separate from replicated identity.
 
 ### Define convergent note semantics
 

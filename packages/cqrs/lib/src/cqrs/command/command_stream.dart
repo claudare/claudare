@@ -11,10 +11,6 @@ abstract interface class CommandStream<Event, IdData> {
   /// Locks to the latest version.
   Future<void> mustExist();
 
-  // TODO: idea: allow optionally nacking an error when stream does not exist
-  // this will provide better error handling
-  // Future<void> mustExistNackIdea({Object nackFailure});
-
   /// Ensures the stream does not exist.
   /// Locks to the zero version.
   Future<void> mustNotExist();

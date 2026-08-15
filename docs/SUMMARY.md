@@ -5,9 +5,10 @@
 Claudare is developing a reusable core for Dart and Flutter applications. Core
 is a logical layer that will span multiple packages. It currently provides
 local event-sourced command handling, optimistic stream locks, memory/SQLite
-event stores, replayable projections, runtime-version rebuilds, shared device
-and sequence primitives, IDs, time, logging, SQLite isolation, and limited CRDT
-helpers in the separate `crdt` package.
+event databases behind a mutexed store, replayable projections, flat causal
+command/event records, independent pending command and event persistence,
+runtime-version rebuilds, IDs, time, logging, SQLite isolation, and limited
+CRDT helpers in the separate `crdt` package.
 
 `apps/notes` is the first prototype consumer. It gives feedback on core
 contracts but does not define the architecture or public API for other apps.
@@ -18,6 +19,7 @@ contracts but does not define the architecture or public API for other apps.
 | ------------------------------------------ | ---------------------------------- |
 | Typed commands and optimistic stream locks | Implemented                        |
 | Memory and SQLite local event stores       | Implemented                        |
+| Flat causal records and pending persistence | Implemented locally               |
 | Replayable application-defined projections | Implemented                        |
 | Consistent and eventual projection routing | Implemented                        |
 | Runtime-version projection rebuild         | Implemented                        |

@@ -4,5 +4,6 @@ class EncodedEvent {
   final String kind;
   final Uint8List bytes;
 
-  const EncodedEvent({required this.kind, required this.bytes});
+  EncodedEvent({required this.kind, required Uint8List bytes})
+    : bytes = Uint8List.fromList(bytes).asUnmodifiableView();
 }

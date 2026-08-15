@@ -12,8 +12,6 @@ class SafeRuntimeRepo {
       await _repo.initialize();
     } on Exception catch (e) {
       throw RuntimeRepoException('Failed to initialize runtime repo', cause: e);
-    } catch (e, st) {
-      Error.throwWithStackTrace(e, st);
     }
   }
 
@@ -28,8 +26,6 @@ class SafeRuntimeRepo {
       return value;
     } on Exception catch (e) {
       throw RuntimeRepoException('Failed to get runtime version', cause: e);
-    } catch (e, st) {
-      Error.throwWithStackTrace(e, st);
     }
   }
 
@@ -42,8 +38,6 @@ class SafeRuntimeRepo {
       return _repo.setRuntimeVersion(runtimeName, version);
     } on Exception catch (e) {
       throw RuntimeRepoException('Failed to set runtime version', cause: e);
-    } catch (e, st) {
-      Error.throwWithStackTrace(e, st);
     }
   }
 }

@@ -5,16 +5,18 @@ class EventCodecException implements Exception {
   final Object? error;
   final StackTrace? stackTrace;
   final EventCodecDirection direction;
+  final String kind;
 
   const EventCodecException(
     this.message, {
     required this.direction,
+    required this.kind,
     this.error,
     this.stackTrace,
   });
 
   @override
   String toString() {
-    return 'EventCodecException{message: $message, error: $error, direction: $direction}';
+    return 'EventCodecException{kind: $kind, direction: $direction, message: $message, error: $error}';
   }
 }

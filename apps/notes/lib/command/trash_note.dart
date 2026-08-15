@@ -49,10 +49,10 @@ class TrashNote implements Command<TrashNoteInput> {
     }
 
     if (!exists) {
-      return ctx.nack('note does not exist');
+      throw const CommandException('note does not exist');
     }
     if (trashed) {
-      return ctx.nack('note already trashed');
+      throw const CommandException('note already trashed');
     }
 
     stream.append(NoteTrashed());

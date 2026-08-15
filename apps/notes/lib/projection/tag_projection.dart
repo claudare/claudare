@@ -39,7 +39,8 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
     try {
       final value = await db.queryValue<int?>('SELECT value FROM checkpoint;');
       return ProjectionCheckpoint(value ?? 0);
-    } catch (error, stackTrace) {
+      // TODO: catch error here or not catch error...
+    } on Exception catch (error, stackTrace) {
       _logger.warning(
         'checkpoint get error. Probably not initialized? $error',
         error,

@@ -19,7 +19,7 @@ void main() {
     const secondAccountId = 'AAAAAAAAAAAAAAAAAAAAAQ';
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
-    late MemoryEventStore eventStore;
+    late EventStore eventStore;
     late MemoryRuntimeRepo runtimeRepo;
     late TimeProvider commandTimeProvider;
     late IdGenerator commandIdGenerator;
@@ -28,7 +28,7 @@ void main() {
     late FinanceApp app;
 
     setUp(() async {
-      eventStore = MemoryEventStore();
+      eventStore = EventStore(MemoryEventDatabase());
       runtimeRepo = MemoryRuntimeRepo();
       commandTimeProvider = FakeTimeProviderStatic.zero();
       commandIdGenerator = IdGeneratorSequential();
@@ -110,8 +110,8 @@ void main() {
           AtmWithdrawalInput(accountId: firstAccountId, amount: 40),
         ),
         throwsA(
-          isA<CommandNack>().having(
-            (e) => e.message,
+          isA<CommandException>().having(
+            (error) => error.message,
             'message',
             'insufficient funds',
           ),
