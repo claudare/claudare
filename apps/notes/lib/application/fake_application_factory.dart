@@ -35,7 +35,7 @@ class FakeApplicationFactory implements ApplicationFactory {
     final eventStore = SqliteEventStore(sqliteDb);
     final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
 
-    final cqrsConfig = CqrsRuntimeConfig(
+    final cqrsDependencies = CqrsRuntimeDependencies(
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       logger: logger,
@@ -58,7 +58,7 @@ class FakeApplicationFactory implements ApplicationFactory {
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
-        cqrsConfig: cqrsConfig,
+        cqrsDependencies: cqrsDependencies,
         noteProjectionRepo: noteProjectionRepo,
         resolvedNoteReadModel: resolvedNoteReadModel,
         searchProjectionRepo: searchProjectionRepo,

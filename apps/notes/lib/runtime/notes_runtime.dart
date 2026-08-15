@@ -34,12 +34,12 @@ class NotesRuntime {
   Function(Object error)? _onFatalError;
 
   NotesRuntime({
-    required CqrsRuntimeConfig cqrsConfig,
+    required CqrsRuntimeDependencies cqrsDependencies,
     required NoteProjectionRepo noteProjectionRepo,
     required this.resolvedNoteReadModel,
     required SearchProjectionRepo searchProjectionRepo,
     required this.searchReadModel,
-  }) : logger = cqrsConfig.logger,
+  }) : logger = cqrsDependencies.logger,
        _noteProjectionRepo = noteProjectionRepo,
        _searchProjectionRepo = searchProjectionRepo {
     // where does the deviceId come from?
@@ -73,7 +73,7 @@ class NotesRuntime {
     );
 
     _cqrsRuntime = CqrsRuntime(
-      config: cqrsConfig,
+      dependencies: cqrsDependencies,
       projectors: [noteProjection, searchProjection],
       thisDeviceId: DeviceId.unassigned(),
       runtimeName: 'notes',

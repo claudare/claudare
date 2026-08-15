@@ -37,7 +37,7 @@ void main() {
       totalBalanceRepo = TotalBalanceReadModel();
 
       app = FinanceApp(
-        config: CqrsRuntimeConfig(
+        dependencies: CqrsRuntimeDependencies(
           eventStore: eventStore,
           runtimeRepo: runtimeRepo,
           logger: const NoopLogger(),

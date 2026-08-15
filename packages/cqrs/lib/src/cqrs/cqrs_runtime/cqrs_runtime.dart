@@ -3,7 +3,7 @@ import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:common/common.dart';
@@ -21,26 +21,26 @@ class CqrsRuntime {
   final DeviceId _thisDeviceId;
   final String runtimeName;
   final int runtimeVersion;
-  final CqrsRuntimeConfig _config;
+  final CqrsRuntimeDependencies _dependencies;
 
   CqrsRuntime({
-    required CqrsRuntimeConfig config,
+    required CqrsRuntimeDependencies dependencies,
     required DeviceId thisDeviceId,
     required this.runtimeName,
     required this.runtimeVersion,
     required List<Projection> projectors,
-  }) : _runtimeRepo = SafeRuntimeRepo(config.runtimeRepo),
+  }) : _runtimeRepo = SafeRuntimeRepo(dependencies.runtimeRepo),
        _thisDeviceId =
            thisDeviceId, // TODO: this needs to be loaded from enrollment
-       _config = config {
-    _eventStore = EventStoreSafe(config.eventStore);
+       _dependencies = dependencies {
+    _eventStore = EventStoreSafe(dependencies.eventStore);
 
     _projectionRunners =
         projectors
             .map(
               (projector) => ProjectionRuntime(
                 projector,
-                logger: _config.logger,
+                logger: _dependencies.logger,
                 runtimeName: runtimeName,
                 runtimeVersion: runtimeVersion,
               ),
@@ -48,27 +48,27 @@ class CqrsRuntime {
             .toList();
   }
 
-  TimeProvider get timeProvider => _config.timeProvider;
-  IdGenerator get idGenerator => _config.idGenerator;
+  TimeProvider get timeProvider => _dependencies.timeProvider;
+  IdGenerator get idGenerator => _dependencies.idGenerator;
 
   // Hacky way to force reload.
   // Since runtime repo is involved, this is resilient to restarts
   Future<void> rerunProjections() async {
-    _config.logger.info(
+    _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: rerunning all projections',
     );
     await _catchupAllProjections(force: true);
-    _config.logger.info(
+    _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: reran all projections',
     );
   }
 
   Future<void> initializeProjections() async {
-    _config.logger.info(
+    _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: initializing all projections',
     );
     await _catchupAllProjections(force: false);
-    _config.logger.info(
+    _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: initialized all projections',
     );
   }
@@ -83,7 +83,7 @@ class CqrsRuntime {
     if (doReset) {
       await Future.wait(
         _projectionRunners.map((runner) {
-          _config.logger.debug(
+          _dependencies.logger.debug(
             'runtime $runtimeName@$runtimeVersion: resetting projection: ${runner.projectionName}',
           );
           return runner.resetProjection();
@@ -93,7 +93,7 @@ class CqrsRuntime {
 
     await Future.wait(
       _projectionRunners.map((runner) {
-        _config.logger.debug(
+        _dependencies.logger.debug(
           'runtime $runtimeName@$runtimeVersion: catching up projection: ${runner.projectionName}',
         );
 
@@ -112,8 +112,8 @@ class CqrsRuntime {
   ) {
     final executor = CommandExecutor(
       eventStore: _eventStore,
-      timeProvider: _config.timeProvider,
-      idGenerator: _config.idGenerator,
+      timeProvider: _dependencies.timeProvider,
+      idGenerator: _dependencies.idGenerator,
       thisDeviceId: _thisDeviceId,
     );
 
@@ -146,8 +146,8 @@ class CqrsRuntime {
   ) {
     final executor = CommandExecutor(
       eventStore: _eventStore,
-      timeProvider: _config.timeProvider,
-      idGenerator: _config.idGenerator,
+      timeProvider: _dependencies.timeProvider,
+      idGenerator: _dependencies.idGenerator,
       thisDeviceId: _thisDeviceId,
     );
 

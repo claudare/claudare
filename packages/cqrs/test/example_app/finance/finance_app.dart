@@ -18,7 +18,7 @@ class FinanceApp {
   late final Commands command;
 
   FinanceApp({
-    required CqrsRuntimeConfig config,
+    required CqrsRuntimeDependencies dependencies,
     required DeviceId deviceId,
     required AccountsSummaryReadModel accountSummaryRepo,
     required TotalBalanceReadModel totalBalanceRepo,
@@ -34,7 +34,7 @@ class FinanceApp {
     );
 
     _cqrsRuntime = CqrsRuntime(
-      config: config,
+      dependencies: dependencies,
       thisDeviceId: deviceId,
       runtimeName: 'finance-main',
       runtimeVersion: 1,

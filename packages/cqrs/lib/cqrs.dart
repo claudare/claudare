@@ -5,7 +5,7 @@ export 'src/cqrs/command/command_run_result.dart';
 
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
-export 'src/cqrs/cqrs_runtime/cqrs_runtime_config.dart';
+export 'src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 export 'src/cqrs/cqrs_runtime/bound_command.dart';
 export 'src/cqrs/cqrs_runtime/runtime_repo/runtime_repo.dart';
 export 'src/cqrs/cqrs_runtime/runtime_repo/memory_runtime_repo.dart';

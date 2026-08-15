@@ -38,6 +38,8 @@ These instructions apply to the entire repository.
   modified code; do not refactor existing deviations unless required by the task.
 - Pass logging through Core's `Logger`. Use `NoopLogger` or `RecordingLogger`
   when output is suppressed or inspected; do not add ad-hoc prints.
+- Do not generate backwards compatible changes. The project is under development
+  and breaking changes are welcome.
 - Keep shared analyzer policy at the repository root without member overrides.
 - Avoid em-dashes and unnecessary comments in code and user-facing text. Do not
   add unrequested UI help text or meaningless expressive language.
@@ -47,8 +49,9 @@ These instructions apply to the entire repository.
 - Do not claim replication, device enrollment, encryption, blob storage, backup,
   or production security. They are not implemented. The notes runtime still uses
   `DeviceId.unassigned()`.
-- Treat the root `README.md` and `docs/*.md` as AI orientation material. State
-  ownership, supported behavior, limitations, and actual validation evidence.
+- Treat the root and package `README.md` and `docs/*.md` as AI orientation
+  material. State ownership, supported behavior, limitations, and actual
+  validation evidence.
 - Verify source before changing implementation status or retaining old paths.
 - Keep normative Core wiring in `CONVENTIONS.md`; other documents should link to
   it instead of duplicating it.
