@@ -10,7 +10,6 @@ import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
 import 'package:test/test.dart';

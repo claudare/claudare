@@ -1,8 +1,8 @@
 import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 
 class StreamEventReader {
-  final EventStoreCommand _eventStore;
+  final EventStore _eventStore;
   final String _streamId;
 
   List<StoredEventCommandRead> _current = const [];

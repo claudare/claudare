@@ -2,7 +2,7 @@ import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 // TODO: rename this to this a EventBusEnvelope, include mutatable localSequence

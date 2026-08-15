@@ -1,9 +1,9 @@
 import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_projection.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class GlobalEventReader {
-  final EventStoreProjection _underlying;
+  final EventStore _underlying;
   final PatternFilter _patternFilter;
 
   Iterator<StoredEventProjectionRead>? _current;

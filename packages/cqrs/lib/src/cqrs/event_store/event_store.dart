@@ -1,10 +1,10 @@
 import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
-import 'package:cqrs/src/cqrs/event_store/event_database.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/command_id.dart';
+import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_administration.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_projection.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
@@ -13,11 +13,102 @@ import 'package:mutex/mutex.dart';
 
 enum StageReplicatedCommandResult { staged, alreadyPresent }
 
-class EventStore
-    implements
-        EventStoreCommand,
-        EventStoreProjection,
-        EventStoreAdministration {
+class GetStreamEventsResult {
+  final int originatingStreamVersion; // 0 is no events in this aggregate
+  final List<StoredEventCommandRead> events;
+
+  GetStreamEventsResult({
+    required this.originatingStreamVersion,
+    required this.events,
+  });
+}
+
+class GetStreamInfoResult {
+  final int originatingStreamVersion;
+
+  const GetStreamInfoResult({required this.originatingStreamVersion});
+}
+
+class StreamLocalLock {
+  final String streamId;
+  final int originatingStreamVersion;
+
+  // could add this flag to skip local consistency checking
+  // final bool enforceConsistency;
+
+  const StreamLocalLock({
+    required this.streamId,
+    required this.originatingStreamVersion,
+  });
+}
+
+class StreamAppends {
+  // FIXME: add this here
+  // final EncodedCommand encoded;
+  final List<StreamLocalLock> localLocks;
+  final List<StoredEventCommandWrite> events;
+
+  const StreamAppends({required this.localLocks, required this.events});
+
+  StreamAppends.empty() : localLocks = [], events = [];
+
+  /// For assertions, ensures that every inserted event has a lock. This is an internal detail
+  /// This behavior may change, to allow lock-free insertion
+  bool isValid() {
+    final streamIds = <String>{};
+
+    for (final event in events) {
+      streamIds.add(event.streamId);
+    }
+
+    for (final lock in localLocks) {
+      if (!streamIds.remove(lock.streamId)) {
+        return false;
+      }
+    }
+
+    return streamIds.isEmpty;
+  }
+}
+
+class StreamAppendOrder {
+  final int localSequence;
+
+  const StreamAppendOrder({required this.localSequence});
+}
+
+class SaveChangesResult {
+  final List<StreamAppendOrder> orders;
+
+  const SaveChangesResult({required this.orders});
+
+  SaveChangesResult.empty() : orders = [];
+}
+
+class GetLocalEventsResult {
+  final List<StoredEventProjectionRead> events;
+  final int? sequenceNumberCursor; // TODO: this should not be needed...
+
+  const GetLocalEventsResult({
+    required this.events,
+    required this.sequenceNumberCursor,
+  });
+}
+
+class GetLocalLastEventResult {
+  final int localSequence;
+
+  const GetLocalLastEventResult({required this.localSequence});
+}
+
+class GetStatisticsResult {
+  final int eventCount;
+  final int storageSize; // bytes
+
+  GetStatisticsResult({required this.eventCount, required this.storageSize});
+}
+
+class EventStore {
   final EventDatabase _database;
   final int _eventFetchPageSize;
   final ReadWriteMutex _mutex = ReadWriteMutex();
@@ -38,7 +129,6 @@ class EventStore
     }
   });
 
-  @override
   Future<GetStreamEventsResult> getStreamEvents(
     String streamId,
     int streamVersionCursor,
@@ -62,7 +152,6 @@ class EventStore
     }
   });
 
-  @override
   Future<GetStreamInfoResult?> getStreamInfo(String streamId) =>
       _mutex.protectRead(() async {
         try {
@@ -78,7 +167,6 @@ class EventStore
         }
       });
 
-  @override
   Future<SaveChangesResult> saveChanges(
     StoredCommandWrite command,
     StreamAppends appends,
@@ -310,7 +398,6 @@ class EventStore
         }
       });
 
-  @override
   Future<GetLocalEventsResult> getLocalEvents(
     PatternFilter patternFilter,
     int sequenceNumber,
@@ -326,7 +413,6 @@ class EventStore
     }
   });
 
-  @override
   Future<GetLocalLastEventResult> getLocalLastEvent(
     PatternFilter patternFilter,
   ) => _mutex.protectRead(() async {
@@ -337,7 +423,6 @@ class EventStore
     }
   });
 
-  @override
   Future<GetStatisticsResult> getStatistics() => _mutex.protectRead(() async {
     try {
       return await _database.getStatistics();
@@ -346,7 +431,6 @@ class EventStore
     }
   });
 
-  @override
   Future<void> reset() => _mutex.protectWrite(() async {
     try {
       await _database.reset();

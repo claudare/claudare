@@ -4,17 +4,16 @@ import 'package:cqrs/src/cqrs/command/command_appends.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/command/command_stream_impl.dart';
 import 'package:cqrs/src/cqrs/event/event_codec_safe.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:time_provider/time_provider.dart';
 
 class CommandContextImpl implements CommandContext {
-  final EventStoreCommand _eventStore;
+  final EventStore _eventStore;
   final CommandAppends _appends;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
 
   const CommandContextImpl({
-    required EventStoreCommand eventStore,
+    required EventStore eventStore,
     required CommandAppends appends,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,

@@ -7,17 +7,17 @@ import 'package:time_provider/time_provider.dart';
 import 'package:cqrs/src/cqrs/command/command_appends.dart';
 import 'package:cqrs/src/cqrs/command/command_codec_safe.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 
 class CommandExecutor {
   static const _commandCodec = CommandCodecSafe();
-  final EventStoreCommand _eventStore;
+  final EventStore _eventStore;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
 
   const CommandExecutor({
-    required EventStoreCommand eventStore,
+    required EventStore eventStore,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
   }) : _idGenerator = idGenerator,

@@ -8,8 +8,7 @@ import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
 import 'package:cqrs/src/cqrs/event_store/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/event_id.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_administration.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_projection.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 

@@ -2,7 +2,7 @@ import 'package:time_provider/time_provider.dart';
 
 import 'package:cqrs/src/cqrs/command/command_appends.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_locked_exception.dart';
@@ -13,7 +13,7 @@ import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'command_stream.dart';
 
 class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
-  final EventStoreCommand _eventStore;
+  final EventStore _eventStore;
   final CommandAppends _appends;
   final EventCodec<Event> _codec;
   final String _streamId;

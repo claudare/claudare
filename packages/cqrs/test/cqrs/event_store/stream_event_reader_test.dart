@@ -6,7 +6,6 @@ import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/event_store/stream_event_reader.dart';
 import 'package:test/test.dart';

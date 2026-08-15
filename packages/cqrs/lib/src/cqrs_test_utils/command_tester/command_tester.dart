@@ -6,7 +6,6 @@ import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
 import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store_command.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
