@@ -1,5 +1,3 @@
-import 'package:cqrs/cqrs.dart';
-
 class UpsertInput {
   final String noteId;
   final String value;
@@ -16,9 +14,7 @@ class UpsertInput {
 abstract interface class SearchProjectionRepo {
   Future<void> reset();
 
-  Future<ProjectionCheckpoint> checkpoint();
-
-  Future<void> upsertTitle(UpsertInput input, int localSequence);
-  Future<void> upsertContent(UpsertInput input, int localSequence);
-  Future<void> permanentlyDelete(String noteId, int localSequence);
+  Future<void> upsertTitle(UpsertInput input);
+  Future<void> upsertContent(UpsertInput input);
+  Future<void> permanentlyDelete(String noteId);
 }

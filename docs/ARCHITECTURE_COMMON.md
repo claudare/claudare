@@ -33,10 +33,11 @@ command locks a stream by reading it and records expected stream versions.
 Application exceptions propagate unchanged and are not persisted. Successful
 commands without events are discarded.
 
-`CqrsRuntime` constructs projection runners and uses a stored runtime version
-to decide when projections must reset and replay. It separates consistent
-projection routing from eventual routing. Events remain authoritative; read
-models are disposable derived state.
+`CqrsRuntime` constructs projection runners. The runtime store owns each
+globally named projection's applying and applied event-sequence boundaries,
+while a stored runtime version triggers whole-runtime rebuilds. It separates
+consistent projection routing from eventual routing. Events remain
+authoritative; read models are disposable derived state.
 
 ## Event-store contract
 
@@ -74,18 +75,24 @@ contract.
 
 ## Projection contract
 
-A `Projection` names its event codec and stream-ID pattern, owns a checkpoint,
-can reset its derived state, and applies decoded events with metadata.
-`ProjectionRuntime` catches up by querying events after the checkpoint and
-routes live committed events to projections. Projection errors make the derived
-state unhealthy; the event history remains available for repair by reset/replay.
+A `Projection` names its event codec and stream-ID pattern, can reset its
+derived state, and applies decoded events with occurrence-time metadata.
+`ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
+routes live committed events through the same advancement path. Missing or
+disagreeing applying/applied boundaries trigger reset and replay from sequence
+zero. Projection errors make the derived state unhealthy; the event history
+remains available for repair by reset/replay.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.
 
-Projection implementations own the atomicity of their read-model write and
-checkpoint update. They must be safe to rebuild from event history and must not
-treat read-model data as the source of truth.
+Runtime-store progress and application read-model writes are not one atomic
+transaction. The runtime writes the applying boundary, awaits the projection,
+then writes the applied boundary. An interruption leaves a mismatch that causes
+a rebuild on the next startup. Reset must drop all projection-owned schema if
+present and recreate its complete current schema. Projections must be safe to
+rebuild from event history and must not treat read-model data as the source of
+truth.
 
 ## CRDT helpers
 

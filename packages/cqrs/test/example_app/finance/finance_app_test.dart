@@ -171,5 +171,112 @@ void main() {
 
       expect(newTotalBalance, 150);
     });
+
+    test(
+      'runtime owns progress for live events and intentional no-ops',
+      () async {
+        await app.command.openAccount.runThrowable(
+          OpenAccountInput(name: 'first'),
+        );
+
+        final store = RuntimeStore(runtimeDatabase);
+        final accountPosition =
+            await store.getProjectionPosition('account-summary')
+                as ProjectionAtSequence;
+        expect(accountPosition.sequence, 1);
+
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        final totalPosition =
+            await store.getProjectionPosition('total-balance')
+                as ProjectionAtSequence;
+        expect(totalPosition.sequence, 1);
+        expect(await totalBalanceRepo.get(), 0);
+      },
+    );
+
+    test('resumes without reapplying stored events', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      await app.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 40),
+      );
+
+      await app.init();
+
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.balance, 40);
+      expect(accounts.single.transactionCount, 1);
+    });
+
+    test('manual replay rebuilds identical read models', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      await app.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 40),
+      );
+
+      await app.rerunProjections();
+
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.balance, 40);
+      expect(accounts.single.transactionCount, 1);
+      expect(await totalBalanceRepo.get(), 40);
+    });
+
+    test('runtime version change rebuilds projections', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      await app.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 40),
+      );
+
+      final upgraded = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: eventStore,
+          runtimeDatabase: runtimeDatabase,
+          logger: const NoopLogger(),
+          idGenerator: commandIdGenerator,
+          timeProvider: commandTimeProvider,
+        ),
+        accountSummaryRepo: accountsSummaryRepo,
+        totalBalanceRepo: totalBalanceRepo,
+        runtimeVersion: 2,
+      );
+      await upgraded.init();
+
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.balance, 40);
+      expect(accounts.single.transactionCount, 1);
+      expect(await totalBalanceRepo.get(), 40);
+    });
+
+    test('inconsistent apply boundary triggers reset and replay', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      final store = RuntimeStore(runtimeDatabase);
+      final error = StateError('interrupted apply');
+      await expectLater(
+        store.advanceProjection(
+          'account-summary',
+          1,
+          2,
+          () async => throw error,
+        ),
+        throwsA(same(error)),
+      );
+
+      await app.init();
+
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.name, 'first');
+      final position =
+          await store.getProjectionPosition('account-summary')
+              as ProjectionAtSequence;
+      expect(position.sequence, 1);
+    });
   });
 }

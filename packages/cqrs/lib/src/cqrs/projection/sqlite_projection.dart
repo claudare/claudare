@@ -9,8 +9,6 @@ abstract class SqliteProjection<Event, StreamIdData> {
 
   Future<void> reset(IsolateSqlite db);
 
-  Future<ProjectionCheckpoint> checkpoint(IsolateSqlite db);
-
   void apply(
     SyncContext ctx,
     StreamIdData idData,
@@ -46,11 +44,6 @@ class _AdaptedSqliteProjection<Event, StreamIdData>
   @override
   Future<void> reset() async {
     await _projection.reset(_db);
-  }
-
-  @override
-  Future<ProjectionCheckpoint> checkpoint() async {
-    return await _projection.checkpoint(_db);
   }
 
   @override

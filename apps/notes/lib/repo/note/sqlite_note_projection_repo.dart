@@ -1,63 +1,45 @@
-import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt.dart';
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/model/note_data.dart';
 import 'package:notes/projection/note/note_projection_repo.dart';
-import 'package:notes/repo/note/sqlite_note_migrations.dart';
 
 class SqliteNoteProjectionRepo implements NoteProjectionRepo {
   final IsolateSqlite _db;
-  final Logger _logger;
-  final SqliteMigrations _migrations;
-
-  SqliteNoteProjectionRepo(this._db, this._logger)
-    : _migrations = createNoteMigrations(_logger);
+  const SqliteNoteProjectionRepo(this._db);
 
   @override
   Future<void> reset() async {
-    await _migrations.migrate(_db);
-
     await _db.transaction((tx) {
-      // reset only after the migrations were applied!
-      tx.execute('DELETE FROM note;');
+      tx.execute('DROP TABLE IF EXISTS note;');
+      tx.execute('''CREATE TABLE note (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        title_updated_at TEXT,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        trashed_at TEXT
+      )''');
+      tx.execute(
+        'CREATE INDEX idx_note_id_trashed_at ON note(id, trashed_at);',
+      );
     });
   }
 
   @override
-  Future<ProjectionCheckpoint> checkpoint() async {
-    // database could be not initialized at this point
-    try {
-      final localSequence = await _db.queryValue<int>(
-        'SELECT COALESCE(MAX(_local_sequence), 0) FROM note;',
-      );
-
-      return ProjectionCheckpoint(localSequence);
-    } on Exception catch (error, stackTrace) {
-      _logger.warning(
-        'failure of checkpoint in SqliteNoteInternalRepo: $error',
-        error,
-        stackTrace,
-      );
-      return ProjectionCheckpoint.notInitialized();
-    }
-  }
-
-  @override
-  Future<void> store(NoteData note, int localSequence) async {
+  Future<void> store(NoteData note) async {
     await _db.execute(
       '''INSERT INTO note (
-        id, title, title_updated_at, content, created_at, updated_at, trashed_at, _local_sequence
+        id, title, title_updated_at, content, created_at, updated_at, trashed_at
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?
       ) ON CONFLICT(id) DO UPDATE SET
         title=excluded.title,
         title_updated_at=excluded.title_updated_at,
         content=excluded.content,
         -- createdAt is never edited!
         updated_at=excluded.updated_at,
-        trashed_at=excluded.trashed_at,
-        _local_sequence=excluded._local_sequence;''',
+        trashed_at=excluded.trashed_at;''',
       [
         note.noteId,
         note.title.value,
@@ -66,7 +48,6 @@ class SqliteNoteProjectionRepo implements NoteProjectionRepo {
         note.createdAt.toIso8601String(),
         note.updatedAt.toIso8601String(),
         note.trashedAt?.toIso8601String(),
-        localSequence,
       ],
     );
   }
@@ -94,13 +75,12 @@ class SqliteNoteProjectionRepo implements NoteProjectionRepo {
   @override
   Future<void> getAndStore(
     String noteId,
-    int localSequence,
     NoteData Function(NoteData) update,
   ) async {
     final data = await _get(noteId);
     if (data == null) {
       throw Exception('Note not found: $noteId');
     }
-    await store(update(data), localSequence);
+    await store(update(data));
   }
 }

@@ -3,6 +3,8 @@ import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
+import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_store_projection.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:queue/queue.dart';
@@ -14,6 +16,8 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   final Logger _logger;
   final String _runtimeName;
   final int _runtimeVersion;
+  final RuntimeStoreProjection _runtimeStore;
+  int _sequence = 0;
 
   late final AsyncFIFOQueue<QueueItem<TEvents, TIdData>> _queue;
 
@@ -22,9 +26,11 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     required Logger logger,
     required String runtimeName,
     required int runtimeVersion,
+    required RuntimeStoreProjection runtimeStore,
   }) : _logger = logger,
        _runtimeName = runtimeName,
-       _runtimeVersion = runtimeVersion {
+       _runtimeVersion = runtimeVersion,
+       _runtimeStore = runtimeStore {
     _queue = AsyncFIFOQueue<QueueItem<TEvents, TIdData>>(
       (v) => _handleApply(v),
     );
@@ -47,6 +53,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
         aggregateIdData: eventEnvelope.streamIdData,
         event: eventEnvelope.event,
         meta: eventEnvelope.metadata,
+        localSequence: eventEnvelope.localSequence,
       ),
       onDone: onDone,
     );
@@ -64,7 +71,8 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   Future<void> resetProjection() async {
     try {
       _queue.reset();
-      await _projection.reset();
+      await _runtimeStore.resetProjection(_projection.name, _projection.reset);
+      _sequence = 0;
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
       return;
@@ -78,20 +86,37 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     }
 
     try {
-      final checkpoint = await _projection.checkpoint();
-
-      if (!checkpoint.isProjectionInitialized) {
-        // make sure when tables are created and ready to return zero value instead of null.
-        _logger.warning(
-          'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
-          'was not initialized during catch-up; resetting it',
-        );
-        await _projection.reset();
+      final position = await _runtimeStore.getProjectionPosition(
+        _projection.name,
+      );
+      switch (position) {
+        case ProjectionNotInitialized():
+          _logger.warning(
+            'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
+            'was not initialized during catch-up; resetting it',
+          );
+          await _runtimeStore.resetProjection(
+            _projection.name,
+            _projection.reset,
+          );
+          _sequence = 0;
+        case ProjectionInconsistent():
+          _logger.warning(
+            'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
+            'was inconsistent during catch-up; resetting it',
+          );
+          await _runtimeStore.resetProjection(
+            _projection.name,
+            _projection.reset,
+          );
+          _sequence = 0;
+        case ProjectionAtSequence(:final sequence):
+          _sequence = sequence;
       }
 
       final reader = eventStore.getGlobalReader(
         _projection.streamIdPattern.filter,
-        checkpoint.localSequence,
+        _sequence,
       );
 
       await for (final e in reader.scan()) {
@@ -99,7 +124,10 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
         final aggregateIdData = _projection.streamIdPattern.toData(e.streamId);
 
-        await _projection.apply(aggregateIdData, event, e.eventMetadata);
+        await _advance(
+          e.localSequence,
+          () => _projection.apply(aggregateIdData, event, e.eventMetadata),
+        );
       }
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
@@ -114,10 +142,26 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     }
 
     try {
-      await _projection.apply(item.aggregateIdData, item.event, item.meta);
+      await _advance(
+        item.localSequence,
+        () => _projection.apply(item.aggregateIdData, item.event, item.meta),
+      );
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
     }
+  }
+
+  Future<void> _advance(
+    int targetSequence,
+    Future<void> Function() action,
+  ) async {
+    await _runtimeStore.advanceProjection(
+      _projection.name,
+      _sequence,
+      targetSequence,
+      action,
+    );
+    _sequence = targetSequence;
   }
 
   @override
@@ -125,13 +169,15 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 }
 
 class QueueItem<TEvents, TIdData> {
-  TIdData aggregateIdData;
-  TEvents event;
-  EventMetadata meta;
+  final TIdData aggregateIdData;
+  final TEvents event;
+  final EventMetadata meta;
+  final int localSequence;
 
   QueueItem({
     required this.aggregateIdData,
     required this.event,
     required this.meta,
+    required this.localSequence,
   });
 }

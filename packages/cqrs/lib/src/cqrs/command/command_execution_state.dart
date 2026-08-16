@@ -38,10 +38,8 @@ class CommandExecutionEvent<Event, IdData> {
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,
       event: runtimeEvent,
-      metadata: EventMetadata(
-        occuredAt: occuredAt,
-        localSequence: localSequence,
-      ),
+      metadata: EventMetadata(occuredAt: occuredAt),
+      localSequence: localSequence,
     );
   }
 }

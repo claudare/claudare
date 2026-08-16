@@ -1,16 +1,14 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/event/tag/_tag_codec.dart';
 import 'package:notes/event/tag/tag.dart';
 import 'package:notes/stream_id/tag_stream_id.dart';
 
 class TagProjection extends SqliteProjection<TagEvent, String> {
-  final Logger _logger;
   final StandardProjectionFailureHandler _failureHandler =
       StandardProjectionFailureHandler();
 
-  TagProjection(this._logger);
+  TagProjection();
 
   @override
   String get name => 'tags';
@@ -27,27 +25,20 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   @override
   Future<void> reset(IsolateSqlite db) async {
     await db.transaction((tx) {
-      tx.execute('DELETE FROM tag;');
-      tx.execute('DELETE FROM note_tag;');
-      tx.execute('DELETE FROM local_sequence;');
+      tx.execute('DROP TABLE IF EXISTS note_tag;');
+      tx.execute('DROP TABLE IF EXISTS tag;');
+      tx.execute('DROP TABLE IF EXISTS local_sequence;');
+      tx.execute('DROP TABLE IF EXISTS checkpoint;');
+      tx.execute('''CREATE TABLE tag (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+      )''');
+      tx.execute('''CREATE TABLE note_tag (
+        tag_id TEXT NOT NULL,
+        note_id TEXT NOT NULL,
+        PRIMARY KEY (tag_id, note_id)
+      )''');
     });
-  }
-
-  @override
-  Future<ProjectionCheckpoint> checkpoint(IsolateSqlite db) async {
-    // TODO: check that transactions error like this
-    try {
-      final value = await db.queryValue<int?>('SELECT value FROM checkpoint;');
-      return ProjectionCheckpoint(value ?? 0);
-      // TODO: catch error here or not catch error...
-    } on Exception catch (error, stackTrace) {
-      _logger.warning(
-        'checkpoint get error. Probably not initialized? $error',
-        error,
-        stackTrace,
-      );
-      return ProjectionCheckpoint.notInitialized();
-    }
   }
 
   @override
@@ -57,10 +48,6 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
     TagEvent event,
     EventMetadata metadata,
   ) {
-    tx.execute('UPDATE local_sequence SET value = ?;', [
-      metadata.localSequence,
-    ]);
-
     switch (event) {
       case TagAssigned(:final noteId):
         {

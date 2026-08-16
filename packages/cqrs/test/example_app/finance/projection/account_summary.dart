@@ -29,11 +29,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
   }
 
   @override
-  Future<ProjectionCheckpoint> checkpoint() {
-    return _repo.checkpoint();
-  }
-
-  @override
   Future<void> apply(accountId, event, metadata) {
     switch (event) {
       case AccountOpened(:final name):
@@ -46,7 +41,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
             openedAt: metadata.occuredAt,
             lastTransactionAt: metadata.occuredAt,
             transactionCount: 0,
-            lastLocalSequence: metadata.localSequence,
           ),
         );
       case AccountAtmDeposited(:final amount):
@@ -56,7 +50,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
             balance: summary.balance + amount,
             lastTransactionAt: metadata.occuredAt,
             transactionCount: summary.transactionCount + 1,
-            lastLocalSequence: metadata.localSequence,
           ),
         );
       case AccountAtmWithdrawn(:final amount):
@@ -66,7 +59,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
             balance: summary.balance - amount,
             lastTransactionAt: metadata.occuredAt,
             transactionCount: summary.transactionCount + 1,
-            lastLocalSequence: metadata.localSequence,
           ),
         );
       case AccountInnerTransfer(:final amount):
@@ -76,16 +68,12 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
             balance: summary.balance + amount,
             lastTransactionAt: metadata.occuredAt,
             transactionCount: summary.transactionCount + 1,
-            lastLocalSequence: metadata.localSequence,
           ),
         );
       case AccountRenamed(:final newName):
         return _repo.getAndStore(
           accountId,
-          (summary) => summary.copyWith(
-            name: newName,
-            lastLocalSequence: metadata.localSequence,
-          ),
+          (summary) => summary.copyWith(name: newName),
         );
     }
   }

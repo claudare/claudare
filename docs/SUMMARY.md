@@ -23,6 +23,7 @@ contracts but does not define the architecture or public API for other apps.
 | Replayable application-defined projections | Implemented                        |
 | Consistent and eventual projection routing | Implemented                        |
 | Runtime-version projection rebuild         | Implemented                        |
+| Runtime-owned projection progress          | Implemented with mismatch rebuilds |
 | Timestamp latest-write-wins helper         | Implemented with local-only limits |
 | SQLite isolate boundary                    | Implemented                        |
 | Explicit logging abstraction               | Implemented                        |
@@ -44,7 +45,7 @@ contracts but does not define the architecture or public API for other apps.
 ## Priorities
 
 1. Repair core persistence correctness, parity, and lifecycle.
-2. Define stable core APIs and projection/checkpoint contracts.
+2. Define stable core APIs and projection lifecycle contracts.
 3. Specify replication and convergence before transport.
 4. Add identity, reviewed cryptography, and backup after the core data model.
 

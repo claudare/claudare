@@ -6,6 +6,8 @@ import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';
 import '../projection/account_summary.dart';
 
+DateTime _occuredAt = DateTime(0);
+
 void main() {
   group('Account summary projection', () {
     late AccountsSummaryReadModel model;
@@ -31,10 +33,26 @@ void main() {
     test('applies all events', () async {
       final ok =
           await tester
-              .withEvent('1', AccountOpened(name: 'first'))
-              .withEvent('1', AccountAtmDeposited(amount: 40))
-              .withEvent('2', AccountOpened(name: 'second'))
-              .withEvent('2', AccountRenamed(newName: 'second-renamed'))
+              .withEvent(
+                '1',
+                AccountOpened(name: 'first'),
+                occuredAt: _occuredAt,
+              )
+              .withEvent(
+                '1',
+                AccountAtmDeposited(amount: 40),
+                occuredAt: _occuredAt,
+              )
+              .withEvent(
+                '2',
+                AccountOpened(name: 'second'),
+                occuredAt: _occuredAt,
+              )
+              .withEvent(
+                '2',
+                AccountRenamed(newName: 'second-renamed'),
+                occuredAt: _occuredAt,
+              )
               .run();
 
       expect(model.isInitialized, true);
@@ -55,7 +73,13 @@ void main() {
 
     test('handles errors', () async {
       final ok =
-          await tester.withEvent('1', AccountAtmDeposited(amount: 9001)).run();
+          await tester
+              .withEvent(
+                '1',
+                AccountAtmDeposited(amount: 9001),
+                occuredAt: _occuredAt,
+              )
+              .run();
 
       expect(model.isInitialized, true);
 

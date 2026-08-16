@@ -20,8 +20,9 @@ new or modified Core code.
 ## CQRS implementation
 
 `packages/cqrs` exposes command inputs and handlers, stream contexts, event
-codecs, a mutexed event store, memory and SQLite event databases, projection runtime, runtime-version
-repositories, and test utilities. `packages/id_generator` exposes the ID
+codecs, a mutexed event store, memory and SQLite event databases, projection
+runtime, runtime and projection-progress stores, and test utilities.
+`packages/id_generator` exposes the ID
 generator contract and secure, seeded, sequential, and static implementations.
 `packages/common` exposes dots, integer-keyed version vectors, and JSON byte
 conversion. CQRS owns `CommandId` and indexed `EventId`.
@@ -50,12 +51,17 @@ derives the causal frontier with `MAX(sequence)` grouped by device ID from
 applied commands; memory derives the same value rather than caching it.
 
 `CqrsRuntime` creates projection runners, initializes or rebuilds them from
-stored runtime version state, and routes committed events. Applications choose
-whether a projection is consistent, so command completion waits for its
-callback, or eventual, so it is queued without blocking the command.
+stored runtime-version and per-projection sequence state, and routes committed
+events. `RuntimeStore` records applying and applied boundaries by globally
+unique projection name. A boundary mismatch triggers reset and replay from
+zero. Applications choose whether a projection is consistent, so command
+completion waits for its callback, or eventual, so it is queued without
+blocking the command.
 
 Events are authoritative. Projections are disposable derived state and repair
-themselves through reset and replay.
+themselves through reset and replay. Projection read-model changes and runtime
+progress are intentionally non-atomic; the two-boundary protocol detects an
+interruption. Reset implementations drop and recreate all schema they own.
 
 ## Current core limits
 

@@ -50,10 +50,15 @@ replayable.
 ## Projection and read-model responsibilities
 
 Applications define the domain event codec, stream-ID pattern, projection
-ownership, checkpoint storage, and query/read-model interfaces. A projection
-must be able to reset its owned state and apply events from its checkpoint in
-local event order. Intentional no-op events must still advance a projection
-checkpoint so replay can make progress.
+ownership, and query/read-model interfaces. Core's runtime store owns progress
+for each globally unique projection name. A projection reset must drop any
+projection-owned schema and recreate its complete current schema. Missing or
+mismatched runtime boundaries cause reset and replay from sequence zero.
+Intentional no-op events still advance runtime-owned progress.
+
+Read-model writes and runtime-store progress are not atomic with each other. An
+interrupted apply or reset is detected by disagreeing boundaries on the next
+startup, at which point the disposable read model is rebuilt from event history.
 
 Keep a projection's write-model and read-model boundaries explicit. A UI query
 must state whether it reads a consistent model, an eventual model, or a merged

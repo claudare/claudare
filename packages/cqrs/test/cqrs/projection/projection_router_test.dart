@@ -142,7 +142,7 @@ EventEnvelope _fakeEvent({required int sequence}) {
     event: null,
     metadata: EventMetadata(
       occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      localSequence: sequence,
     ),
+    localSequence: sequence,
   );
 }

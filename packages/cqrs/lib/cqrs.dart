@@ -8,6 +8,8 @@ export 'src/cqrs/cqrs_runtime/bound_command.dart';
 // runtime store
 export 'src/cqrs/runtime_store/runtime_store.dart';
 export 'src/cqrs/runtime_store/runtime_database.dart';
+export 'src/cqrs/runtime_store/runtime_store_projection.dart';
+export 'src/cqrs/runtime_store/projection_position.dart';
 export 'src/cqrs/runtime_store/memory/memory_runtime_database.dart';
 export 'src/cqrs/runtime_store/sqlite/sqlite_runtime_database.dart';
 
@@ -31,7 +33,6 @@ export 'src/cqrs/command/command_context.dart';
 
 // projection
 export 'src/cqrs/projection/projection.dart';
-export 'src/cqrs/projection/projection_checkpoint.dart';
 export 'src/cqrs/projection/sqlite_projection.dart';
 export 'src/cqrs/projection/projection_failure_handler.dart';
 export 'src/cqrs/projection/failure_handler/standard_projection_failure_handler.dart';

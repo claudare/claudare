@@ -20,6 +20,7 @@ class FinanceApp {
     required CqrsRuntimeDependencies dependencies,
     required AccountsSummaryReadModel accountSummaryRepo,
     required TotalBalanceReadModel totalBalanceRepo,
+    int runtimeVersion = 1,
   }) {
     final accountSummaryProjection = AccountSummaryProjection(
       accountSummaryRepo,
@@ -34,7 +35,7 @@ class FinanceApp {
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
       runtimeName: 'finance-main',
-      runtimeVersion: 1,
+      runtimeVersion: runtimeVersion,
       projectors: [accountSummaryProjection, totalBalanceProjection],
     );
 
@@ -59,11 +60,11 @@ class FinanceApp {
   }
 
   Future<void> init() async {
-    // TODO: should the deviceId be loaded here and set on the runtime?
     // TODO: how to show progress? This could take a while.
-
     await _cqrsRuntime.initializeProjections();
   }
+
+  Future<void> rerunProjections() => _cqrsRuntime.rerunProjections();
 }
 
 class Commands {

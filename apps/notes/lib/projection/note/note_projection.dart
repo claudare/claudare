@@ -33,17 +33,11 @@ class NoteProjection implements Projection<NoteEvent, String> {
   }
 
   @override
-  Future<ProjectionCheckpoint> checkpoint() {
-    return _repo.checkpoint();
-  }
-
-  @override
   Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
     switch (event) {
       case NoteContentUpdated(:final newContent):
         return _repo.getAndStore(
           noteId,
-          metadata.localSequence,
           (note) =>
               note.copyWith(content: newContent, updatedAt: metadata.occuredAt),
         );
@@ -57,18 +51,15 @@ class NoteProjection implements Projection<NoteEvent, String> {
             updatedAt: metadata.occuredAt,
             trashedAt: null,
           ),
-          metadata.localSequence,
         );
       case NoteRestored():
         return _repo.getAndStore(
           noteId,
-          metadata.localSequence,
           (note) => note.copyWithTrashedValue(trashedAt: null),
         );
       case NoteTitleUpdated(:final newTitle):
         return _repo.getAndStore(
           noteId,
-          metadata.localSequence,
           (note) => note.copyWith(
             titlePair: CrdtValueDateTimePair(newTitle, metadata.occuredAt),
             updatedAt: metadata.occuredAt,
@@ -77,7 +68,6 @@ class NoteProjection implements Projection<NoteEvent, String> {
       case NoteTrashed():
         return _repo.getAndStore(
           noteId,
-          metadata.localSequence,
           (note) => note.copyWithTrashedValue(trashedAt: metadata.occuredAt),
         );
     }

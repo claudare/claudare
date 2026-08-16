@@ -41,7 +41,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
       runtimeDatabase: runtimeDatabase,
     );
 
-    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb, logger);
+    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
     final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
 
     final searchDb = IsolateSqlite();

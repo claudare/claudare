@@ -16,9 +16,7 @@ class SearchProjection implements Projection<NoteEvent, String> {
   @override
   // TODO: for now search database is never cleared, as permanent delition is not implemented
   Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
-    _logger.debug(
-      'applying search projection $noteId, sequence ${metadata.localSequence}',
-    );
+    _logger.debug('applying search projection $noteId');
     switch (event) {
       case NoteContentUpdated(:final newContent):
         return _repo.upsertContent(
@@ -27,7 +25,6 @@ class SearchProjection implements Projection<NoteEvent, String> {
             value: newContent,
             timestamp: metadata.occuredAt,
           ),
-          metadata.localSequence,
         );
       case NoteTitleUpdated(:final newTitle):
         return _repo.upsertTitle(
@@ -36,7 +33,6 @@ class SearchProjection implements Projection<NoteEvent, String> {
             value: newTitle,
             timestamp: metadata.occuredAt,
           ),
-          metadata.localSequence,
         );
 
       default:
@@ -48,11 +44,6 @@ class SearchProjection implements Projection<NoteEvent, String> {
   @override
   Future<void> reset() {
     return _repo.reset();
-  }
-
-  @override
-  Future<ProjectionCheckpoint> checkpoint() {
-    return _repo.checkpoint();
   }
 
   @override

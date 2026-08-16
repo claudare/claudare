@@ -15,6 +15,5 @@ class LocalEvent {
     required this.localSequence,
   });
 
-  EventMetadata get eventMetadata =>
-      EventMetadata(occuredAt: occuredAt, localSequence: localSequence);
+  EventMetadata get eventMetadata => EventMetadata(occuredAt: occuredAt);
 }

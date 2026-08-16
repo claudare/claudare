@@ -1,5 +1,3 @@
-import 'package:cqrs/cqrs.dart';
-
 class AccountSummary {
   final String accountId;
   final String name;
@@ -8,8 +6,6 @@ class AccountSummary {
   final DateTime openedAt;
   final DateTime lastTransactionAt;
 
-  final int lastLocalSequence;
-
   AccountSummary({
     required this.accountId,
     required this.name,
@@ -17,7 +13,6 @@ class AccountSummary {
     required this.transactionCount,
     required this.openedAt,
     required this.lastTransactionAt,
-    required this.lastLocalSequence,
   });
 
   AccountSummary copyWith({
@@ -26,7 +21,6 @@ class AccountSummary {
     int? transactionCount,
     DateTime? openedAt,
     DateTime? lastTransactionAt,
-    int? lastLocalSequence,
   }) {
     return AccountSummary(
       accountId: accountId,
@@ -35,13 +29,12 @@ class AccountSummary {
       transactionCount: transactionCount ?? this.transactionCount,
       openedAt: openedAt ?? this.openedAt,
       lastTransactionAt: lastTransactionAt ?? this.lastTransactionAt,
-      lastLocalSequence: lastLocalSequence ?? this.lastLocalSequence,
     );
   }
 
   @override
   String toString() {
-    return 'AccountSummary(accountId: $accountId, name: $name, balance: $balance, transactionCount: $transactionCount, openedAt: $openedAt, lastTransactionAt: $lastTransactionAt, lastLocalSequence: $lastLocalSequence)';
+    return 'AccountSummary(accountId: $accountId, name: $name, balance: $balance, transactionCount: $transactionCount, openedAt: $openedAt, lastTransactionAt: $lastTransactionAt)';
   }
 }
 
@@ -64,20 +57,6 @@ class AccountsSummaryReadModel {
   Future<void> reset() async {
     _isInitialized = true;
     summaries.clear();
-  }
-
-  Future<ProjectionCheckpoint> checkpoint() async {
-    if (!_isInitialized) {
-      return ProjectionCheckpoint.notInitialized();
-    }
-
-    return ProjectionCheckpoint(
-      summaries.values.fold(
-        0,
-        (max, summary) =>
-            max > summary.lastLocalSequence ? max : summary.lastLocalSequence,
-      ),
-    );
   }
 
   // mutations (can be moved out, easier to do with sql)

@@ -1,6 +1,5 @@
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
-import 'package:cqrs/src/cqrs/projection/projection_checkpoint.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 import 'projection_failure_handler.dart';
@@ -14,10 +13,6 @@ abstract interface class Projection<Event, StreamIdData> {
   ProjectionFailureHandler get failureHandler;
 
   Future<void> reset();
-
-  /// Return nil localSequence if the projection is not initialized
-  /// Null value will call [reset].
-  Future<ProjectionCheckpoint> checkpoint();
 
   /// do the application. Throwing is an error
   Future<void> apply(StreamIdData idData, Event event, EventMetadata metadata);

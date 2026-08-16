@@ -28,21 +28,16 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
   }
 
   @override
-  Future<ProjectionCheckpoint> checkpoint() {
-    return _repo.checkpoint();
-  }
-
-  @override
   Future<void> apply(accountId, event, metadata) async {
     switch (event) {
       case AccountAtmDeposited(:final amount):
         final currentValue = await _repo.get();
 
-        return _repo.store(currentValue + amount, metadata.localSequence);
+        return _repo.store(currentValue + amount);
       case AccountAtmWithdrawn(:final amount):
         final currentValue = await _repo.get();
 
-        return _repo.store(currentValue - amount, metadata.localSequence);
+        return _repo.store(currentValue - amount);
 
       case AccountOpened():
       case AccountInnerTransfer():

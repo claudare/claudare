@@ -34,13 +34,6 @@ for runtime queues and both SQLite isolates.
 
 ## P1 - strengthen reusable core behavior
 
-### Make projection progress durable
-
-Require every consumed event, including intentional no-ops, to advance a
-projection checkpoint atomically with the projection's derived-state change.
-Provide reusable guidance or helpers for projection transaction ownership and
-test restart behavior at each checkpoint boundary.
-
 ### Define supported public APIs
 
 Document stable public libraries and extension points for commands, event

@@ -1,10 +1,8 @@
 class EventMetadata {
   final DateTime occuredAt;
-  final int localSequence;
 
-  EventMetadata({required this.occuredAt, required this.localSequence});
+  EventMetadata({required this.occuredAt});
 
   @override
-  toString() =>
-      'EventMetadata(occuredAt: $occuredAt, localSequence: $localSequence)';
+  toString() => 'EventMetadata(occuredAt: $occuredAt)';
 }

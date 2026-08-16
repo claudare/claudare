@@ -34,6 +34,7 @@ class CqrsRuntime {
                 logger: _dependencies.logger,
                 runtimeName: runtimeName,
                 runtimeVersion: runtimeVersion,
+                runtimeStore: _runtimeStore,
               ),
             )
             .toList();

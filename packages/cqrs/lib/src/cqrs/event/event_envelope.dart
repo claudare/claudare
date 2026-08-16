@@ -12,6 +12,7 @@ class EventEnvelope<Event, IdData> {
 
   final Event event;
   final EventMetadata metadata;
+  final int localSequence;
 
   const EventEnvelope({
     required this.streamIdStr,
@@ -19,9 +20,10 @@ class EventEnvelope<Event, IdData> {
     required this.streamIdPattern,
     required this.event,
     required this.metadata,
+    required this.localSequence,
   });
 
   @override
   toString() =>
-      'EventEnvelope(streamIdStr: $streamIdStr, streamIdData: $streamIdData, streamIdPattern: $streamIdPattern, event: $event, metadata: $metadata)';
+      'EventEnvelope(streamIdStr: $streamIdStr, streamIdData: $streamIdData, streamIdPattern: $streamIdPattern, event: $event, metadata: $metadata, localSequence: $localSequence)';
 }
