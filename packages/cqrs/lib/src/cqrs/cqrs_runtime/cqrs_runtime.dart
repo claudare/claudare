@@ -4,16 +4,16 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/safe_runtime_repo.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// [CqrsRuntime] is all in one place for local CQRS.
 /// This class will process commands and ensure that the projections get new events.
 class CqrsRuntime {
-  late final SafeRuntimeRepo _runtimeRepo;
+  late final RuntimeStore _runtimeStore;
   late final List<ProjectionRuntime> _projectionRunners;
   final String runtimeName;
   final int runtimeVersion;
@@ -24,7 +24,7 @@ class CqrsRuntime {
     required this.runtimeName,
     required this.runtimeVersion,
     required List<Projection> projectors,
-  }) : _runtimeRepo = SafeRuntimeRepo(dependencies.runtimeRepo),
+  }) : _runtimeStore = RuntimeStore(dependencies.runtimeDatabase),
        _dependencies = dependencies {
     _projectionRunners =
         projectors
@@ -65,9 +65,9 @@ class CqrsRuntime {
   }
 
   Future<void> _catchupAllProjections({required bool force}) async {
-    await _runtimeRepo.initialize(); // TODO: get me outa here
+    await _runtimeStore.initialize();
 
-    final storedVersion = await _runtimeRepo.getRuntimeVersion(runtimeName);
+    final storedVersion = await _runtimeStore.getRuntimeVersion(runtimeName);
 
     final doReset = force || runtimeVersion != storedVersion;
 
@@ -93,7 +93,7 @@ class CqrsRuntime {
     );
 
     if (doReset) {
-      await _runtimeRepo.setRuntimeVersion(runtimeName, runtimeVersion);
+      await _runtimeStore.setRuntimeVersion(runtimeName, runtimeVersion);
     }
   }
 

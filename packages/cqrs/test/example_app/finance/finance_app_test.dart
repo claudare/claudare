@@ -20,7 +20,7 @@ void main() {
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     late EventStore eventStore;
-    late MemoryRuntimeRepo runtimeRepo;
+    late MemoryRuntimeDatabase runtimeDatabase;
     late TimeProvider commandTimeProvider;
     late IdGenerator commandIdGenerator;
     late AccountsSummaryReadModel accountsSummaryRepo;
@@ -29,7 +29,7 @@ void main() {
 
     setUp(() async {
       eventStore = EventStore(MemoryEventDatabase());
-      runtimeRepo = MemoryRuntimeRepo();
+      runtimeDatabase = MemoryRuntimeDatabase();
       commandTimeProvider = FakeTimeProviderStatic.zero();
       commandIdGenerator = IdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
@@ -38,7 +38,7 @@ void main() {
       app = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
           eventStore: eventStore,
-          runtimeRepo: runtimeRepo,
+          runtimeDatabase: runtimeDatabase,
           logger: const NoopLogger(),
           idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,

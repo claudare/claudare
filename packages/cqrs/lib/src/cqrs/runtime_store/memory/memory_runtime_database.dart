@@ -1,6 +1,6 @@
-import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/runtime_repo.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_database.dart';
 
-class MemoryRuntimeRepo implements RuntimeRepo {
+class MemoryRuntimeDatabase implements RuntimeDatabase {
   final Map<String, int> _runtimeVersions = {};
   bool _initialized = false;
 
@@ -12,7 +12,7 @@ class MemoryRuntimeRepo implements RuntimeRepo {
   @override
   Future<int> getRuntimeVersion(String runtimeName) {
     if (!_initialized) {
-      throw StateError('RuntimeRepoMemory is not initialized');
+      throw StateError('MemoryRuntimeDatabase is not initialized');
     }
 
     return Future.value(_runtimeVersions[runtimeName] ?? 0);
@@ -21,7 +21,7 @@ class MemoryRuntimeRepo implements RuntimeRepo {
   @override
   Future<void> setRuntimeVersion(String runtimeName, int version) {
     if (!_initialized) {
-      throw StateError('RuntimeRepoMemory is not initialized');
+      throw StateError('MemoryRuntimeDatabase is not initialized');
     }
 
     _runtimeVersions[runtimeName] = version;

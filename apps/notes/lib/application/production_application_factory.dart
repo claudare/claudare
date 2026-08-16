@@ -31,14 +31,14 @@ class ProductionApplicationFactory implements ApplicationFactory {
 
     final sqliteDb = IsolateSqlite();
     final eventStore = EventStore(SqliteEventDatabase(sqliteDb));
-    final runtimeRepo = SqliteRuntimeRepo(sqliteDb);
+    final runtimeDatabase = SqliteRuntimeDatabase(sqliteDb);
 
     final cqrsDependencies = CqrsRuntimeDependencies(
       idGenerator: idGenerator,
       timeProvider: timeProvider,
       logger: logger,
       eventStore: eventStore,
-      runtimeRepo: runtimeRepo,
+      runtimeDatabase: runtimeDatabase,
     );
 
     final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb, logger);

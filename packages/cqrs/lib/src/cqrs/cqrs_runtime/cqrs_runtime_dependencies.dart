@@ -1,6 +1,6 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/runtime_repo/runtime_repo.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_database.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -9,7 +9,7 @@ import 'package:time_provider/time_provider.dart';
 /// Runtime-specific dependencies do not belong here.
 class CqrsRuntimeDependencies {
   final EventStore eventStore;
-  final RuntimeRepo runtimeRepo;
+  final RuntimeDatabase runtimeDatabase;
   final Logger logger;
 
   final IdGenerator idGenerator;
@@ -17,7 +17,7 @@ class CqrsRuntimeDependencies {
 
   const CqrsRuntimeDependencies({
     required this.eventStore,
-    required this.runtimeRepo,
+    required this.runtimeDatabase,
     required this.logger,
     required this.idGenerator,
     required this.timeProvider,
