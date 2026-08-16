@@ -51,6 +51,10 @@ class IsolateSqlite {
       setup: setup,
     );
 
+    // Load the native asset in the parent isolate so Flutter embedders make it
+    // available to the spawned database isolate as well.
+    final _ = sqlite3.version;
+
     final rp = ReceivePort();
     _isolate = await Isolate.spawn(_isolateMain, (options, rp.sendPort));
     _cmdPort = await rp.first as SendPort;
@@ -64,6 +68,7 @@ class IsolateSqlite {
     return open(_memoryFilename, vfs: vfs, setup: setup);
   }
 
+  @pragma('vm:entry-point')
   static FutureOr<void> _isolateMain((_OpenOptions, SendPort) args) async {
     final (options, initPort) = args;
 
