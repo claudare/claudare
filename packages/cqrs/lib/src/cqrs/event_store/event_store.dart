@@ -109,33 +109,15 @@ class EventStore {
           deviceId,
           state.appliedVersion.value(deviceId) + 1,
         );
-        final replicatedEvents = [
-          for (var i = 0; i < changes.events.length; i++)
-            ReplicatedEvent(
-              eventId: EventId(deviceId, commandId.sequence, i),
-              streamId: changes.events[i].streamId,
-              encodedEvent: changes.events[i].encodedEvent,
-              occuredAt: changes.events[i].occuredAt,
-            ),
-        ];
-        final replicated = ReplicatedCommand(
-          commandId: commandId,
-          dependency: state.appliedVersion,
-          encoded: changes.encoded,
-          startedAt: changes.startedAt,
-          completedAt: changes.completedAt,
-          eventCount: replicatedEvents.length,
-        );
-
         var localEventSequence = state.lastLocalEventSequence;
         final appliedEvents = <AppliedEvent>[];
-        for (var i = 0; i < replicatedEvents.length; i++) {
-          final event = replicatedEvents[i];
+        for (var i = 0; i < changes.events.length; i++) {
+          final event = changes.events[i];
           final streamVersion = (streamVersions[event.streamId] ?? 0) + 1;
           streamVersions[event.streamId] = streamVersion;
           appliedEvents.add(
             AppliedEvent(
-              eventId: event.eventId,
+              eventId: EventId(deviceId, commandId.sequence, i),
               streamId: event.streamId,
               encodedEvent: event.encodedEvent,
               occuredAt: event.occuredAt,
@@ -146,8 +128,13 @@ class EventStore {
         }
 
         await _database.appendApplied(
-          AppliedCommand.fromReplicatedCommand(
-            replicated,
+          AppliedCommand(
+            commandId: commandId,
+            dependency: state.appliedVersion,
+            encoded: changes.encoded,
+            startedAt: changes.startedAt,
+            completedAt: changes.completedAt,
+            eventCount: appliedEvents.length,
             localSequence: state.lastLocalCommandSequence + 1,
           ),
           appliedEvents,
