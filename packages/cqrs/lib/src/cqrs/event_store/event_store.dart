@@ -248,7 +248,7 @@ class EventStore {
       final unique = <EventId, ReplicatedEvent>{};
       for (final event in events) {
         final duplicate = unique[event.eventId];
-        if (duplicate != null && !replicatedEventsEqual(duplicate, event)) {
+        if (duplicate != null && duplicate != event) {
           throw ReplicatedCommandConflict(event.eventId);
         }
         unique[event.eventId] = event;
@@ -260,7 +260,7 @@ class EventStore {
             await _database.getPendingEvent(event.eventId);
         if (existing == null) {
           staged.add(event);
-        } else if (!replicatedEventsEqual(existing, event)) {
+        } else if (existing != event) {
           throw ReplicatedCommandConflict(event.eventId);
         }
       }

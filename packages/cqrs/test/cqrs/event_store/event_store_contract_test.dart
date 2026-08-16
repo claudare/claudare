@@ -55,32 +55,7 @@ void main() {
         localSequence: 12,
         streamVersion: 4,
       );
-      expect(
-        replicatedEventsEqual(appliedEvent.toReplicatedEvent(), event),
-        isTrue,
-      );
-    });
-
-    test('exports applied events in transport order', () {
-      final id = CommandId(3, 1);
-      final events = [
-        AppliedEvent.fromReplicatedEvent(
-          _replicatedEvent(id, 1, kind: 'b'),
-          localSequence: 2,
-          streamVersion: 2,
-        ),
-        AppliedEvent.fromReplicatedEvent(
-          _replicatedEvent(id, 0, kind: 'a'),
-          localSequence: 1,
-          streamVersion: 1,
-        ),
-      ];
-      expect(
-        ReplicatedEvent.fromAppliedEvents(
-          events,
-        ).map((event) => event.eventId.index),
-        [0, 1],
-      );
+      expect(appliedEvent.toReplicatedEvent(), event);
     });
   });
 
@@ -303,13 +278,8 @@ void main() {
           final events = await store.getAppliedEvents(applied.commandId);
           final command = applied.toReplicatedCommand();
           expect(command.eventCount, 2);
-          expect(ReplicatedEvent.fromAppliedEvents(events), hasLength(2));
-          expect(
-            ReplicatedEvent.fromAppliedEvents(
-              events,
-            ).map((event) => event.eventId.index),
-            [0, 1],
-          );
+          expect(events, hasLength(2));
+          expect(events.map((event) => event.eventId.index), [0, 1]);
         },
       );
 
