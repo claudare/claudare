@@ -1,8 +1,8 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal for a future implementation thread.
-Nothing described here should be treated as implemented behavior until the
-source and repository documentation say so.
+Status: decision-complete design proposal. Stage 0 is implemented; Stages 1-9
+remain future work. Nothing in those later stages should be treated as
+implemented behavior until the source and repository documentation say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -498,6 +498,45 @@ callers and removes the replaced code before it is complete.
 
 Gate: the existing implementation remains unchanged and the new behavioral
 expectations are executable.
+
+Stage 0 is complete. The characterization suite records local command
+persistence and completion, startup replay across event pages, projection
+failure handling, eventual-dispatch boundary races, and replay of promoted
+events. The EventStore contract suite separately covers local persistence,
+pagination, promotion readiness, and atomic visibility for both memory and
+SQLite databases.
+
+The following current APIs and files are scheduled for deletion at the Stage 7
+cutover. This is an inventory, not permission to remove them in an earlier
+stage:
+
+- `BoundCommand`, `BoundCommandFn`, and
+  `lib/src/cqrs/cqrs_runtime/bound_command.dart`.
+- `CqrsRuntime.bindCommand`, its consistent-projection argument, and the
+  consistent/eventual runner split in
+  `lib/src/cqrs/cqrs_runtime/cqrs_runtime.dart`.
+- `ProjectionRouter` and
+  `lib/src/cqrs/projection/projection_router.dart`.
+- `ProjectionSink` and `lib/src/cqrs/projection/projection_sink.dart`.
+- `ProjectionRuntime.enqueue`, `enqueueApplied`, `shouldProcess`,
+  `shouldProcessString`, its `AsyncFIFOQueue`, `QueueItem`, and the direct live
+  event dispatch path in
+  `lib/src/cqrs/projection/projection_runtime.dart`.
+- `EventEnvelope` and `lib/src/cqrs/event/event_envelope.dart`, after command
+  execution no longer reconstructs live event objects from persistence
+  results.
+- `SaveChangesResult`, `StreamAppendOrder`, and the append-order reconstruction
+  in `CommandExecutor` when `EventStore.saveChanges` becomes `Future<void>`.
+- `ProjectionFailureHandler`, `StandardProjectionFailureHandler`,
+  `ThrowingProjectionFailureHandler`, and their files when failures move to the
+  terminal `CqrsRuntimeFailure` boundary.
+- `CqrsRuntimeV2Idea` and
+  `lib/src/cqrs/cqrs_runtime/CqrsRuntimeV2Idea.dart`.
+
+Tests and application callers tied exclusively to these APIs are migrated or
+deleted with their owner. The stream-ID, codec, and old projection-shape files
+are inventoried by Stages 1-3 and removed in those stages rather than waiting
+for the runtime cutover.
 
 ### Stage 1: Replace stream identity terminology
 

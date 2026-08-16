@@ -1,4 +1,11 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
+import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
@@ -10,6 +17,7 @@ import 'command/open_account.dart';
 import 'command/rename_account.dart';
 import 'command/transfer_funds_between_accounts.dart';
 import 'finance_app.dart';
+import 'account_event/account.dart';
 import 'read_model/accounts_summary_read_model.dart';
 import 'read_model/total_balance_read_model.dart';
 
@@ -101,6 +109,25 @@ void main() {
       expect(secondAccounts.last.balance, 20);
     });
 
+    test('command completion follows durable local persistence', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+
+      final commands = await eventStore.getAppliedCommands(0);
+      final events = await eventStore.getAppliedEvents(
+        commands.single.commandId,
+      );
+
+      expect(commands, hasLength(1));
+      expect(events, hasLength(1));
+      expect(events.single.encodedEvent.kind, AccountOpened.kind);
+      expect(
+        (await accountsSummaryRepo.getAllSortedByNameDesc()).single.name,
+        'first',
+      );
+    });
+
     test('handles negative balance operations', () async {
       await app.command.openAccount.runThrowable(
         OpenAccountInput(name: 'first'),
@@ -172,6 +199,68 @@ void main() {
       expect(newTotalBalance, 150);
     });
 
+    test('eventual dispatch accepts work while actively draining', () async {
+      final blockingTotalBalance = _BlockingTotalBalanceReadModel();
+      final raceApp = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: EventStore(MemoryEventDatabase()),
+          runtimeDatabase: MemoryRuntimeDatabase(),
+          logger: const NoopLogger(),
+          idGenerator: IdGeneratorSequential(),
+          timeProvider: FakeTimeProviderStatic.zero(),
+        ),
+        accountSummaryRepo: AccountsSummaryReadModel(),
+        totalBalanceRepo: blockingTotalBalance,
+      );
+      await raceApp.init();
+      await raceApp.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+
+      await raceApp.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 40),
+      );
+      await blockingTotalBalance.firstStoreStarted;
+      await raceApp.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 2),
+      );
+
+      blockingTotalBalance.releaseFirstStore();
+      await blockingTotalBalance.secondStoreCompleted;
+
+      expect(await blockingTotalBalance.get(), 42);
+    });
+
+    test('eventual dispatch accepts work after becoming empty', () async {
+      final trackingTotalBalance = _TrackingTotalBalanceReadModel();
+      final raceApp = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: EventStore(MemoryEventDatabase()),
+          runtimeDatabase: MemoryRuntimeDatabase(),
+          logger: const NoopLogger(),
+          idGenerator: IdGeneratorSequential(),
+          timeProvider: FakeTimeProviderStatic.zero(),
+        ),
+        accountSummaryRepo: AccountsSummaryReadModel(),
+        totalBalanceRepo: trackingTotalBalance,
+      );
+      await raceApp.init();
+      await raceApp.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+
+      await raceApp.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 40),
+      );
+      await trackingTotalBalance.waitForStores(1);
+      await raceApp.command.atmDeposit.runThrowable(
+        AtmDepositInput(accountId: firstAccountId, amount: 2),
+      );
+      await trackingTotalBalance.waitForStores(2);
+
+      expect(await trackingTotalBalance.get(), 42);
+    });
+
     test(
       'runtime owns progress for live events and intentional no-ops',
       () async {
@@ -207,6 +296,86 @@ void main() {
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 40);
       expect(accounts.single.transactionCount, 1);
+    });
+
+    test('startup replay scans every event page', () async {
+      final pagedEventStore = EventStore(
+        MemoryEventDatabase(),
+        eventFetchPageSize: 2,
+      );
+      final producer = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: pagedEventStore,
+          runtimeDatabase: MemoryRuntimeDatabase(),
+          logger: const NoopLogger(),
+          idGenerator: IdGeneratorSequential(),
+          timeProvider: FakeTimeProviderStatic.zero(),
+        ),
+        accountSummaryRepo: AccountsSummaryReadModel(),
+        totalBalanceRepo: TotalBalanceReadModel(),
+      );
+      await producer.init();
+      await producer.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      for (final amount in [1, 2, 3, 4]) {
+        await producer.command.atmDeposit.runThrowable(
+          AtmDepositInput(accountId: firstAccountId, amount: amount),
+        );
+      }
+
+      final replayedAccounts = AccountsSummaryReadModel();
+      final replayedTotal = TotalBalanceReadModel();
+      final consumer = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: pagedEventStore,
+          runtimeDatabase: MemoryRuntimeDatabase(),
+          logger: const NoopLogger(),
+          idGenerator: IdGeneratorSequential(),
+          timeProvider: FakeTimeProviderStatic.zero(),
+        ),
+        accountSummaryRepo: replayedAccounts,
+        totalBalanceRepo: replayedTotal,
+      );
+
+      await consumer.init();
+
+      final account = (await replayedAccounts.getAllSortedByNameDesc()).single;
+      expect(account.balance, 10);
+      expect(account.transactionCount, 4);
+      expect(await replayedTotal.get(), 10);
+    });
+
+    test('startup replay includes promoted replicated events', () async {
+      final commandId = CommandId(7, 1);
+      final replicatedCommand = ReplicatedCommand(
+        commandId: commandId,
+        dependency: VersionVector(),
+        encoded: EncodedCommand(
+          kind: 'replicated-open-account',
+          bytes: Uint8List(0),
+        ),
+        startedAt: t0,
+        completedAt: t0,
+        eventCount: 1,
+      );
+      await eventStore.stageReplicatedCommand(replicatedCommand);
+      await eventStore.stageReplicatedEvents([
+        ReplicatedEvent(
+          eventId: EventId(7, 1, 0),
+          streamId: 'account/$firstAccountId',
+          encodedEvent: accountCodec.encode(AccountOpened(name: 'replicated')),
+          occuredAt: t0,
+        ),
+      ]);
+      expect(await eventStore.promotePendingCommand(commandId), isTrue);
+
+      await app.init();
+
+      final account =
+          (await accountsSummaryRepo.getAllSortedByNameDesc()).single;
+      expect(account.accountId, firstAccountId);
+      expect(account.name, 'replicated');
     });
 
     test('matching runtime version catches up without resetting', () async {
@@ -351,4 +520,50 @@ void main() {
       expect(position.sequence, 1);
     });
   });
+}
+
+class _BlockingTotalBalanceReadModel extends TotalBalanceReadModel {
+  final _firstStoreStarted = Completer<void>();
+  final _releaseFirstStore = Completer<void>();
+  final _secondStoreCompleted = Completer<void>();
+  var _storeCount = 0;
+
+  Future<void> get firstStoreStarted => _firstStoreStarted.future;
+  Future<void> get secondStoreCompleted => _secondStoreCompleted.future;
+
+  void releaseFirstStore() => _releaseFirstStore.complete();
+
+  @override
+  Future<void> store(int value) async {
+    _storeCount++;
+    if (_storeCount == 1) {
+      _firstStoreStarted.complete();
+      await _releaseFirstStore.future;
+    }
+    await super.store(value);
+    if (_storeCount == 2) {
+      _secondStoreCompleted.complete();
+    }
+  }
+}
+
+class _TrackingTotalBalanceReadModel extends TotalBalanceReadModel {
+  final _storeWaiters = <int, Completer<void>>{};
+  var _storeCount = 0;
+
+  Future<void> waitForStores(int count) {
+    if (_storeCount >= count) return Future.value();
+    return (_storeWaiters[count] ??= Completer<void>()).future;
+  }
+
+  @override
+  Future<void> store(int value) async {
+    await super.store(value);
+    _storeCount++;
+    final completedCounts =
+        _storeWaiters.keys.where((count) => count <= _storeCount).toList();
+    for (final count in completedCounts) {
+      _storeWaiters.remove(count)!.complete();
+    }
+  }
 }
