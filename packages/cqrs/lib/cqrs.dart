@@ -11,6 +11,7 @@ export 'src/cqrs/cqrs_runtime/runtime_repo/sqlite_runtime_repo.dart';
 // event store
 export 'src/cqrs/event_store/event_store.dart';
 export 'src/cqrs/event_store/event_database.dart';
+export 'src/cqrs/command/command_changes.dart';
 export 'src/cqrs/command/applied_command.dart';
 export 'src/cqrs/command/command_id.dart';
 export 'src/cqrs/command/replicated_command.dart';
@@ -24,11 +25,15 @@ export 'src/cqrs/event_store/sqlite/sqlite_event_database.dart';
 export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/event_metadata.dart';
 export 'src/cqrs/event/encoded_event.dart';
+export 'src/cqrs/event/event_append.dart';
+export 'src/cqrs/event/stream_event.dart';
+export 'src/cqrs/event/local_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
 export 'src/cqrs/command/command_input.dart';
 export 'src/cqrs/command/command_context.dart';
+export 'src/cqrs/command/encoded_command.dart';
 
 // projection
 export 'src/cqrs/projection/projection.dart';

@@ -1,14 +1,11 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
-// TODO: rename this to this a EventBusEnvelope, include mutatable localSequence
-// which is set my event store. Mutability is okay here
-// it makes it simple. it is assert validated for db testing
-class CommandAppendEvent<Event, IdData> {
+class CommandExecutionEvent<Event, IdData> {
   final StreamIdPattern<IdData> streamIdPattern;
   final String streamIdStr;
   final IdData streamIdData;
@@ -17,7 +14,7 @@ class CommandAppendEvent<Event, IdData> {
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
-  const CommandAppendEvent({
+  const CommandExecutionEvent({
     required this.streamIdPattern,
     required this.streamIdStr,
     required this.streamIdData,
@@ -27,8 +24,8 @@ class CommandAppendEvent<Event, IdData> {
     required this.occuredAt,
   });
 
-  StoredEventCommandWrite toStoredEventCommandWrite() {
-    return StoredEventCommandWrite(
+  EventAppend toEventAppend() {
+    return EventAppend(
       streamId: streamIdStr,
       encodedEvent: encodedEvent,
       occuredAt: occuredAt,
@@ -49,9 +46,9 @@ class CommandAppendEvent<Event, IdData> {
   }
 }
 
-class CommandAppends {
+class CommandExecutionState {
   final List<StreamLocalLock> locks;
-  final List<CommandAppendEvent> appendEvents; // could be dynamic?
+  final List<CommandExecutionEvent> events;
 
-  const CommandAppends({required this.locks, required this.appendEvents});
+  const CommandExecutionState({required this.locks, required this.events});
 }

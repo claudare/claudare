@@ -3,8 +3,8 @@ import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:cqrs/src/cqrs/event/local_event.dart';
+import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -57,7 +57,7 @@ class MemoryEventDatabase implements EventDatabase {
       _streamVersions[streamId] ?? 0;
 
   @override
-  Future<PaginatedResult<StoredEventCommandRead>> getStreamEvents(
+  Future<PaginatedResult<StreamEvent>> getStreamEvents(
     String streamId,
     int streamVersionCursor,
     int count,
@@ -70,7 +70,7 @@ class MemoryEventDatabase implements EventDatabase {
         )
         .take(count)
         .map(
-          (event) => StoredEventCommandRead(
+          (event) => StreamEvent(
             encodedEvent: event.encodedEvent,
             occuredAt: event.occuredAt,
             streamVersion: event.streamVersion,
@@ -84,7 +84,7 @@ class MemoryEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<StoredEventProjectionRead>> getLocalEvents(
+  Future<PaginatedResult<LocalEvent>> getLocalEvents(
     PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
@@ -97,7 +97,7 @@ class MemoryEventDatabase implements EventDatabase {
         )
         .take(count)
         .map(
-          (event) => StoredEventProjectionRead(
+          (event) => LocalEvent(
             streamId: event.streamId,
             encodedEvent: event.encodedEvent,
             occuredAt: event.occuredAt,

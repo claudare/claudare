@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:test/test.dart';
@@ -48,17 +48,13 @@ void main() {
 Future<void> _appendCount(EventStore store, int count) async {
   for (var i = 0; i < count; i++) {
     await store.saveChanges(
-      StoredCommandWrite(
+      CommandChanges(
         encoded: EncodedCommand(kind: 'command-$i', bytes: Uint8List(0)),
         startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-      ),
-      StreamAppends(
-        localLocks: [
-          StreamLocalLock(streamId: 'test', originatingStreamVersion: i),
-        ],
+        locks: [StreamLocalLock(streamId: 'test', originatingStreamVersion: i)],
         events: [
-          StoredEventCommandWrite(
+          EventAppend(
             streamId: 'test',
             encodedEvent: EncodedEvent(kind: 'event-$i', bytes: Uint8List(0)),
             occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),

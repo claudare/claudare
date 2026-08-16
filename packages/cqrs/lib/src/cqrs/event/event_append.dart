@@ -1,12 +1,12 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 
-/// [StoredEventCommandWrite] is sent to the event store to write commands
-class StoredEventCommandWrite {
+/// [EventAppend] is sent as part of a local command append.
+class EventAppend {
   final String streamId;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
-  const StoredEventCommandWrite({
+  const EventAppend({
     required this.streamId,
     required this.encodedEvent,
     required this.occuredAt,

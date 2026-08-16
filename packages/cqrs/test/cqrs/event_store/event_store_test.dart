@@ -2,10 +2,10 @@ import 'dart:typed_data';
 
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
@@ -55,17 +55,15 @@ void main() {
 }
 
 Future<SaveChangesResult> _append(EventStore store) => store.saveChanges(
-  StoredCommandWrite(
+  CommandChanges(
     encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
     startedAt: _timestamp,
     completedAt: _timestamp,
-  ),
-  StreamAppends(
-    localLocks: const [
+    locks: const [
       StreamLocalLock(streamId: 'test/1', originatingStreamVersion: 0),
     ],
     events: [
-      StoredEventCommandWrite(
+      EventAppend(
         streamId: 'test/1',
         encodedEvent: EncodedEvent(kind: 'created', bytes: Uint8List(0)),
         occuredAt: _timestamp,

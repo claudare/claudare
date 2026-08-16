@@ -7,8 +7,8 @@ import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:cqrs/src/cqrs/event/local_event.dart';
+import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -119,7 +119,7 @@ class SqliteEventDatabase implements EventDatabase {
       0;
 
   @override
-  Future<PaginatedResult<StoredEventCommandRead>> getStreamEvents(
+  Future<PaginatedResult<StreamEvent>> getStreamEvents(
     String streamId,
     int streamVersionCursor,
     int count,
@@ -132,7 +132,7 @@ class SqliteEventDatabase implements EventDatabase {
     );
     final events = [
       for (final row in rows)
-        StoredEventCommandRead(
+        StreamEvent(
           encodedEvent: EncodedEvent(
             kind: row[0] as String,
             bytes: row[1] as Uint8List,
@@ -148,7 +148,7 @@ class SqliteEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<StoredEventProjectionRead>> getLocalEvents(
+  Future<PaginatedResult<LocalEvent>> getLocalEvents(
     PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
@@ -162,7 +162,7 @@ class SqliteEventDatabase implements EventDatabase {
     );
     final events = [
       for (final row in rows)
-        StoredEventProjectionRead(
+        LocalEvent(
           streamId: row[0] as String,
           encodedEvent: EncodedEvent(
             kind: row[1] as String,

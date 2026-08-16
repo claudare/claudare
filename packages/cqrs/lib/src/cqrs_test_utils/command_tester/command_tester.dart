@@ -2,10 +2,7 @@ import 'dart:typed_data';
 
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -18,7 +15,7 @@ class CommandTester {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final EventStore _eventStore;
-  final List<StoredEventCommandWrite> _seedEvents = [];
+  final List<EventAppend> _seedEvents = [];
 
   int? _preRunLastLocalSequence;
 
@@ -57,7 +54,7 @@ class CommandTester {
 
     final streamPath = streamIdPattern.toPath(streamData);
     _seedEvents.add(
-      StoredEventCommandWrite(
+      EventAppend(
         streamId: streamPath,
         encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
@@ -78,7 +75,7 @@ class CommandTester {
     final encoded = eventCodec.encode(event);
 
     _seedEvents.add(
-      StoredEventCommandWrite(
+      EventAppend(
         streamId: streamIdPath,
         encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
@@ -137,16 +134,14 @@ class CommandTester {
       final info = await _eventStore.getStreamInfo(event.streamId);
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
-        StoredCommandWrite(
+        CommandChanges(
           encoded: EncodedCommand(
             kind: 'command-tester-seed',
             bytes: Uint8List(0),
           ),
           startedAt: timestamp,
           completedAt: timestamp,
-        ),
-        StreamAppends(
-          localLocks: [
+          locks: [
             StreamLocalLock(
               streamId: event.streamId,
               originatingStreamVersion: info?.originatingStreamVersion ?? 0,

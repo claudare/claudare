@@ -1,6 +1,7 @@
 import 'package:time_provider/time_provider.dart';
 
-import 'package:cqrs/src/cqrs/command/command_appends.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
@@ -13,7 +14,7 @@ import 'command_stream.dart';
 
 class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
   final EventStore _eventStore;
-  final CommandAppends _appends;
+  final CommandExecutionState _executionState;
   final EventCodec<Event> _codec;
   final String _streamId;
   final IdData _streamIdData;
@@ -24,7 +25,7 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
 
   CommandStreamImpl(
     this._eventStore,
-    this._appends,
+    this._executionState,
     this._codec,
     this._streamId,
     this._streamIdData,
@@ -58,7 +59,9 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
         yield _codec.decode(event.encodedEvent);
       }
     } finally {
-      _appends.locks.add(
+      // TODO: explain why this is in the finally block
+      // instead of after the try block
+      _executionState.locks.add(
         StreamLocalLock(
           streamId: _streamId,
           originatingStreamVersion: streamVersion,
@@ -74,13 +77,13 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
     final info = await _eventStore.getStreamInfo(_streamId);
 
     if (info == null) {
-      _appends.locks.add(
+      _executionState.locks.add(
         StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
       );
       return;
     }
 
-    _appends.locks.add(
+    _executionState.locks.add(
       StreamLocalLock(
         streamId: _streamId,
         originatingStreamVersion: info.originatingStreamVersion,
@@ -99,7 +102,7 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
       throw StreamNotFoundException(_streamId);
     }
 
-    _appends.locks.add(
+    _executionState.locks.add(
       StreamLocalLock(
         streamId: _streamId,
         originatingStreamVersion: info.originatingStreamVersion,
@@ -116,7 +119,7 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
       throw StreamAlreadyExistsException(_streamId);
     }
 
-    _appends.locks.add(
+    _executionState.locks.add(
       StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
     );
   }
@@ -129,8 +132,8 @@ class CommandStreamImpl<Event, IdData> implements CommandStream<Event, IdData> {
 
     final encodedEvent = _codec.encode(event);
 
-    _appends.appendEvents.add(
-      CommandAppendEvent<Event, IdData>(
+    _executionState.events.add(
+      CommandExecutionEvent<Event, IdData>(
         streamIdStr: _streamId,
         streamIdData: _streamIdData,
         streamIdPattern: _streamIdPattern,

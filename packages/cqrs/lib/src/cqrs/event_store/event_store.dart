@@ -1,12 +1,11 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
+import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_read.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_projection_read.dart';
+import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -22,48 +21,6 @@ class GetStreamInfoResult {
   final int originatingStreamVersion;
 
   const GetStreamInfoResult({required this.originatingStreamVersion});
-}
-
-class StreamLocalLock {
-  final String streamId;
-  final int originatingStreamVersion;
-
-  // could add this flag to skip local consistency checking
-  // final bool enforceConsistency;
-
-  const StreamLocalLock({
-    required this.streamId,
-    required this.originatingStreamVersion,
-  });
-}
-
-class StreamAppends {
-  // FIXME: add this here
-  // final EncodedCommand encoded;
-  final List<StreamLocalLock> localLocks;
-  final List<StoredEventCommandWrite> events;
-
-  const StreamAppends({required this.localLocks, required this.events});
-
-  StreamAppends.empty() : localLocks = [], events = [];
-
-  /// For assertions, ensures that every inserted event has a lock. This is an internal detail
-  /// This behavior may change, to allow lock-free insertion
-  bool isValid() {
-    final streamIds = <String>{};
-
-    for (final event in events) {
-      streamIds.add(event.streamId);
-    }
-
-    for (final lock in localLocks) {
-      if (!streamIds.remove(lock.streamId)) {
-        return false;
-      }
-    }
-
-    return streamIds.isEmpty;
-  }
 }
 
 class StreamAppendOrder {
@@ -129,13 +86,10 @@ class EventStore {
         }
       });
 
-  Future<SaveChangesResult> saveChanges(
-    StoredCommandWrite command,
-    StreamAppends appends,
-  ) async {
+  Future<SaveChangesResult> saveChanges(CommandChanges changes) async {
     final deviceId = 0; // own device id is always 0
-    if (appends.events.isEmpty) return SaveChangesResult.empty();
-    if (!appends.isValid()) {
+    if (changes.events.isEmpty) return SaveChangesResult.empty();
+    if (!changes.isValid()) {
       throw ArgumentError('every appended event must have one stream lock');
     }
 
@@ -143,7 +97,7 @@ class EventStore {
       try {
         final state = await _database.getState();
         final streamVersions = <String, int>{};
-        for (final lock in appends.localLocks) {
+        for (final lock in changes.locks) {
           final current = await _database.getStreamVersion(lock.streamId);
           if (current != lock.originatingStreamVersion) {
             throw ConcurrencyProblem();
@@ -156,20 +110,20 @@ class EventStore {
           state.appliedVersion.value(deviceId) + 1,
         );
         final replicatedEvents = [
-          for (var i = 0; i < appends.events.length; i++)
+          for (var i = 0; i < changes.events.length; i++)
             ReplicatedEvent(
               eventId: EventId(deviceId, commandId.sequence, i),
-              streamId: appends.events[i].streamId,
-              encodedEvent: appends.events[i].encodedEvent,
-              occuredAt: appends.events[i].occuredAt,
+              streamId: changes.events[i].streamId,
+              encodedEvent: changes.events[i].encodedEvent,
+              occuredAt: changes.events[i].occuredAt,
             ),
         ];
         final replicated = ReplicatedCommand(
           commandId: commandId,
           dependency: state.appliedVersion,
-          encoded: command.encoded,
-          startedAt: command.startedAt,
-          completedAt: command.completedAt,
+          encoded: changes.encoded,
+          startedAt: changes.startedAt,
+          completedAt: changes.completedAt,
           eventCount: replicatedEvents.length,
         );
 
@@ -360,13 +314,13 @@ class EventStore {
         }
       });
 
-  PaginatedReader<StoredEventCommandRead> getStreamReader(String streamId) =>
+  PaginatedReader<StreamEvent> getStreamReader(String streamId) =>
       PaginatedReader(
         (cursor) => _readStreamPage(streamId, cursor),
         initialCursor: 0,
       );
 
-  Future<PaginatedResult<StoredEventCommandRead>> _readStreamPage(
+  Future<PaginatedResult<StreamEvent>> _readStreamPage(
     String streamId,
     int streamVersionCursor,
   ) => _mutex.protectRead(() async {
@@ -384,7 +338,7 @@ class EventStore {
     }
   });
 
-  PaginatedReader<StoredEventProjectionRead> getGlobalReader(
+  PaginatedReader<LocalEvent> getGlobalReader(
     PatternFilter patternFilter,
     int localSequenceCursor,
   ) => PaginatedReader(
@@ -392,7 +346,7 @@ class EventStore {
     initialCursor: localSequenceCursor,
   );
 
-  Future<PaginatedResult<StoredEventProjectionRead>> _readGlobalPage(
+  Future<PaginatedResult<LocalEvent>> _readGlobalPage(
     PatternFilter patternFilter,
     int localSequenceCursor,
   ) => _mutex.protectRead(() async {

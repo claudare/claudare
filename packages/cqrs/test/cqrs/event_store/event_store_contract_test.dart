@@ -5,11 +5,11 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stored_event_command_write.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -73,8 +73,8 @@ void main() {
 
       test('local commands use device zero and contiguous sequences', () async {
         final first = await store.saveChanges(
-          _storedCommand('create'),
-          StreamAppends(
+          _commandChanges(
+            'create',
             localLocks: const [
               StreamLocalLock(streamId: 'test/1', originatingStreamVersion: 0),
             ],
@@ -104,8 +104,8 @@ void main() {
         await _appendOne(store, streamId: 'test/1', kind: 'first');
         await expectLater(
           store.saveChanges(
-            _storedCommand('stale'),
-            StreamAppends(
+            _commandChanges(
+              'stale',
               localLocks: const [
                 StreamLocalLock(
                   streamId: 'test/1',
@@ -262,8 +262,8 @@ void main() {
         'reconstructs transport from separately queried applied rows',
         () async {
           await store.saveChanges(
-            _storedCommand('command'),
-            StreamAppends(
+            _commandChanges(
+              'command',
               localLocks: const [
                 StreamLocalLock(streamId: 'one', originatingStreamVersion: 0),
                 StreamLocalLock(streamId: 'two', originatingStreamVersion: 0),
@@ -346,8 +346,8 @@ Future<void> _appendOne(
   required String kind,
   int originatingVersion = 0,
 }) => store.saveChanges(
-  _storedCommand(kind),
-  StreamAppends(
+  _commandChanges(
+    kind,
     localLocks: [
       StreamLocalLock(
         streamId: streamId,
@@ -366,24 +366,29 @@ Future<void> _stageComplete(EventStore store, ReplicatedCommand command) async {
   ]);
 }
 
-StoredCommandWrite _storedCommand(String kind) => StoredCommandWrite(
+CommandChanges _commandChanges(
+  String kind, {
+  required List<StreamLocalLock> localLocks,
+  required List<EventAppend> events,
+}) => CommandChanges(
   encoded: _encodedCommand(kind),
   startedAt: _startedAt,
   completedAt: _completedAt,
+  locks: localLocks,
+  events: events,
 );
 
 EncodedCommand _encodedCommand(String kind) =>
     EncodedCommand(kind: kind, bytes: Uint8List.fromList([kind.length]));
 
-StoredEventCommandWrite _storedEvent(String streamId, String kind) =>
-    StoredEventCommandWrite(
-      streamId: streamId,
-      encodedEvent: EncodedEvent(
-        kind: kind,
-        bytes: Uint8List.fromList([kind.length]),
-      ),
-      occuredAt: _occuredAt,
-    );
+EventAppend _storedEvent(String streamId, String kind) => EventAppend(
+  streamId: streamId,
+  encodedEvent: EncodedEvent(
+    kind: kind,
+    bytes: Uint8List.fromList([kind.length]),
+  ),
+  occuredAt: _occuredAt,
+);
 
 ReplicatedCommand _commandRecord({
   required int device,

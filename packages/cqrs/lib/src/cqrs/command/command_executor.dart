@@ -1,10 +1,10 @@
 import 'package:cqrs/src/cqrs/command/command_context_impl.dart';
-import 'package:cqrs/src/cqrs/command/stored_command_write.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
-import 'package:cqrs/src/cqrs/command/command_appends.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_codec_safe.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -29,48 +29,40 @@ class CommandExecutor {
     Input input,
   ) async {
     final startedAt = _timeProvider.now();
-    final appends = CommandAppends(locks: [], appendEvents: []);
+    final executionState = CommandExecutionState(locks: [], events: []);
 
     final context = CommandContextImpl(
       eventStore: _eventStore,
-      appends: appends,
+      executionState: executionState,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
     );
 
     await command.handle(input, context);
 
-    return _saveEvents<Input>(appends, startedAt, input);
+    return _saveEvents<Input>(executionState, startedAt, input);
   }
 
   Future<List<EventEnvelope>> _saveEvents<TInput extends CommandInput>(
-    CommandAppends commandAppends,
+    CommandExecutionState executionState,
     DateTime startedAt,
     TInput input,
   ) async {
     final encoded = _commandCodec.encode(input);
-    final issuedCommand = StoredCommandWrite(
+    final changes = CommandChanges(
       encoded: encoded,
       startedAt: startedAt,
       completedAt: _timeProvider.now(),
-    );
-
-    final eventStoreAppends = StreamAppends(
-      localLocks: commandAppends.locks,
+      locks: executionState.locks,
       events:
-          commandAppends.appendEvents
-              .map((e) => e.toStoredEventCommandWrite())
-              .toList(),
+          executionState.events.map((event) => event.toEventAppend()).toList(),
     );
 
-    final appendResult = await _eventStore.saveChanges(
-      issuedCommand,
-      eventStoreAppends,
-    );
+    final appendResult = await _eventStore.saveChanges(changes);
 
-    return List.generate(commandAppends.appendEvents.length, (index) {
+    return List.generate(executionState.events.length, (index) {
       final order = appendResult.orders[index];
-      return commandAppends.appendEvents[index].toEventEnvelope(
+      return executionState.events[index].toEventEnvelope(
         localSequence: order.localSequence,
       );
     }, growable: false);
