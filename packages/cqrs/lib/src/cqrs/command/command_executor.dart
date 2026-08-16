@@ -1,4 +1,4 @@
-import 'package:cqrs/src/cqrs/command/command_context_impl.dart';
+import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
@@ -31,7 +31,7 @@ class CommandExecutor {
     final startedAt = _timeProvider.now();
     final executionState = CommandExecutionState(locks: [], events: []);
 
-    final context = CommandContextImpl(
+    final context = CommandContext(
       eventStore: _eventStore,
       executionState: executionState,
       timeProvider: _timeProvider,
