@@ -13,3 +13,18 @@ class AccountOpened extends AccountEvent {
   factory AccountOpened.fromJson(Map<String, dynamic> json) =>
       AccountOpened(name: json['name'] as String);
 }
+
+final class AccountOpenedCodec implements EventCodec<AccountOpened> {
+  const AccountOpenedCodec();
+
+  @override
+  String get kind => AccountOpened.kind;
+
+  @override
+  Uint8List toBytes(AccountOpened event) =>
+      JsonConverter.encode(event.toJson());
+
+  @override
+  AccountOpened fromBytes(Uint8List bytes) =>
+      AccountOpened.fromJson(JsonConverter.decode(bytes));
+}

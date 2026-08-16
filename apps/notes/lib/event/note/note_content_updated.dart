@@ -25,3 +25,18 @@ class NoteContentUpdated extends NoteEvent {
     return 'NoteContentUpdated{noteId: $noteId, newContent: $newContent}';
   }
 }
+
+final class NoteContentUpdatedCodec implements EventCodec<NoteContentUpdated> {
+  const NoteContentUpdatedCodec();
+
+  @override
+  String get kind => NoteContentUpdated.kind;
+
+  @override
+  Uint8List toBytes(NoteContentUpdated event) =>
+      JsonConverter.encode(event.toJson());
+
+  @override
+  NoteContentUpdated fromBytes(Uint8List bytes) =>
+      NoteContentUpdated.fromJson(JsonConverter.decode(bytes));
+}

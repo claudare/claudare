@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
+import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:test/test.dart';
 
@@ -142,8 +144,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
 EventEnvelope _fakeEvent({required int sequence}) {
   return EventEnvelope(
     streamPath: '',
-    streamParams: null,
-    event: null,
+    encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
     occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     localSequence: sequence,
   );

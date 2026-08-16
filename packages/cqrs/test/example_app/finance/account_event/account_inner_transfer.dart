@@ -20,3 +20,19 @@ class AccountInnerTransfer extends AccountEvent {
         amount: json['amount'] as int,
       );
 }
+
+final class AccountInnerTransferCodec
+    implements EventCodec<AccountInnerTransfer> {
+  const AccountInnerTransferCodec();
+
+  @override
+  String get kind => AccountInnerTransfer.kind;
+
+  @override
+  Uint8List toBytes(AccountInnerTransfer event) =>
+      JsonConverter.encode(event.toJson());
+
+  @override
+  AccountInnerTransfer fromBytes(Uint8List bytes) =>
+      AccountInnerTransfer.fromJson(JsonConverter.decode(bytes));
+}

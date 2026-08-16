@@ -4,6 +4,8 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
+import 'package:cqrs/src/cqrs/event/event_codec.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
@@ -19,6 +21,7 @@ class CqrsRuntime {
   final String runtimeName;
   final int runtimeVersion;
   final CqrsRuntimeDependencies _dependencies;
+  final EventRegistry _eventRegistry = EventRegistry();
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
@@ -40,6 +43,7 @@ class CqrsRuntime {
                 runtimeName: runtimeName,
                 runtimeVersion: runtimeVersion,
                 runtimeStore: _runtimeStore,
+                eventRegistry: _eventRegistry,
               ),
             )
             .toList();
@@ -47,6 +51,10 @@ class CqrsRuntime {
 
   TimeProvider get timeProvider => _dependencies.timeProvider;
   IdGenerator get idGenerator => _dependencies.idGenerator;
+
+  void registerEvent<T extends Object>(EventCodec<T> codec) {
+    _eventRegistry.register(codec);
+  }
 
   Future<void> recreateProjections() async {
     _dependencies.logger.info(
@@ -112,6 +120,7 @@ class CqrsRuntime {
       eventStore: _dependencies.eventStore,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
+      eventRegistry: _eventRegistry,
     );
 
     final consistentRunners = <ProjectionRuntime>[];

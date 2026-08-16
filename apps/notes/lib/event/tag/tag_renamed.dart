@@ -21,3 +21,17 @@ class TagRenamed extends TagEvent {
     return 'TagRenamed{newName: $newName}';
   }
 }
+
+final class TagRenamedCodec implements EventCodec<TagRenamed> {
+  const TagRenamedCodec();
+
+  @override
+  String get kind => TagRenamed.type;
+
+  @override
+  Uint8List toBytes(TagRenamed event) => JsonConverter.encode(event.toJson());
+
+  @override
+  TagRenamed fromBytes(Uint8List bytes) =>
+      TagRenamed.fromJson(JsonConverter.decode(bytes));
+}

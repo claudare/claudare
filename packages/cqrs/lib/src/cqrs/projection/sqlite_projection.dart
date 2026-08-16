@@ -1,10 +1,9 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
-abstract class SqliteProjection<Event, StreamParams> {
+abstract class SqliteProjection<Event extends Object, StreamParams> {
   String get name;
   StreamRoute<StreamParams> get streamRoute;
-  EventCodec<Event> get eventCodec;
   ProjectionFailureHandler get failureHandler;
 
   Future<void> reset(IsolateSqlite db);
@@ -21,7 +20,7 @@ abstract class SqliteProjection<Event, StreamParams> {
   }
 }
 
-class _AdaptedSqliteProjection<Event, StreamParams>
+class _AdaptedSqliteProjection<Event extends Object, StreamParams>
     implements Projection<Event, StreamParams> {
   final IsolateSqlite _db;
   final SqliteProjection<Event, StreamParams> _projection;
@@ -33,9 +32,6 @@ class _AdaptedSqliteProjection<Event, StreamParams>
 
   @override
   StreamRoute<StreamParams> get streamRoute => _projection.streamRoute;
-
-  @override
-  EventCodec<Event> get eventCodec => _projection.eventCodec;
 
   @override
   ProjectionFailureHandler get failureHandler => _projection.failureHandler;

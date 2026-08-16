@@ -21,3 +21,17 @@ class TagCreated extends TagEvent {
     return 'TagCreated{name: $name}';
   }
 }
+
+final class TagCreatedCodec implements EventCodec<TagCreated> {
+  const TagCreatedCodec();
+
+  @override
+  String get kind => TagCreated.type;
+
+  @override
+  Uint8List toBytes(TagCreated event) => JsonConverter.encode(event.toJson());
+
+  @override
+  TagCreated fromBytes(Uint8List bytes) =>
+      TagCreated.fromJson(JsonConverter.decode(bytes));
+}

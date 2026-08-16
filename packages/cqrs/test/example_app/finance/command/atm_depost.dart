@@ -24,10 +24,8 @@ class AtmDeposit implements Command<AtmDepositInput> {
       throw const CommandException('amount must be positive');
     }
 
-    final stream = ctx.stream(
-      accountCodec,
-      accountStreamRoute,
-      input.accountId,
+    final stream = ctx.stream<AccountEvent>(
+      accountStreamRoute.buildPath(input.accountId),
     );
 
     await stream.mustExist();

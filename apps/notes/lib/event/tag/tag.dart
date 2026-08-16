@@ -1,3 +1,8 @@
+import 'dart:typed_data';
+
+import 'package:common/common.dart';
+import 'package:cqrs/cqrs.dart';
+
 part 'tag_assigned.dart';
 part 'tag_created.dart';
 part 'tag_removed.dart';

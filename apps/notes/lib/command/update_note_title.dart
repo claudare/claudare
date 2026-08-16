@@ -1,7 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -34,7 +33,7 @@ class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
 
-    final stream = ctx.stream(noteCodec, noteStreamRoute, noteId);
+    final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
 
     // This implementation is not concurrent, as concurrency will need to use
     // the actual device time.

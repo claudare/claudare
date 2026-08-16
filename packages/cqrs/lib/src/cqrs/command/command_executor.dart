@@ -1,5 +1,6 @@
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -15,12 +16,15 @@ class CommandExecutor {
   final EventStore _eventStore;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
+  final EventRegistry _eventRegistry;
 
   const CommandExecutor({
     required EventStore eventStore,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
+    required EventRegistry eventRegistry,
   }) : _idGenerator = idGenerator,
+       _eventRegistry = eventRegistry,
        _timeProvider = timeProvider,
        _eventStore = eventStore;
 
@@ -34,6 +38,7 @@ class CommandExecutor {
     final context = CommandContext(
       eventStore: _eventStore,
       executionState: executionState,
+      eventRegistry: _eventRegistry,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
     );

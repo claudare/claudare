@@ -37,10 +37,8 @@ class TransferFundsBetweenAccounts
       throw const CommandException('amount must be positive');
     }
 
-    final fromStream = ctx.stream(
-      accountCodec,
-      accountStreamRoute,
-      input.fromAccountId,
+    final fromStream = ctx.stream<AccountEvent>(
+      accountStreamRoute.buildPath(input.fromAccountId),
     );
 
     final scanner = fromStream.scan();
@@ -72,10 +70,8 @@ class TransferFundsBetweenAccounts
       ),
     );
 
-    final toStream = ctx.stream(
-      accountCodec,
-      accountStreamRoute,
-      input.toAccountId,
+    final toStream = ctx.stream<AccountEvent>(
+      accountStreamRoute.buildPath(input.toAccountId),
     );
 
     await toStream.mustExist();

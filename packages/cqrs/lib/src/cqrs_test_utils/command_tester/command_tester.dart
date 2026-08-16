@@ -6,6 +6,7 @@ import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -19,6 +20,7 @@ class CommandTester {
   final IdGenerator _idGenerator;
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
+  final EventRegistry _eventRegistry = EventRegistry();
 
   int? _preRunLastLocalSequence;
 
@@ -44,16 +46,21 @@ class CommandTester {
     }
   }
 
+  CommandTester registerEvent<Event extends Object>(EventCodec<Event> codec) {
+    _ensureNotRan();
+    _eventRegistry.register(codec);
+    return this;
+  }
+
   /// Appends event to the stream with type safety for stream and event.
-  CommandTester withEvent<Event, Params>(
+  CommandTester withEvent<Event extends Object, Params>(
     StreamRoute<Params> streamRoute,
     Params streamParams,
-    EventCodec<Event> eventCodec,
     Event event,
   ) {
     _ensureNotRan();
 
-    final encoded = eventCodec.encode(event);
+    final encoded = _eventRegistry.encode(event);
 
     final streamPath = streamRoute.buildPath(streamParams);
     _seedEvents.add(
@@ -68,14 +75,13 @@ class CommandTester {
   }
 
   /// Appends event to the stream with type safety for event only.
-  CommandTester withEvent2<Event, Params>(
+  CommandTester withEvent2<Event extends Object>(
     String streamPath,
-    EventCodec<Event> eventCodec,
     Event event,
   ) {
     _ensureNotRan();
 
-    final encoded = eventCodec.encode(event);
+    final encoded = _eventRegistry.encode(event);
 
     _seedEvents.add(
       EventAppend(
@@ -88,16 +94,14 @@ class CommandTester {
     return this;
   }
 
-  Future<List<Event>> getWrittenEvents<Event, Params>(
-    EventCodec<Event> eventCodec,
+  Future<List<Event>> getWrittenEvents<Event extends Object, Params>(
     StreamRoute<Params> streamRoute,
     Params streamParams,
   ) async {
-    return getWrittenEvents2(eventCodec, streamRoute.buildPath(streamParams));
+    return getWrittenEvents2<Event>(streamRoute.buildPath(streamParams));
   }
 
-  Future<List<Event>> getWrittenEvents2<Event>(
-    EventCodec<Event> eventCodec,
+  Future<List<Event>> getWrittenEvents2<Event extends Object>(
     String streamPath,
   ) async {
     _ensureRan();
@@ -108,7 +112,10 @@ class CommandTester {
       _preRunLastLocalSequence!,
     );
 
-    return reader.scan().map((e) => eventCodec.decode(e.encodedEvent)).toList();
+    return reader
+        .scan()
+        .map((e) => _eventRegistry.decode<Event>(e.encodedEvent))
+        .toList();
   }
 
   Future<void> run<Input extends CommandInput>(
@@ -126,6 +133,7 @@ class CommandTester {
       eventStore: _eventStore,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
+      eventRegistry: _eventRegistry,
     );
 
     await executer.executeThrowable(command, input);

@@ -7,6 +7,7 @@ import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:test/test.dart';
 
@@ -20,6 +21,7 @@ void main() {
   late RuntimeStore runtimeStore;
   late AccountSummaryProjection projection;
   late ProjectionRuntime<AccountEvent, String> runner;
+  late EventRegistry eventRegistry;
 
   setUp(() async {
     eventStore = EventStore(MemoryEventDatabase());
@@ -27,12 +29,14 @@ void main() {
     runtimeStore = RuntimeStore(MemoryRuntimeDatabase());
     await runtimeStore.initialize();
     projection = AccountSummaryProjection(AccountsSummaryReadModel());
+    eventRegistry = EventRegistry()..register(const AccountAtmDepositedCodec());
     runner = ProjectionRuntime(
       projection,
       logger: const NoopLogger(),
       runtimeName: 'test',
       runtimeVersion: 1,
       runtimeStore: runtimeStore,
+      eventRegistry: eventRegistry,
     );
   });
 
@@ -52,7 +56,7 @@ void main() {
         events: [
           EventAppend(
             streamPath: 'account/missing',
-            encodedEvent: accountCodec.encode(AccountAtmDeposited(amount: 1)),
+            encodedEvent: eventRegistry.encode(AccountAtmDeposited(amount: 1)),
             occuredAt: occurredAt,
           ),
         ],
@@ -79,8 +83,7 @@ void main() {
     runner.enqueue(
       EventEnvelope(
         streamPath: 'account/missing',
-        streamParams: 'missing',
-        event: AccountAtmDeposited(amount: 1),
+        encodedEvent: eventRegistry.encode(AccountAtmDeposited(amount: 1)),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         localSequence: 1,
       ),

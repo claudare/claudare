@@ -1,7 +1,7 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stages 0-1 are implemented; Stages
-2-9 remain future work. Nothing in those later stages should be treated as
+Status: decision-complete design proposal. Stages 0-2 are implemented; Stages
+3-9 remain future work. Nothing in those later stages should be treated as
 implemented behavior until the source and repository documentation say so.
 
 This is a clean development migration. The implementation does not need
@@ -570,6 +570,17 @@ were removed without aliases.
 
 Gate: commands and existing replay behavior pass through one registry, with no
 old codec API remaining.
+
+Stage 2 is complete. `EventCodec<T>` now owns one stable persisted kind and
+converts only between its concrete event type and bytes. The internal event
+registry validates registrations, encodes by Dart event type, and decodes by
+persisted kind. Commands, command-stream reads, live projection delivery, and
+projection replay all use the runtime-owned registry. Notes and finance
+register one codec per concrete event centrally. Event-family codecs,
+projection-owned codecs, command-stream codec arguments, and codec-based test
+helpers were removed. Command execution and live envelopes retain only encoded
+events, so typed stream parameters and original event objects no longer travel
+through the direct dispatch path.
 
 ### Stage 3: Introduce projections and typed routes
 

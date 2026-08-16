@@ -14,9 +14,6 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
   String get name => 'total-balance';
 
   @override
-  get eventCodec => accountCodec;
-
-  @override
   get streamRoute => accountStreamRoute;
 
   @override

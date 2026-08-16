@@ -15,9 +15,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
   String get name => 'account-summary';
 
   @override
-  get eventCodec => accountCodec;
-
-  @override
   get streamRoute => accountStreamRoute;
 
   @override

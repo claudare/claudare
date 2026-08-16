@@ -5,6 +5,7 @@ import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/exception/command_codec_exception.dart';
 import 'package:id_generator/id_generator.dart';
@@ -96,6 +97,7 @@ CommandExecutor _executor(MemoryEventDatabase database) => CommandExecutor(
   eventStore: EventStore(database),
   timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
   idGenerator: IdGeneratorSequential(),
+  eventRegistry: EventRegistry(),
 );
 
 class _Input implements CommandInput {

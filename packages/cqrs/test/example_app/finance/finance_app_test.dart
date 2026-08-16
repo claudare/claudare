@@ -364,7 +364,12 @@ void main() {
         ReplicatedEvent(
           eventId: EventId(7, 1, 0),
           streamPath: 'account/$firstAccountId',
-          encodedEvent: accountCodec.encode(AccountOpened(name: 'replicated')),
+          encodedEvent: EncodedEvent(
+            kind: AccountOpened.kind,
+            bytes: const AccountOpenedCodec().toBytes(
+              AccountOpened(name: 'replicated'),
+            ),
+          ),
           occuredAt: t0,
         ),
       ]);

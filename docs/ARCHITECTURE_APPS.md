@@ -23,8 +23,9 @@ UI
 
 At startup, the composition root creates the event store, runtime-version
 repository, projections, read models, logger, ID generator, time provider, and
-database owners. It then opens storage, applies migrations, and initializes the
-runtime before exposing interactive UI.
+database owners. It registers one codec per concrete event type with the CQRS
+runtime, then opens storage, applies migrations, and initializes the runtime
+before exposing interactive UI.
 
 The application owns this lifecycle: initialization must be single-flight,
 errors must reach a defined UI state, and shutdown must close runtime queues and
@@ -49,7 +50,7 @@ replayable.
 
 ## Projection and read-model responsibilities
 
-Applications define the domain event codec, stream-ID pattern, projection
+Applications define concrete domain event codecs, stream routes, projection
 ownership, and query/read-model interfaces. Core's runtime store owns progress
 for each globally unique projection name. A projection reset must drop any
 projection-owned schema and recreate its complete current schema. Missing or

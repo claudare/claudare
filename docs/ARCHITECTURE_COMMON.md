@@ -33,6 +33,11 @@ command locks a stream by reading it and records expected stream versions.
 Application exceptions propagate unchanged and are not persisted. Successful
 commands without events are discarded.
 
+Each concrete event type has one application-owned `EventCodec` with an
+explicit persisted kind. `CqrsRuntime` owns the internal registry that encodes
+command events by Dart type and decodes command-stream reads, live delivery,
+and replay by persisted kind.
+
 `CqrsRuntime` constructs projection runners. The runtime store owns each
 globally named projection's applying and applied event-sequence boundaries,
 while action-based runtime migrations trigger whole-runtime rebuilds when the
@@ -49,7 +54,7 @@ them atomically without generating identifiers.
 
 Each replicated command has a CQRS-owned `CommandId`, a causal `dependency`,
 encoded command data, timestamps, and a positive event count. Each replicated
-event has an `EventId`, stream ID, encoded event data, and occurrence time.
+event has an `EventId`, stream path, encoded event data, and occurrence time.
 `CommandId` extends the common `Dot`; `EventId` adds its zero-based index within
 the command.
 
@@ -76,8 +81,8 @@ contract.
 
 ## Projection contract
 
-A `Projection` names its event codec and stream-ID pattern, can reset its
-derived state, and applies decoded events with occurrence-time metadata.
+A `Projection` names its `StreamRoute`, can reset its derived state, and applies
+decoded events with occurrence-time metadata.
 `ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
 routes live committed events through the same advancement path. Missing or
 disagreeing applying/applied boundaries trigger reset and replay from sequence

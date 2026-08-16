@@ -1,5 +1,7 @@
-import 'package:cqrs/cqrs.dart';
+import 'dart:typed_data';
+
 import 'package:common/common.dart';
+import 'package:cqrs/cqrs.dart';
 
 part 'account_atm_deposited.dart';
 part 'account_atm_withdrawn.dart';
@@ -17,46 +19,4 @@ sealed class AccountEvent {
   const AccountEvent();
 
   Map<String, dynamic> toJson();
-}
-
-const accountCodec = AccountCodec();
-
-class AccountCodec implements EventCodec<AccountEvent> {
-  const AccountCodec();
-
-  @override
-  encode(event) {
-    final detail = JsonConverter.encode(event.toJson());
-    switch (event) {
-      case AccountOpened():
-        return EncodedEvent(kind: AccountOpened.kind, bytes: detail);
-      case AccountAtmDeposited():
-        return EncodedEvent(kind: AccountAtmDeposited.kind, bytes: detail);
-      case AccountAtmWithdrawn():
-        return EncodedEvent(kind: AccountAtmWithdrawn.kind, bytes: detail);
-      case AccountInnerTransfer():
-        return EncodedEvent(kind: AccountInnerTransfer.kind, bytes: detail);
-      case AccountRenamed():
-        return EncodedEvent(kind: AccountRenamed.kind, bytes: detail);
-    }
-  }
-
-  @override
-  decode(encoded) {
-    final map = JsonConverter.decode(encoded.bytes);
-    switch (encoded.kind) {
-      case AccountOpened.kind:
-        return AccountOpened.fromJson(map);
-      case AccountAtmDeposited.kind:
-        return AccountAtmDeposited.fromJson(map);
-      case AccountAtmWithdrawn.kind:
-        return AccountAtmWithdrawn.fromJson(map);
-      case AccountInnerTransfer.kind:
-        return AccountInnerTransfer.fromJson(map);
-      case AccountRenamed.kind:
-        return AccountRenamed.fromJson(map);
-      default:
-        throw Exception('unknown event kind ${encoded.kind}');
-    }
-  }
 }

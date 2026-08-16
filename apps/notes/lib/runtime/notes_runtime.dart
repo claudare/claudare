@@ -7,6 +7,8 @@ import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
+import 'package:notes/event/note/note.dart';
+import 'package:notes/event/tag/tag.dart';
 import 'package:notes/projection/note/note_projection.dart';
 import 'package:notes/projection/note/note_projection_repo.dart';
 import 'package:notes/projection/search/search_projection.dart';
@@ -79,6 +81,17 @@ class NotesRuntime {
       runtimeVersion: NotesRuntime.runtimeVersion,
       migrationPolicy: migrationPolicy,
     );
+    _cqrsRuntime
+      ..registerEvent(const NoteContentUpdatedCodec())
+      ..registerEvent(const NoteCreatedCodec())
+      ..registerEvent(const NoteRestoredCodec())
+      ..registerEvent(const NoteTitleUpdatedCodec())
+      ..registerEvent(const NoteTrashedCodec())
+      ..registerEvent(const TagAssignedCodec())
+      ..registerEvent(const TagCreatedCodec())
+      ..registerEvent(const TagRemovedCodec())
+      ..registerEvent(const TagRenamedCodec())
+      ..registerEvent(const TagUnassignedCodec());
 
     commands = CqrsCommands(
       createNote: _cqrsRuntime.bindCommand(CreateNote(logger), [

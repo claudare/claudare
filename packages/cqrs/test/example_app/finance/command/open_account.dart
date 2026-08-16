@@ -23,7 +23,9 @@ class OpenAccount implements Command<OpenAccountInput> {
   Future<void> handle(input, ctx) async {
     final accountId = ctx.newId();
 
-    final stream = ctx.stream(accountCodec, accountStreamRoute, accountId);
+    final stream = ctx.stream<AccountEvent>(
+      accountStreamRoute.buildPath(accountId),
+    );
 
     // TODO: would be nice to check that no other account has the same name?
 

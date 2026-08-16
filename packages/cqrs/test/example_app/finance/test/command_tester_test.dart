@@ -19,17 +19,19 @@ void main() {
     setUp(() {
       timeProvider = FakeTimeProviderStatic.unixMilliseconds(0);
       idGenerator = IdGeneratorSequential();
-      commandTester = CommandTester(
-        timeProvider: timeProvider,
-        idGenerator: idGenerator,
-      );
+      commandTester =
+          CommandTester(timeProvider: timeProvider, idGenerator: idGenerator)
+            ..registerEvent(const AccountAtmDepositedCodec())
+            ..registerEvent(const AccountAtmWithdrawnCodec())
+            ..registerEvent(const AccountInnerTransferCodec())
+            ..registerEvent(const AccountOpenedCodec())
+            ..registerEvent(const AccountRenamedCodec());
     });
 
     test('happy path', () async {
       commandTester.withEvent(
         accountStreamRoute,
         '123',
-        accountCodec,
         AccountOpened(name: 'test'),
       );
 
@@ -38,8 +40,7 @@ void main() {
         AtmDepositInput(accountId: '123', amount: 42),
       );
 
-      final events = await commandTester.getWrittenEvents(
-        accountCodec,
+      final events = await commandTester.getWrittenEvents<AccountEvent, String>(
         accountStreamRoute,
         '123',
       );
@@ -60,11 +61,7 @@ void main() {
     });
 
     test('propagates application validation exception', () async {
-      commandTester.withEvent2(
-        'account/123',
-        accountCodec,
-        AccountOpened(name: 'test'),
-      );
+      commandTester.withEvent2('account/123', AccountOpened(name: 'test'));
 
       await expectLater(
         commandTester.run(

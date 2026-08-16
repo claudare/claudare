@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 
-class ProjectionTester<Event, StreamParams> {
+class ProjectionTester<Event extends Object, StreamParams> {
   final Projection<Event, StreamParams> projection;
   final List<_ProjectionTestEvent<Event, StreamParams>> _events = [];
 

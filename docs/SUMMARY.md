@@ -55,8 +55,8 @@ contracts but does not define the architecture or public API for other apps.
   the Claudare project.
 - [ARCHITECTURE_COMMON.md](ARCHITECTURE_COMMON.md): reusable core contracts.
 - [ARCHITECTURE_APPS.md](ARCHITECTURE_APPS.md): application composition.
-- [APP_PATTERNS.md](APP_PATTERNS.md): application-owned event codecs and
-  layout.
+- [APP_PATTERNS.md](APP_PATTERNS.md): application-owned concrete event codecs,
+  runtime registration, and layout.
 - [IMPLEMENTATION.md](IMPLEMENTATION.md): current core behavior and prototype
   evidence.
 - [SECURITY.md](SECURITY.md): core security boundaries and future gates.

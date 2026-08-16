@@ -24,10 +24,8 @@ class RenameAccountInput implements CommandInput {
 class RenameAccount implements Command<RenameAccountInput> {
   @override
   Future<void> handle(input, ctx) async {
-    final stream = ctx.stream(
-      accountCodec,
-      accountStreamRoute,
-      input.accountId,
+    final stream = ctx.stream<AccountEvent>(
+      accountStreamRoute.buildPath(input.accountId),
     );
 
     await stream.mustExist();

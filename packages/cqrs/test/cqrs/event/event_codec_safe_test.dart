@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
-import 'package:test/test.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/event/event_codec_safe.dart';
-import 'package:common/common.dart';
+import 'package:test/test.dart';
 
 class TestEvent {
   String str;
@@ -13,23 +13,23 @@ class TestEvent {
 
 class TestCodec implements EventCodec<TestEvent> {
   @override
-  EncodedEvent encode(event) {
+  String get kind => 'test';
+
+  @override
+  Uint8List toBytes(TestEvent event) {
     if (event.str == 'fatal') {
       throw StateError('intentionally fatal error');
     }
-    return EncodedEvent(
-      kind: 'test',
-      bytes: JsonConverter.encode({'str': event.str}),
-    );
+    return JsonConverter.encode({'str': event.str});
   }
 
   @override
-  decode(EncodedEvent encoded) {
-    if (encoded.kind == 'fatal') {
+  TestEvent fromBytes(Uint8List bytes) {
+    if (bytes.isEmpty) {
       throw ArgumentError('intentionally fatal error');
     }
 
-    final map = JsonConverter.decode(encoded.bytes);
+    final map = JsonConverter.decode(bytes);
     return TestEvent(str: map['str'] as String);
   }
 }
@@ -38,18 +38,17 @@ void main() {
   group('Event codec safe', () {
     late EventCodecSafe<TestEvent> safe;
 
-    setUp(() async {
+    setUp(() {
       safe = EventCodecSafe(TestCodec());
     });
 
-    // simple all in one test
     test('json roundtrip okay', () {
-      final og = TestEvent(str: 'okay');
+      final original = TestEvent(str: 'okay');
 
-      final encoded = safe.encode(og);
-      final decoded = safe.decode(encoded);
+      final encoded = safe.toBytes(original);
+      final decoded = safe.fromBytes(encoded);
 
-      expect(decoded.str, equals(og.str));
+      expect(decoded.str, equals(original.str));
     });
 
     test('wraps event encode Error with direction, kind, and message', () {
@@ -59,32 +58,27 @@ void main() {
             'direction',
             EventCodecDirection.encode,
           )
-          .having((failure) => failure.kind, 'kind', 'TestEvent')
+          .having((failure) => failure.kind, 'kind', 'test')
           .having(
             (failure) => failure.message,
             'message',
-            'Failed to encode event of kind TestEvent',
+            'Failed to encode event of kind test',
           )
           .having((failure) => failure.error, 'error', isA<StateError>())
           .having(
             (failure) => failure.toString(),
             'toString',
             contains(
-              'EventCodecException{kind: TestEvent, direction: EventCodecDirection.encode, message: Failed to encode event of kind TestEvent, error:',
+              'EventCodecException{kind: test, direction: EventCodecDirection.encode, message: Failed to encode event of kind test, error:',
             ),
           );
 
-      expect(() => safe.encode(TestEvent(str: 'fatal')), throwsA(matcher));
+      expect(() => safe.toBytes(TestEvent(str: 'fatal')), throwsA(matcher));
     });
 
     test('wraps event decode Error', () {
-      final encoded = EncodedEvent(
-        kind: 'fatal',
-        bytes: Uint8List.fromList([1, 2, 3]),
-      );
-
       expect(
-        () => safe.decode(encoded),
+        () => safe.fromBytes(Uint8List(0)),
         throwsA(
           isA<EventCodecException>()
               .having(
@@ -92,11 +86,11 @@ void main() {
                 'direction',
                 EventCodecDirection.decode,
               )
-              .having((failure) => failure.kind, 'kind', 'fatal')
+              .having((failure) => failure.kind, 'kind', 'test')
               .having(
                 (failure) => failure.message,
                 'message',
-                'Failed to decode event of kind fatal',
+                'Failed to decode event of kind test',
               )
               .having(
                 (failure) => failure.error,
@@ -108,13 +102,8 @@ void main() {
     });
 
     test('wraps codec type Error', () {
-      final encoded = EncodedEvent(
-        kind: 'test',
-        bytes: JsonConverter.encode({'str': 123}), // number instead of string
-      );
-
       expect(
-        () => safe.decode(encoded),
+        () => safe.fromBytes(JsonConverter.encode({'str': 123})),
         throwsA(
           isA<EventCodecException>().having(
             (failure) => failure.error,
@@ -126,13 +115,8 @@ void main() {
     });
 
     test('wraps JsonConverter decode Exception', () {
-      final encoded = EncodedEvent(
-        kind: 'test',
-        bytes: Uint8List.fromList([0xFF]),
-      );
-
       expect(
-        () => safe.decode(encoded),
+        () => safe.fromBytes(Uint8List.fromList([0xFF])),
         throwsA(
           isA<EventCodecException>().having(
             (failure) => failure.error,

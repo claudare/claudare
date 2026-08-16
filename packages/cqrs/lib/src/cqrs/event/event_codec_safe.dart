@@ -1,22 +1,26 @@
+import 'dart:typed_data';
+
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/exception/event_codec_exception.dart';
 
-class EventCodecSafe<Event> implements EventCodec<Event> {
+class EventCodecSafe<Event extends Object> implements EventCodec<Event> {
   final EventCodec<Event> _codec;
 
   const EventCodecSafe(this._codec);
 
   @override
-  encode(value) {
-    final kind = value.runtimeType.toString();
+  String get kind => _codec.kind;
+
+  @override
+  Uint8List toBytes(Event event) {
     try {
-      return _codec.encode(value);
+      return _codec.toBytes(event);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
         EventCodecException(
-          'Failed to encode event of kind $kind',
+          'Failed to encode event of kind ${_codec.kind}',
           direction: EventCodecDirection.encode,
-          kind: kind,
+          kind: _codec.kind,
           error: error,
           stackTrace: stackTrace,
         ),
@@ -26,15 +30,15 @@ class EventCodecSafe<Event> implements EventCodec<Event> {
   }
 
   @override
-  decode(value) {
+  Event fromBytes(Uint8List bytes) {
     try {
-      return _codec.decode(value);
+      return _codec.fromBytes(bytes);
     } catch (error, stackTrace) {
       Error.throwWithStackTrace(
         EventCodecException(
-          'Failed to decode event of kind ${value.kind}',
+          'Failed to decode event of kind ${_codec.kind}',
           direction: EventCodecDirection.decode,
-          kind: value.kind,
+          kind: _codec.kind,
           error: error,
           stackTrace: stackTrace,
         ),

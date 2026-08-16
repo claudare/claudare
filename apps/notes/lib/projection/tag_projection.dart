@@ -1,6 +1,5 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/event/tag/_tag_codec.dart';
 import 'package:notes/event/tag/tag.dart';
 import 'package:notes/stream_route/tag_stream_route.dart';
 
@@ -15,9 +14,6 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
 
   @override
   StreamRoute<String> get streamRoute => tagStreamRoute;
-
-  @override
-  EventCodec<TagEvent> get eventCodec => tagCodec;
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;

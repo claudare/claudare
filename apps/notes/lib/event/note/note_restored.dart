@@ -22,3 +22,17 @@ class NoteRestored extends NoteEvent {
     return 'NoteRestored{}';
   }
 }
+
+final class NoteRestoredCodec implements EventCodec<NoteRestored> {
+  const NoteRestoredCodec();
+
+  @override
+  String get kind => NoteRestored.kind;
+
+  @override
+  Uint8List toBytes(NoteRestored event) => JsonConverter.encode(event.toJson());
+
+  @override
+  NoteRestored fromBytes(Uint8List bytes) =>
+      NoteRestored.fromJson(JsonConverter.decode(bytes));
+}

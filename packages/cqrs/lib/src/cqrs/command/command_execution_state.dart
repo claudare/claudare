@@ -3,19 +3,13 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 
-class CommandExecutionEvent<Event, Params> {
+class CommandExecutionEvent {
   final String streamPath;
-  final Params streamParams;
-
-  final Event runtimeEvent;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
   const CommandExecutionEvent({
     required this.streamPath,
-    required this.streamParams,
-
-    required this.runtimeEvent,
     required this.encodedEvent,
     required this.occuredAt,
   });
@@ -31,8 +25,7 @@ class CommandExecutionEvent<Event, Params> {
   EventEnvelope toEventEnvelope({required int localSequence}) {
     return EventEnvelope(
       streamPath: streamPath,
-      streamParams: streamParams,
-      event: runtimeEvent,
+      encodedEvent: encodedEvent,
       occuredAt: occuredAt,
       localSequence: localSequence,
     );

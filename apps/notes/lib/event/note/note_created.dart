@@ -19,3 +19,17 @@ class NoteCreated extends NoteEvent {
     return 'NoteCreated{}';
   }
 }
+
+final class NoteCreatedCodec implements EventCodec<NoteCreated> {
+  const NoteCreatedCodec();
+
+  @override
+  String get kind => NoteCreated.kind;
+
+  @override
+  Uint8List toBytes(NoteCreated event) => JsonConverter.encode(event.toJson());
+
+  @override
+  NoteCreated fromBytes(Uint8List bytes) =>
+      NoteCreated.fromJson(JsonConverter.decode(bytes));
+}

@@ -5,6 +5,7 @@ import 'package:cqrs/src/cqrs/command/command_codec_safe.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 
 class CqrsRuntimeV2Idea {
@@ -12,6 +13,7 @@ class CqrsRuntimeV2Idea {
   final int _runtimeVersion;
   final CqrsRuntimeDependencies _dependencies;
   final RuntimeStore _runtimeStore;
+  final EventRegistry _eventRegistry = EventRegistry();
 
   CqrsRuntimeV2Idea(this._dependencies, {required int runtimeVersion})
     : _runtimeVersion = runtimeVersion,
@@ -27,6 +29,7 @@ class CqrsRuntimeV2Idea {
       runtimeName: projection.name,
       runtimeVersion: _runtimeVersion,
       runtimeStore: _runtimeStore,
+      eventRegistry: _eventRegistry,
     );
     _projections.add(runtime);
   }
@@ -51,6 +54,7 @@ class CqrsRuntimeV2Idea {
     final context = CommandContext(
       eventStore: _dependencies.eventStore,
       executionState: executionState,
+      eventRegistry: _eventRegistry,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
     );

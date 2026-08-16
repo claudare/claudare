@@ -2,19 +2,18 @@ import 'package:time_provider/time_provider.dart';
 
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
-import 'package:cqrs/src/cqrs/event/event_codec.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_found_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_locked_exception.dart';
 
-class CommandStream<Event, Params> {
+class CommandStream<Event extends Object> {
   final EventStore _eventStore;
   final CommandExecutionState _executionState;
-  final EventCodec<Event> _codec;
+  final EventRegistry _eventRegistry;
   final String _streamPath;
-  final Params _streamParams;
   final TimeProvider _timeProvider;
 
   bool _locked = false;
@@ -22,9 +21,8 @@ class CommandStream<Event, Params> {
   CommandStream(
     this._eventStore,
     this._executionState,
-    this._codec,
+    this._eventRegistry,
     this._streamPath,
-    this._streamParams,
     this._timeProvider,
   );
 
@@ -50,7 +48,7 @@ class CommandStream<Event, Params> {
     try {
       await for (final event in reader.scan()) {
         streamVersion = event.streamVersion;
-        yield _codec.decode(event.encodedEvent);
+        yield _eventRegistry.decode<Event>(event.encodedEvent);
       }
     } finally {
       // TODO: explain why this is in the finally block
@@ -115,18 +113,16 @@ class CommandStream<Event, Params> {
     );
   }
 
-  CommandStream<Event, Params> append(Event event) {
+  CommandStream<Event> append(Event event) {
     _ensureLocked();
 
     final occuredAt = _timeProvider.now();
 
-    final encodedEvent = _codec.encode(event);
+    final encodedEvent = _eventRegistry.encode(event);
 
     _executionState.events.add(
-      CommandExecutionEvent<Event, Params>(
+      CommandExecutionEvent(
         streamPath: _streamPath,
-        streamParams: _streamParams,
-        runtimeEvent: event,
         encodedEvent: encodedEvent,
         occuredAt: occuredAt,
       ),

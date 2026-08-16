@@ -1,6 +1,7 @@
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
@@ -11,13 +12,15 @@ import 'package:queue/queue.dart';
 
 import 'projection_failure_handler.dart';
 
-class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
+class ProjectionRuntime<TEvents extends Object, TParams>
+    implements ProjectionSink {
   final Projection<TEvents, TParams> _projection;
   final Logger _logger;
   final String
   _runtimeName; // FIXME: this should be projection name, can be accessed directory from projection
   final int _runtimeVersion;
   final RuntimeStoreProjection _runtimeStore;
+  final EventRegistry _eventRegistry;
   int _sequence = 0;
 
   late final AsyncFIFOQueue<QueueItem<TEvents, TParams>> _queue;
@@ -28,10 +31,12 @@ class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
     required String runtimeName,
     required int runtimeVersion,
     required RuntimeStoreProjection runtimeStore,
+    required EventRegistry eventRegistry,
   }) : _logger = logger,
        _runtimeName = runtimeName,
        _runtimeVersion = runtimeVersion,
-       _runtimeStore = runtimeStore {
+       _runtimeStore = runtimeStore,
+       _eventRegistry = eventRegistry {
     _queue = AsyncFIFOQueue<QueueItem<TEvents, TParams>>(
       (v) => _handleApply(v),
     );
@@ -47,10 +52,14 @@ class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
 
   @override
   void enqueue(EventEnvelope eventEnvelope, {void Function()? onDone}) {
+    final streamParams = _projection.streamRoute.parseParams(
+      eventEnvelope.streamPath,
+    );
+    final event = _eventRegistry.decode<TEvents>(eventEnvelope.encodedEvent);
     _queue.enqueue(
       QueueItem(
-        streamParams: eventEnvelope.streamParams,
-        event: eventEnvelope.event,
+        streamParams: streamParams,
+        event: event,
         meta: EventMetadata(occuredAt: eventEnvelope.occuredAt),
         localSequence: eventEnvelope.localSequence,
       ),
@@ -63,7 +72,7 @@ class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
     final streamParams = _projection.streamRoute.parseParams(
       appliedEvent.streamPath,
     );
-    final event = _projection.eventCodec.decode(appliedEvent.encodedEvent);
+    final event = _eventRegistry.decode<TEvents>(appliedEvent.encodedEvent);
     _queue.enqueue(
       QueueItem(
         streamParams: streamParams,
@@ -136,7 +145,7 @@ class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
       );
 
       await for (final e in reader.scan()) {
-        final event = _projection.eventCodec.decode(e.encodedEvent);
+        final event = _eventRegistry.decode<TEvents>(e.encodedEvent);
         final streamParams = _projection.streamRoute.parseParams(e.streamPath);
 
         await _advance(
@@ -183,7 +192,7 @@ class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
   toString() => 'ProjectionRuntime(${_projection.name})';
 }
 
-class QueueItem<TEvents, TParams> {
+class QueueItem<TEvents extends Object, TParams> {
   final TParams streamParams;
   final TEvents event;
   final EventMetadata meta;

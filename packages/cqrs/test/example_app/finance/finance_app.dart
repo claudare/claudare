@@ -5,6 +5,7 @@ import 'command/atm_withdrawal.dart';
 import 'command/open_account.dart';
 import 'command/rename_account.dart';
 import 'command/transfer_funds_between_accounts.dart';
+import 'account_event/account.dart';
 import 'projection/account_summary.dart';
 import 'projection/total_balance.dart';
 import 'read_model/accounts_summary_read_model.dart';
@@ -40,6 +41,12 @@ class FinanceApp {
       migrationPolicy: migrationPolicy,
       projectors: [accountSummaryProjection, totalBalanceProjection],
     );
+    _cqrsRuntime
+      ..registerEvent(const AccountAtmDepositedCodec())
+      ..registerEvent(const AccountAtmWithdrawnCodec())
+      ..registerEvent(const AccountInnerTransferCodec())
+      ..registerEvent(const AccountOpenedCodec())
+      ..registerEvent(const AccountRenamedCodec());
 
     command = Commands(
       atmDeposit: _cqrsRuntime.bindCommand(AtmDeposit(), [

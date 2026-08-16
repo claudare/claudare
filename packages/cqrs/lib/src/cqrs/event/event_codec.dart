@@ -1,9 +1,10 @@
-import 'package:cqrs/src/cqrs/event/encoded_event.dart';
+import 'dart:typed_data';
 
-// encodes and decodes Uint8List bytes of the event
-abstract class EventCodec<T> {
+abstract interface class EventCodec<T extends Object> {
   const EventCodec();
 
-  EncodedEvent encode(T event);
-  T decode(EncodedEvent encoded);
+  String get kind;
+
+  Uint8List toBytes(T event);
+  T fromBytes(Uint8List bytes);
 }
