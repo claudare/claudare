@@ -1,4 +1,5 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreTestBackend {

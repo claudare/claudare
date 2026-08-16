@@ -1,8 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 

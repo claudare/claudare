@@ -1,6 +1,9 @@
 import 'dart:typed_data' show Uint8List;
 
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:test/test.dart';
 
 void main() {

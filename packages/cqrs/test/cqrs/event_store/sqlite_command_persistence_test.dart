@@ -2,6 +2,9 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/encoded_command.dart';
+import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 
