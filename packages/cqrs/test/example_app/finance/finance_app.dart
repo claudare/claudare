@@ -21,6 +21,7 @@ class FinanceApp {
     required AccountsSummaryReadModel accountSummaryRepo,
     required TotalBalanceReadModel totalBalanceRepo,
     int runtimeVersion = 1,
+    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
   }) {
     final accountSummaryProjection = AccountSummaryProjection(
       accountSummaryRepo,
@@ -36,6 +37,7 @@ class FinanceApp {
       dependencies: dependencies,
       runtimeName: 'finance-main',
       runtimeVersion: runtimeVersion,
+      migrationPolicy: migrationPolicy,
       projectors: [accountSummaryProjection, totalBalanceProjection],
     );
 
@@ -64,7 +66,7 @@ class FinanceApp {
     await _cqrsRuntime.initializeProjections();
   }
 
-  Future<void> rerunProjections() => _cqrsRuntime.rerunProjections();
+  Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();
 }
 
 class Commands {

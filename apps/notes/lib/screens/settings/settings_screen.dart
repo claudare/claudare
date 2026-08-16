@@ -30,11 +30,11 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _resetApplication(Application application) async {
     await application.eventStore.reset();
-    await application.notesRuntime.rerunProjections();
+    await application.notesRuntime.recreateProjections();
   }
 
   Future<void> _reloadAllProjections(Application application) async {
-    await application.notesRuntime.rerunProjections();
+    await application.notesRuntime.recreateProjections();
   }
 
   @override

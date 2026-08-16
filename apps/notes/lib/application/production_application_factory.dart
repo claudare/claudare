@@ -12,9 +12,15 @@ import 'package:notes/runtime/notes_runtime.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ProductionApplicationFactory implements ApplicationFactory {
+  final MigrationPolicy migrationPolicy;
+
+  const ProductionApplicationFactory({
+    this.migrationPolicy = MigrationPolicy.whenVersionChanges,
+  });
+
   static Future<String> getSupportDir() async {
     // on linux it is
-    // /home/{USER}/.local/share/com.claudare.notes
+    // ~/.local/share/com.claudare.notes
     final appDir = await getApplicationSupportDirectory();
     if (!await appDir.exists()) {
       await appDir.create(recursive: true);
@@ -61,6 +67,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
         resolvedNoteReadModel: resolvedNoteReadModel,
         searchProjectionRepo: searchProjectionRepo,
         searchReadModel: searchReadModel,
+        migrationPolicy: migrationPolicy,
       ),
     );
   }

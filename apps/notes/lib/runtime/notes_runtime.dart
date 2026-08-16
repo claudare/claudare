@@ -38,6 +38,7 @@ class NotesRuntime {
     required this.resolvedNoteReadModel,
     required SearchProjectionRepo searchProjectionRepo,
     required this.searchReadModel,
+    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
   }) : logger = cqrsDependencies.logger,
        _noteProjectionRepo = noteProjectionRepo,
        _searchProjectionRepo = searchProjectionRepo {
@@ -76,6 +77,7 @@ class NotesRuntime {
       projectors: [noteProjection, searchProjection],
       runtimeName: 'notes',
       runtimeVersion: NotesRuntime.runtimeVersion,
+      migrationPolicy: migrationPolicy,
     );
 
     commands = CqrsCommands(
@@ -109,8 +111,8 @@ class NotesRuntime {
     await _cqrsRuntime.initializeProjections();
   }
 
-  Future<void> rerunProjections() async {
-    await _cqrsRuntime.rerunProjections();
+  Future<void> recreateProjections() async {
+    await _cqrsRuntime.recreateProjections();
   }
 
   // commands can be implemented like this too? need to keep projections on top level

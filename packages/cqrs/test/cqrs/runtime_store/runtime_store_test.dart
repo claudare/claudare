@@ -11,11 +11,13 @@ Future<void> _testRuntimeStore(
 ) async {
   group('RuntimeStore - $name', () {
     late RuntimeStore store;
+    late RuntimeDatabase database;
     late Future<void> Function() cleanup;
 
     setUp(() async {
       final instance = await setup();
-      store = RuntimeStore(instance.database);
+      database = instance.database;
+      store = RuntimeStore(database);
       await store.initialize();
       cleanup = instance.cleanup;
     });
@@ -24,25 +26,111 @@ Future<void> _testRuntimeStore(
       await cleanup();
     });
 
-    test('gets zero version', () async {
-      final version = await store.getRuntimeVersion('test');
-      expect(version, 0);
+    test(
+      'rejects non-positive migration targets without side effects',
+      () async {
+        for (final target in [0, -1]) {
+          var invoked = false;
+          await expectLater(
+            store.versionMigration('test', target, () async {
+              invoked = true;
+            }),
+            throwsArgumentError,
+          );
+          expect(invoked, isFalse);
+          expect(await database.getRuntimeVersion('test'), 0);
+        }
+      },
+    );
+
+    test('stores incomplete marker while migration runs', () async {
+      await store.versionMigration('test', 1, () async {
+        expect(await database.getRuntimeVersion('test'), -1);
+      });
+      expect(await database.getRuntimeVersion('test'), 1);
     });
 
-    test('sets new version', () async {
-      await store.setRuntimeVersion('test', 88);
-      final version = await store.getRuntimeVersion('test');
-      expect(version, 88);
+    test('matching completed version skips migration', () async {
+      var invocationCount = 0;
+      Future<void> migrate() => store.versionMigration('test', 2, () async {
+        invocationCount++;
+      });
+
+      await migrate();
+      await migrate();
+
+      expect(invocationCount, 1);
+      expect(await database.getRuntimeVersion('test'), 2);
     });
 
-    test('updates to version', () async {
-      await store.setRuntimeVersion('test', 1);
-      var version = await store.getRuntimeVersion('test');
-      expect(version, 1);
+    test('failed migration preserves error, marker, and retries', () async {
+      final error = StateError('migration failed');
+      var invocationCount = 0;
 
-      await store.setRuntimeVersion('test', 2);
-      version = await store.getRuntimeVersion('test');
-      expect(version, 2);
+      await expectLater(
+        store.versionMigration('test', 3, () async {
+          invocationCount++;
+          throw error;
+        }),
+        throwsA(same(error)),
+      );
+      expect(await database.getRuntimeVersion('test'), -1);
+
+      await store.versionMigration('test', 3, () async {
+        invocationCount++;
+      });
+      expect(invocationCount, 2);
+      expect(await database.getRuntimeVersion('test'), 3);
+    });
+
+    test('upgrades and downgrades both migrate', () async {
+      final migratedVersions = <int>[];
+      for (final version in [2, 4, 1]) {
+        await store.versionMigration('test', version, () async {
+          migratedVersions.add(version);
+        });
+      }
+
+      expect(migratedVersions, [2, 4, 1]);
+      expect(await database.getRuntimeVersion('test'), 1);
+    });
+
+    test('always policy migrates matching version', () async {
+      var invocationCount = 0;
+      await store.versionMigration('test', 1, () async {
+        invocationCount++;
+      });
+      await store.versionMigration('test', 1, () async {
+        invocationCount++;
+      }, policy: MigrationPolicy.always);
+
+      expect(invocationCount, 2);
+      expect(await database.getRuntimeVersion('test'), 1);
+    });
+
+    test('store default always policy migrates matching version', () async {
+      final alwaysStore = RuntimeStore(
+        database,
+        migrationPolicy: MigrationPolicy.always,
+      );
+      var invocationCount = 0;
+      for (var i = 0; i < 2; i++) {
+        await alwaysStore.versionMigration('test', 1, () async {
+          invocationCount++;
+        });
+      }
+
+      expect(invocationCount, 2);
+    });
+
+    test('rejects stored versions below incomplete marker', () async {
+      await database.setRuntimeVersion('test', -2);
+
+      await expectLater(
+        store.versionMigration('test', 1, () async {}),
+        throwsA(isA<RuntimeDatabaseException>()),
+      );
+      expect(await database.getRuntimeVersion('test'), -2);
     });
 
     test('projection is initially not initialized', () async {

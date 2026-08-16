@@ -8,6 +8,7 @@ import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_store_runtime_version.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// [CqrsRuntime] is all in one place for local CQRS.
@@ -24,7 +25,11 @@ class CqrsRuntime {
     required this.runtimeName,
     required this.runtimeVersion,
     required List<Projection> projectors,
-  }) : _runtimeStore = RuntimeStore(dependencies.runtimeDatabase),
+    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
+  }) : _runtimeStore = RuntimeStore(
+         dependencies.runtimeDatabase,
+         migrationPolicy: migrationPolicy,
+       ),
        _dependencies = dependencies {
     _projectionRunners =
         projectors
@@ -43,15 +48,13 @@ class CqrsRuntime {
   TimeProvider get timeProvider => _dependencies.timeProvider;
   IdGenerator get idGenerator => _dependencies.idGenerator;
 
-  // Hacky way to force reload.
-  // Since runtime repo is involved, this is resilient to restarts
-  Future<void> rerunProjections() async {
+  Future<void> recreateProjections() async {
     _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: rerunning all projections',
+      'runtime $runtimeName@$runtimeVersion: recreating all projections',
     );
-    await _catchupAllProjections(force: true);
+    await _migrateProjections(policy: MigrationPolicy.always);
     _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: reran all projections',
+      'runtime $runtimeName@$runtimeVersion: recreated all projections',
     );
   }
 
@@ -59,30 +62,37 @@ class CqrsRuntime {
     _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: initializing all projections',
     );
-    await _catchupAllProjections(force: false);
+    await _migrateProjections();
     _dependencies.logger.info(
       'runtime $runtimeName@$runtimeVersion: initialized all projections',
     );
   }
 
-  Future<void> _catchupAllProjections({required bool force}) async {
+  Future<void> _migrateProjections({MigrationPolicy? policy}) async {
     await _runtimeStore.initialize();
-
-    final storedVersion = await _runtimeStore.getRuntimeVersion(runtimeName);
-
-    final doReset = force || runtimeVersion != storedVersion;
-
-    if (doReset) {
-      await Future.wait(
-        _projectionRunners.map((runner) {
-          _dependencies.logger.debug(
-            'runtime $runtimeName@$runtimeVersion: resetting projection: ${runner.projectionName}',
-          );
-          return runner.resetProjection();
-        }),
-      );
+    var migrated = false;
+    await _runtimeStore.versionMigration(runtimeName, runtimeVersion, () async {
+      migrated = true;
+      await _resetAllProjections();
+      await _catchupAllProjections();
+    }, policy: policy);
+    if (!migrated) {
+      await _catchupAllProjections();
     }
+  }
 
+  Future<void> _resetAllProjections() async {
+    await Future.wait(
+      _projectionRunners.map((runner) {
+        _dependencies.logger.debug(
+          'runtime $runtimeName@$runtimeVersion: resetting projection: ${runner.projectionName}',
+        );
+        return runner.resetProjection();
+      }),
+    );
+  }
+
+  Future<void> _catchupAllProjections() async {
     await Future.wait(
       _projectionRunners.map((runner) {
         _dependencies.logger.debug(
@@ -92,10 +102,6 @@ class CqrsRuntime {
         return runner.catchupSelfLoad(_dependencies.eventStore);
       }),
     );
-
-    if (doReset) {
-      await _runtimeStore.setRuntimeVersion(runtimeName, runtimeVersion);
-    }
   }
 
   BoundCommand<Input> bindCommand<Input extends CommandInput>(
@@ -129,38 +135,5 @@ class CqrsRuntime {
       consistentRouter: ProjectionRouter(consistentRunners),
       eventualRouter: ProjectionRouter(eventualRunners),
     );
-  }
-
-  BoundCommandFn<Input> bindCommand2<Input extends CommandInput>(
-    Command<Input> command,
-    List<Projection> consistentProjectors,
-  ) {
-    final executor = CommandExecutor(
-      eventStore: _dependencies.eventStore,
-      timeProvider: _dependencies.timeProvider,
-      idGenerator: _dependencies.idGenerator,
-    );
-
-    final consistentRunners = <ProjectionRuntime>[];
-    final eventualRunners = <ProjectionRuntime>[];
-
-    for (final runner in _projectionRunners) {
-      final isConsistent = consistentProjectors.any(
-        (projector) => runner.isProjection(projector),
-      );
-
-      if (isConsistent) {
-        consistentRunners.add(runner);
-      } else {
-        eventualRunners.add(runner);
-      }
-    }
-
-    return BoundCommand(
-      executor: executor,
-      command: command,
-      consistentRouter: ProjectionRouter(consistentRunners),
-      eventualRouter: ProjectionRouter(eventualRunners),
-    ).runThrowable;
   }
 }

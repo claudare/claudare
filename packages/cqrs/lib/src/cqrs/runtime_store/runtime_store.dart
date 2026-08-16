@@ -2,11 +2,17 @@ import 'package:cqrs/src/cqrs/exception/runtime_database_exception.dart';
 import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_database.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store_projection.dart';
+import 'package:cqrs/src/cqrs/runtime_store/runtime_store_runtime_version.dart';
 
-class RuntimeStore implements RuntimeStoreProjection {
+class RuntimeStore
+    implements RuntimeStoreProjection, RuntimeStoreRuntimeVersion {
   final RuntimeDatabase _database;
+  final MigrationPolicy migrationPolicy;
 
-  const RuntimeStore(this._database);
+  const RuntimeStore(
+    this._database, {
+    this.migrationPolicy = MigrationPolicy.whenVersionChanges,
+  });
 
   Future<void> initialize() async {
     try {
@@ -19,14 +25,42 @@ class RuntimeStore implements RuntimeStoreProjection {
     }
   }
 
-  Future<int> getRuntimeVersion(String runtimeName) async {
+  @override
+  Future<void> versionMigration(
+    String name,
+    int targetVersion,
+    Future<void> Function() action, {
+    MigrationPolicy? policy,
+  }) async {
+    if (targetVersion <= 0) {
+      throw ArgumentError.value(targetVersion, 'targetVersion');
+    }
+
+    final storedVersion = await _getRuntimeVersion(name);
+    final effectivePolicy = policy ?? migrationPolicy;
+    if (effectivePolicy == MigrationPolicy.whenVersionChanges &&
+        storedVersion == targetVersion) {
+      return;
+    }
+
+    await _setRuntimeVersion(name, -1);
+    await action();
+    await _setRuntimeVersion(name, targetVersion);
+  }
+
+  Future<int> _getRuntimeVersion(String name) async {
     try {
-      final value = await _database.getRuntimeVersion(runtimeName);
-      if (value < 0) {
-        throw StateError('Invalid runtime version: $value');
+      final value = await _database.getRuntimeVersion(name);
+      if (value < -1) {
+        throw RuntimeDatabaseException(
+          'Failed to get runtime version',
+          cause: StateError('Invalid runtime version: $value'),
+        );
       }
       return value;
-    } on Exception catch (cause) {
+    } on RuntimeDatabaseException {
+      rethrow;
+    } catch (cause) {
       throw RuntimeDatabaseException(
         'Failed to get runtime version',
         cause: cause,
@@ -34,14 +68,10 @@ class RuntimeStore implements RuntimeStoreProjection {
     }
   }
 
-  Future<void> setRuntimeVersion(String runtimeName, int version) async {
-    if (version < 0) {
-      throw StateError('Invalid runtime version: $version');
-    }
-
+  Future<void> _setRuntimeVersion(String name, int version) async {
     try {
-      await _database.setRuntimeVersion(runtimeName, version);
-    } on Exception catch (cause) {
+      await _database.setRuntimeVersion(name, version);
+    } catch (cause) {
       throw RuntimeDatabaseException(
         'Failed to set runtime version',
         cause: cause,

@@ -9,6 +9,7 @@ export 'src/cqrs/cqrs_runtime/bound_command.dart';
 export 'src/cqrs/runtime_store/runtime_store.dart';
 export 'src/cqrs/runtime_store/runtime_database.dart';
 export 'src/cqrs/runtime_store/runtime_store_projection.dart';
+export 'src/cqrs/runtime_store/runtime_store_runtime_version.dart';
 export 'src/cqrs/runtime_store/projection_position.dart';
 export 'src/cqrs/runtime_store/memory/memory_runtime_database.dart';
 export 'src/cqrs/runtime_store/sqlite/sqlite_runtime_database.dart';

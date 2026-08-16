@@ -35,9 +35,10 @@ commands without events are discarded.
 
 `CqrsRuntime` constructs projection runners. The runtime store owns each
 globally named projection's applying and applied event-sequence boundaries,
-while a stored runtime version triggers whole-runtime rebuilds. It separates
-consistent projection routing from eventual routing. Events remain
-authoritative; read models are disposable derived state.
+while action-based runtime migrations trigger whole-runtime rebuilds when the
+stored version changes. The runtime separates consistent projection routing from
+eventual routing. Events remain authoritative; read models are disposable
+derived state.
 
 ## Event-store contract
 

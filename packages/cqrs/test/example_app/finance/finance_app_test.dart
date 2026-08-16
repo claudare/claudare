@@ -209,6 +209,78 @@ void main() {
       expect(accounts.single.transactionCount, 1);
     });
 
+    test('matching runtime version catches up without resetting', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      accountsSummaryRepo.summaries['stale'] = AccountSummary(
+        accountId: 'stale',
+        name: 'stale',
+        balance: 0,
+        transactionCount: 0,
+        openedAt: t0,
+        lastTransactionAt: t0,
+      );
+
+      await app.init();
+
+      expect(accountsSummaryRepo.summaries, contains('stale'));
+    });
+
+    test('always migration policy resets and fully replays', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      accountsSummaryRepo.summaries['stale'] = AccountSummary(
+        accountId: 'stale',
+        name: 'stale',
+        balance: 0,
+        transactionCount: 0,
+        openedAt: t0,
+        lastTransactionAt: t0,
+      );
+
+      final rebuildingApp = FinanceApp(
+        dependencies: CqrsRuntimeDependencies(
+          eventStore: eventStore,
+          runtimeDatabase: runtimeDatabase,
+          logger: const NoopLogger(),
+          idGenerator: commandIdGenerator,
+          timeProvider: commandTimeProvider,
+        ),
+        accountSummaryRepo: accountsSummaryRepo,
+        totalBalanceRepo: totalBalanceRepo,
+        migrationPolicy: MigrationPolicy.always,
+      );
+      await rebuildingApp.init();
+
+      expect(accountsSummaryRepo.summaries, isNot(contains('stale')));
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.name, 'first');
+    });
+
+    test('incomplete runtime migration resets and fully replays', () async {
+      await app.command.openAccount.runThrowable(
+        OpenAccountInput(name: 'first'),
+      );
+      accountsSummaryRepo.summaries['stale'] = AccountSummary(
+        accountId: 'stale',
+        name: 'stale',
+        balance: 0,
+        transactionCount: 0,
+        openedAt: t0,
+        lastTransactionAt: t0,
+      );
+      await runtimeDatabase.setRuntimeVersion('finance-main', -1);
+
+      await app.init();
+
+      expect(accountsSummaryRepo.summaries, isNot(contains('stale')));
+      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
+      expect(accounts.single.name, 'first');
+      expect(await runtimeDatabase.getRuntimeVersion('finance-main'), 1);
+    });
+
     test('manual replay rebuilds identical read models', () async {
       await app.command.openAccount.runThrowable(
         OpenAccountInput(name: 'first'),
@@ -217,7 +289,7 @@ void main() {
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
 
-      await app.rerunProjections();
+      await app.recreateProjections();
 
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 40);
