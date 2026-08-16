@@ -64,12 +64,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 'this is an example note data inserted at the intialization. Application development on track! :)',
           ),
         );
-      } on Exception catch (error, stackTrace) {
-        application.notesRuntime.logger.debug(
-          'test data was not inserted',
-          error,
-          stackTrace,
-        );
+      } on Exception {
+        application.notesRuntime.logger.debug('test data was not inserted');
       }
 
       if (!mounted) {

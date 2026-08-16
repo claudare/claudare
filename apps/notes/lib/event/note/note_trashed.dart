@@ -1,11 +1,6 @@
 part of 'note.dart';
 
-// TODO: there is no note deletion
-// just moving to a different group (like trash)
-// deletion is a permanent and irrevokable action
 class NoteTrashed extends NoteEvent {
-  // how to do "codec migrations"
-  static const String oldKind = 'note.deleted';
   static const String kind = 'note.trashed';
 
   const NoteTrashed();
@@ -21,6 +16,6 @@ class NoteTrashed extends NoteEvent {
 
   @override
   String toString() {
-    return 'NoteDeleted{}';
+    return 'NoteTrashed{}';
   }
 }

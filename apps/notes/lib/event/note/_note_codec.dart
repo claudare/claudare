@@ -38,7 +38,6 @@ class NoteCodec implements EventCodec<NoteEvent> {
         return NoteRestored.fromJson(detailMap);
       case NoteTitleUpdated.kind:
         return NoteTitleUpdated.fromJson(detailMap);
-      case NoteTrashed.oldKind: // migration!
       case NoteTrashed.kind:
         return NoteTrashed.fromJson(detailMap);
       default:
