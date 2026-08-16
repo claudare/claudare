@@ -7,6 +7,8 @@ class AppliedEvent {
   final String streamId;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
+
+  // local-only values
   final int localSequence;
   final int streamVersion;
 

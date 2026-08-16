@@ -20,7 +20,7 @@ abstract class StreamIdPattern<TData> {
   }
 
   /// Slower method to filter by path only.
-  /// Used for testing
+  /// Does string comparisons
   bool globsPathOnly(String otherPath) {
     return filter.doesMatchPath(otherPath);
   }

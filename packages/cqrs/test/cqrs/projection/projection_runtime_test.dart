@@ -83,9 +83,7 @@ void main() {
         streamIdData: 'missing',
         streamIdPattern: accountStreamId,
         event: AccountAtmDeposited(amount: 1),
-        metadata: EventMetadata(
-          occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-        ),
+        occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         localSequence: 1,
       ),
       onDone: done.complete,

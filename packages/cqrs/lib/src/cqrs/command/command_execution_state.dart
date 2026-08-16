@@ -1,11 +1,11 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
 class CommandExecutionEvent<Event, IdData> {
+  // TODO: keep only the streamId as a String...
   final StreamIdPattern<IdData> streamIdPattern;
   final String streamIdStr;
   final IdData streamIdData;
@@ -38,7 +38,7 @@ class CommandExecutionEvent<Event, IdData> {
       streamIdStr: streamIdStr,
       streamIdData: streamIdData,
       event: runtimeEvent,
-      metadata: EventMetadata(occuredAt: occuredAt),
+      occuredAt: occuredAt,
       localSequence: localSequence,
     );
   }

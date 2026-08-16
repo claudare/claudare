@@ -30,6 +30,9 @@ class StreamAppendOrder {
 }
 
 class SaveChangesResult {
+  // TODO: add localSequence of the command
+  // TODO: add commandId
+  // TODO: use eventId instead of StreamAppendOrder
   final List<StreamAppendOrder> orders;
 
   const SaveChangesResult({required this.orders});
@@ -86,6 +89,8 @@ class EventStore {
         }
       });
 
+  // TODO: change the return type. This shall return AppliedCommand with
+  // List<AppliedEvent>
   Future<SaveChangesResult> saveChanges(CommandChanges changes) async {
     final deviceId = 0; // own device id is always 0
     if (changes.events.isEmpty) return SaveChangesResult.empty();

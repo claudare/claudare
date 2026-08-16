@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern_all.dart';
 import 'package:test/test.dart';
 
@@ -104,6 +104,7 @@ void main() {
 
 // -------------------- Fakes --------------------
 
+// projection runtime only for EventEnvelope (to be named RuntimeEvent)
 class _FakeProjectionRuntime implements ProjectionSink {
   final bool affected;
   final bool immediateDone;
@@ -117,6 +118,9 @@ class _FakeProjectionRuntime implements ProjectionSink {
   bool shouldProcess(_, _) => affected;
 
   @override
+  bool shouldProcessString(_) => affected;
+
+  @override
   void enqueue(EventEnvelope event, {void Function()? onDone}) {
     enqueued.add(event);
     if (immediateDone) {
@@ -124,6 +128,11 @@ class _FakeProjectionRuntime implements ProjectionSink {
     } else if (onDone != null) {
       _pendingDone.add(onDone); // manual control
     }
+  }
+
+  @override
+  void enqueueApplied(AppliedEvent event, {void Function()? onDone}) {
+    throw StateError('enqueueApplied should not be called');
   }
 
   int get pendingDoneCount => _pendingDone.length;
@@ -140,9 +149,7 @@ EventEnvelope _fakeEvent({required int sequence}) {
     streamIdData: null,
     streamIdPattern: StreamIdPatternAll(),
     event: null,
-    metadata: EventMetadata(
-      occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-    ),
+    occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     localSequence: sequence,
   );
 }

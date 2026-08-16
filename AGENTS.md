@@ -36,6 +36,11 @@ These instructions apply to the entire repository.
 
 - Follow [CONVENTIONS.md](CONVENTIONS.md) for Core wiring. It applies to new and
   modified code; do not refactor existing deviations unless required by the task.
+- Before changing CQRS runtime, event-codec, command event-flow, projection
+  routing/replay, or runtime-store projection-progress code, read
+  [ideas/RUNTIME_REWORK.md](ideas/RUNTIME_REWORK.md). It is the active rewrite
+  plan, not implemented behavior. The rewrite is a clean breaking migration, so
+  do not retain compatibility aliases or parallel old and new paths.
 - Pass logging through Core's `Logger`. Use `NoopLogger` or `RecordingLogger`
   when output is suppressed or inspected; do not add ad-hoc prints.
 - Do not generate backwards compatible changes. The project is under development

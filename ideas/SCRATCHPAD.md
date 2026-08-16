@@ -4,10 +4,6 @@ This is an ideation document. It is non-authoritative and is used to keep ideas
 in one place. For better defined and conrete documentation read markdowns at
 `docs`.
 
-## Interesting ideas
-
-- Postfix the mutating classes with `Mutable`?
-
 ## TODOs
 
 - Rethrow the original errors. Good point to fix is `ConcurrencyProblem` in the
