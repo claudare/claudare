@@ -8,15 +8,13 @@ import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_found_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_locked_exception.dart';
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 
-class CommandStream<Event, IdData> {
+class CommandStream<Event, Params> {
   final EventStore _eventStore;
   final CommandExecutionState _executionState;
   final EventCodec<Event> _codec;
-  final String _streamId;
-  final IdData _streamIdData;
-  final StreamIdPattern<IdData> _streamIdPattern;
+  final String _streamPath;
+  final Params _streamParams;
   final TimeProvider _timeProvider;
 
   bool _locked = false;
@@ -25,21 +23,20 @@ class CommandStream<Event, IdData> {
     this._eventStore,
     this._executionState,
     this._codec,
-    this._streamId,
-    this._streamIdData,
-    this._streamIdPattern,
+    this._streamPath,
+    this._streamParams,
     this._timeProvider,
   );
 
   void _ensureLocked() {
     if (!_locked) {
-      throw StreamNotLockedException(_streamId);
+      throw StreamNotLockedException(_streamPath);
     }
   }
 
   void _tryLock() {
     if (_locked) {
-      throw StreamAlreadyLockedException(_streamId);
+      throw StreamAlreadyLockedException(_streamPath);
     }
     _locked = true;
   }
@@ -47,7 +44,7 @@ class CommandStream<Event, IdData> {
   Stream<Event> scan() async* {
     _tryLock();
 
-    final reader = _eventStore.getStreamReader(_streamId);
+    final reader = _eventStore.getStreamReader(_streamPath);
     var streamVersion = 0;
 
     try {
@@ -60,7 +57,7 @@ class CommandStream<Event, IdData> {
       // instead of after the try block
       _executionState.locks.add(
         StreamLocalLock(
-          streamId: _streamId,
+          streamPath: _streamPath,
           originatingStreamVersion: streamVersion,
         ),
       );
@@ -70,18 +67,18 @@ class CommandStream<Event, IdData> {
   Future<void> lock() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_streamId);
+    final info = await _eventStore.getStreamInfo(_streamPath);
 
     if (info == null) {
       _executionState.locks.add(
-        StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
+        StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: 0),
       );
       return;
     }
 
     _executionState.locks.add(
       StreamLocalLock(
-        streamId: _streamId,
+        streamPath: _streamPath,
         originatingStreamVersion: info.originatingStreamVersion,
       ),
     );
@@ -92,14 +89,14 @@ class CommandStream<Event, IdData> {
   Future<void> mustExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_streamId);
+    final info = await _eventStore.getStreamInfo(_streamPath);
     if (info == null) {
-      throw StreamNotFoundException(_streamId);
+      throw StreamNotFoundException(_streamPath);
     }
 
     _executionState.locks.add(
       StreamLocalLock(
-        streamId: _streamId,
+        streamPath: _streamPath,
         originatingStreamVersion: info.originatingStreamVersion,
       ),
     );
@@ -108,17 +105,17 @@ class CommandStream<Event, IdData> {
   Future<void> mustNotExist() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_streamId);
+    final info = await _eventStore.getStreamInfo(_streamPath);
     if (info != null) {
-      throw StreamAlreadyExistsException(_streamId);
+      throw StreamAlreadyExistsException(_streamPath);
     }
 
     _executionState.locks.add(
-      StreamLocalLock(streamId: _streamId, originatingStreamVersion: 0),
+      StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: 0),
     );
   }
 
-  CommandStream<Event, IdData> append(Event event) {
+  CommandStream<Event, Params> append(Event event) {
     _ensureLocked();
 
     final occuredAt = _timeProvider.now();
@@ -126,10 +123,9 @@ class CommandStream<Event, IdData> {
     final encodedEvent = _codec.encode(event);
 
     _executionState.events.add(
-      CommandExecutionEvent<Event, IdData>(
-        streamIdStr: _streamId,
-        streamIdData: _streamIdData,
-        streamIdPattern: _streamIdPattern,
+      CommandExecutionEvent<Event, Params>(
+        streamPath: _streamPath,
+        streamParams: _streamParams,
         runtimeEvent: event,
         encodedEvent: encodedEvent,
         occuredAt: occuredAt,
@@ -138,13 +134,4 @@ class CommandStream<Event, IdData> {
 
     return this;
   }
-
-  // CommandStream<Event, IdData> appendMany(Iterable<Event> events) {
-  //   _ensureLocked();
-
-  //   for (var event in events) {
-  //     append(event);
-  //   }
-  //   return this;
-  // }
 }

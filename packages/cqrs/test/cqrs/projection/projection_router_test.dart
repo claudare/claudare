@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern_all.dart';
 import 'package:test/test.dart';
 
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
@@ -115,10 +114,7 @@ class _FakeProjectionRuntime implements ProjectionSink {
   _FakeProjectionRuntime({required this.affected, this.immediateDone = true});
 
   @override
-  bool shouldProcess(_, _) => affected;
-
-  @override
-  bool shouldProcessString(_) => affected;
+  bool shouldProcess(_) => affected;
 
   @override
   void enqueue(EventEnvelope event, {void Function()? onDone}) {
@@ -145,9 +141,8 @@ class _FakeProjectionRuntime implements ProjectionSink {
 
 EventEnvelope _fakeEvent({required int sequence}) {
   return EventEnvelope(
-    streamIdStr: '',
-    streamIdData: null,
-    streamIdPattern: StreamIdPatternAll(),
+    streamPath: '',
+    streamParams: null,
     event: null,
     occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
     localSequence: sequence,

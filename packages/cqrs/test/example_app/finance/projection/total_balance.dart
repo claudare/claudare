@@ -2,7 +2,7 @@ import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../read_model/total_balance_read_model.dart';
-import '../stream_id/account_stream_id.dart';
+import '../stream_route/account_stream_route.dart';
 
 // counts total balance, runs eventually
 class TotalBalanceProjection implements Projection<AccountEvent, String> {
@@ -17,7 +17,7 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
   get eventCodec => accountCodec;
 
   @override
-  get streamIdPattern => accountStreamId;
+  get streamRoute => accountStreamRoute;
 
   @override
   get failureHandler => ThrowingProjectionFailureHandler();

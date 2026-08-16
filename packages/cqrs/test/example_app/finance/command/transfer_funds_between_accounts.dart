@@ -4,7 +4,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 
 import '../account_event/account.dart';
-import '../stream_id/account_stream_id.dart';
+import '../stream_route/account_stream_route.dart';
 
 class TransferFundsBetweenAccountsInput implements CommandInput {
   final String fromAccountId;
@@ -39,7 +39,7 @@ class TransferFundsBetweenAccounts
 
     final fromStream = ctx.stream(
       accountCodec,
-      accountStreamId,
+      accountStreamRoute,
       input.fromAccountId,
     );
 
@@ -74,7 +74,7 @@ class TransferFundsBetweenAccounts
 
     final toStream = ctx.stream(
       accountCodec,
-      accountStreamId,
+      accountStreamRoute,
       input.toAccountId,
     );
 

@@ -6,14 +6,13 @@ import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
 import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store_projection.dart';
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:queue/queue.dart';
 
 import 'projection_failure_handler.dart';
 
-class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
-  final Projection<TEvents, TIdData> _projection;
+class ProjectionRuntime<TEvents, TParams> implements ProjectionSink {
+  final Projection<TEvents, TParams> _projection;
   final Logger _logger;
   final String
   _runtimeName; // FIXME: this should be projection name, can be accessed directory from projection
@@ -21,7 +20,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   final RuntimeStoreProjection _runtimeStore;
   int _sequence = 0;
 
-  late final AsyncFIFOQueue<QueueItem<TEvents, TIdData>> _queue;
+  late final AsyncFIFOQueue<QueueItem<TEvents, TParams>> _queue;
 
   ProjectionRuntime(
     this._projection, {
@@ -33,7 +32,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
        _runtimeName = runtimeName,
        _runtimeVersion = runtimeVersion,
        _runtimeStore = runtimeStore {
-    _queue = AsyncFIFOQueue<QueueItem<TEvents, TIdData>>(
+    _queue = AsyncFIFOQueue<QueueItem<TEvents, TParams>>(
       (v) => _handleApply(v),
     );
   }
@@ -42,7 +41,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   ProjectionFailureHandler get projectionFailureHandler =>
       _projection.failureHandler;
 
-  bool isProjection(Projection<TEvents, TIdData> projection) {
+  bool isProjection(Projection<TEvents, TParams> projection) {
     return identical(_projection, projection);
   }
 
@@ -50,7 +49,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   void enqueue(EventEnvelope eventEnvelope, {void Function()? onDone}) {
     _queue.enqueue(
       QueueItem(
-        aggregateIdData: eventEnvelope.streamIdData,
+        streamParams: eventEnvelope.streamParams,
         event: eventEnvelope.event,
         meta: EventMetadata(occuredAt: eventEnvelope.occuredAt),
         localSequence: eventEnvelope.localSequence,
@@ -61,13 +60,13 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
 
   @override
   void enqueueApplied(AppliedEvent appliedEvent, {void Function()? onDone}) {
-    final aggregateIdData = _projection.streamIdPattern.toData(
-      appliedEvent.streamId,
+    final streamParams = _projection.streamRoute.parseParams(
+      appliedEvent.streamPath,
     );
     final event = _projection.eventCodec.decode(appliedEvent.encodedEvent);
     _queue.enqueue(
       QueueItem(
-        aggregateIdData: aggregateIdData,
+        streamParams: streamParams,
         event: event,
         meta: EventMetadata(occuredAt: appliedEvent.occuredAt),
         localSequence: appliedEvent.localSequence,
@@ -77,21 +76,12 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   }
 
   @override
-  bool shouldProcess(StreamIdPattern streamIdPattern, String onPath) {
+  bool shouldProcess(String streamPath) {
     if (projectionFailureHandler.hasErrored()) {
       return false;
     }
 
-    return _projection.streamIdPattern.globs(streamIdPattern, onPath);
-  }
-
-  @override
-  bool shouldProcessString(String onPath) {
-    if (projectionFailureHandler.hasErrored()) {
-      return false;
-    }
-
-    return _projection.streamIdPattern.globsPathOnly(onPath);
+    return _projection.streamRoute.matches(streamPath);
   }
 
   Future<void> resetProjection() async {
@@ -141,17 +131,17 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
       }
 
       final reader = eventStore.getGlobalReader(
-        _projection.streamIdPattern.filter,
+        _projection.streamRoute.filter,
         _sequence,
       );
 
       await for (final e in reader.scan()) {
         final event = _projection.eventCodec.decode(e.encodedEvent);
-        final aggregateIdData = _projection.streamIdPattern.toData(e.streamId);
+        final streamParams = _projection.streamRoute.parseParams(e.streamPath);
 
         await _advance(
           e.localSequence,
-          () => _projection.apply(aggregateIdData, event, e.eventMetadata),
+          () => _projection.apply(streamParams, event, e.eventMetadata),
         );
       }
     } on Exception catch (error, stackTrace) {
@@ -160,7 +150,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     }
   }
 
-  Future<void> _handleApply(QueueItem<TEvents, TIdData> item) async {
+  Future<void> _handleApply(QueueItem<TEvents, TParams> item) async {
     assert(!projectionFailureHandler.hasErrored(), 'must not apply on error');
     if (projectionFailureHandler.hasErrored()) {
       return;
@@ -169,7 +159,7 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
     try {
       await _advance(
         item.localSequence,
-        () => _projection.apply(item.aggregateIdData, item.event, item.meta),
+        () => _projection.apply(item.streamParams, item.event, item.meta),
       );
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
@@ -193,14 +183,14 @@ class ProjectionRuntime<TEvents, TIdData> implements ProjectionSink {
   toString() => 'ProjectionRuntime(${_projection.name})';
 }
 
-class QueueItem<TEvents, TIdData> {
-  final TIdData aggregateIdData;
+class QueueItem<TEvents, TParams> {
+  final TParams streamParams;
   final TEvents event;
   final EventMetadata meta;
   final int localSequence;
 
   QueueItem({
-    required this.aggregateIdData,
+    required this.streamParams,
     required this.event,
     required this.meta,
     required this.localSequence,

@@ -363,7 +363,7 @@ void main() {
       await eventStore.stageReplicatedEvents([
         ReplicatedEvent(
           eventId: EventId(7, 1, 0),
-          streamId: 'account/$firstAccountId',
+          streamPath: 'account/$firstAccountId',
           encodedEvent: accountCodec.encode(AccountOpened(name: 'replicated')),
           occuredAt: t0,
         ),

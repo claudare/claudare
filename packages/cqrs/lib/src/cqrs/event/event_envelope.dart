@@ -1,21 +1,17 @@
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
-
 // [EventEnvelope] is a container of runtime defined event data.
-// It is used in routing of events to projections that match the event's stream ID.
+// It is used in routing of events to projections that match the event's stream path.
 // TODO: rename to RuntimeEvent
-class EventEnvelope<Event, IdData> {
-  final StreamIdPattern streamIdPattern;
-  final String streamIdStr;
-  final IdData streamIdData;
+class EventEnvelope<Event, Params> {
+  final String streamPath;
+  final Params streamParams;
 
   final Event event;
   final DateTime occuredAt;
   final int localSequence;
 
   const EventEnvelope({
-    required this.streamIdStr,
-    required this.streamIdData,
-    required this.streamIdPattern,
+    required this.streamPath,
+    required this.streamParams,
     required this.event,
     required this.occuredAt,
     required this.localSequence,
@@ -23,5 +19,5 @@ class EventEnvelope<Event, IdData> {
 
   @override
   toString() =>
-      'EventEnvelope(streamIdStr: $streamIdStr, streamIdData: $streamIdData, streamIdPattern: $streamIdPattern, event: $event, occuredAt: $occuredAt, localSequence: $localSequence)';
+      'EventEnvelope(streamPath: $streamPath, streamParams: $streamParams, event: $event, occuredAt: $occuredAt, localSequence: $localSequence)';
 }

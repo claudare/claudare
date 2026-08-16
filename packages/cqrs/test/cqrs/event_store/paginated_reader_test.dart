@@ -52,10 +52,12 @@ Future<void> _appendCount(EventStore store, int count) async {
         encoded: EncodedCommand(kind: 'command-$i', bytes: Uint8List(0)),
         startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-        locks: [StreamLocalLock(streamId: 'test', originatingStreamVersion: i)],
+        locks: [
+          StreamLocalLock(streamPath: 'test', originatingStreamVersion: i),
+        ],
         events: [
           EventAppend(
-            streamId: 'test',
+            streamPath: 'test',
             encodedEvent: EncodedEvent(kind: 'event-$i', bytes: Uint8List(0)),
             occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
           ),

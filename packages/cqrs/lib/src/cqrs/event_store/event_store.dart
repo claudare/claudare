@@ -74,16 +74,16 @@ class EventStore {
     }
   });
 
-  Future<GetStreamInfoResult?> getStreamInfo(String streamId) =>
+  Future<GetStreamInfoResult?> getStreamInfo(String streamPath) =>
       _mutex.protectRead(() async {
         try {
-          final version = await _database.getStreamVersion(streamId);
+          final version = await _database.getStreamVersion(streamPath);
           return version == 0
               ? null
               : GetStreamInfoResult(originatingStreamVersion: version);
         } on Exception catch (cause) {
           throw EventStoreException(
-            "Failed to get stream info for '$streamId'",
+            "Failed to get stream info for '$streamPath'",
             cause: cause,
           );
         }
@@ -103,11 +103,11 @@ class EventStore {
         final state = await _database.getState();
         final streamVersions = <String, int>{};
         for (final lock in changes.locks) {
-          final current = await _database.getStreamVersion(lock.streamId);
+          final current = await _database.getStreamVersion(lock.streamPath);
           if (current != lock.originatingStreamVersion) {
             throw ConcurrencyProblem();
           }
-          streamVersions[lock.streamId] = current;
+          streamVersions[lock.streamPath] = current;
         }
 
         final commandId = CommandId(
@@ -118,12 +118,12 @@ class EventStore {
         final appliedEvents = <AppliedEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
           final event = changes.events[i];
-          final streamVersion = (streamVersions[event.streamId] ?? 0) + 1;
-          streamVersions[event.streamId] = streamVersion;
+          final streamVersion = (streamVersions[event.streamPath] ?? 0) + 1;
+          streamVersions[event.streamPath] = streamVersion;
           appliedEvents.add(
             AppliedEvent(
               eventId: EventId(deviceId, commandId.sequence, i),
-              streamId: event.streamId,
+              streamPath: event.streamPath,
               encodedEvent: event.encodedEvent,
               occuredAt: event.occuredAt,
               localSequence: ++localEventSequence,
@@ -248,14 +248,14 @@ class EventStore {
           final events = <AppliedEvent>[];
           for (final event in pendingEvents) {
             final current =
-                streamVersions[event.streamId] ??
-                await _database.getStreamVersion(event.streamId);
+                streamVersions[event.streamPath] ??
+                await _database.getStreamVersion(event.streamPath);
             final next = current + 1;
-            streamVersions[event.streamId] = next;
+            streamVersions[event.streamPath] = next;
             events.add(
               AppliedEvent(
                 eventId: event.eventId,
-                streamId: event.streamId,
+                streamPath: event.streamPath,
                 encodedEvent: event.encodedEvent,
                 occuredAt: event.occuredAt,
                 localSequence: ++localEventSequence,
@@ -306,25 +306,25 @@ class EventStore {
         }
       });
 
-  PaginatedReader<StreamEvent> getStreamReader(String streamId) =>
+  PaginatedReader<StreamEvent> getStreamReader(String streamPath) =>
       PaginatedReader(
-        (cursor) => _readStreamPage(streamId, cursor),
+        (cursor) => _readStreamPage(streamPath, cursor),
         initialCursor: 0,
       );
 
   Future<PaginatedResult<StreamEvent>> _readStreamPage(
-    String streamId,
+    String streamPath,
     int streamVersionCursor,
   ) => _mutex.protectRead(() async {
     try {
       return await _database.getStreamEvents(
-        streamId,
+        streamPath,
         streamVersionCursor,
         _eventFetchPageSize,
       );
     } on Exception catch (cause) {
       throw EventStoreException(
-        "Failed to get stream events for '$streamId'",
+        "Failed to get stream events for '$streamPath'",
         cause: cause,
       );
     }

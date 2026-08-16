@@ -4,7 +4,7 @@ import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 
 class AppliedEvent {
   final EventId eventId;
-  final String streamId;
+  final String streamPath;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
@@ -14,7 +14,7 @@ class AppliedEvent {
 
   const AppliedEvent({
     required this.eventId,
-    required this.streamId,
+    required this.streamPath,
     required this.encodedEvent,
     required this.occuredAt,
     required this.localSequence,
@@ -23,7 +23,7 @@ class AppliedEvent {
 
   ReplicatedEvent toReplicatedEvent() => ReplicatedEvent(
     eventId: eventId,
-    streamId: streamId,
+    streamPath: streamPath,
     encodedEvent: encodedEvent,
     occuredAt: occuredAt,
   );
@@ -34,7 +34,7 @@ class AppliedEvent {
     required int streamVersion,
   }) => AppliedEvent(
     eventId: event.eventId,
-    streamId: event.streamId,
+    streamPath: event.streamPath,
     encodedEvent: event.encodedEvent,
     occuredAt: event.occuredAt,
     localSequence: localSequence,

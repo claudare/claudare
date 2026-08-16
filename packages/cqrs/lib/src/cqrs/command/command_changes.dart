@@ -20,28 +20,28 @@ class CommandChanges {
 
   /// For assertions, ensures that every inserted event has a lock.
   bool isValid() {
-    final streamIds = <String>{};
+    final streamPaths = <String>{};
 
     for (final event in events) {
-      streamIds.add(event.streamId);
+      streamPaths.add(event.streamPath);
     }
 
     for (final lock in locks) {
-      if (!streamIds.remove(lock.streamId)) {
+      if (!streamPaths.remove(lock.streamPath)) {
         return false;
       }
     }
 
-    return streamIds.isEmpty;
+    return streamPaths.isEmpty;
   }
 }
 
 class StreamLocalLock {
-  final String streamId;
+  final String streamPath;
   final int originatingStreamVersion;
 
   const StreamLocalLock({
-    required this.streamId,
+    required this.streamPath,
     required this.originatingStreamVersion,
   });
 }

@@ -76,7 +76,10 @@ void main() {
           _commandChanges(
             'create',
             localLocks: const [
-              StreamLocalLock(streamId: 'test/1', originatingStreamVersion: 0),
+              StreamLocalLock(
+                streamPath: 'test/1',
+                originatingStreamVersion: 0,
+              ),
             ],
             events: [
               _storedEvent('test/1', 'created'),
@@ -84,7 +87,7 @@ void main() {
             ],
           ),
         );
-        await _appendOne(store, streamId: 'test/2', kind: 'next');
+        await _appendOne(store, streamPath: 'test/2', kind: 'next');
 
         expect(first.orders.map((order) => order.localSequence), [1, 2]);
         final commands = await session.readAppliedCommands();
@@ -101,14 +104,14 @@ void main() {
       });
 
       test('rolls back stale locks without allocator holes', () async {
-        await _appendOne(store, streamId: 'test/1', kind: 'first');
+        await _appendOne(store, streamPath: 'test/1', kind: 'first');
         await expectLater(
           store.saveChanges(
             _commandChanges(
               'stale',
               localLocks: const [
                 StreamLocalLock(
-                  streamId: 'test/1',
+                  streamPath: 'test/1',
                   originatingStreamVersion: 0,
                 ),
               ],
@@ -119,7 +122,7 @@ void main() {
         );
         await _appendOne(
           store,
-          streamId: 'test/1',
+          streamPath: 'test/1',
           kind: 'second',
           originatingVersion: 1,
         );
@@ -265,8 +268,8 @@ void main() {
             _commandChanges(
               'command',
               localLocks: const [
-                StreamLocalLock(streamId: 'one', originatingStreamVersion: 0),
-                StreamLocalLock(streamId: 'two', originatingStreamVersion: 0),
+                StreamLocalLock(streamPath: 'one', originatingStreamVersion: 0),
+                StreamLocalLock(streamPath: 'two', originatingStreamVersion: 0),
               ],
               events: [
                 _storedEvent('one', 'first'),
@@ -284,9 +287,9 @@ void main() {
       );
 
       test('pages applied commands by receiver-local sequence', () async {
-        await _appendOne(store, streamId: 'one', kind: 'one');
-        await _appendOne(store, streamId: 'two', kind: 'two');
-        await _appendOne(store, streamId: 'three', kind: 'three');
+        await _appendOne(store, streamPath: 'one', kind: 'one');
+        await _appendOne(store, streamPath: 'two', kind: 'two');
+        await _appendOne(store, streamPath: 'three', kind: 'three');
         expect(
           (await store.getAppliedCommands(
             0,
@@ -302,11 +305,11 @@ void main() {
       });
 
       test('scans stream and filtered global readers across pages', () async {
-        await _appendOne(store, streamId: 'one', kind: 'one-a');
-        await _appendOne(store, streamId: 'two', kind: 'two');
+        await _appendOne(store, streamPath: 'one', kind: 'one-a');
+        await _appendOne(store, streamPath: 'two', kind: 'two');
         await _appendOne(
           store,
-          streamId: 'one',
+          streamPath: 'one',
           kind: 'one-b',
           originatingVersion: 1,
         );
@@ -327,7 +330,7 @@ void main() {
       });
 
       test('resets applied and orphan pending state', () async {
-        await _appendOne(store, streamId: 'one', kind: 'one');
+        await _appendOne(store, streamPath: 'one', kind: 'one');
         final orphan = CommandId(10, 1);
         await store.stageReplicatedEvents([_replicatedEvent(orphan, 0)]);
         await store.reset();
@@ -342,7 +345,7 @@ void main() {
 
 Future<void> _appendOne(
   EventStore store, {
-  required String streamId,
+  required String streamPath,
   required String kind,
   int originatingVersion = 0,
 }) => store.saveChanges(
@@ -350,11 +353,11 @@ Future<void> _appendOne(
     kind,
     localLocks: [
       StreamLocalLock(
-        streamId: streamId,
+        streamPath: streamPath,
         originatingStreamVersion: originatingVersion,
       ),
     ],
-    events: [_storedEvent(streamId, kind)],
+    events: [_storedEvent(streamPath, kind)],
   ),
 );
 
@@ -381,8 +384,8 @@ CommandChanges _commandChanges(
 EncodedCommand _encodedCommand(String kind) =>
     EncodedCommand(kind: kind, bytes: Uint8List.fromList([kind.length]));
 
-EventAppend _storedEvent(String streamId, String kind) => EventAppend(
-  streamId: streamId,
+EventAppend _storedEvent(String streamPath, String kind) => EventAppend(
+  streamPath: streamPath,
   encodedEvent: EncodedEvent(
     kind: kind,
     bytes: Uint8List.fromList([kind.length]),
@@ -411,7 +414,7 @@ ReplicatedEvent _replicatedEvent(
   String kind = 'event',
 }) => ReplicatedEvent(
   eventId: EventId(commandId.deviceId, commandId.sequence, index),
-  streamId: 'test/${commandId.deviceId}',
+  streamPath: 'test/${commandId.deviceId}',
   encodedEvent: EncodedEvent(
     kind: kind,
     bytes: Uint8List.fromList([kind.length, index]),

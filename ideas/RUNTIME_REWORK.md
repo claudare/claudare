@@ -1,7 +1,7 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stage 0 is implemented; Stages 1-9
-remain future work. Nothing in those later stages should be treated as
+Status: decision-complete design proposal. Stages 0-1 are implemented; Stages
+2-9 remain future work. Nothing in those later stages should be treated as
 implemented behavior until the source and repository documentation say so.
 
 This is a clean development migration. The implementation does not need
@@ -548,6 +548,15 @@ for the runtime cutover.
 - Remove every old stream-ID route symbol and path.
 
 Gate: the workspace uses route/path/params terminology exclusively.
+
+Stage 1 is complete. `StreamRoute`, `StreamRouteAll`, and
+`StreamRouteWildcard` now expose `buildPath`, `parseParams`, and path-only
+`matches`. Command state and locks, runtime event envelopes, projection
+routing, durable event records, EventStore databases, test utilities, and
+application callers use `streamPath` and `streamParams`. The SQLite event
+schema uses `stream_path`; existing development databases are not migrated.
+All old stream-ID route source files, imports, symbols, and application paths
+were removed without aliases.
 
 ### Stage 2: Replace event codecs with the registry
 

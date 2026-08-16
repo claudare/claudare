@@ -3,7 +3,7 @@ import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_codec_safe.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
+import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -23,20 +23,19 @@ class CommandContext {
        _timeProvider = timeProvider,
        _idGenerator = idGenerator;
 
-  CommandStream<TEvent, TData> stream<TEvent, TData>(
+  CommandStream<TEvent, TParams> stream<TEvent, TParams>(
     EventCodec<TEvent> eventCodec,
-    StreamIdPattern<TData> streamIdPattern,
-    TData streamData,
+    StreamRoute<TParams> streamRoute,
+    TParams streamParams,
   ) {
-    final streamId = streamIdPattern.toPath(streamData);
+    final streamPath = streamRoute.buildPath(streamParams);
     final safeEventCodec = EventCodecSafe(eventCodec);
-    return CommandStream<TEvent, TData>(
+    return CommandStream<TEvent, TParams>(
       _eventStore,
       _executionState,
       safeEventCodec,
-      streamId,
-      streamData,
-      streamIdPattern,
+      streamPath,
+      streamParams,
       _timeProvider,
     );
   }

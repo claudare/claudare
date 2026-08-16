@@ -108,7 +108,7 @@ Future<void> _stage(
         command.commandId.sequence,
         0,
       ),
-      streamId: 'test/1',
+      streamPath: 'test/1',
       encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
       occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
     ),

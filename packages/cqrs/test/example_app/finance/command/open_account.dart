@@ -4,7 +4,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 
 import '../account_event/account.dart';
-import '../stream_id/account_stream_id.dart';
+import '../stream_route/account_stream_route.dart';
 
 class OpenAccountInput implements CommandInput {
   final String name;
@@ -23,7 +23,7 @@ class OpenAccount implements Command<OpenAccountInput> {
   Future<void> handle(input, ctx) async {
     final accountId = ctx.newId();
 
-    final stream = ctx.stream(accountCodec, accountStreamId, accountId);
+    final stream = ctx.stream(accountCodec, accountStreamRoute, accountId);
 
     // TODO: would be nice to check that no other account has the same name?
 

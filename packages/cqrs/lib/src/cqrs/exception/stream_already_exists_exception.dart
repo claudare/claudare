@@ -1,8 +1,8 @@
 class StreamAlreadyExistsException implements Exception {
-  final String streamId;
-  const StreamAlreadyExistsException(this.streamId);
+  final String streamPath;
+  const StreamAlreadyExistsException(this.streamPath);
 
   @override
   String toString() =>
-      'StreamAlreadyExistsException: stream "$streamId" already exists';
+      'StreamAlreadyExistsException: stream "$streamPath" already exists';
 }

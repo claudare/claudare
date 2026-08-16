@@ -30,12 +30,12 @@ void main() {
         locks: [],
         events: [
           EventAppend(
-            streamId: 'test',
+            streamPath: 'test',
             encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
             occuredAt: timestamp,
           ),
           EventAppend(
-            streamId: 'test',
+            streamPath: 'test',
             encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
             occuredAt: timestamp,
           ),
@@ -51,7 +51,7 @@ void main() {
         startedAt: timestamp,
         completedAt: timestamp,
         locks: [
-          StreamLocalLock(streamId: 'test', originatingStreamVersion: 42),
+          StreamLocalLock(streamPath: 'test', originatingStreamVersion: 42),
         ],
         events: [],
       );

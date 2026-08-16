@@ -1,9 +1,9 @@
 class StreamAlreadyLockedException implements Exception {
-  final String streamId;
+  final String streamPath;
 
-  const StreamAlreadyLockedException(this.streamId);
+  const StreamAlreadyLockedException(this.streamPath);
 
   @override
   String toString() =>
-      'StreamAlreadyLockedException: $streamId is already locked';
+      'StreamAlreadyLockedException: $streamPath is already locked';
 }

@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 import '../account_event/account.dart';
 import '../command/atm_depost.dart';
-import '../stream_id/account_stream_id.dart';
+import '../stream_route/account_stream_route.dart';
 
 // testing the command tester on the example app
 // TODO: these tests need to be standalone
@@ -27,7 +27,7 @@ void main() {
 
     test('happy path', () async {
       commandTester.withEvent(
-        accountStreamId,
+        accountStreamRoute,
         '123',
         accountCodec,
         AccountOpened(name: 'test'),
@@ -40,7 +40,7 @@ void main() {
 
       final events = await commandTester.getWrittenEvents(
         accountCodec,
-        accountStreamId,
+        accountStreamRoute,
         '123',
       );
       expect(events, hasLength(1));

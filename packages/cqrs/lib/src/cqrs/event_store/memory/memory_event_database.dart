@@ -53,19 +53,19 @@ class MemoryEventDatabase implements EventDatabase {
   );
 
   @override
-  Future<int> getStreamVersion(String streamId) async =>
-      _streamVersions[streamId] ?? 0;
+  Future<int> getStreamVersion(String streamPath) async =>
+      _streamVersions[streamPath] ?? 0;
 
   @override
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
-    String streamId,
+    String streamPath,
     int streamVersionCursor,
     int count,
   ) async {
     final events = _events
         .where(
           (event) =>
-              event.streamId == streamId &&
+              event.streamPath == streamPath &&
               event.streamVersion > streamVersionCursor,
         )
         .take(count)
@@ -93,12 +93,12 @@ class MemoryEventDatabase implements EventDatabase {
         .where(
           (event) =>
               event.localSequence > localSequenceCursor &&
-              patternFilter.doesMatchPath(event.streamId),
+              patternFilter.doesMatchPath(event.streamPath),
         )
         .take(count)
         .map(
           (event) => LocalEvent(
-            streamId: event.streamId,
+            streamPath: event.streamPath,
             encodedEvent: event.encodedEvent,
             occuredAt: event.occuredAt,
             localSequence: event.localSequence,
@@ -116,7 +116,7 @@ class MemoryEventDatabase implements EventDatabase {
     PatternFilter patternFilter,
   ) async {
     final matching = _events.where(
-      (event) => patternFilter.doesMatchPath(event.streamId),
+      (event) => patternFilter.doesMatchPath(event.streamPath),
     );
     return GetLocalLastEventResult(
       localSequence: matching.isEmpty ? 0 : matching.last.localSequence,
@@ -210,11 +210,11 @@ class MemoryEventDatabase implements EventDatabase {
           event.localSequence != nextEventSequence++) {
         throw StateError('event identity or local sequence is invalid');
       }
-      final nextStreamVersion = (versions[event.streamId] ?? 0) + 1;
+      final nextStreamVersion = (versions[event.streamPath] ?? 0) + 1;
       if (event.streamVersion != nextStreamVersion) {
         throw StateError('event stream version is invalid');
       }
-      versions[event.streamId] = nextStreamVersion;
+      versions[event.streamPath] = nextStreamVersion;
     }
   }
 
@@ -222,7 +222,7 @@ class MemoryEventDatabase implements EventDatabase {
     _commands.add(command);
     _events.addAll(events);
     for (final event in events) {
-      _streamVersions[event.streamId] = event.streamVersion;
+      _streamVersions[event.streamPath] = event.streamVersion;
     }
   }
 

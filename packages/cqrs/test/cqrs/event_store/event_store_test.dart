@@ -60,11 +60,11 @@ Future<SaveChangesResult> _append(EventStore store) => store.saveChanges(
     startedAt: _timestamp,
     completedAt: _timestamp,
     locks: const [
-      StreamLocalLock(streamId: 'test/1', originatingStreamVersion: 0),
+      StreamLocalLock(streamPath: 'test/1', originatingStreamVersion: 0),
     ],
     events: [
       EventAppend(
-        streamId: 'test/1',
+        streamPath: 'test/1',
         encodedEvent: EncodedEvent(kind: 'created', bytes: Uint8List(0)),
         occuredAt: _timestamp,
       ),
@@ -94,7 +94,7 @@ class _ReadFailingDatabase extends MemoryEventDatabase {
   _ReadFailingDatabase(this.failure);
 
   @override
-  Future<int> getStreamVersion(String streamId) async {
+  Future<int> getStreamVersion(String streamPath) async {
     throw failure;
   }
 }

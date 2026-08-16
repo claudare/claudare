@@ -2,7 +2,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
-import 'package:notes/stream_id/note_stream_id.dart';
+import 'package:notes/stream_route/note_stream_route.dart';
 
 class RestoreNoteInput implements CommandInput {
   final String noteId;
@@ -29,7 +29,7 @@ class RestoreNote implements Command<RestoreNoteInput> {
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
 
-    final stream = ctx.stream(noteCodec, noteStreamId, noteId);
+    final stream = ctx.stream(noteCodec, noteStreamRoute, noteId);
 
     final deletedCount = await stream.scan().fold(0, (count, ev) {
       if (ev is NoteTrashed) {

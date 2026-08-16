@@ -45,9 +45,9 @@ class CommandTester {
   }
 
   /// Appends event to the stream with type safety for stream and event.
-  CommandTester withEvent<Event, IdData>(
-    StreamIdPattern<IdData> streamIdPattern,
-    IdData streamData,
+  CommandTester withEvent<Event, Params>(
+    StreamRoute<Params> streamRoute,
+    Params streamParams,
     EventCodec<Event> eventCodec,
     Event event,
   ) {
@@ -55,10 +55,10 @@ class CommandTester {
 
     final encoded = eventCodec.encode(event);
 
-    final streamPath = streamIdPattern.toPath(streamData);
+    final streamPath = streamRoute.buildPath(streamParams);
     _seedEvents.add(
       EventAppend(
-        streamId: streamPath,
+        streamPath: streamPath,
         encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
       ),
@@ -68,8 +68,8 @@ class CommandTester {
   }
 
   /// Appends event to the stream with type safety for event only.
-  CommandTester withEvent2<Event, IdData>(
-    String streamIdPath,
+  CommandTester withEvent2<Event, Params>(
+    String streamPath,
     EventCodec<Event> eventCodec,
     Event event,
   ) {
@@ -79,7 +79,7 @@ class CommandTester {
 
     _seedEvents.add(
       EventAppend(
-        streamId: streamIdPath,
+        streamPath: streamPath,
         encodedEvent: encoded,
         occuredAt: _timeProvider.now(),
       ),
@@ -88,23 +88,23 @@ class CommandTester {
     return this;
   }
 
-  Future<List<Event>> getWrittenEvents<Event, IdData>(
+  Future<List<Event>> getWrittenEvents<Event, Params>(
     EventCodec<Event> eventCodec,
-    StreamIdPattern<IdData> streamIdPattern,
-    IdData streamData,
+    StreamRoute<Params> streamRoute,
+    Params streamParams,
   ) async {
-    return getWrittenEvents2(eventCodec, streamIdPattern.toPath(streamData));
+    return getWrittenEvents2(eventCodec, streamRoute.buildPath(streamParams));
   }
 
   Future<List<Event>> getWrittenEvents2<Event>(
     EventCodec<Event> eventCodec,
-    String streamIdPath,
+    String streamPath,
   ) async {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
     final reader = _eventStore.getGlobalReader(
-      PatternFilter.exact(streamIdPath),
+      PatternFilter.exact(streamPath),
       _preRunLastLocalSequence!,
     );
 
@@ -134,7 +134,7 @@ class CommandTester {
   // TODO: this can be cleaned up
   Future<void> _flushSeeds() async {
     for (final event in _seedEvents) {
-      final info = await _eventStore.getStreamInfo(event.streamId);
+      final info = await _eventStore.getStreamInfo(event.streamPath);
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
         CommandChanges(
@@ -146,7 +146,7 @@ class CommandTester {
           completedAt: timestamp,
           locks: [
             StreamLocalLock(
-              streamId: event.streamId,
+              streamPath: event.streamPath,
               originatingStreamVersion: info?.originatingStreamVersion ?? 0,
             ),
           ],

@@ -1,8 +1,8 @@
 class StreamNotFoundException implements Exception {
-  final String streamId;
+  final String streamPath;
 
-  const StreamNotFoundException(this.streamId);
+  const StreamNotFoundException(this.streamPath);
 
   @override
-  String toString() => 'StreamNotFoundException: streamId=$streamId';
+  String toString() => 'StreamNotFoundException: streamPath=$streamPath';
 }

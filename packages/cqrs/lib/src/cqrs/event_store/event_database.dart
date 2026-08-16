@@ -27,9 +27,9 @@ abstract interface class EventDatabase {
 
   Future<void> migrate();
   Future<EventDatabaseState> getState();
-  Future<int> getStreamVersion(String streamId);
+  Future<int> getStreamVersion(String streamPath);
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
-    String streamId,
+    String streamPath,
     int streamVersionCursor,
     int count,
   );

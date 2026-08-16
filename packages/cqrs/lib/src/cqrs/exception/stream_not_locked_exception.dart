@@ -1,8 +1,8 @@
 class StreamNotLockedException implements Exception {
-  final String streamId;
+  final String streamPath;
 
-  const StreamNotLockedException(this.streamId);
+  const StreamNotLockedException(this.streamPath);
 
   @override
-  String toString() => 'StreamNotLockedException: $streamId is not locked';
+  String toString() => 'StreamNotLockedException: $streamPath is not locked';
 }

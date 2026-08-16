@@ -39,9 +39,10 @@ export 'src/cqrs/projection/projection_failure_handler.dart';
 export 'src/cqrs/projection/failure_handler/standard_projection_failure_handler.dart';
 export 'src/cqrs/projection/failure_handler/throwing_projection_failure_handler.dart';
 
-// id pattern
-export 'src/cqrs/stream_id_pattern/stream_id_pattern.dart';
-export 'src/cqrs/stream_id_pattern/stream_id_pattern_wildcard.dart';
+// stream route
+export 'src/cqrs/stream_route/stream_route.dart';
+export 'src/cqrs/stream_route/stream_route_all.dart';
+export 'src/cqrs/stream_route/stream_route_wildcard.dart';
 
 // exception
 export 'src/cqrs/exception/command_codec_exception.dart';

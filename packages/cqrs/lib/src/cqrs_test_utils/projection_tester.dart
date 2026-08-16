@@ -1,17 +1,17 @@
 import 'package:cqrs/cqrs.dart';
 
-class ProjectionTester<Event, StreamIdData> {
-  final Projection<Event, StreamIdData> projection;
-  final List<_ProjectionTestEvent<Event, StreamIdData>> _events = [];
+class ProjectionTester<Event, StreamParams> {
+  final Projection<Event, StreamParams> projection;
+  final List<_ProjectionTestEvent<Event, StreamParams>> _events = [];
 
   ProjectionTester(this.projection);
 
-  ProjectionTester<Event, StreamIdData> withEvent(
-    StreamIdData streamIdData,
+  ProjectionTester<Event, StreamParams> withEvent(
+    StreamParams streamParams,
     Event event, {
     required DateTime occuredAt,
   }) {
-    _events.add(_ProjectionTestEvent(streamIdData, event, occuredAt));
+    _events.add(_ProjectionTestEvent(streamParams, event, occuredAt));
     return this;
   }
 
@@ -27,7 +27,7 @@ class ProjectionTester<Event, StreamIdData> {
 
         final metadata = EventMetadata(occuredAt: event.occuredAt);
 
-        await projection.apply(event.streamIdData, event.event, metadata);
+        await projection.apply(event.streamParams, event.event, metadata);
       }
 
       return true;
@@ -38,10 +38,10 @@ class ProjectionTester<Event, StreamIdData> {
   }
 }
 
-class _ProjectionTestEvent<Event, StreamIdData> {
-  final StreamIdData streamIdData;
+class _ProjectionTestEvent<Event, StreamParams> {
+  final StreamParams streamParams;
   final Event event;
   final DateTime occuredAt;
 
-  const _ProjectionTestEvent(this.streamIdData, this.event, this.occuredAt);
+  const _ProjectionTestEvent(this.streamParams, this.event, this.occuredAt);
 }

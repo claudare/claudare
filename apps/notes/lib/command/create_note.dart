@@ -3,7 +3,7 @@ import 'package:common/common.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
-import 'package:notes/stream_id/note_stream_id.dart';
+import 'package:notes/stream_route/note_stream_route.dart';
 
 class CreateNoteInput implements CommandInput {
   final String noteId;
@@ -33,7 +33,7 @@ class CreateNote implements Command<CreateNoteInput> {
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
 
-    final stream = ctx.stream(noteCodec, noteStreamId, noteId);
+    final stream = ctx.stream(noteCodec, noteStreamRoute, noteId);
 
     await stream.mustNotExist();
 

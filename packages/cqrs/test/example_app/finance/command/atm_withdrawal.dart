@@ -4,7 +4,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 
 import '../account_event/account.dart';
-import '../stream_id/account_stream_id.dart';
+import '../stream_route/account_stream_route.dart';
 
 class AtmWithdrawalInput implements CommandInput {
   final String accountId;
@@ -27,7 +27,11 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
       throw const CommandException('amount must be positive');
     }
 
-    final stream = ctx.stream(accountCodec, accountStreamId, input.accountId);
+    final stream = ctx.stream(
+      accountCodec,
+      accountStreamRoute,
+      input.accountId,
+    );
 
     int balance = 0;
 

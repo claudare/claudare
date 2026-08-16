@@ -1,9 +1,9 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
-abstract class SqliteProjection<Event, StreamIdData> {
+abstract class SqliteProjection<Event, StreamParams> {
   String get name;
-  StreamIdPattern<StreamIdData> get streamIdPattern;
+  StreamRoute<StreamParams> get streamRoute;
   EventCodec<Event> get eventCodec;
   ProjectionFailureHandler get failureHandler;
 
@@ -11,7 +11,7 @@ abstract class SqliteProjection<Event, StreamIdData> {
 
   void apply(
     SyncContext ctx,
-    StreamIdData idData,
+    StreamParams streamParams,
     Event event,
     EventMetadata metadata,
   );
@@ -21,10 +21,10 @@ abstract class SqliteProjection<Event, StreamIdData> {
   }
 }
 
-class _AdaptedSqliteProjection<Event, StreamIdData>
-    implements Projection<Event, StreamIdData> {
+class _AdaptedSqliteProjection<Event, StreamParams>
+    implements Projection<Event, StreamParams> {
   final IsolateSqlite _db;
-  final SqliteProjection<Event, StreamIdData> _projection;
+  final SqliteProjection<Event, StreamParams> _projection;
 
   const _AdaptedSqliteProjection(this._db, this._projection);
 
@@ -32,8 +32,7 @@ class _AdaptedSqliteProjection<Event, StreamIdData>
   String get name => _projection.name;
 
   @override
-  StreamIdPattern<StreamIdData> get streamIdPattern =>
-      _projection.streamIdPattern;
+  StreamRoute<StreamParams> get streamRoute => _projection.streamRoute;
 
   @override
   EventCodec<Event> get eventCodec => _projection.eventCodec;
@@ -48,12 +47,12 @@ class _AdaptedSqliteProjection<Event, StreamIdData>
 
   @override
   Future<void> apply(
-    StreamIdData idData,
+    StreamParams streamParams,
     Event event,
     EventMetadata metadata,
   ) async {
     await _db.transaction((tx) {
-      _projection.apply(tx, idData, event, metadata);
+      _projection.apply(tx, streamParams, event, metadata);
     });
   }
 }

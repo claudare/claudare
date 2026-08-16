@@ -5,13 +5,13 @@ import 'package:cqrs/src/cqrs/event/event_id.dart';
 
 class ReplicatedEvent {
   final EventId eventId;
-  final String streamId;
+  final String streamPath;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
   const ReplicatedEvent({
     required this.eventId,
-    required this.streamId,
+    required this.streamPath,
     required this.encodedEvent,
     required this.occuredAt,
   });
@@ -22,7 +22,7 @@ class ReplicatedEvent {
       other.runtimeType == runtimeType &&
           other is ReplicatedEvent &&
           eventId == other.eventId &&
-          streamId == other.streamId &&
+          streamPath == other.streamPath &&
           encodedEvent.kind == other.encodedEvent.kind &&
           _bytesEqual(encodedEvent.bytes, other.encodedEvent.bytes) &&
           occuredAt == other.occuredAt;
@@ -30,7 +30,7 @@ class ReplicatedEvent {
   @override
   int get hashCode => Object.hash(
     eventId,
-    streamId,
+    streamPath,
     encodedEvent.kind,
     Object.hashAll(encodedEvent.bytes),
     occuredAt,

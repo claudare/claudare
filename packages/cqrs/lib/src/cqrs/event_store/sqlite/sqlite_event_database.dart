@@ -36,7 +36,7 @@ final eventDatabaseMigrations = SqliteMigrations(
       'CREATE INDEX idx_applied_command_id ON applied_command(device_id, sequence);',
     );
     tx.execute('''CREATE TABLE stream(
-            stream_id TEXT PRIMARY KEY NOT NULL,
+            stream_path TEXT PRIMARY KEY NOT NULL,
             version INTEGER NOT NULL
           );''');
     tx.execute('''CREATE TABLE event(
@@ -44,18 +44,18 @@ final eventDatabaseMigrations = SqliteMigrations(
             device_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             event_index INTEGER NOT NULL CHECK(event_index >= 0),
-            stream_id TEXT NOT NULL,
+            stream_path TEXT NOT NULL,
             stream_version INTEGER NOT NULL,
             kind TEXT NOT NULL,
             detail BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
             UNIQUE(device_id, sequence, event_index),
-            UNIQUE(stream_id, stream_version),
+            UNIQUE(stream_path, stream_version),
             FOREIGN KEY(device_id, sequence)
               REFERENCES applied_command(device_id, sequence)
           );''');
     tx.execute(
-      'CREATE INDEX idx_event_stream ON event(stream_id, stream_version);',
+      'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
     );
     tx.execute('''CREATE TABLE pending_command(
             device_id INTEGER NOT NULL,
@@ -72,7 +72,7 @@ final eventDatabaseMigrations = SqliteMigrations(
             device_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             event_index INTEGER NOT NULL CHECK(event_index >= 0),
-            stream_id TEXT NOT NULL,
+            stream_path TEXT NOT NULL,
             kind TEXT NOT NULL,
             detail BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
@@ -111,24 +111,24 @@ class SqliteEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<int> getStreamVersion(String streamId) async =>
+  Future<int> getStreamVersion(String streamPath) async =>
       await database.queryValue<int?>(
-        'SELECT version FROM stream WHERE stream_id = ?',
-        [streamId],
+        'SELECT version FROM stream WHERE stream_path = ?',
+        [streamPath],
       ) ??
       0;
 
   @override
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
-    String streamId,
+    String streamPath,
     int streamVersionCursor,
     int count,
   ) async {
     final rows = await database.query(
       '''SELECT kind, detail, occured_at, stream_version FROM event
-      WHERE stream_id = ? AND stream_version > ?
+      WHERE stream_path = ? AND stream_version > ?
       ORDER BY stream_version ASC LIMIT ?''',
-      [streamId, streamVersionCursor, count],
+      [streamPath, streamVersionCursor, count],
     );
     final events = [
       for (final row in rows)
@@ -155,7 +155,7 @@ class SqliteEventDatabase implements EventDatabase {
   ) async {
     final filter = _sqlFilter(patternFilter);
     final rows = await database.query(
-      '''SELECT stream_id, kind, detail, occured_at, local_sequence FROM event
+      '''SELECT stream_path, kind, detail, occured_at, local_sequence FROM event
       WHERE ${filter.sql} AND local_sequence > ?
       ORDER BY local_sequence ASC LIMIT ?''',
       [...filter.arguments, localSequenceCursor, count],
@@ -163,7 +163,7 @@ class SqliteEventDatabase implements EventDatabase {
     final events = [
       for (final row in rows)
         LocalEvent(
-          streamId: row[0] as String,
+          streamPath: row[0] as String,
           encodedEvent: EncodedEvent(
             kind: row[1] as String,
             bytes: row[2] as Uint8List,
@@ -241,7 +241,7 @@ class SqliteEventDatabase implements EventDatabase {
 
   Future<ReplicatedEvent?> _getEvent(String table, EventId eventId) async {
     final row = await database.queryRow(
-      '''SELECT stream_id, kind, detail, occured_at FROM $table
+      '''SELECT stream_path, kind, detail, occured_at FROM $table
       WHERE device_id = ? AND sequence = ? AND event_index = ?''',
       [eventId.deviceId, eventId.sequence, eventId.index],
     );
@@ -251,7 +251,7 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<List<ReplicatedEvent>> getPendingEvents(CommandId commandId) async {
     final rows = await database.query(
-      '''SELECT event_index, stream_id, kind, detail, occured_at
+      '''SELECT event_index, stream_path, kind, detail, occured_at
       FROM pending_event WHERE device_id = ? AND sequence = ?
       ORDER BY event_index ASC''',
       [commandId.deviceId, commandId.sequence],
@@ -264,7 +264,7 @@ class SqliteEventDatabase implements EventDatabase {
             commandId.sequence,
             row[0] as int,
           ),
-          streamId: row[1] as String,
+          streamPath: row[1] as String,
           encodedEvent: EncodedEvent(
             kind: row[2] as String,
             bytes: row[3] as Uint8List,
@@ -305,7 +305,7 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async {
     final rows = await database.query(
-      '''SELECT event_index, stream_id, kind, detail, occured_at,
+      '''SELECT event_index, stream_path, kind, detail, occured_at,
       local_sequence, stream_version FROM event
       WHERE device_id = ? AND sequence = ? ORDER BY event_index ASC''',
       [commandId.deviceId, commandId.sequence],
@@ -318,7 +318,7 @@ class SqliteEventDatabase implements EventDatabase {
             commandId.sequence,
             row[0] as int,
           ),
-          streamId: row[1] as String,
+          streamPath: row[1] as String,
           encodedEvent: EncodedEvent(
             kind: row[2] as String,
             bytes: row[3] as Uint8List,
@@ -346,12 +346,12 @@ class SqliteEventDatabase implements EventDatabase {
         for (final event in events) {
           tx.execute(
             '''INSERT INTO pending_event(device_id, sequence, event_index,
-            stream_id, kind, detail, occured_at) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            stream_path, kind, detail, occured_at) VALUES (?, ?, ?, ?, ?, ?, ?)''',
             [
               event.eventId.deviceId,
               event.eventId.sequence,
               event.eventId.index,
-              event.streamId,
+              event.streamPath,
               event.encodedEvent.kind,
               event.encodedEvent.bytes,
               event.occuredAt.millisecondsSinceEpoch,
@@ -434,14 +434,14 @@ void _insertApplied(
   for (final event in events) {
     tx.execute(
       '''INSERT INTO event(local_sequence, device_id, sequence, event_index,
-      stream_id, stream_version, kind, detail, occured_at)
+      stream_path, stream_version, kind, detail, occured_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
       [
         event.localSequence,
         event.eventId.deviceId,
         event.eventId.sequence,
         event.eventId.index,
-        event.streamId,
+        event.streamPath,
         event.streamVersion,
         event.encodedEvent.kind,
         event.encodedEvent.bytes,
@@ -449,9 +449,9 @@ void _insertApplied(
       ],
     );
     tx.execute(
-      '''INSERT INTO stream(stream_id, version) VALUES (?, ?)
-      ON CONFLICT(stream_id) DO UPDATE SET version = excluded.version''',
-      [event.streamId, event.streamVersion],
+      '''INSERT INTO stream(stream_path, version) VALUES (?, ?)
+      ON CONFLICT(stream_path) DO UPDATE SET version = excluded.version''',
+      [event.streamPath, event.streamVersion],
     );
   }
 }
@@ -459,7 +459,7 @@ void _insertApplied(
 ReplicatedEvent _readReplicatedEvent(EventId eventId, Row row) =>
     ReplicatedEvent(
       eventId: eventId,
-      streamId: row[0] as String,
+      streamPath: row[0] as String,
       encodedEvent: EncodedEvent(
         kind: row[1] as String,
         bytes: row[2] as Uint8List,
@@ -481,8 +481,8 @@ VersionVector _decodeVector(Uint8List value) =>
     case PatternFilterType.any:
       return (sql: '1 = 1', arguments: []);
     case PatternFilterType.exact:
-      return (sql: 'stream_id = ?', arguments: [filter.pattern]);
+      return (sql: 'stream_path = ?', arguments: [filter.pattern]);
     case PatternFilterType.startsWith:
-      return (sql: 'stream_id LIKE ?', arguments: ['${filter.pattern}%']);
+      return (sql: 'stream_path LIKE ?', arguments: ['${filter.pattern}%']);
   }
 }

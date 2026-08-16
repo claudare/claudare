@@ -2,7 +2,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:notes/event/note/_note_codec.dart';
 import 'package:notes/event/note/note.dart';
-import 'package:notes/stream_id/note_stream_id.dart';
+import 'package:notes/stream_route/note_stream_route.dart';
 
 class TrashNoteInput implements CommandInput {
   final String noteId;
@@ -28,7 +28,7 @@ class TrashNote implements Command<TrashNoteInput> {
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;
 
-    final stream = ctx.stream(noteCodec, noteStreamId, noteId);
+    final stream = ctx.stream(noteCodec, noteStreamRoute, noteId);
 
     var exists = false; // Annoying usage in current CQRS design
     var trashed = false;

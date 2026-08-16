@@ -14,10 +14,7 @@ class ProjectionRouter {
 
     for (final event in events) {
       for (final runner in _runtimes) {
-        final isAffected = runner.shouldProcess(
-          event.streamIdPattern,
-          event.streamIdStr,
-        );
+        final isAffected = runner.shouldProcess(event.streamPath);
         if (isAffected) {
           runner.enqueue(event);
         }
@@ -48,10 +45,7 @@ class ProjectionRouter {
 
     for (final event in events) {
       for (final runner in _runtimes) {
-        final isAffected = runner.shouldProcess(
-          event.streamIdPattern,
-          event.streamIdStr,
-        );
+        final isAffected = runner.shouldProcess(event.streamPath);
         if (!isAffected) continue;
 
         remaining++;

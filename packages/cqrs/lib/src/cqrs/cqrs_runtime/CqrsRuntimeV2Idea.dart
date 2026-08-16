@@ -91,10 +91,7 @@ class CqrsRuntimeV2Idea {
   void dispatchToProjections(List<EventEnvelope> runtimeEvents) {
     for (final event in runtimeEvents) {
       for (final sink in _projections) {
-        final isAffected = sink.shouldProcess(
-          event.streamIdPattern,
-          event.streamIdStr,
-        );
+        final isAffected = sink.shouldProcess(event.streamPath);
         if (isAffected) {
           sink.enqueue(event);
         }
@@ -123,7 +120,7 @@ class CqrsRuntimeV2Idea {
 
     for (final event in appliedEvents) {
       for (final sink in _projections) {
-        final isAffected = sink.shouldProcessString(event.streamId);
+        final isAffected = sink.shouldProcess(event.streamPath);
         if (isAffected) {
           sink.enqueue(event as dynamic);
         }

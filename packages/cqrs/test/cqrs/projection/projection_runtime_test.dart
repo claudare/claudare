@@ -13,7 +13,6 @@ import 'package:test/test.dart';
 import '../../example_app/finance/account_event/account.dart';
 import '../../example_app/finance/projection/account_summary.dart';
 import '../../example_app/finance/read_model/accounts_summary_read_model.dart';
-import '../../example_app/finance/stream_id/account_stream_id.dart';
 
 // TODO: create a separate, more test-oriented example app to be used in tests
 void main() {
@@ -46,13 +45,13 @@ void main() {
         completedAt: occurredAt,
         locks: const [
           StreamLocalLock(
-            streamId: 'account/missing',
+            streamPath: 'account/missing',
             originatingStreamVersion: 0,
           ),
         ],
         events: [
           EventAppend(
-            streamId: 'account/missing',
+            streamPath: 'account/missing',
             encodedEvent: accountCodec.encode(AccountAtmDeposited(amount: 1)),
             occuredAt: occurredAt,
           ),
@@ -79,9 +78,8 @@ void main() {
     final done = Completer<void>();
     runner.enqueue(
       EventEnvelope(
-        streamIdStr: 'account/missing',
-        streamIdData: 'missing',
-        streamIdPattern: accountStreamId,
+        streamPath: 'account/missing',
+        streamParams: 'missing',
         event: AccountAtmDeposited(amount: 1),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         localSequence: 1,

@@ -1,7 +1,7 @@
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
-import 'package:cqrs/src/cqrs/stream_id_pattern/stream_id_pattern.dart';
+import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
 
-class StreamIdPatternWildcard extends StreamIdPattern<String> {
+class StreamRouteWildcard extends StreamRoute<String> {
   final String _prefix;
 
   @override
@@ -11,7 +11,7 @@ class StreamIdPatternWildcard extends StreamIdPattern<String> {
   final PatternFilter filter;
 
   // too bad this cant be made const (as comparisons will be made usually)
-  StreamIdPatternWildcard(this.pattern)
+  StreamRouteWildcard(this.pattern)
     : assert(
         pattern.endsWith('*'),
         'Wildcard pattern must end with *. Got: "$pattern"',
@@ -22,24 +22,18 @@ class StreamIdPatternWildcard extends StreamIdPattern<String> {
       );
 
   @override
-  String toData(String path) {
-    // assert(
-    //   path.startsWith(_prefix),
-    //   'Path $path does not match wildcard pattern: $pattern',
-    // );
-
-    // could be passed wrongly...
-    if (!path.startsWith(_prefix)) {
+  String parseParams(String streamPath) {
+    if (!streamPath.startsWith(_prefix)) {
       throw ArgumentError.value(
-        path,
-        'path',
+        streamPath,
+        'streamPath',
         'Path does not match wildcard pattern',
       );
     }
 
-    return path.substring(_prefix.length);
+    return streamPath.substring(_prefix.length);
   }
 
   @override
-  String toPath(String data) => '$_prefix$data';
+  String buildPath(String streamParams) => '$_prefix$streamParams';
 }
