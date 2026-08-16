@@ -1,6 +1,5 @@
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
-import 'package:cqrs/src/cqrs/command/command_stream_impl.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_codec_safe.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -31,7 +30,7 @@ class CommandContext {
   ) {
     final streamId = streamIdPattern.toPath(streamData);
     final safeEventCodec = EventCodecSafe(eventCodec);
-    return CommandStreamImpl<TEvent, TData>(
+    return CommandStream<TEvent, TData>(
       _eventStore,
       _executionState,
       safeEventCodec,
