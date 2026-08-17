@@ -67,6 +67,7 @@ These instructions apply to the entire repository.
 - Prefer tests that verify one behavior or invariant. Split unrelated APIs,
   success and failure paths, or outcomes into separate tests, and share setup
   through helpers instead of combining cases in one test.
+- Use table-driven tests when many variants exercise the same behavior.
 
 ## Validation
 
