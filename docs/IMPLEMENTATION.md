@@ -59,6 +59,23 @@ listeners read durable data rather than receiving event payloads. Production
 runtime signal consumption is not implemented yet, and `saveChanges` retains
 its append-order result until direct live delivery is removed.
 
+An internal isolated `EventPump` exercises the future durable consumption path
+without production wiring. It starts each requested scan after the minimum
+prepared projection position, decodes each durable event once, processes
+projection adapters concurrently behind a per-page barrier, and advances every
+participating projection through the page end. Matching events remain
+sequential within a projection, and its batch callback runs once after committed
+page progress. Concurrent pump requests coalesce while forcing another scan, so
+events added during processing or an empty read are not stranded. The first
+codec, projection, callback, reader, or progress failure is terminal for that
+pump instance and is rethrown with its original stack after all projection work
+already started for the page settles.
+
+This pump is currently imported only by white-box tests. `CqrsRuntime` does not
+construct it, subscribe it to `appliedChanges`, run it at startup, expose its
+failure, or own its shutdown. Direct live delivery remains the production path
+until the Stage 7 cutover.
+
 `CqrsRuntime` validates projection names, versions, and route definitions, then
 creates projection runners and initializes or rebuilds them from stored
 per-projection version and page state. A generic projection owns one
@@ -80,9 +97,9 @@ Startup replay reads unfiltered event pages and advances each projection to the
 page end, including pages with no matching routes. It writes runtime progress
 once before and once after each page while keeping matching read-model writes
 sequential. The current direct live-delivery path still advances matching
-events individually. The required projection batch callback is not yet invoked;
-signal-driven pumping and page callback delivery are part of the planned pump
-cutover.
+events individually. The isolated pump invokes the required projection batch
+callback, but production callback delivery and signal-driven pumping remain
+part of the Stage 7 cutover.
 
 ## Current core limits
 

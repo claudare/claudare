@@ -40,7 +40,11 @@ deviations.
 - Handle `Exception` where recovery, reporting, or translation is needed.
   Otherwise let it propagate. Do not handle `Error`. The explicit exceptions
   are `EventCodecSafe` and `CommandCodecSafe`, which translate every codec
-  failure, including `Error`, to their CQRS exception types.
+  failure, including `Error`, to their CQRS exception types. The internal
+  Stage 6 `EventPump` is also a temporary exception: it captures the first
+  thrown object and stack trace, including `Error`, waits for projection work
+  already started for the page, and becomes terminal. Stage 7 will replace
+  this isolated boundary with the public runtime failure wrapper.
 - Preserve stack traces when translating exceptions. Narrow handling of known
   encoding or decoding failures may add context but must not hide other faults.
 - Use assertions for defensive invariants.

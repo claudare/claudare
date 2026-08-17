@@ -1,10 +1,10 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stages 0-4 and the durable event
-source and signaling portion of Stage 5 are implemented. The save-return
-cutover and Stages 6-9 remain future work. Nothing in those remaining parts
-should be treated as implemented behavior until the source and repository
-documentation say so.
+Status: decision-complete design proposal. Stages 0-4, the durable event source
+and signaling portion of Stage 5, and the isolated Stage 6 pump are implemented.
+The save-return cutover and Stages 7-9 remain future work. Nothing in those
+remaining parts should be treated as implemented behavior until the source and
+repository documentation say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -621,14 +621,15 @@ Gate: projections independently resume, rebuild, and advance through pages.
 Stage 4 is complete. RuntimeStore now persists each projection's positive
 version plus applying-through and scanned-through local sequence boundaries.
 Initialization resets only missing, changed, or interrupted projections and
-resumes consistent matching versions. Startup replay reads complete unfiltered
-pages through the existing global reader, applies matching events sequentially,
-and advances progress to every page end with two RuntimeStore writes per
-projection page. Memory and SQLite contract tests cover the progress protocol,
-and restart tests reuse memory state and reopen SQLite storage while adding,
-changing, and interrupting one of two projections. The application-wide global
-migration counter, migration policy, storage operations, schema, and Notes
-wiring were removed. Existing development runtime databases are not migrated.
+resumes consistent matching versions. The legacy startup path creates an
+independent applied-event reader for each projection, applies matching events
+sequentially, and advances progress to every page end with two RuntimeStore
+writes per projection page. Memory and SQLite contract tests cover the progress
+protocol, and restart tests reuse memory state and reopen SQLite storage while
+adding, changing, and interrupting one of two projections. The application-wide
+global migration counter, migration policy, storage operations, schema, and
+Notes wiring were removed. Existing development runtime databases are not
+migrated.
 
 ### Stage 5: Prepare EventStore signaling and the event source
 
@@ -645,9 +646,10 @@ The durable portion of Stage 5 is complete. `getAppliedEventReader` exposes the
 complete applied-event history in exclusive receiver-local sequence pages, and
 `appliedChanges` broadcasts once after each successful non-empty local append
 or pending-command promotion. Memory and SQLite contract tests cover page
-boundaries, interleaved local and promoted ordering, multiple listeners,
-listener-side durable reads, and no-signal outcomes. Production runtime signal
-consumption is not implemented yet. `SaveChangesResult` and
+boundaries, interleaved local and promoted ordering, broadcast delivery to
+multiple test subscribers, subscriber-side durable reads, and no-signal
+outcomes. Production runtime signal consumption is not implemented yet.
+`SaveChangesResult` and
 `StreamAppendOrder` remain temporarily for direct live delivery and move to the
 Stage 7 cutover.
 
@@ -668,6 +670,23 @@ Stage 7 cutover.
 
 Gate: the pump is fully testable without command handlers or an application.
 
+Stage 6 is complete as an internal isolated vertical slice. `EventPump` creates
+a fresh reader for each requested scan from the minimum prepared projection
+position, decodes each durable event once, processes projection pages
+concurrently behind a page barrier, and coalesces concurrent requests without
+losing active-processing or empty-read wakeups. Typed page adapters keep each
+projection sequential, advance scanned progress through unmatched pages, and
+invoke the batch callback once after committed progress for matched pages. The
+pump stores and rethrows the first failure, including `Error`, after all started
+projection work settles, and never reads a later page after failure. Focused
+tests cover positions, routing and typing, decode count, ordering and barriers,
+wakeup races, callbacks, terminal failures, and empty projection lists.
+
+The slice is imported only by white-box tests. `CqrsRuntime` does not own it,
+subscribe to `EventStore.appliedChanges`, pump at startup, expose public failure
+state, or shut it down. Those production lifecycle changes and removal of
+direct delivery remain Stage 7 work.
+
 ### Stage 7: Perform the runtime cutover
 
 - Replace current command-owned routing with `CqrsRuntime.execute`.
@@ -683,7 +702,8 @@ Gate: the pump is fully testable without command handlers or an application.
   routing, obsolete projection queues, and `BoundCommand`.
 - Remove `CqrsRuntimeV2Idea` and any other superseded prototype code.
 - Scan for every old symbol, import, and path.
-- Document the runtime fatal boundary in `CONVENTIONS.md`.
+- Replace the isolated pump's temporary catch-all boundary with the public
+  runtime failure wrapper recorded in `CONVENTIONS.md`.
 
 Gate: there is exactly one projection-delivery path in production code.
 

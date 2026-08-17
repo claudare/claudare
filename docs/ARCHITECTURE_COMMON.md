@@ -104,12 +104,15 @@ state, changed version, or disagreeing applying/scanned boundary triggers reset
 and replay from sequence zero. Projection errors make the derived state
 unhealthy; the event history remains available for repair by reset/replay.
 
-The batch callback is part of the implemented projection contract. Startup
-replay now advances page progress, but the current pre-pump live path still
-delivers matching events directly and production batch callbacks are not yet
-invoked. Direct delivery still uses the temporary append-order save result.
-Signal consumption, callback delivery, and removal of that result belong to the
-planned event-pump cutover.
+The batch callback is part of the implemented projection contract. An isolated
+internal event pump now advances page progress and invokes the callback once
+after each matched page commits. It also exercises single-flight scans, page
+barriers, and terminal failure behavior in white-box tests. The production
+runtime does not own or invoke this pump yet: startup and the current live path
+still use legacy projection delivery, and direct delivery still uses the
+temporary append-order save result. Runtime signal consumption, production
+callback delivery, public failure state, shutdown, and removal of direct
+delivery belong to the Stage 7 cutover.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.
