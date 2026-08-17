@@ -67,27 +67,28 @@ The finance example in `packages/cqrs/test/example_app/finance/account_event`
 is a test-only reference for this organization. Applications own their own
 event families and codecs.
 
-## Projection routes
+## Projections
 
 Define a projection as one read-model owner with a unique name, a positive
-model version, reset behavior, a required `onBatchApplied` callback, and an
-ordered route list. Prefer one `ProjectionRoute<Event, Params>` for each event
-family and stream route:
+model version, one typed `StreamRoute`, one typed `apply` handler, reset
+behavior, and a required `onBatchApplied` callback:
 
 ```dart
-List<ProjectionRoute> get routes => [
-  ProjectionRoute<AccountEvent, String>(
-    streamRoute: accountStreamRoute,
-    apply: applyAccountEvent,
-  ),
-  ProjectionRoute<UserEvent, UserParams>(
-    streamRoute: userStreamRoute,
-    apply: applyUserEvent,
-  ),
-];
+final class AccountProjection implements Projection<AccountEvent, String> {
+  @override
+  StreamRoute<String> get streamRoute => accountStreamRoute;
+
+  @override
+  Future<void> apply(
+    String accountId,
+    AccountEvent event,
+    EventMetadata metadata,
+  ) async {
+    // Apply the event to the read model.
+  }
+}
 ```
 
-The runtime parses stream parameters only after the path and decoded event type
-match. If multiple routes match one event, every route runs once in list order.
-Use `ProjectionRoute<Object, TParams>` when a handler intentionally checks the
-registry-decoded event's runtime type itself.
+The runtime parses stream parameters from the matching path before invoking
+`apply`. Use `Projection<Object, TParams>` when a projection intentionally
+checks the registry-decoded event's runtime type itself.

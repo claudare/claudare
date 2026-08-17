@@ -4,7 +4,7 @@ import 'package:notes/event/note/note.dart';
 import 'package:notes/projection/search/search_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class SearchProjection implements Projection {
+class SearchProjection implements Projection<NoteEvent, String> {
   final SearchProjectionRepo _repo;
   final StandardProjectionFailureHandler _failureHandler;
   final Logger _logger;
@@ -18,12 +18,7 @@ class SearchProjection implements Projection {
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<NoteEvent, String>(
-      streamRoute: noteStreamRoute,
-      apply: _applyNoteEvent,
-    ),
-  ];
+  StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;
@@ -34,11 +29,8 @@ class SearchProjection implements Projection {
   @override
   void onBatchApplied() {}
 
-  Future<void> _applyNoteEvent(
-    String noteId,
-    NoteEvent event,
-    EventMetadata metadata,
-  ) {
+  @override
+  Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
     _logger.debug('applying search projection $noteId');
     switch (event) {
       case NoteContentUpdated(:final newContent):

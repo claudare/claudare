@@ -39,8 +39,8 @@ command events by Dart type and decodes command-stream reads, live delivery,
 and replay by persisted kind.
 
 `CqrsRuntime` validates and constructs projection runners. Each projection has
-a globally unique name, a positive model version, and one or more ordered
-routes. The runtime store owns each projection's applying and applied
+a globally unique name, a positive model version, one typed stream route, and
+one typed event handler. The runtime store owns each projection's applying and applied
 event-sequence boundaries,
 while action-based runtime migrations trigger whole-runtime rebuilds when the
 stored version changes. The runtime separates consistent projection routing from
@@ -83,13 +83,11 @@ contract.
 
 ## Projection contract
 
-A `Projection` owns an ordered list of routes, can reset its derived state, and
-declares a required batch-completion callback. A generic `ProjectionRoute`
-binds one event type and one typed `StreamRoute` to its handler. A projection may
-combine unrelated event families and stream routes. Every matching route runs
-once in registration order, including intentional overlaps.
-For manual runtime dispatch, `ProjectionRoute<Object, TParams>` receives the
-registry-decoded object and the application handler checks its runtime type.
+A generic `Projection<TEvent, TParams>` owns one typed `StreamRoute`, applies
+decoded events with parsed stream parameters, can reset its derived state, and
+declares a required batch-completion callback. For manual runtime-type checks,
+`Projection<Object, TParams>` receives the registry-decoded object and checks
+its type inside `apply`.
 `ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
 routes live committed events through the same advancement path. Missing or
 disagreeing applying/applied boundaries trigger reset and replay from sequence

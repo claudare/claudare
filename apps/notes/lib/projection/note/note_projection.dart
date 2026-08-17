@@ -6,7 +6,7 @@ import 'package:notes/stream_route/note_stream_route.dart';
 
 import 'note_projection_repo.dart';
 
-class NoteProjection implements Projection {
+class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;
   final StandardProjectionFailureHandler _failureHandler;
 
@@ -19,12 +19,7 @@ class NoteProjection implements Projection {
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<NoteEvent, String>(
-      streamRoute: noteStreamRoute,
-      apply: _applyNoteEvent,
-    ),
-  ];
+  StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;
@@ -35,11 +30,8 @@ class NoteProjection implements Projection {
   @override
   void onBatchApplied() {}
 
-  Future<void> _applyNoteEvent(
-    String noteId,
-    NoteEvent event,
-    EventMetadata metadata,
-  ) {
+  @override
+  Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
     switch (event) {
       case NoteContentUpdated(:final newContent):
         return _repo.getAndStore(

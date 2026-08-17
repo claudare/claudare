@@ -4,7 +4,7 @@ import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AccountSummaryProjection implements Projection {
+class AccountSummaryProjection implements Projection<AccountEvent, String> {
   final AccountsSummaryReadModel _repo;
   final _failureHandler = StandardProjectionFailureHandler();
 
@@ -17,12 +17,7 @@ class AccountSummaryProjection implements Projection {
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<AccountEvent, String>(
-      streamRoute: accountStreamRoute,
-      apply: _applyAccountEvent,
-    ),
-  ];
+  StreamRoute<String> get streamRoute => accountStreamRoute;
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;
@@ -33,7 +28,8 @@ class AccountSummaryProjection implements Projection {
   @override
   void onBatchApplied() {}
 
-  Future<void> _applyAccountEvent(
+  @override
+  Future<void> apply(
     String accountId,
     AccountEvent event,
     EventMetadata metadata,

@@ -52,11 +52,10 @@ replayable.
 
 Applications define concrete domain event codecs, stream routes, projection
 ownership, and query/read-model interfaces. Each projection declares a unique
-name, a positive read-model version, an ordered list of typed routes, reset
-behavior, and a batch callback. A projection may consume multiple unrelated
-event families and stream routes. When event selection genuinely belongs at
-runtime, applications use an `Object` event route and check the registry-decoded
-event's runtime type in the handler.
+name, a positive read-model version, one typed stream route and event handler,
+reset behavior, and a batch callback. When a projection must consume unrelated
+event types, it uses `Object` as its event type and checks the registry-decoded
+event's runtime type in `apply`.
 
 Core's runtime store owns progress for each globally unique projection name. A
 projection reset must drop any

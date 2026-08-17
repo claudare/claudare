@@ -4,7 +4,7 @@ import '../account_event/account.dart';
 import '../read_model/total_balance_read_model.dart';
 import '../stream_route/account_stream_route.dart';
 
-class TotalBalanceProjection implements Projection {
+class TotalBalanceProjection implements Projection<AccountEvent, String> {
   final TotalBalanceReadModel _repo;
 
   const TotalBalanceProjection(this._repo);
@@ -16,12 +16,7 @@ class TotalBalanceProjection implements Projection {
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<AccountEvent, String>(
-      streamRoute: accountStreamRoute,
-      apply: _applyAccountEvent,
-    ),
-  ];
+  StreamRoute<String> get streamRoute => accountStreamRoute;
 
   @override
   ProjectionFailureHandler get failureHandler =>
@@ -33,7 +28,8 @@ class TotalBalanceProjection implements Projection {
   @override
   void onBatchApplied() {}
 
-  Future<void> _applyAccountEvent(
+  @override
+  Future<void> apply(
     String accountId,
     AccountEvent event,
     EventMetadata metadata,

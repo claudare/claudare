@@ -4,9 +4,7 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
-import 'package:cqrs/src/cqrs/projection/projection_route.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
 import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store_projection.dart';
@@ -14,9 +12,9 @@ import 'package:queue/queue.dart';
 
 import 'projection_failure_handler.dart';
 
-class ProjectionRuntime implements ProjectionSink {
-  final Projection _projection;
-  final List<ProjectionRoute> _routes;
+class ProjectionRuntime<TEvent extends Object, TParams>
+    implements ProjectionSink {
+  final Projection<TEvent, TParams> _projection;
   final Logger _logger;
   final String _runtimeName;
   final int _runtimeVersion;
@@ -24,7 +22,7 @@ class ProjectionRuntime implements ProjectionSink {
   final EventRegistry _eventRegistry;
   int _sequence = 0;
 
-  late final AsyncFIFOQueue<QueueItem> _queue;
+  late final AsyncFIFOQueue<QueueItem<TEvent, TParams>> _queue;
 
   ProjectionRuntime(
     this._projection, {
@@ -33,14 +31,13 @@ class ProjectionRuntime implements ProjectionSink {
     required int runtimeVersion,
     required RuntimeStoreProjection runtimeStore,
     required EventRegistry eventRegistry,
-  }) : _routes = List.unmodifiable(_projection.routes),
-       _logger = logger,
+  }) : _logger = logger,
        _runtimeName = runtimeName,
        _runtimeVersion = runtimeVersion,
        _runtimeStore = runtimeStore,
        _eventRegistry = eventRegistry {
-    validateProjection(_projection, _routes);
-    _queue = AsyncFIFOQueue<QueueItem>((value) => _handleApply(value));
+    validateProjection(_projection);
+    _queue = AsyncFIFOQueue<QueueItem<TEvent, TParams>>(_handleApply);
   }
 
   String get projectionName => _projection.name;
@@ -52,10 +49,13 @@ class ProjectionRuntime implements ProjectionSink {
 
   @override
   void enqueue(EventEnvelope eventEnvelope, {void Function()? onDone}) {
-    final event = _eventRegistry.decodeObject(eventEnvelope.encodedEvent);
+    final streamParams = _projection.streamRoute.parseParams(
+      eventEnvelope.streamPath,
+    );
+    final event = _eventRegistry.decode<TEvent>(eventEnvelope.encodedEvent);
     _queue.enqueue(
       QueueItem(
-        streamPath: eventEnvelope.streamPath,
+        streamParams: streamParams,
         event: event,
         metadata: EventMetadata(occuredAt: eventEnvelope.occuredAt),
         localSequence: eventEnvelope.localSequence,
@@ -66,10 +66,13 @@ class ProjectionRuntime implements ProjectionSink {
 
   @override
   void enqueueApplied(AppliedEvent appliedEvent, {void Function()? onDone}) {
-    final event = _eventRegistry.decodeObject(appliedEvent.encodedEvent);
+    final streamParams = _projection.streamRoute.parseParams(
+      appliedEvent.streamPath,
+    );
+    final event = _eventRegistry.decode<TEvent>(appliedEvent.encodedEvent);
     _queue.enqueue(
       QueueItem(
-        streamPath: appliedEvent.streamPath,
+        streamParams: streamParams,
         event: event,
         metadata: EventMetadata(occuredAt: appliedEvent.occuredAt),
         localSequence: appliedEvent.localSequence,
@@ -83,8 +86,7 @@ class ProjectionRuntime implements ProjectionSink {
     if (projectionFailureHandler.hasErrored()) {
       return false;
     }
-
-    return _routes.any((route) => route.streamRoute.matches(streamPath));
+    return _projection.streamRoute.matches(streamPath);
   }
 
   Future<void> resetProjection() async {
@@ -132,20 +134,19 @@ class ProjectionRuntime implements ProjectionSink {
       }
 
       final reader = eventStore.getGlobalReader(
-        const PatternFilter.any(),
+        _projection.streamRoute.filter,
         _sequence,
       );
 
       await for (final appliedEvent in reader.scan()) {
-        if (!shouldProcess(appliedEvent.streamPath)) {
-          continue;
-        }
-
-        final event = _eventRegistry.decodeObject(appliedEvent.encodedEvent);
+        final event = _eventRegistry.decode<TEvent>(appliedEvent.encodedEvent);
+        final streamParams = _projection.streamRoute.parseParams(
+          appliedEvent.streamPath,
+        );
         await _advance(
           appliedEvent.localSequence,
-          () => _applyMatchingRoutes(
-            appliedEvent.streamPath,
+          () => _projection.apply(
+            streamParams,
             event,
             appliedEvent.eventMetadata,
           ),
@@ -156,7 +157,7 @@ class ProjectionRuntime implements ProjectionSink {
     }
   }
 
-  Future<void> _handleApply(QueueItem item) async {
+  Future<void> _handleApply(QueueItem<TEvent, TParams> item) async {
     assert(!projectionFailureHandler.hasErrored(), 'must not apply on error');
     if (projectionFailureHandler.hasErrored()) {
       return;
@@ -165,22 +166,10 @@ class ProjectionRuntime implements ProjectionSink {
     try {
       await _advance(
         item.localSequence,
-        () => _applyMatchingRoutes(item.streamPath, item.event, item.metadata),
+        () => _projection.apply(item.streamParams, item.event, item.metadata),
       );
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
-    }
-  }
-
-  Future<void> _applyMatchingRoutes(
-    String streamPath,
-    Object event,
-    EventMetadata metadata,
-  ) async {
-    for (final route in _routes) {
-      if (route.matches(streamPath, event)) {
-        await route.apply(streamPath, event, metadata);
-      }
     }
   }
 
@@ -201,7 +190,7 @@ class ProjectionRuntime implements ProjectionSink {
   String toString() => 'ProjectionRuntime(${_projection.name})';
 }
 
-void validateProjection(Projection projection, List<ProjectionRoute> routes) {
+void validateProjection(Projection projection) {
   if (projection.name.trim().isEmpty) {
     throw const ProjectionConfigurationException(
       'Projection name must not be empty',
@@ -217,29 +206,21 @@ void validateProjection(Projection projection, List<ProjectionRoute> routes) {
       'Projection ${projection.name} must have a positive version',
     );
   }
-  if (routes.isEmpty) {
+  if (projection.streamRoute.pattern.trim().isEmpty) {
     throw ProjectionConfigurationException(
-      'Projection ${projection.name} must define at least one route',
+      'Projection ${projection.name} has an empty stream route pattern',
     );
-  }
-
-  for (final route in routes) {
-    if (route.streamRoute.pattern.trim().isEmpty) {
-      throw ProjectionConfigurationException(
-        'Projection ${projection.name} has a route with an empty pattern',
-      );
-    }
   }
 }
 
-final class QueueItem {
-  final String streamPath;
-  final Object event;
+final class QueueItem<TEvent extends Object, TParams> {
+  final TParams streamParams;
+  final TEvent event;
   final EventMetadata metadata;
   final int localSequence;
 
   const QueueItem({
-    required this.streamPath,
+    required this.streamParams,
     required this.event,
     required this.metadata,
     required this.localSequence,

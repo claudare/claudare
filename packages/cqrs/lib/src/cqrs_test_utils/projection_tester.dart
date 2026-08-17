@@ -1,16 +1,14 @@
 import 'package:cqrs/cqrs.dart';
 
-class ProjectionTester {
-  final Projection projection;
-  final List<ProjectionRoute> _routes;
-  final List<_ProjectionTestEvent> _events = [];
+class ProjectionTester<TEvent extends Object, TParams> {
+  final Projection<TEvent, TParams> projection;
+  final List<_ProjectionTestEvent<TEvent>> _events = [];
 
-  ProjectionTester(this.projection)
-    : _routes = List.unmodifiable(projection.routes);
+  ProjectionTester(this.projection);
 
-  ProjectionTester withEvent(
+  ProjectionTester<TEvent, TParams> withEvent(
     String streamPath,
-    Object event, {
+    TEvent event, {
     required DateTime occuredAt,
   }) {
     _events.add(_ProjectionTestEvent(streamPath, event, occuredAt));
@@ -20,19 +18,19 @@ class ProjectionTester {
   Future<bool> run() async {
     try {
       await projection.reset();
-      var applied = false;
 
       for (final event in _events) {
-        final metadata = EventMetadata(occuredAt: event.occuredAt);
-        for (final route in _routes) {
-          if (route.matches(event.streamPath, event.event)) {
-            await route.apply(event.streamPath, event.event, metadata);
-            applied = true;
-          }
-        }
+        final streamParams = projection.streamRoute.parseParams(
+          event.streamPath,
+        );
+        await projection.apply(
+          streamParams,
+          event.event,
+          EventMetadata(occuredAt: event.occuredAt),
+        );
       }
 
-      if (applied) {
+      if (_events.isNotEmpty) {
         projection.onBatchApplied();
       }
       return true;
@@ -43,9 +41,9 @@ class ProjectionTester {
   }
 }
 
-final class _ProjectionTestEvent {
+final class _ProjectionTestEvent<TEvent extends Object> {
   final String streamPath;
-  final Object event;
+  final TEvent event;
   final DateTime occuredAt;
 
   const _ProjectionTestEvent(this.streamPath, this.event, this.occuredAt);

@@ -3,7 +3,7 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/event/tag/tag.dart';
 import 'package:notes/stream_route/tag_stream_route.dart';
 
-class TagProjection extends SqliteProjection {
+class TagProjection extends SqliteProjection<TagEvent, String> {
   final StandardProjectionFailureHandler _failureHandler =
       StandardProjectionFailureHandler();
 
@@ -17,15 +17,7 @@ class TagProjection extends SqliteProjection {
   ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
-  List<ProjectionRoute> routes(IsolateSqlite db) => [
-    ProjectionRoute<TagEvent, String>(
-      streamRoute: tagStreamRoute,
-      apply:
-          (tagId, event, metadata) => db.transaction(
-            (tx) => _applyTagEvent(tx, tagId, event, metadata),
-          ),
-    ),
-  ];
+  StreamRoute<String> get streamRoute => tagStreamRoute;
 
   @override
   Future<void> reset(IsolateSqlite db) async {
@@ -47,7 +39,8 @@ class TagProjection extends SqliteProjection {
   @override
   void onBatchApplied() {}
 
-  void _applyTagEvent(
+  @override
+  void apply(
     SyncContext tx,
     String tagId,
     TagEvent event,

@@ -34,8 +34,7 @@ path may be considered later, after the durable path is correct and measured.
 - Local command events and promoted replicated events reach projections through
   the same pump.
 - Event serialization is registered once with the runtime.
-- A projection may define multiple typed routes with different event families
-  and `StreamRoute` values.
+- A projection defines one typed event family and one `StreamRoute`.
 - Projection version and replay progress are tracked per projection.
 - Projection startup uses `scannedThroughLocalSequence` rather than the last
   matching event.
@@ -129,7 +128,7 @@ migration.
 
 The durable pump has only a persisted path, so the old route-to-route `globs`
 fast path is removed. Routing uses `matches(streamPath)`, followed by
-`parseParams(streamPath)` for matching routes.
+`parseParams(streamPath)` for matching projections.
 
 ## Event codecs and registry
 
@@ -175,52 +174,49 @@ the original event object for direct projection delivery.
 
 ## Projection model
 
-A projection owns one read model, one name, one version, one reset operation,
-one or more event routes, and a page-completion callback:
+A projection owns one read model, one name, one version, one stream route, one
+event handler, one reset operation, and a page-completion callback:
 
 ```dart
-abstract interface class Projection {
+abstract interface class Projection<TEvent extends Object, TParams> {
   String get name;
   int get version;
-
-  List<ProjectionRoute> get routes;
+  StreamRoute<TParams> get streamRoute;
 
   Future<void> reset();
+  Future<void> apply(
+    TParams streamParams,
+    TEvent event,
+    EventMetadata metadata,
+  );
   void onBatchApplied();
 }
 ```
 
-`ProjectionRoute<TEvent, TParams>` keeps the application handler typed while
-the runtime consumes routes through their common `Object` boundary:
+The projection-level generic types keep the application handler typed. A sealed
+event family supports an exhaustive switch in `apply`:
 
 ```dart
-ProjectionRoute<AccountEvent, AccountParams>(
-  streamRoute: accountStreamRoute,
-  apply: projection.applyAccountEvent,
-);
+final class AccountProjection
+    implements Projection<AccountEvent, AccountParams> {
+  @override
+  StreamRoute<AccountParams> get streamRoute => accountStreamRoute;
 
-ProjectionRoute<UserEvent, String>(
-  streamRoute: userStreamRoute,
-  apply: projection.applyUserEvent,
-);
+  @override
+  Future<void> apply(
+    AccountParams streamParams,
+    AccountEvent event,
+    EventMetadata metadata,
+  ) async {
+    // Apply the event to the read model.
+  }
+}
 ```
 
-This allows one projection to listen to multiple stream patterns and unrelated
-event families. The runtime decodes through the event registry, checks the
-decoded event and parsed stream parameters, and then calls the typed handler.
-
-A sealed event family remains useful within an individual typed route because
-the route handler can use an exhaustive switch. It is not required that every
-route in a projection share that family.
-
-When a handler needs runtime dispatch rather than a sealed event family, it uses
-`ProjectionRoute<Object, TParams>` and checks the decoded object's runtime type
-itself.
-
-An event may match more than one route in the same projection. Every matching
-route runs once in route registration order. Tests should cover intentional
-overlap so that a broad pattern does not accidentally duplicate a narrow
-handler.
+When the rare projection must handle unrelated event types, it implements
+`Projection<Object, TParams>` and checks the registry-decoded object's runtime
+type inside `apply`. A separate route primitive and multiple routes per
+projection are unnecessary.
 
 `onBatchApplied()` is required, but projections that do not notify an
 application listener may leave it empty. The pump calls it once after the
@@ -280,18 +276,18 @@ sequence pages. Only one page is in flight. For each page it:
 
 1. Determines which projections still need some or all of the page.
 2. Decodes every needed event once through the central registry.
-3. Matches the decoded event and `streamPath` against projection routes.
-4. Builds an ordered set of route calls for each projection.
+3. Matches `streamPath` against each projection's `StreamRoute`.
+4. Builds the ordered event calls for each projection.
 5. Marks each projection as applying through the page end.
-6. Runs that projection's matching route calls sequentially.
+6. Runs that projection's matching event calls sequentially.
 7. Marks the projection as scanned through the page end, including when it had
-   no matching route calls.
+   no matching event calls.
 8. Calls `onBatchApplied()` if the projection had matching events.
 9. Waits for every projection task before reading another page.
 
 Projections process the page concurrently. Calls within one projection remain
-sequential in increasing `localSequence`; matching routes for one event run in
-route registration order. Successful projections may store progress and notify
+sequential in increasing `localSequence`. Successful projections may store
+progress and notify
 before another projection fails. The pump still waits for every projection task
 started for the page to settle before handling the result.
 
@@ -301,7 +297,8 @@ If five events match, the projection may write five times while RuntimeStore
 writes only the applying and scanned-through boundaries. This is the intended
 page recovery unit, not a deferred storage-transaction requirement.
 
-This keeps memory bounded to approximately one event page and its route calls.
+This keeps memory bounded to approximately one event page and its projection
+calls.
 The design does not need an unbounded per-projection live-event queue.
 
 When projections have different positions, the source reader starts after the
@@ -581,28 +578,23 @@ helpers were removed. Command execution and live envelopes retain only encoded
 events, so typed stream parameters and original event objects no longer travel
 through the direct dispatch path.
 
-### Stage 3: Introduce projections and typed routes
+### Stage 3: Introduce typed projections
 
-- Add projection name, version, reset, required batch callback, and typed routes.
-- Support multiple typed routes and `StreamRoute` values per projection.
-- Support `ProjectionRoute<Object, TParams>` for manual runtime-type checks.
-- Validate names, versions, route definitions, and route overlap behavior.
-- Migrate all projections and remove the old single-pattern projection shape.
+- Add projection name, version, reset, required batch callback, and one typed
+  `StreamRoute` and event handler.
+- Support `Projection<Object, TParams>` for manual runtime-type checks.
+- Validate names, versions, and stream route definitions.
+- Migrate all projections and remove the temporary route-list shape.
 
-Gate: existing projections behave the same through route registrations, and a
-test projection consumes two unrelated typed routes.
+Gate: existing projections behave the same through their single route, and a
+test `Projection<Object, TParams>` consumes unrelated decoded event types.
 
 Stage 3 is complete. `Projection` now declares a globally unique name, a
-positive model version, an ordered route list, reset behavior, and the required
-batch callback. The single generic `ProjectionRoute<TEvent, TParams>` keeps
-event and stream-parameter types at the handler boundary, including
-`ProjectionRoute<Object, TParams>` when a handler checks decoded runtime types
-manually. Projection runners decode once, invoke every matching route in
-registration order, and support unrelated event families and stream routes
-within one projection. Runtime construction rejects empty and duplicate
-projection names, non-positive versions, empty route lists, and empty patterns.
-The old projection-level event and stream-parameter generics and single
-`streamRoute`/`apply` shape were removed.
+positive model version, one typed `StreamRoute`, one typed `apply` handler,
+reset behavior, and the required batch callback. `Projection<Object, TParams>`
+supports the rare handler that checks decoded runtime types manually. Runtime
+construction rejects empty and duplicate projection names, non-positive
+versions, and empty stream route patterns.
 The existing runtime does not yet define page batches; production invocation of
 `onBatchApplied()` arrives with the pump in Stages 6-7.
 
@@ -638,7 +630,7 @@ history only from the durable source.
   and page barriers behind test-oriented collaborators.
 - Test projections at different positions.
 - Test a page with no matches.
-- Test multiple routes in one projection.
+- Test an `Object` projection with unrelated decoded event types.
 - Test an event routed to multiple projections.
 - Test concurrent projection processing with sequential calls inside each
   projection.

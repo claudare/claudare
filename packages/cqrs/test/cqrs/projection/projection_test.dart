@@ -7,6 +7,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:test/test.dart';
@@ -15,77 +16,9 @@ import 'package:time_provider/time_provider.dart';
 void main() {
   final occurredAt = DateTime.fromMillisecondsSinceEpoch(1, isUtc: true);
 
-  group('projection routes', () {
-    test('one projection consumes unrelated typed routes', () async {
-      final projection = _MultiRouteProjection();
-      final tester =
-          ProjectionTester(projection)
-            ..withEvent('alpha/one', 'first', occuredAt: occurredAt)
-            ..withEvent('beta/two', 2, occuredAt: occurredAt);
-
-      expect(await tester.run(), isTrue);
-      expect(projection.calls, [
-        'alpha:first:one',
-        'alpha-overlap:first:one',
-        'beta:2:two',
-      ]);
-      expect(projection.batchCount, 1);
-    });
-
-    test(
-      'projection runtime decodes and applies unrelated event types',
-      () async {
-        final projection = _MultiRouteProjection();
-        final eventStore = EventStore(MemoryEventDatabase());
-        await eventStore.migrate();
-        final runtimeStore = RuntimeStore(MemoryRuntimeDatabase());
-        await runtimeStore.initialize();
-        final registry =
-            EventRegistry()
-              ..register(const _StringCodec())
-              ..register(const _IntCodec());
-        final runner = ProjectionRuntime(
-          projection,
-          logger: const NoopLogger(),
-          runtimeName: 'test',
-          runtimeVersion: 1,
-          runtimeStore: runtimeStore,
-          eventRegistry: registry,
-        );
-        await runner.catchupSelfLoad(eventStore);
-        final firstDone = Completer<void>();
-        final secondDone = Completer<void>();
-
-        runner.enqueue(
-          EventEnvelope(
-            streamPath: 'alpha/one',
-            encodedEvent: registry.encode('first'),
-            occuredAt: occurredAt,
-            localSequence: 1,
-          ),
-          onDone: firstDone.complete,
-        );
-        runner.enqueue(
-          EventEnvelope(
-            streamPath: 'beta/two',
-            encodedEvent: registry.encode(2),
-            occuredAt: occurredAt,
-            localSequence: 2,
-          ),
-          onDone: secondDone.complete,
-        );
-        await Future.wait([firstDone.future, secondDone.future]);
-
-        expect(projection.calls, [
-          'alpha:first:one',
-          'alpha-overlap:first:one',
-          'beta:2:two',
-        ]);
-      },
-    );
-
-    test('overlapping routes run once each in registration order', () async {
-      final projection = _MultiRouteProjection();
+  group('Projection', () {
+    test('applies its typed event and stream parameters', () async {
+      final projection = _StringProjection();
 
       expect(
         await ProjectionTester(
@@ -93,23 +26,11 @@ void main() {
         ).withEvent('alpha/one', 'event', occuredAt: occurredAt).run(),
         isTrue,
       );
-      expect(projection.calls, ['alpha:event:one', 'alpha-overlap:event:one']);
+      expect(projection.calls, ['event:one']);
+      expect(projection.batchCount, 1);
     });
 
-    test('typed routes ignore unrelated event types', () async {
-      final projection = _MultiRouteProjection();
-
-      expect(
-        await ProjectionTester(
-          projection,
-        ).withEvent('alpha/one', 1, occuredAt: occurredAt).run(),
-        isTrue,
-      );
-      expect(projection.calls, isEmpty);
-      expect(projection.batchCount, 0);
-    });
-
-    test('Object route manually checks event runtime types', () async {
+    test('Object projection manually checks event runtime types', () async {
       final projection = _ObjectProjection();
 
       expect(
@@ -123,7 +44,7 @@ void main() {
       expect(projection.ints, [42]);
     });
 
-    test('Object route receives registry-decoded runtime types', () async {
+    test('Object projection receives registry-decoded runtime types', () async {
       final projection = _ObjectProjection();
       final eventStore = EventStore(MemoryEventDatabase());
       await eventStore.migrate();
@@ -133,7 +54,7 @@ void main() {
           EventRegistry()
             ..register(const _StringCodec())
             ..register(const _IntCodec());
-      final runner = ProjectionRuntime(
+      final runner = ProjectionRuntime<Object, String>(
         projection,
         logger: const NoopLogger(),
         runtimeName: 'test',
@@ -185,9 +106,11 @@ void main() {
       );
     });
 
-    test('rejects projections without routes', () {
+    test('rejects an empty stream route pattern', () {
       expect(
-        () => _runner(_ConfigurableProjection(routes: const [])),
+        () => _runner(
+          _ConfigurableProjection(streamRoute: const _EmptyStreamRoute()),
+        ),
         throwsA(isA<ProjectionConfigurationException>()),
       );
     });
@@ -209,7 +132,9 @@ void main() {
   });
 }
 
-ProjectionRuntime _runner(Projection projection) {
+ProjectionRuntime<String, String> _runner(
+  Projection<String, String> projection,
+) {
   return ProjectionRuntime(
     projection,
     logger: const NoopLogger(),
@@ -230,37 +155,18 @@ CqrsRuntimeDependencies _dependencies() {
   );
 }
 
-final class _MultiRouteProjection implements Projection {
+final class _StringProjection implements Projection<String, String> {
   final calls = <String>[];
   int batchCount = 0;
 
   @override
-  String get name => 'multi-route';
+  String get name => 'string';
 
   @override
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<String, String>(
-      streamRoute: StreamRouteWildcard('alpha/*'),
-      apply: (params, event, metadata) {
-        calls.add('alpha:$event:$params');
-      },
-    ),
-    ProjectionRoute<String, String>(
-      streamRoute: StreamRouteWildcard('alpha/*'),
-      apply: (params, event, metadata) {
-        calls.add('alpha-overlap:$event:$params');
-      },
-    ),
-    ProjectionRoute<int, String>(
-      streamRoute: StreamRouteWildcard('beta/*'),
-      apply: (params, event, metadata) {
-        calls.add('beta:$event:$params');
-      },
-    ),
-  ];
+  StreamRoute<String> get streamRoute => StreamRouteWildcard('alpha/*');
 
   @override
   ProjectionFailureHandler get failureHandler =>
@@ -273,12 +179,21 @@ final class _MultiRouteProjection implements Projection {
   }
 
   @override
+  Future<void> apply(
+    String streamParams,
+    String event,
+    EventMetadata metadata,
+  ) async {
+    calls.add('$event:$streamParams');
+  }
+
+  @override
   void onBatchApplied() {
     batchCount++;
   }
 }
 
-final class _ObjectProjection implements Projection {
+final class _ObjectProjection implements Projection<Object, String> {
   final strings = <String>[];
   final ints = <int>[];
 
@@ -289,21 +204,7 @@ final class _ObjectProjection implements Projection {
   int get version => 1;
 
   @override
-  List<ProjectionRoute> get routes => [
-    ProjectionRoute<Object, String>(
-      streamRoute: const StreamRouteAll(),
-      apply: (params, event, metadata) {
-        switch (event) {
-          case String value:
-            strings.add(value);
-          case int value:
-            ints.add(value);
-          default:
-            break;
-        }
-      },
-    ),
-  ];
+  StreamRoute<String> get streamRoute => const StreamRouteAll();
 
   @override
   ProjectionFailureHandler get failureHandler =>
@@ -316,29 +217,38 @@ final class _ObjectProjection implements Projection {
   }
 
   @override
+  Future<void> apply(
+    String streamParams,
+    Object event,
+    EventMetadata metadata,
+  ) async {
+    switch (event) {
+      case String value:
+        strings.add(value);
+      case int value:
+        ints.add(value);
+      default:
+        break;
+    }
+  }
+
+  @override
   void onBatchApplied() {}
 }
 
-final class _ConfigurableProjection implements Projection {
+final class _ConfigurableProjection implements Projection<String, String> {
   @override
   final String name;
   @override
   final int version;
   @override
-  final List<ProjectionRoute> routes;
+  final StreamRoute<String> streamRoute;
 
   _ConfigurableProjection({
     this.name = 'configured',
     this.version = 1,
-    List<ProjectionRoute>? routes,
-  }) : routes =
-           routes ??
-           [
-             ProjectionRoute<String, String>(
-               streamRoute: const StreamRouteAll(),
-               apply: (params, event, metadata) {},
-             ),
-           ];
+    this.streamRoute = const StreamRouteAll(),
+  });
 
   @override
   ProjectionFailureHandler get failureHandler =>
@@ -348,7 +258,30 @@ final class _ConfigurableProjection implements Projection {
   Future<void> reset() async {}
 
   @override
+  Future<void> apply(
+    String streamParams,
+    String event,
+    EventMetadata metadata,
+  ) async {}
+
+  @override
   void onBatchApplied() {}
+}
+
+final class _EmptyStreamRoute extends StreamRoute<String> {
+  const _EmptyStreamRoute();
+
+  @override
+  String get pattern => '';
+
+  @override
+  PatternFilter get filter => const PatternFilter.exact('');
+
+  @override
+  String buildPath(String streamParams) => streamParams;
+
+  @override
+  String parseParams(String streamPath) => streamPath;
 }
 
 final class _StringCodec implements EventCodec<String> {

@@ -21,7 +21,7 @@ contracts but does not define the architecture or public API for other apps.
 | Memory and SQLite local event stores       | Implemented                        |
 | Flat causal records and pending persistence | Implemented locally               |
 | Replayable application-defined projections | Implemented                        |
-| Typed multi-route projections               | Implemented                        |
+| Generic typed projections                   | Implemented                        |
 | Consistent and eventual projection routing | Implemented                        |
 | Runtime-version projection rebuild         | Implemented                        |
 | Runtime-owned projection progress          | Implemented with mismatch rebuilds |

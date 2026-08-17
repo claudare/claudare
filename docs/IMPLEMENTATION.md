@@ -52,10 +52,9 @@ applied commands; memory derives the same value rather than caching it.
 
 `CqrsRuntime` validates projection names, versions, and route definitions, then
 creates projection runners and initializes or rebuilds them from stored
-runtime-version and per-projection sequence state. A projection owns an ordered
-list of typed routes and may consume unrelated event families and stream paths;
-intentional overlapping routes all run in registration order. An `Object` event
-route supports manual runtime-type checks without bypassing registry decoding.
+runtime-version and per-projection sequence state. A generic projection owns one
+typed stream route and event handler. `Projection<Object, TParams>` supports
+manual runtime-type checks without bypassing registry decoding.
 `RuntimeStore` records applying and applied boundaries by globally
 unique projection name. A boundary mismatch triggers reset and replay from
 zero. Applications choose whether a projection is consistent, so command
