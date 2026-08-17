@@ -52,22 +52,27 @@ applied commands; memory derives the same value rather than caching it.
 
 `CqrsRuntime` validates projection names, versions, and route definitions, then
 creates projection runners and initializes or rebuilds them from stored
-runtime-version and per-projection sequence state. A generic projection owns one
+per-projection version and page state. A generic projection owns one
 typed stream route and event handler. `Projection<Object, TParams>` supports
 manual runtime-type checks without bypassing registry decoding.
-`RuntimeStore` records applying and applied boundaries by globally
-unique projection name. A boundary mismatch triggers reset and replay from
-zero. Applications choose whether a projection is consistent, so command
-completion waits for its callback, or eventual, so it is queued without
-blocking the command.
+`RuntimeStore` records the projection version plus applying-through and
+scanned-through local sequence boundaries by globally unique projection name.
+A missing state, version mismatch, or boundary mismatch resets only that
+projection before replay from zero. Matching projections resume after their
+scanned-through boundary. Applications choose whether a projection is
+consistent, so command completion waits for its callback, or eventual, so it is
+queued without blocking the command.
 
 Events are authoritative. Projections are disposable derived state and repair
 themselves through reset and replay. Projection read-model changes and runtime
 progress are intentionally non-atomic; the two-boundary protocol detects an
 interruption. Reset implementations drop and recreate all schema they own.
-The required projection batch callback is not yet invoked by the current
-event-at-a-time runtime; page callback delivery is part of the planned pump
-cutover.
+Startup replay reads unfiltered event pages and advances each projection to the
+page end, including pages with no matching routes. It writes runtime progress
+once before and once after each page while keeping matching read-model writes
+sequential. The current direct live-delivery path still advances matching
+events individually. The required projection batch callback is not yet invoked;
+page callback delivery is part of the planned pump cutover.
 
 ## Current core limits
 
@@ -75,6 +80,8 @@ cutover.
   context, so schema work and its marker are not atomic.
 - Runtime lifecycle, projection queue draining, degraded state, and shutdown
   are not explicit public behavior.
+- The runtime-store SQLite schema is a clean development replacement and does
+  not migrate existing global-version or old projection-progress tables.
 - Integer device IDs are database-local and are not authenticated identity.
   Version vectors and pending storage do not provide transport, peer identity,
   replay authentication, or application convergence.

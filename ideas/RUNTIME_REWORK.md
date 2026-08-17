@@ -227,8 +227,8 @@ projection may call an application-owned notifier from this method.
 
 ## Projection version and progress
 
-Runtime version is not application version. Each projection declares its own
-positive model version. `RuntimeStore` persists at least:
+Each projection declares its own positive model version. It is independent of
+the application version. `RuntimeStore` persists at least:
 
 ```text
 projection name
@@ -611,6 +611,18 @@ The existing runtime does not yet define page batches; production invocation of
   responsibility.
 
 Gate: projections independently resume, rebuild, and advance through pages.
+
+Stage 4 is complete. RuntimeStore now persists each projection's positive
+version plus applying-through and scanned-through local sequence boundaries.
+Initialization resets only missing, changed, or interrupted projections and
+resumes consistent matching versions. Startup replay reads complete unfiltered
+pages through the existing global reader, applies matching events sequentially,
+and advances progress to every page end with two RuntimeStore writes per
+projection page. Memory and SQLite contract tests cover the progress protocol,
+and restart tests reuse memory state and reopen SQLite storage while adding,
+changing, and interrupting one of two projections. The application-wide global
+migration counter, migration policy, storage operations, schema, and Notes
+wiring were removed. Existing development runtime databases are not migrated.
 
 ### Stage 5: Prepare EventStore signaling and the event source
 

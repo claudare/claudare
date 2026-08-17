@@ -18,8 +18,6 @@ import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 
 class NotesRuntime {
-  static int runtimeVersion = 7;
-
   // the read model is exposed directly
   final NoteProjectionRepo _noteProjectionRepo;
   final SearchProjectionRepo _searchProjectionRepo;
@@ -40,7 +38,6 @@ class NotesRuntime {
     required this.resolvedNoteReadModel,
     required SearchProjectionRepo searchProjectionRepo,
     required this.searchReadModel,
-    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
   }) : logger = cqrsDependencies.logger,
        _noteProjectionRepo = noteProjectionRepo,
        _searchProjectionRepo = searchProjectionRepo {
@@ -78,8 +75,6 @@ class NotesRuntime {
       dependencies: cqrsDependencies,
       projections: [noteProjection, searchProjection],
       runtimeName: 'notes',
-      runtimeVersion: NotesRuntime.runtimeVersion,
-      migrationPolicy: migrationPolicy,
     );
     _cqrsRuntime
       ..registerEvent(const NoteContentUpdatedCodec())

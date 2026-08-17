@@ -21,8 +21,6 @@ class FinanceApp {
     required CqrsRuntimeDependencies dependencies,
     required AccountsSummaryReadModel accountSummaryRepo,
     required TotalBalanceReadModel totalBalanceRepo,
-    int runtimeVersion = 1,
-    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
   }) {
     final accountSummaryProjection = AccountSummaryProjection(
       accountSummaryRepo,
@@ -37,8 +35,6 @@ class FinanceApp {
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
       runtimeName: 'finance-main',
-      runtimeVersion: runtimeVersion,
-      migrationPolicy: migrationPolicy,
       projections: [accountSummaryProjection, totalBalanceProjection],
     );
     _cqrsRuntime

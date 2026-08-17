@@ -16,14 +16,12 @@ class FakeApplicationFactory implements ApplicationFactory {
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
   final Logger? mockLogger;
-  final MigrationPolicy migrationPolicy;
 
   FakeApplicationFactory({
     this.mockNotesRuntime,
     this.mockIdGenerator,
     this.mockTimeProvider,
     this.mockLogger,
-    this.migrationPolicy = MigrationPolicy.whenVersionChanges,
   });
 
   @override
@@ -64,7 +62,6 @@ class FakeApplicationFactory implements ApplicationFactory {
         resolvedNoteReadModel: resolvedNoteReadModel,
         searchProjectionRepo: searchProjectionRepo,
         searchReadModel: searchReadModel,
-        migrationPolicy: migrationPolicy,
       ),
     );
   }

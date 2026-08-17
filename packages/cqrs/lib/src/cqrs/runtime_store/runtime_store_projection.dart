@@ -10,5 +10,9 @@ abstract interface class RuntimeStoreProjection {
     Future<void> Function() action,
   );
 
-  Future<void> resetProjection(String name, Future<void> Function() action);
+  Future<void> resetProjection(
+    String name,
+    int version,
+    Future<void> Function() action,
+  );
 }

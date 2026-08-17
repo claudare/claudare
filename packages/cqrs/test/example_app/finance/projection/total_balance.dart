@@ -11,10 +11,8 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
 
   @override
   String get name => 'total-balance';
-
   @override
-  int get version => 1;
-
+  final int version = 1;
   @override
   StreamRoute<String> get streamRoute => accountStreamRoute;
 

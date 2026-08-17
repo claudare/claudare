@@ -21,8 +21,8 @@ UI
           -> eventual projections   -> asynchronous read models
 ```
 
-At startup, the composition root creates the event store, runtime-version
-repository, projections, read models, logger, ID generator, time provider, and
+At startup, the composition root creates the event store, runtime store,
+projections, read models, logger, ID generator, time provider, and
 database owners. It registers one codec per concrete event type with the CQRS
 runtime, then opens storage, applies migrations, and initializes the runtime
 before exposing interactive UI.
@@ -60,8 +60,10 @@ event's runtime type in `apply`.
 Core's runtime store owns progress for each globally unique projection name. A
 projection reset must drop any
 projection-owned schema and recreate its complete current schema. Missing or
-mismatched runtime boundaries cause reset and replay from sequence zero.
-Intentional no-op events still advance runtime-owned progress.
+mismatched runtime boundaries and projection-version changes cause selective
+reset and replay from sequence zero. Unchanged projections resume after their
+scanned-through local sequence. Intentional no-op events and pages with no route
+matches still advance runtime-owned progress to the page end.
 
 Read-model writes and runtime-store progress are not atomic with each other. An
 interrupted apply or reset is detected by disagreeing boundaries on the next

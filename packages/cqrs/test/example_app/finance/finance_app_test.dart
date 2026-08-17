@@ -272,13 +272,12 @@ void main() {
         final accountPosition =
             await store.getProjectionPosition('account-summary')
                 as ProjectionAtSequence;
-        expect(accountPosition.sequence, 1);
+        expect(accountPosition.scannedThroughLocalSequence, 1);
 
-        await Future<void>.delayed(const Duration(milliseconds: 10));
         final totalPosition =
             await store.getProjectionPosition('total-balance')
                 as ProjectionAtSequence;
-        expect(totalPosition.sequence, 1);
+        expect(totalPosition.scannedThroughLocalSequence, 1);
         expect(await totalBalanceRepo.get(), 0);
       },
     );
@@ -383,7 +382,7 @@ void main() {
       expect(account.name, 'replicated');
     });
 
-    test('matching runtime version catches up without resetting', () async {
+    test('matching projection versions catch up without resetting', () async {
       await app.command.openAccount.runThrowable(
         OpenAccountInput(name: 'first'),
       );
@@ -401,7 +400,7 @@ void main() {
       expect(accountsSummaryRepo.summaries, contains('stale'));
     });
 
-    test('always migration policy resets and fully replays', () async {
+    test('manual rebuild resets and fully replays', () async {
       await app.command.openAccount.runThrowable(
         OpenAccountInput(name: 'first'),
       );
@@ -414,26 +413,14 @@ void main() {
         lastTransactionAt: t0,
       );
 
-      final rebuildingApp = FinanceApp(
-        dependencies: CqrsRuntimeDependencies(
-          eventStore: eventStore,
-          runtimeDatabase: runtimeDatabase,
-          logger: const NoopLogger(),
-          idGenerator: commandIdGenerator,
-          timeProvider: commandTimeProvider,
-        ),
-        accountSummaryRepo: accountsSummaryRepo,
-        totalBalanceRepo: totalBalanceRepo,
-        migrationPolicy: MigrationPolicy.always,
-      );
-      await rebuildingApp.init();
+      await app.recreateProjections();
 
       expect(accountsSummaryRepo.summaries, isNot(contains('stale')));
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.name, 'first');
     });
 
-    test('incomplete runtime migration resets and fully replays', () async {
+    test('interrupted projection state resets and fully replays', () async {
       await app.command.openAccount.runThrowable(
         OpenAccountInput(name: 'first'),
       );
@@ -445,14 +432,27 @@ void main() {
         openedAt: t0,
         lastTransactionAt: t0,
       );
-      await runtimeDatabase.setRuntimeVersion('finance-main', -1);
+      await runtimeDatabase.setProjectionState(
+        'account-summary',
+        const RuntimeProjectionState(
+          version: 1,
+          applyingThroughLocalSequence: 2,
+          scannedThroughLocalSequence: 1,
+        ),
+      );
 
       await app.init();
 
       expect(accountsSummaryRepo.summaries, isNot(contains('stale')));
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.name, 'first');
-      expect(await runtimeDatabase.getRuntimeVersion('finance-main'), 1);
+      final position =
+          await RuntimeStore(
+                runtimeDatabase,
+              ).getProjectionPosition('account-summary')
+              as ProjectionAtSequence;
+      expect(position.version, 1);
+      expect(position.scannedThroughLocalSequence, 1);
     });
 
     test('manual replay rebuilds identical read models', () async {
@@ -464,34 +464,6 @@ void main() {
       );
 
       await app.recreateProjections();
-
-      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
-      expect(accounts.single.balance, 40);
-      expect(accounts.single.transactionCount, 1);
-      expect(await totalBalanceRepo.get(), 40);
-    });
-
-    test('runtime version change rebuilds projections', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
-        AtmDepositInput(accountId: firstAccountId, amount: 40),
-      );
-
-      final upgraded = FinanceApp(
-        dependencies: CqrsRuntimeDependencies(
-          eventStore: eventStore,
-          runtimeDatabase: runtimeDatabase,
-          logger: const NoopLogger(),
-          idGenerator: commandIdGenerator,
-          timeProvider: commandTimeProvider,
-        ),
-        accountSummaryRepo: accountsSummaryRepo,
-        totalBalanceRepo: totalBalanceRepo,
-        runtimeVersion: 2,
-      );
-      await upgraded.init();
 
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 40);
@@ -522,7 +494,7 @@ void main() {
       final position =
           await store.getProjectionPosition('account-summary')
               as ProjectionAtSequence;
-      expect(position.sequence, 1);
+      expect(position.scannedThroughLocalSequence, 1);
     });
   });
 }

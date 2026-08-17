@@ -1,3 +1,5 @@
+// ignore_for_file: file_names
+
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -10,24 +12,18 @@ import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 
 class CqrsRuntimeV2Idea {
   final List<ProjectionRuntime> _projections = [];
-  final int _runtimeVersion;
   final CqrsRuntimeDependencies _dependencies;
   final RuntimeStore _runtimeStore;
   final EventRegistry _eventRegistry = EventRegistry();
 
-  CqrsRuntimeV2Idea(this._dependencies, {required int runtimeVersion})
-    : _runtimeVersion = runtimeVersion,
-      _runtimeStore = RuntimeStore(
-        _dependencies.runtimeDatabase,
-        migrationPolicy: MigrationPolicy.always, // TODO
-      );
+  CqrsRuntimeV2Idea(this._dependencies)
+    : _runtimeStore = RuntimeStore(_dependencies.runtimeDatabase);
 
   void registerProjection(Projection projection) {
     final runtime = ProjectionRuntime(
       projection,
       logger: NoopLogger(),
       runtimeName: projection.name,
-      runtimeVersion: _runtimeVersion,
       runtimeStore: _runtimeStore,
       eventRegistry: _eventRegistry,
     );
@@ -38,7 +34,7 @@ class CqrsRuntimeV2Idea {
   // and
   Future<void> initialize() async {
     await _dependencies.eventStore.migrate();
-    for (final projection in _projections) {
+    for (final _ in _projections) {
       // need to make projection runtimes... the version is of the app?
       // all projection catchup code goes here
     }

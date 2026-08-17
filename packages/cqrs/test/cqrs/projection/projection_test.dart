@@ -58,7 +58,6 @@ void main() {
         projection,
         logger: const NoopLogger(),
         runtimeName: 'test',
-        runtimeVersion: 1,
         runtimeStore: runtimeStore,
         eventRegistry: registry,
       );
@@ -120,7 +119,6 @@ void main() {
         () => CqrsRuntime(
           dependencies: _dependencies(),
           runtimeName: 'test',
-          runtimeVersion: 1,
           projections: [
             _ConfigurableProjection(name: 'duplicate'),
             _ConfigurableProjection(name: 'duplicate'),
@@ -139,7 +137,6 @@ ProjectionRuntime<String, String> _runner(
     projection,
     logger: const NoopLogger(),
     runtimeName: 'test',
-    runtimeVersion: 1,
     runtimeStore: RuntimeStore(MemoryRuntimeDatabase()),
     eventRegistry: EventRegistry(),
   );

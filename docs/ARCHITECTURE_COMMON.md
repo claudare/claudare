@@ -40,10 +40,10 @@ and replay by persisted kind.
 
 `CqrsRuntime` validates and constructs projection runners. Each projection has
 a globally unique name, a positive model version, one typed stream route, and
-one typed event handler. The runtime store owns each projection's applying and applied
-event-sequence boundaries,
-while action-based runtime migrations trigger whole-runtime rebuilds when the
-stored version changes. The runtime separates consistent projection routing from
+one typed event handler. The runtime store owns each projection's version plus
+applying-through and scanned-through local event-sequence boundaries. Missing,
+changed, or interrupted projections rebuild independently while unchanged
+projections resume. The runtime separates consistent projection routing from
 eventual routing. Events remain authoritative; read models are disposable
 derived state.
 
@@ -89,26 +89,28 @@ declares a required batch-completion callback. For manual runtime-type checks,
 `Projection<Object, TParams>` receives the registry-decoded object and checks
 its type inside `apply`.
 `ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
-routes live committed events through the same advancement path. Missing or
-disagreeing applying/applied boundaries trigger reset and replay from sequence
-zero. Projection errors make the derived state unhealthy; the event history
-remains available for repair by reset/replay.
+routes live committed events through the same advancement protocol. Startup
+replay reads complete unfiltered event pages, applies only matching routes, and
+advances scanned progress to each page end even when nothing matches. A missing
+state, changed version, or disagreeing applying/scanned boundary triggers reset
+and replay from sequence zero. Projection errors make the derived state
+unhealthy; the event history remains available for repair by reset/replay.
 
-The batch callback is part of the implemented projection contract. The current
-pre-pump runtime still advances one matching event at a time and does not yet
-invoke production page callbacks; page-based callback delivery belongs to the
-planned event-pump cutover.
+The batch callback is part of the implemented projection contract. Startup
+replay now advances page progress, but the current pre-pump live path still
+delivers matching events directly and production batch callbacks are not yet
+invoked. Callback delivery belongs to the planned event-pump cutover.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.
 
 Runtime-store progress and application read-model writes are not one atomic
 transaction. The runtime writes the applying boundary, awaits the projection,
-then writes the applied boundary. An interruption leaves a mismatch that causes
-a rebuild on the next startup. Reset must drop all projection-owned schema if
-present and recreate its complete current schema. Projections must be safe to
-rebuild from event history and must not treat read-model data as the source of
-truth.
+then writes the scanned-through boundary. An interruption leaves a mismatch
+that causes only that projection to rebuild on the next startup. Reset must
+drop all projection-owned schema if present and recreate its complete current
+schema. Projections must be safe to rebuild from event history and must not
+treat read-model data as the source of truth.
 
 ## CRDT helpers
 

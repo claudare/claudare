@@ -10,7 +10,6 @@ import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
-import 'package:cqrs/src/cqrs/runtime_store/runtime_store_runtime_version.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// [CqrsRuntime] is all in one place for local CQRS.
@@ -19,20 +18,14 @@ class CqrsRuntime {
   late final RuntimeStore _runtimeStore;
   late final List<ProjectionRuntime> _projectionRunners;
   final String runtimeName;
-  final int runtimeVersion;
   final CqrsRuntimeDependencies _dependencies;
   final EventRegistry _eventRegistry = EventRegistry();
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
     required this.runtimeName,
-    required this.runtimeVersion,
     required List<Projection> projections,
-    MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
-  }) : _runtimeStore = RuntimeStore(
-         dependencies.runtimeDatabase,
-         migrationPolicy: migrationPolicy,
-       ),
+  }) : _runtimeStore = RuntimeStore(dependencies.runtimeDatabase),
        _dependencies = dependencies {
     final projectionNames = <String>{};
     for (final projection in projections) {
@@ -50,7 +43,6 @@ class CqrsRuntime {
                 projector,
                 logger: _dependencies.logger,
                 runtimeName: runtimeName,
-                runtimeVersion: runtimeVersion,
                 runtimeStore: _runtimeStore,
                 eventRegistry: _eventRegistry,
               ),
@@ -67,42 +59,32 @@ class CqrsRuntime {
 
   Future<void> recreateProjections() async {
     _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: recreating all projections',
+      'runtime $runtimeName: recreating all projections',
     );
-    await _migrateProjections(policy: MigrationPolicy.always);
+    await _runtimeStore.initialize();
+    await _resetAllProjections();
+    await _catchupAllProjections();
     _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: recreated all projections',
+      'runtime $runtimeName: recreated all projections',
     );
   }
 
   Future<void> initializeProjections() async {
     _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: initializing all projections',
+      'runtime $runtimeName: initializing all projections',
     );
-    await _migrateProjections();
-    _dependencies.logger.info(
-      'runtime $runtimeName@$runtimeVersion: initialized all projections',
-    );
-  }
-
-  Future<void> _migrateProjections({MigrationPolicy? policy}) async {
     await _runtimeStore.initialize();
-    var migrated = false;
-    await _runtimeStore.versionMigration(runtimeName, runtimeVersion, () async {
-      migrated = true;
-      await _resetAllProjections();
-      await _catchupAllProjections();
-    }, policy: policy);
-    if (!migrated) {
-      await _catchupAllProjections();
-    }
+    await _catchupAllProjections();
+    _dependencies.logger.info(
+      'runtime $runtimeName: initialized all projections',
+    );
   }
 
   Future<void> _resetAllProjections() async {
     await Future.wait(
       _projectionRunners.map((runner) {
         _dependencies.logger.debug(
-          'runtime $runtimeName@$runtimeVersion: resetting projection: ${runner.projectionName}',
+          'runtime $runtimeName: resetting projection: ${runner.projectionName}',
         );
         return runner.resetProjection();
       }),
@@ -113,7 +95,7 @@ class CqrsRuntime {
     await Future.wait(
       _projectionRunners.map((runner) {
         _dependencies.logger.debug(
-          'runtime $runtimeName@$runtimeVersion: catching up projection: ${runner.projectionName}',
+          'runtime $runtimeName: catching up projection: ${runner.projectionName}',
         );
 
         return runner.catchupSelfLoad(_dependencies.eventStore);

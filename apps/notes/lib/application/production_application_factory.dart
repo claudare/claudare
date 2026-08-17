@@ -12,11 +12,7 @@ import 'package:notes/runtime/notes_runtime.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ProductionApplicationFactory implements ApplicationFactory {
-  final MigrationPolicy migrationPolicy;
-
-  const ProductionApplicationFactory({
-    this.migrationPolicy = MigrationPolicy.whenVersionChanges,
-  });
+  const ProductionApplicationFactory();
 
   static Future<String> getSupportDir() async {
     // on linux it is
@@ -67,7 +63,6 @@ class ProductionApplicationFactory implements ApplicationFactory {
         resolvedNoteReadModel: resolvedNoteReadModel,
         searchProjectionRepo: searchProjectionRepo,
         searchReadModel: searchReadModel,
-        migrationPolicy: migrationPolicy,
       ),
     );
   }

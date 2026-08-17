@@ -1,8 +1,7 @@
 import 'package:cqrs/src/cqrs/runtime_store/runtime_database.dart';
 
 class MemoryRuntimeDatabase implements RuntimeDatabase {
-  final Map<String, int> _runtimeVersions = {};
-  final Map<String, RuntimeProjectionBoundaries> _projectionBoundaries = {};
+  final Map<String, RuntimeProjectionState> _projectionStates = {};
   bool _initialized = false;
 
   @override
@@ -11,47 +10,21 @@ class MemoryRuntimeDatabase implements RuntimeDatabase {
   }
 
   @override
-  Future<int> getRuntimeVersion(String runtimeName) {
-    if (!_initialized) {
-      throw StateError('MemoryRuntimeDatabase is not initialized');
-    }
-
-    return Future.value(_runtimeVersions[runtimeName] ?? 0);
-  }
-
-  @override
-  Future<void> setRuntimeVersion(String runtimeName, int version) {
-    if (!_initialized) {
-      throw StateError('MemoryRuntimeDatabase is not initialized');
-    }
-
-    _runtimeVersions[runtimeName] = version;
-    return Future.value();
-  }
-
-  @override
-  Future<RuntimeProjectionBoundaries?> getProjectionBoundaries(String name) {
+  Future<RuntimeProjectionState?> getProjectionState(String name) {
     _ensureInitialized();
-    return Future.value(_projectionBoundaries[name]);
+    return Future.value(_projectionStates[name]);
   }
 
   @override
-  Future<void> setProjectionBoundaries(
-    String name, {
-    required int? applyingSequence,
-    required int? appliedSequence,
-  }) {
+  Future<void> setProjectionState(String name, RuntimeProjectionState state) {
     _ensureInitialized();
-    _projectionBoundaries[name] = RuntimeProjectionBoundaries(
-      applyingSequence: applyingSequence,
-      appliedSequence: appliedSequence,
-    );
+    _projectionStates[name] = state;
     return Future.value();
   }
 
   void _ensureInitialized() {
     if (!_initialized) {
-      throw StateError('MemoryRuntimeDatabase is not initialized');
+      throw Exception('MemoryRuntimeDatabase is not initialized');
     }
   }
 }

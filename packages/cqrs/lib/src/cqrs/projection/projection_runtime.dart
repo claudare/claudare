@@ -4,6 +4,7 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
 import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
@@ -17,7 +18,6 @@ class ProjectionRuntime<TEvent extends Object, TParams>
   final Projection<TEvent, TParams> _projection;
   final Logger _logger;
   final String _runtimeName;
-  final int _runtimeVersion;
   final RuntimeStoreProjection _runtimeStore;
   final EventRegistry _eventRegistry;
   int _sequence = 0;
@@ -28,12 +28,10 @@ class ProjectionRuntime<TEvent extends Object, TParams>
     this._projection, {
     required Logger logger,
     required String runtimeName,
-    required int runtimeVersion,
     required RuntimeStoreProjection runtimeStore,
     required EventRegistry eventRegistry,
   }) : _logger = logger,
        _runtimeName = runtimeName,
-       _runtimeVersion = runtimeVersion,
        _runtimeStore = runtimeStore,
        _eventRegistry = eventRegistry {
     validateProjection(_projection);
@@ -92,7 +90,11 @@ class ProjectionRuntime<TEvent extends Object, TParams>
   Future<void> resetProjection() async {
     try {
       _queue.reset();
-      await _runtimeStore.resetProjection(_projection.name, _projection.reset);
+      await _runtimeStore.resetProjection(
+        _projection.name,
+        _projection.version,
+        _projection.reset,
+      );
       _sequence = 0;
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
@@ -111,46 +113,60 @@ class ProjectionRuntime<TEvent extends Object, TParams>
       switch (position) {
         case ProjectionNotInitialized():
           _logger.warning(
-            'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
+            'runtime $_runtimeName: projection ${_projection.name} '
             'was not initialized during catch-up; resetting it',
           );
-          await _runtimeStore.resetProjection(
-            _projection.name,
-            _projection.reset,
-          );
+          await _resetForCatchup();
           _sequence = 0;
         case ProjectionInconsistent():
           _logger.warning(
-            'runtime $_runtimeName@$_runtimeVersion: projection ${_projection.name} '
+            'runtime $_runtimeName: projection ${_projection.name} '
             'was inconsistent during catch-up; resetting it',
           );
-          await _runtimeStore.resetProjection(
-            _projection.name,
-            _projection.reset,
-          );
+          await _resetForCatchup();
           _sequence = 0;
-        case ProjectionAtSequence(:final sequence):
-          _sequence = sequence;
+        case ProjectionAtSequence(
+          :final version,
+          :final scannedThroughLocalSequence,
+        ):
+          if (version != _projection.version) {
+            _logger.warning(
+              'runtime $_runtimeName: projection ${_projection.name} changed '
+              'from version $version to ${_projection.version}; resetting it',
+            );
+            await _resetForCatchup();
+            _sequence = 0;
+          } else {
+            _sequence = scannedThroughLocalSequence;
+          }
       }
 
       final reader = eventStore.getGlobalReader(
-        _projection.streamRoute.filter,
+        const PatternFilter.any(),
         _sequence,
       );
 
-      await for (final appliedEvent in reader.scan()) {
-        final event = _eventRegistry.decode<TEvent>(appliedEvent.encodedEvent);
-        final streamParams = _projection.streamRoute.parseParams(
-          appliedEvent.streamPath,
-        );
-        await _advance(
-          appliedEvent.localSequence,
-          () => _projection.apply(
-            streamParams,
-            event,
-            appliedEvent.eventMetadata,
-          ),
-        );
+      while (await reader.loadMore()) {
+        final page = reader.currentPage;
+        final targetSequence = page.last.localSequence;
+        await _advance(targetSequence, () async {
+          for (final appliedEvent in page) {
+            if (!_projection.streamRoute.matches(appliedEvent.streamPath)) {
+              continue;
+            }
+            final event = _eventRegistry.decode<TEvent>(
+              appliedEvent.encodedEvent,
+            );
+            final streamParams = _projection.streamRoute.parseParams(
+              appliedEvent.streamPath,
+            );
+            await _projection.apply(
+              streamParams,
+              event,
+              appliedEvent.eventMetadata,
+            );
+          }
+        });
       }
     } on Exception catch (error, stackTrace) {
       projectionFailureHandler.capture(error, stackTrace);
@@ -172,6 +188,12 @@ class ProjectionRuntime<TEvent extends Object, TParams>
       projectionFailureHandler.capture(error, stackTrace);
     }
   }
+
+  Future<void> _resetForCatchup() => _runtimeStore.resetProjection(
+    _projection.name,
+    _projection.version,
+    _projection.reset,
+  );
 
   Future<void> _advance(
     int targetSequence,

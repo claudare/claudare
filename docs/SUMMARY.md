@@ -7,8 +7,8 @@ is a logical layer that will span multiple packages. It currently provides
 local event-sourced command handling, optimistic stream locks, memory/SQLite
 event databases behind a mutexed store, replayable projections, flat causal
 command/event records, independent pending command and event persistence,
-runtime-version rebuilds, IDs, time, logging, SQLite isolation, and limited
-CRDT helpers in the separate `crdt` package.
+versioned per-projection page progress, IDs, time, logging, SQLite isolation,
+and limited CRDT helpers in the separate `crdt` package.
 
 `apps/notes` is the first prototype consumer. It gives feedback on core
 contracts but does not define the architecture or public API for other apps.
@@ -23,8 +23,8 @@ contracts but does not define the architecture or public API for other apps.
 | Replayable application-defined projections | Implemented                        |
 | Generic typed projections                   | Implemented                        |
 | Consistent and eventual projection routing | Implemented                        |
-| Runtime-version projection rebuild         | Implemented                        |
-| Runtime-owned projection progress          | Implemented with mismatch rebuilds |
+| Version-selective projection rebuild        | Implemented                        |
+| Runtime-owned projection page progress      | Implemented with mismatch rebuilds |
 | Timestamp latest-write-wins helper         | Implemented with local-only limits |
 | SQLite isolate boundary                    | Implemented                        |
 | Explicit logging abstraction               | Implemented                        |
