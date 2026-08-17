@@ -13,7 +13,6 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final eventDatabaseMigrations = SqliteMigrations(
@@ -149,16 +148,14 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<PaginatedResult<LocalEvent>> getLocalEvents(
-    PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
   ) async {
-    final filter = _sqlFilter(patternFilter);
     final rows = await database.query(
       '''SELECT stream_path, kind, detail, occured_at, local_sequence FROM event
-      WHERE ${filter.sql} AND local_sequence > ?
+      WHERE local_sequence > ?
       ORDER BY local_sequence ASC LIMIT ?''',
-      [...filter.arguments, localSequenceCursor, count],
+      [localSequenceCursor, count],
     );
     final events = [
       for (final row in rows)
@@ -176,17 +173,6 @@ class SqliteEventDatabase implements EventDatabase {
       data: events,
       next: events.isEmpty ? null : events.last.localSequence,
     );
-  }
-
-  @override
-  Future<GetLocalLastEventResult> getLocalLastEvent(
-    PatternFilter patternFilter,
-  ) async {
-    final filter = _sqlFilter(patternFilter);
-    final value = await database.queryValue<int?>('''SELECT local_sequence
-      FROM event WHERE ${filter.sql}
-      ORDER BY local_sequence DESC LIMIT 1''', filter.arguments);
-    return GetLocalLastEventResult(localSequence: value ?? 0);
   }
 
   @override
@@ -475,14 +461,3 @@ Uint8List _encodeVector(VersionVector vector) =>
 
 VersionVector _decodeVector(Uint8List value) =>
     VersionVector.fromJson(JsonConverter.decode<List<dynamic>>(value));
-
-({String sql, List<Object?> arguments}) _sqlFilter(PatternFilter filter) {
-  switch (filter.type) {
-    case PatternFilterType.any:
-      return (sql: '1 = 1', arguments: []);
-    case PatternFilterType.exact:
-      return (sql: 'stream_path = ?', arguments: [filter.pattern]);
-    case PatternFilterType.startsWith:
-      return (sql: 'stream_path LIKE ?', arguments: ['${filter.pattern}%']);
-  }
-}

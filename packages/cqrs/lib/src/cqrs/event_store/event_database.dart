@@ -8,7 +8,6 @@ import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class EventDatabaseState {
   final int lastLocalCommandSequence;
@@ -34,12 +33,8 @@ abstract interface class EventDatabase {
     int count,
   );
   Future<PaginatedResult<LocalEvent>> getLocalEvents(
-    PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
-  );
-  Future<GetLocalLastEventResult> getLocalLastEvent(
-    PatternFilter patternFilter,
   );
   Future<GetStatisticsResult> getStatistics();
   Future<ReplicatedCommand?> getAppliedCommand(CommandId commandId);

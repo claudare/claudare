@@ -4,7 +4,6 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
 import 'package:cqrs/src/cqrs/projection/projection_sink.dart';
 import 'package:cqrs/src/cqrs/runtime_store/projection_position.dart';
@@ -141,10 +140,7 @@ class ProjectionRuntime<TEvent extends Object, TParams>
           }
       }
 
-      final reader = eventStore.getGlobalReader(
-        const PatternFilter.any(),
-        _sequence,
-      );
+      final reader = eventStore.getAppliedEventReader(_sequence);
 
       while (await reader.loadMore()) {
         final page = reader.currentPage;

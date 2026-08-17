@@ -25,6 +25,7 @@ contracts but does not define the architecture or public API for other apps.
 | Consistent and eventual projection routing | Implemented                        |
 | Version-selective projection rebuild        | Implemented                        |
 | Runtime-owned projection page progress      | Implemented with mismatch rebuilds |
+| Durable applied-event reader and signal     | Implemented, not runtime-consumed  |
 | Timestamp latest-write-wins helper         | Implemented with local-only limits |
 | SQLite isolate boundary                    | Implemented                        |
 | Explicit logging abstraction               | Implemented                        |

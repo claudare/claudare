@@ -68,6 +68,14 @@ the next origin sequence, and exactly the indexed events `0..eventCount - 1`.
 Promotion assigns receiver-local event sequences and stream versions in event
 index order, then writes one flat applied command and its flat events atomically.
 
+`EventStore.getAppliedEventReader` exposes that complete applied-event history
+in ascending receiver-local sequence pages. Its cursor is exclusive and zero
+starts at the beginning. `appliedChanges` is an asynchronous broadcast signal
+emitted after a successful non-empty local append or pending-command promotion.
+It carries no records, and staging, unsuccessful promotion, empty commands, and
+failed writes do not emit. Consumers recover details from the durable reader.
+The current runtime does not subscribe to this signal yet.
+
 Event `local_sequence` orders projection replay. Receiver-local command
 sequence orders export and diagnostics. `stream_version` is only a local
 optimistic-concurrency boundary. Applied events retain device ID, command
@@ -99,7 +107,9 @@ unhealthy; the event history remains available for repair by reset/replay.
 The batch callback is part of the implemented projection contract. Startup
 replay now advances page progress, but the current pre-pump live path still
 delivers matching events directly and production batch callbacks are not yet
-invoked. Callback delivery belongs to the planned event-pump cutover.
+invoked. Direct delivery still uses the temporary append-order save result.
+Signal consumption, callback delivery, and removal of that result belong to the
+planned event-pump cutover.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.

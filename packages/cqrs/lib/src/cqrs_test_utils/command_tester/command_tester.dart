@@ -7,7 +7,6 @@ import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
 // Max integer value. This is a hacky solution.
@@ -18,6 +17,7 @@ const int _maxIntValue = -1 >>> 1;
 class CommandTester {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
+  final EventDatabase _eventDatabase;
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
   final EventRegistry _eventRegistry = EventRegistry();
@@ -27,12 +27,24 @@ class CommandTester {
   CommandTester({
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
-    EventStore? eventStore,
+    EventDatabase? eventDatabase,
+  }) : this._(
+         timeProvider: timeProvider,
+         idGenerator: idGenerator,
+         eventDatabase: eventDatabase ?? MemoryEventDatabase(),
+       );
+
+  CommandTester._({
+    required TimeProvider timeProvider,
+    required IdGenerator idGenerator,
+    required EventDatabase eventDatabase,
   }) : _timeProvider = timeProvider,
        _idGenerator = idGenerator,
-       _eventStore =
-           eventStore ??
-           EventStore(MemoryEventDatabase(), eventFetchPageSize: _maxIntValue);
+       _eventDatabase = eventDatabase,
+       _eventStore = EventStore(
+         eventDatabase,
+         eventFetchPageSize: _maxIntValue,
+       );
 
   void _ensureRan() {
     if (_preRunLastLocalSequence == null) {
@@ -107,13 +119,11 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final reader = _eventStore.getGlobalReader(
-      PatternFilter.exact(streamPath),
-      _preRunLastLocalSequence!,
-    );
+    final reader = _eventStore.getAppliedEventReader(_preRunLastLocalSequence!);
 
     return reader
         .scan()
+        .where((event) => event.streamPath == streamPath)
         .map((e) => _eventRegistry.decode<Event>(e.encodedEvent))
         .toList();
   }
@@ -126,8 +136,8 @@ class CommandTester {
 
     await _flushSeeds();
 
-    final res = await _eventStore.getLocalLastEvent(PatternFilter.any());
-    _preRunLastLocalSequence = res.localSequence;
+    final state = await _eventDatabase.getState();
+    _preRunLastLocalSequence = state.lastLocalEventSequence;
 
     final executer = CommandExecutor(
       eventStore: _eventStore,

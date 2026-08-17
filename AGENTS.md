@@ -62,6 +62,12 @@ These instructions apply to the entire repository.
 - Update relevant root documentation when public behavior, ownership, validation,
   or security posture changes. Fix repository links when moving documents.
 
+## Tests
+
+- Prefer tests that verify one behavior or invariant. Split unrelated APIs,
+  success and failure paths, or outcomes into separate tests, and share setup
+  through helpers instead of combining cases in one test.
+
 ## Validation
 
 For workspace or dependency changes, run:

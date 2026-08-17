@@ -1,8 +1,10 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stages 0-3 are implemented; Stages
-4-9 remain future work. Nothing in those later stages should be treated as
-implemented behavior until the source and repository documentation say so.
+Status: decision-complete design proposal. Stages 0-4 and the durable event
+source and signaling portion of Stage 5 are implemented. The save-return
+cutover and Stages 6-9 remain future work. Nothing in those remaining parts
+should be treated as implemented behavior until the source and repository
+documentation say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -440,9 +442,13 @@ application listener path.
 
 ## Event-store contract changes
 
-`EventStore.saveChanges` returns `Future<void>`. Success means that the command
-and its events are durable. Their allocated identities and local sequences stay
-inside the database and are available through durable readers when needed.
+In the final runtime design, `EventStore.saveChanges` returns `Future<void>`.
+Success means that the command and its events are durable. Their allocated
+identities and local sequences stay inside the database and are available
+through durable readers when needed. The current Stage 5 implementation still
+returns `SaveChangesResult` because direct live delivery needs committed local
+sequences. Stage 7 changes the return type and removes append-order
+reconstruction with the direct-delivery path.
 
 Pending promotion retains a success/not-ready result because the sync scheduler
 needs to know whether promotion happened. It does not return event objects for
@@ -626,7 +632,6 @@ wiring were removed. Existing development runtime databases are not migrated.
 
 ### Stage 5: Prepare EventStore signaling and the event source
 
-- Change local save to `Future<void>` and remove append-order reconstruction.
 - Retain only the promotion result needed by sync scheduling.
 - Provide the unfiltered paginated applied-event source needed by the pump.
 - Verify monotonic receiver-local sequence behavior for local saves and remote
@@ -635,6 +640,16 @@ wiring were removed. Existing development runtime databases are not migrated.
 
 Gate: a test can commit and promote events and recover their complete ordered
 history only from the durable source.
+
+The durable portion of Stage 5 is complete. `getAppliedEventReader` exposes the
+complete applied-event history in exclusive receiver-local sequence pages, and
+`appliedChanges` broadcasts once after each successful non-empty local append
+or pending-command promotion. Memory and SQLite contract tests cover page
+boundaries, interleaved local and promoted ordering, multiple listeners,
+listener-side durable reads, and no-signal outcomes. Production runtime signal
+consumption is not implemented yet. `SaveChangesResult` and
+`StreamAppendOrder` remain temporarily for direct live delivery and move to the
+Stage 7 cutover.
 
 ### Stage 6: Build the pump as an isolated vertical slice
 
@@ -656,6 +671,8 @@ Gate: the pump is fully testable without command handlers or an application.
 ### Stage 7: Perform the runtime cutover
 
 - Replace current command-owned routing with `CqrsRuntime.execute`.
+- Change local save to `Future<void>` and remove `SaveChangesResult`,
+  `StreamAppendOrder`, and append-order reconstruction.
 - Make startup and EventStore signals use the same public single-flight pump.
 - Add terminal runtime state, stored `CqrsRuntimeFailure`, optional failure
   stream subscription, and `close()`.

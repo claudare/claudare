@@ -9,7 +9,6 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
 class MemoryEventDatabase implements EventDatabase {
   final List<AppliedCommand> _commands = [];
@@ -85,16 +84,11 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<PaginatedResult<LocalEvent>> getLocalEvents(
-    PatternFilter patternFilter,
     int localSequenceCursor,
     int count,
   ) async {
     final events = _events
-        .where(
-          (event) =>
-              event.localSequence > localSequenceCursor &&
-              patternFilter.doesMatchPath(event.streamPath),
-        )
+        .where((event) => event.localSequence > localSequenceCursor)
         .take(count)
         .map(
           (event) => LocalEvent(
@@ -108,18 +102,6 @@ class MemoryEventDatabase implements EventDatabase {
     return PaginatedResult(
       data: events,
       next: events.isEmpty ? null : events.last.localSequence,
-    );
-  }
-
-  @override
-  Future<GetLocalLastEventResult> getLocalLastEvent(
-    PatternFilter patternFilter,
-  ) async {
-    final matching = _events.where(
-      (event) => patternFilter.doesMatchPath(event.streamPath),
-    );
-    return GetLocalLastEventResult(
-      localSequence: matching.isEmpty ? 0 : matching.last.localSequence,
     );
   }
 

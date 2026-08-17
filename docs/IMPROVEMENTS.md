@@ -20,11 +20,6 @@ migration marker through `db.execute`. Record the marker with `tx.execute`,
 validate unique/increasing migration versions, and add reopen/interruption
 tests. A migration must be all applied or safely retried.
 
-### Harden event filters
-
-Event database filters use bound values. Define explicit `LIKE` escaping and
-add quotes, `%`, `_`, Unicode, and exact/prefix edge-case tests.
-
 ### Make projection lifecycle explicit
 
 Give the runtime lifecycle states and queue barriers for initialize, rebuild,

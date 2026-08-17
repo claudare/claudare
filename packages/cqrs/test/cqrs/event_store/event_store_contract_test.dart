@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
@@ -12,10 +13,10 @@ import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
+import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:test/test.dart';
 
 final _startedAt = DateTime.fromMillisecondsSinceEpoch(100, isUtc: true);
@@ -101,6 +102,91 @@ void main() {
         expect(events.map((event) => event.eventId.index), [0, 1]);
         expect(events.map((event) => event.localSequence), [1, 2]);
         expect(events.map((event) => event.streamVersion), [1, 2]);
+      });
+
+      test('signals after a successful non-empty local append', () async {
+        var signalCount = 0;
+        final subscription = store.appliedChanges.listen((_) => signalCount++);
+        addTearDown(subscription.cancel);
+
+        await store.saveChanges(
+          _commandChanges(
+            'local',
+            localLocks: const [
+              StreamLocalLock(
+                streamPath: 'test/1',
+                originatingStreamVersion: 0,
+              ),
+            ],
+            events: [
+              _storedEvent('test/1', 'local-first'),
+              _storedEvent('test/1', 'local-second'),
+            ],
+          ),
+        );
+        await _flushAsyncEvents();
+
+        expect(signalCount, 1);
+      });
+
+      test('signals after a successful pending-command promotion', () async {
+        final command = _commandRecord(device: 8, sequence: 1, eventCount: 2);
+        await _stageComplete(store, command);
+        var signalCount = 0;
+        final subscription = store.appliedChanges.listen((_) => signalCount++);
+        addTearDown(subscription.cancel);
+
+        expect(await store.promotePendingCommand(command.commandId), isTrue);
+        await _flushAsyncEvents();
+
+        expect(signalCount, 1);
+      });
+
+      test('does not signal for an empty command', () async {
+        var signalCount = 0;
+        final subscription = store.appliedChanges.listen((_) => signalCount++);
+        addTearDown(subscription.cancel);
+
+        await store.saveChanges(
+          _commandChanges('empty', localLocks: const [], events: const []),
+        );
+        await _flushAsyncEvents();
+
+        expect(signalCount, 0);
+      });
+
+      test('does not signal for an unsuccessful promotion', () async {
+        final command = _commandRecord(device: 8, sequence: 1, eventCount: 2);
+        await store.stageReplicatedCommand(command);
+        await store.stageReplicatedEvents([
+          _replicatedEvent(command.commandId, 0),
+        ]);
+        var signalCount = 0;
+        final subscription = store.appliedChanges.listen((_) => signalCount++);
+        addTearDown(subscription.cancel);
+
+        expect(await store.promotePendingCommand(command.commandId), isFalse);
+        await _flushAsyncEvents();
+
+        expect(signalCount, 0);
+      });
+
+      test('reads durable history from an applied-change listener', () async {
+        final read = Completer<List<LocalEvent>>();
+        final subscription = store.appliedChanges.listen((_) async {
+          try {
+            read.complete(await store.getAppliedEventReader(0).scan().toList());
+          } on Exception catch (error, stackTrace) {
+            read.completeError(error, stackTrace);
+          }
+        });
+        addTearDown(subscription.cancel);
+
+        await _appendOne(store, streamPath: 'test/1', kind: 'created');
+
+        final events = await read.future;
+        expect(events.map((event) => event.encodedEvent.kind), ['created']);
+        expect(events.single.localSequence, 1);
       });
 
       test('rolls back stale locks without allocator holes', () async {
@@ -304,7 +390,7 @@ void main() {
         );
       });
 
-      test('scans stream and filtered global readers across pages', () async {
+      test('scans events from one stream', () async {
         await _appendOne(store, streamPath: 'one', kind: 'one-a');
         await _appendOne(store, streamPath: 'two', kind: 'two');
         await _appendOne(
@@ -319,14 +405,59 @@ void main() {
           'one-a',
           'one-b',
         ]);
+      });
 
-        final globalEvents =
-            await store
-                .getGlobalReader(PatternFilter.exact('one'), 1)
-                .scan()
-                .toList();
-        expect(globalEvents.map((event) => event.encodedEvent.kind), ['one-b']);
-        expect(globalEvents.single.localSequence, 3);
+      test('pages all applied events without filtering', () async {
+        await _appendOne(store, streamPath: 'one', kind: 'one');
+        await _appendOne(store, streamPath: 'two', kind: 'two');
+        await _appendOne(store, streamPath: 'three', kind: 'three');
+
+        final reader = store.getAppliedEventReader(0);
+        expect(await reader.loadMore(), isTrue);
+        expect(reader.currentPage.map((event) => event.localSequence), [1, 2]);
+        expect(reader.currentPage.map((event) => event.streamPath), [
+          'one',
+          'two',
+        ]);
+        expect(await reader.loadMore(), isTrue);
+        expect(reader.currentPage.map((event) => event.localSequence), [3]);
+        expect(reader.currentPage.map((event) => event.streamPath), ['three']);
+        expect(await reader.loadMore(), isFalse);
+      });
+
+      test('uses an exclusive applied-event cursor', () async {
+        await _appendOne(store, streamPath: 'one', kind: 'one');
+        await _appendOne(store, streamPath: 'two', kind: 'two');
+        await _appendOne(store, streamPath: 'three', kind: 'three');
+
+        final events = await store.getAppliedEventReader(2).scan().toList();
+
+        expect(events.map((event) => event.encodedEvent.kind), ['three']);
+        expect(events.single.localSequence, 3);
+      });
+
+      test('keeps applied-event sequences contiguous across local append and '
+          'promotion', () async {
+        await _appendOne(store, streamPath: 'one', kind: 'one-a');
+        final remote = _commandRecord(device: 6, sequence: 1, eventCount: 2);
+        await _stageComplete(store, remote);
+        expect(await store.promotePendingCommand(remote.commandId), isTrue);
+        await _appendOne(
+          store,
+          streamPath: 'one',
+          kind: 'one-b',
+          originatingVersion: 1,
+        );
+
+        final events = await store.getAppliedEventReader(0).scan().toList();
+
+        expect(events.map((event) => event.localSequence), [1, 2, 3, 4]);
+        expect(events.map((event) => event.streamPath), [
+          'one',
+          'test/6',
+          'test/6',
+          'one',
+        ]);
       });
 
       test('resets applied and orphan pending state', () async {
@@ -342,6 +473,8 @@ void main() {
     });
   }
 }
+
+Future<void> _flushAsyncEvents() => Future<void>.delayed(Duration.zero);
 
 Future<void> _appendOne(
   EventStore store, {

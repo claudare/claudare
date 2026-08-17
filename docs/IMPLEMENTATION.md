@@ -50,6 +50,15 @@ are queried separately by `CommandId` for ordered transport export. SQLite
 derives the causal frontier with `MAX(sequence)` grouped by device ID from
 applied commands; memory derives the same value rather than caching it.
 
+The unfiltered `EventStore.getAppliedEventReader` pages every applied event in
+ascending receiver-local sequence order after an exclusive cursor.
+`EventStore.appliedChanges` asynchronously broadcasts once after a successful
+non-empty local append or pending-command promotion. It does not emit for
+empty, failed, rejected, staged, missing, or not-ready changes. Notification
+listeners read durable data rather than receiving event payloads. Production
+runtime signal consumption is not implemented yet, and `saveChanges` retains
+its append-order result until direct live delivery is removed.
+
 `CqrsRuntime` validates projection names, versions, and route definitions, then
 creates projection runners and initializes or rebuilds them from stored
 per-projection version and page state. A generic projection owns one
@@ -72,7 +81,8 @@ page end, including pages with no matching routes. It writes runtime progress
 once before and once after each page while keeping matching read-model writes
 sequential. The current direct live-delivery path still advances matching
 events individually. The required projection batch callback is not yet invoked;
-page callback delivery is part of the planned pump cutover.
+signal-driven pumping and page callback delivery are part of the planned pump
+cutover.
 
 ## Current core limits
 

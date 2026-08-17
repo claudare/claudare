@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -12,7 +14,6 @@ import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:mutex/mutex.dart';
 
 enum StageReplicatedCommandResult { staged, alreadyPresent }
@@ -40,12 +41,6 @@ class SaveChangesResult {
   SaveChangesResult.empty() : orders = [];
 }
 
-class GetLocalLastEventResult {
-  final int localSequence;
-
-  const GetLocalLastEventResult({required this.localSequence});
-}
-
 class GetStatisticsResult {
   final int eventCount;
   final int storageSize; // bytes
@@ -57,11 +52,15 @@ class EventStore {
   final EventDatabase _database;
   final int _eventFetchPageSize;
   final ReadWriteMutex _mutex = ReadWriteMutex();
+  final StreamController<void> _appliedChangesController =
+      StreamController<void>.broadcast(sync: false);
 
   EventStore(EventDatabase database, {int? eventFetchPageSize})
     : _database = database,
       _eventFetchPageSize =
           eventFetchPageSize ?? database.defaultEventFetchPageSize;
+
+  Stream<void> get appliedChanges => _appliedChangesController.stream;
 
   Future<void> migrate() => _mutex.protectWrite(() async {
     try {
@@ -98,7 +97,7 @@ class EventStore {
       throw ArgumentError('every appended event must have one stream lock');
     }
 
-    return _mutex.protectWrite(() async {
+    final result = await _mutex.protectWrite(() async {
       try {
         final state = await _database.getState();
         final streamVersions = <String, int>{};
@@ -159,6 +158,8 @@ class EventStore {
         );
       }
     });
+    _appliedChangesController.add(null);
+    return result;
   }
 
   Future<StageReplicatedCommandResult> stageReplicatedCommand(
@@ -223,61 +224,64 @@ class EventStore {
     }
   });
 
-  Future<bool> promotePendingCommand(CommandId commandId) =>
-      _mutex.protectWrite(() async {
-        try {
-          final command = await _database.getPendingCommand(commandId);
-          if (command == null) return false;
-          final state = await _database.getState();
-          if (!state.appliedVersion.contains(command.dependency)) {
-            return false;
-          }
-          if (state.appliedVersion.value(commandId.deviceId) + 1 !=
-              commandId.sequence) {
-            return false;
-          }
+  Future<bool> promotePendingCommand(CommandId commandId) async {
+    final promoted = await _mutex.protectWrite(() async {
+      try {
+        final command = await _database.getPendingCommand(commandId);
+        if (command == null) return false;
+        final state = await _database.getState();
+        if (!state.appliedVersion.contains(command.dependency)) {
+          return false;
+        }
+        if (state.appliedVersion.value(commandId.deviceId) + 1 !=
+            commandId.sequence) {
+          return false;
+        }
 
-          final pendingEvents = await _database.getPendingEvents(commandId);
-          if (pendingEvents.length != command.eventCount) return false;
-          for (var i = 0; i < pendingEvents.length; i++) {
-            if (pendingEvents[i].eventId.index != i) return false;
-          }
+        final pendingEvents = await _database.getPendingEvents(commandId);
+        if (pendingEvents.length != command.eventCount) return false;
+        for (var i = 0; i < pendingEvents.length; i++) {
+          if (pendingEvents[i].eventId.index != i) return false;
+        }
 
-          final streamVersions = <String, int>{};
-          var localEventSequence = state.lastLocalEventSequence;
-          final events = <AppliedEvent>[];
-          for (final event in pendingEvents) {
-            final current =
-                streamVersions[event.streamPath] ??
-                await _database.getStreamVersion(event.streamPath);
-            final next = current + 1;
-            streamVersions[event.streamPath] = next;
-            events.add(
-              AppliedEvent(
-                eventId: event.eventId,
-                streamPath: event.streamPath,
-                encodedEvent: event.encodedEvent,
-                occuredAt: event.occuredAt,
-                localSequence: ++localEventSequence,
-                streamVersion: next,
-              ),
-            );
-          }
-          await _database.promotePending(
-            AppliedCommand.fromReplicatedCommand(
-              command,
-              localSequence: state.lastLocalCommandSequence + 1,
+        final streamVersions = <String, int>{};
+        var localEventSequence = state.lastLocalEventSequence;
+        final events = <AppliedEvent>[];
+        for (final event in pendingEvents) {
+          final current =
+              streamVersions[event.streamPath] ??
+              await _database.getStreamVersion(event.streamPath);
+          final next = current + 1;
+          streamVersions[event.streamPath] = next;
+          events.add(
+            AppliedEvent(
+              eventId: event.eventId,
+              streamPath: event.streamPath,
+              encodedEvent: event.encodedEvent,
+              occuredAt: event.occuredAt,
+              localSequence: ++localEventSequence,
+              streamVersion: next,
             ),
-            events,
-          );
-          return true;
-        } on Exception catch (cause) {
-          throw EventStoreException(
-            'Failed to promote pending command $commandId',
-            cause: cause,
           );
         }
-      });
+        await _database.promotePending(
+          AppliedCommand.fromReplicatedCommand(
+            command,
+            localSequence: state.lastLocalCommandSequence + 1,
+          ),
+          events,
+        );
+        return true;
+      } on Exception catch (cause) {
+        throw EventStoreException(
+          'Failed to promote pending command $commandId',
+          cause: cause,
+        );
+      }
+    });
+    if (promoted) _appliedChangesController.add(null);
+    return promoted;
+  }
 
   Future<List<AppliedCommand>> getAppliedCommands(int localSequenceCursor) =>
       _mutex.protectRead(() async {
@@ -330,36 +334,22 @@ class EventStore {
     }
   });
 
-  PaginatedReader<LocalEvent> getGlobalReader(
-    PatternFilter patternFilter,
-    int localSequenceCursor,
-  ) => PaginatedReader(
-    (cursor) => _readGlobalPage(patternFilter, cursor),
-    initialCursor: localSequenceCursor,
-  );
+  PaginatedReader<LocalEvent> getAppliedEventReader(int localSequenceCursor) =>
+      PaginatedReader(
+        _readAppliedEventPage,
+        initialCursor: localSequenceCursor,
+      );
 
-  Future<PaginatedResult<LocalEvent>> _readGlobalPage(
-    PatternFilter patternFilter,
+  Future<PaginatedResult<LocalEvent>> _readAppliedEventPage(
     int localSequenceCursor,
   ) => _mutex.protectRead(() async {
     try {
       return await _database.getLocalEvents(
-        patternFilter,
         localSequenceCursor,
         _eventFetchPageSize,
       );
     } on Exception catch (cause) {
       throw EventStoreException('Failed to get local events', cause: cause);
-    }
-  });
-
-  Future<GetLocalLastEventResult> getLocalLastEvent(
-    PatternFilter patternFilter,
-  ) => _mutex.protectRead(() async {
-    try {
-      return await _database.getLocalLastEvent(patternFilter);
-    } on Exception catch (cause) {
-      throw EventStoreException('Failed to get last local event', cause: cause);
     }
   });
 
