@@ -39,7 +39,7 @@ class FinanceApp {
       runtimeName: 'finance-main',
       runtimeVersion: runtimeVersion,
       migrationPolicy: migrationPolicy,
-      projectors: [accountSummaryProjection, totalBalanceProjection],
+      projections: [accountSummaryProjection, totalBalanceProjection],
     );
     _cqrsRuntime
       ..registerEvent(const AccountAtmDepositedCodec())

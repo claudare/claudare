@@ -1,21 +1,21 @@
-import 'package:cqrs/src/cqrs/event/event_metadata.dart';
-import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
-
 import 'projection_failure_handler.dart';
+import 'projection_route.dart';
 
-/// Implement this to define a projection that can play events
-/// Unfortunately Event and StreamParams must be defined on the projection level
-abstract interface class Projection<Event extends Object, StreamParams> {
+abstract interface class Projection {
   String get name;
-  StreamRoute<StreamParams> get streamRoute;
+  int get version;
+  List<ProjectionRoute> get routes;
   ProjectionFailureHandler get failureHandler;
 
   Future<void> reset();
+  void onBatchApplied();
+}
 
-  /// do the application. Throwing is an error
-  Future<void> apply(
-    StreamParams streamParams,
-    Event event,
-    EventMetadata metadata,
-  );
+final class ProjectionConfigurationException implements Exception {
+  final String message;
+
+  const ProjectionConfigurationException(this.message);
+
+  @override
+  String toString() => 'ProjectionConfigurationException: $message';
 }

@@ -50,9 +50,13 @@ are queried separately by `CommandId` for ordered transport export. SQLite
 derives the causal frontier with `MAX(sequence)` grouped by device ID from
 applied commands; memory derives the same value rather than caching it.
 
-`CqrsRuntime` creates projection runners, initializes or rebuilds them from
-stored runtime-version and per-projection sequence state, and routes committed
-events. `RuntimeStore` records applying and applied boundaries by globally
+`CqrsRuntime` validates projection names, versions, and route definitions, then
+creates projection runners and initializes or rebuilds them from stored
+runtime-version and per-projection sequence state. A projection owns an ordered
+list of typed routes and may consume unrelated event families and stream paths;
+intentional overlapping routes all run in registration order. An `Object` event
+route supports manual runtime-type checks without bypassing registry decoding.
+`RuntimeStore` records applying and applied boundaries by globally
 unique projection name. A boundary mismatch triggers reset and replay from
 zero. Applications choose whether a projection is consistent, so command
 completion waits for its callback, or eventual, so it is queued without
@@ -62,6 +66,9 @@ Events are authoritative. Projections are disposable derived state and repair
 themselves through reset and replay. Projection read-model changes and runtime
 progress are intentionally non-atomic; the two-boundary protocol detects an
 interruption. Reset implementations drop and recreate all schema they own.
+The required projection batch callback is not yet invoked by the current
+event-at-a-time runtime; page callback delivery is part of the planned pump
+cutover.
 
 ## Current core limits
 

@@ -1,47 +1,52 @@
 import 'package:cqrs/cqrs.dart';
 
-class ProjectionTester<Event extends Object, StreamParams> {
-  final Projection<Event, StreamParams> projection;
-  final List<_ProjectionTestEvent<Event, StreamParams>> _events = [];
+class ProjectionTester {
+  final Projection projection;
+  final List<ProjectionRoute> _routes;
+  final List<_ProjectionTestEvent> _events = [];
 
-  ProjectionTester(this.projection);
+  ProjectionTester(this.projection)
+    : _routes = List.unmodifiable(projection.routes);
 
-  ProjectionTester<Event, StreamParams> withEvent(
-    StreamParams streamParams,
-    Event event, {
+  ProjectionTester withEvent(
+    String streamPath,
+    Object event, {
     required DateTime occuredAt,
   }) {
-    _events.add(_ProjectionTestEvent(streamParams, event, occuredAt));
+    _events.add(_ProjectionTestEvent(streamPath, event, occuredAt));
     return this;
   }
 
-  /// Runs the projection with given events.
-  /// The projection is reset before each run.
-  /// Returns true on success, false on Exception.
   Future<bool> run() async {
     try {
       await projection.reset();
+      var applied = false;
 
-      for (var i = 0; i < _events.length; i++) {
-        final event = _events[i];
-
+      for (final event in _events) {
         final metadata = EventMetadata(occuredAt: event.occuredAt);
-
-        await projection.apply(event.streamParams, event.event, metadata);
+        for (final route in _routes) {
+          if (route.matches(event.streamPath, event.event)) {
+            await route.apply(event.streamPath, event.event, metadata);
+            applied = true;
+          }
+        }
       }
 
+      if (applied) {
+        projection.onBatchApplied();
+      }
       return true;
-    } on Exception catch (e, stackTrace) {
-      projection.failureHandler.capture(e, stackTrace);
+    } on Exception catch (error, stackTrace) {
+      projection.failureHandler.capture(error, stackTrace);
       return false;
     }
   }
 }
 
-class _ProjectionTestEvent<Event, StreamParams> {
-  final StreamParams streamParams;
-  final Event event;
+final class _ProjectionTestEvent {
+  final String streamPath;
+  final Object event;
   final DateTime occuredAt;
 
-  const _ProjectionTestEvent(this.streamParams, this.event, this.occuredAt);
+  const _ProjectionTestEvent(this.streamPath, this.event, this.occuredAt);
 }

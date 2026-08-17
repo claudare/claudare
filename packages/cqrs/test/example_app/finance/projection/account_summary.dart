@@ -4,10 +4,9 @@ import '../account_event/account.dart';
 import '../read_model/accounts_summary_read_model.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AccountSummaryProjection implements Projection<AccountEvent, String> {
+class AccountSummaryProjection implements Projection {
   final AccountsSummaryReadModel _repo;
-  final _failureHandler =
-      StandardProjectionFailureHandler(); // this must be created once!
+  final _failureHandler = StandardProjectionFailureHandler();
 
   AccountSummaryProjection(this._repo);
 
@@ -15,18 +14,30 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
   String get name => 'account-summary';
 
   @override
-  get streamRoute => accountStreamRoute;
+  int get version => 1;
 
   @override
-  get failureHandler => _failureHandler;
+  List<ProjectionRoute> get routes => [
+    ProjectionRoute<AccountEvent, String>(
+      streamRoute: accountStreamRoute,
+      apply: _applyAccountEvent,
+    ),
+  ];
 
   @override
-  Future<void> reset() async {
-    await _repo.reset();
-  }
+  ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
-  Future<void> apply(accountId, event, metadata) {
+  Future<void> reset() => _repo.reset();
+
+  @override
+  void onBatchApplied() {}
+
+  Future<void> _applyAccountEvent(
+    String accountId,
+    AccountEvent event,
+    EventMetadata metadata,
+  ) {
     switch (event) {
       case AccountOpened(:final name):
         return _repo.store(

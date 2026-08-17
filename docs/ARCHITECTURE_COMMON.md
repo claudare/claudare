@@ -38,8 +38,10 @@ explicit persisted kind. `CqrsRuntime` owns the internal registry that encodes
 command events by Dart type and decodes command-stream reads, live delivery,
 and replay by persisted kind.
 
-`CqrsRuntime` constructs projection runners. The runtime store owns each
-globally named projection's applying and applied event-sequence boundaries,
+`CqrsRuntime` validates and constructs projection runners. Each projection has
+a globally unique name, a positive model version, and one or more ordered
+routes. The runtime store owns each projection's applying and applied
+event-sequence boundaries,
 while action-based runtime migrations trigger whole-runtime rebuilds when the
 stored version changes. The runtime separates consistent projection routing from
 eventual routing. Events remain authoritative; read models are disposable
@@ -81,13 +83,23 @@ contract.
 
 ## Projection contract
 
-A `Projection` names its `StreamRoute`, can reset its derived state, and applies
-decoded events with occurrence-time metadata.
+A `Projection` owns an ordered list of routes, can reset its derived state, and
+declares a required batch-completion callback. A generic `ProjectionRoute`
+binds one event type and one typed `StreamRoute` to its handler. A projection may
+combine unrelated event families and stream routes. Every matching route runs
+once in registration order, including intentional overlaps.
+For manual runtime dispatch, `ProjectionRoute<Object, TParams>` receives the
+registry-decoded object and the application handler checks its runtime type.
 `ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
 routes live committed events through the same advancement path. Missing or
 disagreeing applying/applied boundaries trigger reset and replay from sequence
 zero. Projection errors make the derived state unhealthy; the event history
 remains available for repair by reset/replay.
+
+The batch callback is part of the implemented projection contract. The current
+pre-pump runtime still advances one matching event at a time and does not yet
+invoke production page callbacks; page-based callback delivery belongs to the
+planned event-pump cutover.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.

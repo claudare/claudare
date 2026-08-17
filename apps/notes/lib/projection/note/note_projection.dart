@@ -6,30 +6,40 @@ import 'package:notes/stream_route/note_stream_route.dart';
 
 import 'note_projection_repo.dart';
 
-/// Single projection that holds both the summary (string title and content)
-/// and the granular CRDT changes. 2 separate read models are used to query it.
-class NoteProjection implements Projection<NoteEvent, String> {
+class NoteProjection implements Projection {
   final NoteProjectionRepo _repo;
   final StandardProjectionFailureHandler _failureHandler;
 
   const NoteProjection(this._repo, this._failureHandler);
 
   @override
-  String get name => 'note.complete';
+  String get name => 'notes';
 
   @override
-  StreamRoute<String> get streamRoute => noteStreamRoute;
+  int get version => 1;
+
+  @override
+  List<ProjectionRoute> get routes => [
+    ProjectionRoute<NoteEvent, String>(
+      streamRoute: noteStreamRoute,
+      apply: _applyNoteEvent,
+    ),
+  ];
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
-  Future<void> reset() async {
-    await _repo.reset();
-  }
+  Future<void> reset() => _repo.reset();
 
   @override
-  Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
+  void onBatchApplied() {}
+
+  Future<void> _applyNoteEvent(
+    String noteId,
+    NoteEvent event,
+    EventMetadata metadata,
+  ) {
     switch (event) {
       case NoteContentUpdated(:final newContent):
         return _repo.getAndStore(

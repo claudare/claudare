@@ -47,16 +47,7 @@ final class EventRegistry {
   }
 
   T decode<T extends Object>(EncodedEvent encoded) {
-    final registered = _byKind[encoded.kind];
-    if (registered == null) {
-      throw EventCodecException(
-        'No event codec is registered for kind ${encoded.kind}',
-        direction: EventCodecDirection.decode,
-        kind: encoded.kind,
-      );
-    }
-
-    final event = registered.fromBytes(encoded);
+    final event = decodeObject(encoded);
     if (event is! T) {
       throw EventCodecException(
         'Event kind ${encoded.kind} decoded to ${event.runtimeType}, '
@@ -67,8 +58,22 @@ final class EventRegistry {
     }
     return event;
   }
+
+  Object decodeObject(EncodedEvent encoded) {
+    final registered = _byKind[encoded.kind];
+    if (registered == null) {
+      throw EventCodecException(
+        'No event codec is registered for kind ${encoded.kind}',
+        direction: EventCodecDirection.decode,
+        kind: encoded.kind,
+      );
+    }
+
+    return registered.fromBytes(encoded);
+  }
 }
 
+// TODO: move to the exception folder?
 final class EventRegistryException implements Exception {
   final String message;
 

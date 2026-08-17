@@ -3,28 +3,35 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/event/tag/tag.dart';
 import 'package:notes/stream_route/tag_stream_route.dart';
 
-class TagProjection extends SqliteProjection<TagEvent, String> {
+class TagProjection extends SqliteProjection {
   final StandardProjectionFailureHandler _failureHandler =
       StandardProjectionFailureHandler();
-
-  TagProjection();
 
   @override
   String get name => 'tags';
 
   @override
-  StreamRoute<String> get streamRoute => tagStreamRoute;
+  int get version => 1;
 
   @override
   ProjectionFailureHandler get failureHandler => _failureHandler;
+
+  @override
+  List<ProjectionRoute> routes(IsolateSqlite db) => [
+    ProjectionRoute<TagEvent, String>(
+      streamRoute: tagStreamRoute,
+      apply:
+          (tagId, event, metadata) => db.transaction(
+            (tx) => _applyTagEvent(tx, tagId, event, metadata),
+          ),
+    ),
+  ];
 
   @override
   Future<void> reset(IsolateSqlite db) async {
     await db.transaction((tx) {
       tx.execute('DROP TABLE IF EXISTS note_tag;');
       tx.execute('DROP TABLE IF EXISTS tag;');
-      tx.execute('DROP TABLE IF EXISTS local_sequence;');
-      tx.execute('DROP TABLE IF EXISTS checkpoint;');
       tx.execute('''CREATE TABLE tag (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL
@@ -38,7 +45,9 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   }
 
   @override
-  void apply(
+  void onBatchApplied() {}
+
+  void _applyTagEvent(
     SyncContext tx,
     String tagId,
     TagEvent event,
@@ -46,35 +55,22 @@ class TagProjection extends SqliteProjection<TagEvent, String> {
   ) {
     switch (event) {
       case TagAssigned(:final noteId):
-        {
-          tx.execute('INSERT INTO note_tag (note_id, tag_id) VALUES (?, ?)', [
-            noteId,
-            tagId,
-          ]);
-        }
+        tx.execute('INSERT INTO note_tag (note_id, tag_id) VALUES (?, ?)', [
+          noteId,
+          tagId,
+        ]);
       case TagCreated(:final name):
-        {
-          tx.execute('INSERT INTO tag (id, name) VALUES (?, ?)', [tagId, name]);
-        }
+        tx.execute('INSERT INTO tag (id, name) VALUES (?, ?)', [tagId, name]);
       case TagRemoved():
-        {
-          // TODO: this will not work, need shadow delete, always
-          tx.execute('DELETE FROM tag WHERE id = ?', [tagId]);
-        }
+        // TODO: this will not work, need shadow delete, always
+        tx.execute('DELETE FROM tag WHERE id = ?', [tagId]);
       case TagRenamed(:final newName):
-        {
-          // TODO: this will not preserve the order
-          // Utilize the CrtdValue here instead
-          tx.execute('UPDATE tag SET name = ? WHERE id = ?', [newName, tagId]);
-        }
+        tx.execute('UPDATE tag SET name = ? WHERE id = ?', [newName, tagId]);
       case TagUnassigned(:final noteId):
-        {
-          // but this is okay?
-          tx.execute('DELETE FROM note_tag WHERE note_id = ? AND tag_id = ?', [
-            noteId,
-            tagId,
-          ]);
-        }
+        tx.execute('DELETE FROM note_tag WHERE note_id = ? AND tag_id = ?', [
+          noteId,
+          tagId,
+        ]);
     }
   }
 }

@@ -23,10 +23,10 @@ void main() {
       StandardProjectionFailureHandler(),
     );
     final tester =
-        ProjectionTester<NoteEvent, String>(projection)
-          ..withEvent('note-1', const NoteCreated(), occuredAt: occurredAt)
+        ProjectionTester(projection)
+          ..withEvent('note/note-1', const NoteCreated(), occuredAt: occurredAt)
           ..withEvent(
-            'note-1',
+            'note/note-1',
             const NoteTitleUpdated(noteId: 'note-1', newTitle: 'Title'),
             occuredAt: occurredAt,
           );
@@ -52,8 +52,8 @@ void main() {
       StandardProjectionFailureHandler(),
       const NoopLogger(),
     );
-    final tester = ProjectionTester<NoteEvent, String>(projection)..withEvent(
-      'note-1',
+    final tester = ProjectionTester(projection)..withEvent(
+      'note/note-1',
       const NoteTitleUpdated(noteId: 'note-1', newTitle: 'hello'),
       occuredAt: occurredAt,
     );

@@ -76,7 +76,7 @@ class NotesRuntime {
 
     _cqrsRuntime = CqrsRuntime(
       dependencies: cqrsDependencies,
-      projectors: [noteProjection, searchProjection],
+      projections: [noteProjection, searchProjection],
       runtimeName: 'notes',
       runtimeVersion: NotesRuntime.runtimeVersion,
       migrationPolicy: migrationPolicy,

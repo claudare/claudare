@@ -20,7 +20,7 @@ void main() {
   late EventStore eventStore;
   late RuntimeStore runtimeStore;
   late AccountSummaryProjection projection;
-  late ProjectionRuntime<AccountEvent, String> runner;
+  late ProjectionRuntime runner;
   late EventRegistry eventRegistry;
 
   setUp(() async {

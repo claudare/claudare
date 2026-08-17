@@ -51,8 +51,15 @@ replayable.
 ## Projection and read-model responsibilities
 
 Applications define concrete domain event codecs, stream routes, projection
-ownership, and query/read-model interfaces. Core's runtime store owns progress
-for each globally unique projection name. A projection reset must drop any
+ownership, and query/read-model interfaces. Each projection declares a unique
+name, a positive read-model version, an ordered list of typed routes, reset
+behavior, and a batch callback. A projection may consume multiple unrelated
+event families and stream routes. When event selection genuinely belongs at
+runtime, applications use an `Object` event route and check the registry-decoded
+event's runtime type in the handler.
+
+Core's runtime store owns progress for each globally unique projection name. A
+projection reset must drop any
 projection-owned schema and recreate its complete current schema. Missing or
 mismatched runtime boundaries cause reset and replay from sequence zero.
 Intentional no-op events still advance runtime-owned progress.

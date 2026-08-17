@@ -1,11 +1,10 @@
-import 'package:cqrs/cqrs.dart';
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:notes/event/note/note.dart';
 import 'package:notes/projection/search/search_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-// what if more then one event type is needed?
-class SearchProjection implements Projection<NoteEvent, String> {
+class SearchProjection implements Projection {
   final SearchProjectionRepo _repo;
   final StandardProjectionFailureHandler _failureHandler;
   final Logger _logger;
@@ -13,8 +12,33 @@ class SearchProjection implements Projection<NoteEvent, String> {
   const SearchProjection(this._repo, this._failureHandler, this._logger);
 
   @override
-  // TODO: for now search database is never cleared, as permanent delition is not implemented
-  Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {
+  String get name => 'search';
+
+  @override
+  int get version => 1;
+
+  @override
+  List<ProjectionRoute> get routes => [
+    ProjectionRoute<NoteEvent, String>(
+      streamRoute: noteStreamRoute,
+      apply: _applyNoteEvent,
+    ),
+  ];
+
+  @override
+  ProjectionFailureHandler get failureHandler => _failureHandler;
+
+  @override
+  Future<void> reset() => _repo.reset();
+
+  @override
+  void onBatchApplied() {}
+
+  Future<void> _applyNoteEvent(
+    String noteId,
+    NoteEvent event,
+    EventMetadata metadata,
+  ) {
     _logger.debug('applying search projection $noteId');
     switch (event) {
       case NoteContentUpdated(:final newContent):
@@ -33,24 +57,8 @@ class SearchProjection implements Projection<NoteEvent, String> {
             timestamp: metadata.occuredAt,
           ),
         );
-
       default:
-        // no-op
         return Future.value();
     }
   }
-
-  @override
-  Future<void> reset() {
-    return _repo.reset();
-  }
-
-  @override
-  String get name => 'search';
-
-  @override
-  StreamRoute<String> get streamRoute => noteStreamRoute;
-
-  @override
-  ProjectionFailureHandler get failureHandler => _failureHandler;
 }

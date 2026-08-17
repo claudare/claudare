@@ -4,8 +4,7 @@ import '../account_event/account.dart';
 import '../read_model/total_balance_read_model.dart';
 import '../stream_route/account_stream_route.dart';
 
-// counts total balance, runs eventually
-class TotalBalanceProjection implements Projection<AccountEvent, String> {
+class TotalBalanceProjection implements Projection {
   final TotalBalanceReadModel _repo;
 
   const TotalBalanceProjection(this._repo);
@@ -14,32 +13,41 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
   String get name => 'total-balance';
 
   @override
-  get streamRoute => accountStreamRoute;
+  int get version => 1;
 
   @override
-  get failureHandler => ThrowingProjectionFailureHandler();
+  List<ProjectionRoute> get routes => [
+    ProjectionRoute<AccountEvent, String>(
+      streamRoute: accountStreamRoute,
+      apply: _applyAccountEvent,
+    ),
+  ];
 
   @override
-  Future<void> reset() async {
-    await _repo.reset();
-  }
+  ProjectionFailureHandler get failureHandler =>
+      ThrowingProjectionFailureHandler();
 
   @override
-  Future<void> apply(accountId, event, metadata) async {
+  Future<void> reset() => _repo.reset();
+
+  @override
+  void onBatchApplied() {}
+
+  Future<void> _applyAccountEvent(
+    String accountId,
+    AccountEvent event,
+    EventMetadata metadata,
+  ) async {
     switch (event) {
       case AccountAtmDeposited(:final amount):
         final currentValue = await _repo.get();
-
         return _repo.store(currentValue + amount);
       case AccountAtmWithdrawn(:final amount):
         final currentValue = await _repo.get();
-
         return _repo.store(currentValue - amount);
-
       case AccountOpened():
       case AccountInnerTransfer():
       case AccountRenamed():
-        // no-ops
         break;
     }
   }

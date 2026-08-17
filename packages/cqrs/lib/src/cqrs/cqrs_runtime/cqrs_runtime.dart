@@ -27,15 +27,24 @@ class CqrsRuntime {
     required CqrsRuntimeDependencies dependencies,
     required this.runtimeName,
     required this.runtimeVersion,
-    required List<Projection> projectors,
+    required List<Projection> projections,
     MigrationPolicy migrationPolicy = MigrationPolicy.whenVersionChanges,
   }) : _runtimeStore = RuntimeStore(
          dependencies.runtimeDatabase,
          migrationPolicy: migrationPolicy,
        ),
        _dependencies = dependencies {
+    final projectionNames = <String>{};
+    for (final projection in projections) {
+      if (!projectionNames.add(projection.name)) {
+        throw ProjectionConfigurationException(
+          'Projection name ${projection.name} is registered more than once',
+        );
+      }
+    }
+
     _projectionRunners =
-        projectors
+        projections
             .map(
               (projector) => ProjectionRuntime(
                 projector,
@@ -114,7 +123,7 @@ class CqrsRuntime {
 
   BoundCommand<Input> bindCommand<Input extends CommandInput>(
     Command<Input> command,
-    List<Projection> consistentProjectors,
+    List<Projection> consistentProjections,
   ) {
     final executor = CommandExecutor(
       eventStore: _dependencies.eventStore,
@@ -127,8 +136,8 @@ class CqrsRuntime {
     final eventualRunners = <ProjectionRuntime>[];
 
     for (final runner in _projectionRunners) {
-      final isConsistent = consistentProjectors.any(
-        (projector) => runner.isProjection(projector),
+      final isConsistent = consistentProjections.any(
+        (projection) => runner.isProjection(projection),
       );
 
       if (isConsistent) {

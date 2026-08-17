@@ -12,7 +12,7 @@ void main() {
   group('Account summary projection', () {
     late AccountsSummaryReadModel model;
     late AccountSummaryProjection projection;
-    late ProjectionTester<AccountEvent, String> tester;
+    late ProjectionTester tester;
 
     setUp(() {
       model = AccountsSummaryReadModel();
@@ -34,22 +34,22 @@ void main() {
       final ok =
           await tester
               .withEvent(
-                '1',
+                'account/1',
                 AccountOpened(name: 'first'),
                 occuredAt: _occuredAt,
               )
               .withEvent(
-                '1',
+                'account/1',
                 AccountAtmDeposited(amount: 40),
                 occuredAt: _occuredAt,
               )
               .withEvent(
-                '2',
+                'account/2',
                 AccountOpened(name: 'second'),
                 occuredAt: _occuredAt,
               )
               .withEvent(
-                '2',
+                'account/2',
                 AccountRenamed(newName: 'second-renamed'),
                 occuredAt: _occuredAt,
               )
@@ -75,7 +75,7 @@ void main() {
       final ok =
           await tester
               .withEvent(
-                '1',
+                'account/1',
                 AccountAtmDeposited(amount: 9001),
                 occuredAt: _occuredAt,
               )

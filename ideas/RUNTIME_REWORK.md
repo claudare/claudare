@@ -1,7 +1,7 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stages 0-2 are implemented; Stages
-3-9 remain future work. Nothing in those later stages should be treated as
+Status: decision-complete design proposal. Stages 0-3 are implemented; Stages
+4-9 remain future work. Nothing in those later stages should be treated as
 implemented behavior until the source and repository documentation say so.
 
 This is a clean development migration. The implementation does not need
@@ -190,33 +190,32 @@ abstract interface class Projection {
 }
 ```
 
-`ProjectionRoute` is the erased framework contract. Applications normally use
-typed concrete routes:
+`ProjectionRoute<TEvent, TParams>` keeps the application handler typed while
+the runtime consumes routes through their common `Object` boundary:
 
 ```dart
-TypedProjectionRoute<AccountEvent, AccountParams>(
+ProjectionRoute<AccountEvent, AccountParams>(
   streamRoute: accountStreamRoute,
   apply: projection.applyAccountEvent,
 );
 
-TypedProjectionRoute<UserEvent, UserParams>(
+ProjectionRoute<UserEvent, String>(
   streamRoute: userStreamRoute,
   apply: projection.applyUserEvent,
 );
 ```
 
 This allows one projection to listen to multiple stream patterns and unrelated
-event families without making every projection receive `dynamic`. The runtime
-erases route types internally, checks the decoded event and parsed stream
-parameters, and then calls the typed handler.
+event families. The runtime decodes through the event registry, checks the
+decoded event and parsed stream parameters, and then calls the typed handler.
 
 A sealed event family remains useful within an individual typed route because
 the route handler can use an exhaustive switch. It is not required that every
 route in a projection share that family.
 
-An explicitly dynamic route is the escape hatch when runtime dispatch is
-genuinely required. Dynamic routing is not the default and must not weaken
-typed routes.
+When a handler needs runtime dispatch rather than a sealed event family, it uses
+`ProjectionRoute<Object, TParams>` and checks the decoded object's runtime type
+itself.
 
 An event may match more than one route in the same projection. Every matching
 route runs once in route registration order. Tests should cover intentional
@@ -586,12 +585,26 @@ through the direct dispatch path.
 
 - Add projection name, version, reset, required batch callback, and typed routes.
 - Support multiple typed routes and `StreamRoute` values per projection.
-- Add the explicit dynamic route escape hatch.
-- Validate names, versions, route types, and route overlap behavior.
+- Support `ProjectionRoute<Object, TParams>` for manual runtime-type checks.
+- Validate names, versions, route definitions, and route overlap behavior.
 - Migrate all projections and remove the old single-pattern projection shape.
 
 Gate: existing projections behave the same through route registrations, and a
 test projection consumes two unrelated typed routes.
+
+Stage 3 is complete. `Projection` now declares a globally unique name, a
+positive model version, an ordered route list, reset behavior, and the required
+batch callback. The single generic `ProjectionRoute<TEvent, TParams>` keeps
+event and stream-parameter types at the handler boundary, including
+`ProjectionRoute<Object, TParams>` when a handler checks decoded runtime types
+manually. Projection runners decode once, invoke every matching route in
+registration order, and support unrelated event families and stream routes
+within one projection. Runtime construction rejects empty and duplicate
+projection names, non-positive versions, empty route lists, and empty patterns.
+The old projection-level event and stream-parameter generics and single
+`streamRoute`/`apply` shape were removed.
+The existing runtime does not yet define page batches; production invocation of
+`onBatchApplied()` arrives with the pump in Stages 6-7.
 
 ### Stage 4: Change runtime-store projection state
 
