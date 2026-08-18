@@ -6,7 +6,6 @@ import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/event_pump.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/projection_page_adapter.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:test/test.dart';
 
@@ -586,8 +585,8 @@ final class _PumpFixture {
     final stringCodec = _StringCodec();
     final registry =
         EventRegistry()
-          ..register(stringCodec)
-          ..register(const _IntCodec());
+          ..add(stringCodec)
+          ..add(const _IntCodec());
     return _PumpFixture._(
       database: database,
       runtimeStore: runtimeStore,

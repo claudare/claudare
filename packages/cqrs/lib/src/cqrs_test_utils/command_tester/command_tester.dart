@@ -6,7 +6,6 @@ import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:time_provider/time_provider.dart';
 
 // Max integer value. This is a hacky solution.
@@ -60,7 +59,7 @@ class CommandTester {
 
   CommandTester registerEvent<Event extends Object>(EventCodec<Event> codec) {
     _ensureNotRan();
-    _eventRegistry.register(codec);
+    _eventRegistry.add(codec);
     return this;
   }
 

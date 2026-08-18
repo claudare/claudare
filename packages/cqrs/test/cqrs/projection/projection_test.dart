@@ -6,7 +6,6 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:id_generator/id_generator.dart';
@@ -52,8 +51,8 @@ void main() {
       await runtimeStore.initialize();
       final registry =
           EventRegistry()
-            ..register(const _StringCodec())
-            ..register(const _IntCodec());
+            ..add(const _StringCodec())
+            ..add(const _IntCodec());
       final runner = ProjectionRuntime<Object, String>(
         projection,
         logger: const NoopLogger(),
@@ -118,6 +117,7 @@ void main() {
       expect(
         () => CqrsRuntime(
           dependencies: _dependencies(),
+          eventRegistry: EventRegistry(),
           runtimeName: 'test',
           projections: [
             _ConfigurableProjection(name: 'duplicate'),

@@ -162,6 +162,7 @@ Future<void> _initialize(
   _Session session,
   List<Projection<_RestartEvent, String>> projections,
 ) async {
+  final eventRegistry = EventRegistry()..add(const _RestartEventCodec());
   final runtime = CqrsRuntime(
     dependencies: CqrsRuntimeDependencies(
       eventStore: session.eventStore,
@@ -170,9 +171,10 @@ Future<void> _initialize(
       idGenerator: IdGeneratorSequential(),
       timeProvider: FakeTimeProviderStatic.zero(),
     ),
+    eventRegistry: eventRegistry,
     runtimeName: 'restart-test',
     projections: projections,
-  )..registerEvent(const _RestartEventCodec());
+  );
   await runtime.initializeProjections();
 }
 

@@ -1,13 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('EventRegistry', () {
     test('encodes by Dart type and decodes by persisted kind', () {
-      final registry = EventRegistry()..register(const _TestEventCodec('test'));
+      final registry = EventRegistry()..add(const _TestEventCodec('test'));
 
       final encoded = registry.encode(const _TestEvent('value'));
       final decoded = registry.decode<_TestEvent>(encoded);
@@ -20,27 +19,25 @@ void main() {
       final registry = EventRegistry();
 
       expect(
-        () => registry.register(const _TestEventCodec('  ')),
+        () => registry.add(const _TestEventCodec('  ')),
         throwsA(isA<EventRegistryException>()),
       );
     });
 
     test('rejects duplicate persisted kinds', () {
-      final registry =
-          EventRegistry()..register(const _TestEventCodec('duplicate'));
+      final registry = EventRegistry()..add(const _TestEventCodec('duplicate'));
 
       expect(
-        () => registry.register(const _OtherEventCodec('duplicate')),
+        () => registry.add(const _OtherEventCodec('duplicate')),
         throwsA(isA<EventRegistryException>()),
       );
     });
 
     test('rejects duplicate Dart event types', () {
-      final registry =
-          EventRegistry()..register(const _TestEventCodec('first'));
+      final registry = EventRegistry()..add(const _TestEventCodec('first'));
 
       expect(
-        () => registry.register(const _TestEventCodec('second')),
+        () => registry.add(const _TestEventCodec('second')),
         throwsA(isA<EventRegistryException>()),
       );
     });
@@ -74,7 +71,7 @@ void main() {
     });
 
     test('fails explicitly when the requested event family is wrong', () {
-      final registry = EventRegistry()..register(const _TestEventCodec('test'));
+      final registry = EventRegistry()..add(const _TestEventCodec('test'));
       final encoded = registry.encode(const _TestEvent('value'));
 
       expect(

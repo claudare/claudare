@@ -32,17 +32,20 @@ class FinanceApp {
       totalBalance: totalBalanceRepo,
     );
 
+    final eventRegistry =
+        EventRegistry()
+          ..add(const AccountAtmDepositedCodec())
+          ..add(const AccountAtmWithdrawnCodec())
+          ..add(const AccountInnerTransferCodec())
+          ..add(const AccountOpenedCodec())
+          ..add(const AccountRenamedCodec());
+
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
+      eventRegistry: eventRegistry,
       runtimeName: 'finance-main',
       projections: [accountSummaryProjection, totalBalanceProjection],
     );
-    _cqrsRuntime
-      ..registerEvent(const AccountAtmDepositedCodec())
-      ..registerEvent(const AccountAtmWithdrawnCodec())
-      ..registerEvent(const AccountInnerTransferCodec())
-      ..registerEvent(const AccountOpenedCodec())
-      ..registerEvent(const AccountRenamedCodec());
 
     command = Commands(
       atmDeposit: _cqrsRuntime.bindCommand(AtmDeposit(), [

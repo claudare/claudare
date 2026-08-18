@@ -7,7 +7,6 @@ import 'package:cqrs/src/cqrs/command/command_codec_safe.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 
 class CqrsRuntimeV2Idea {

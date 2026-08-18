@@ -8,7 +8,6 @@ import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:test/test.dart';
 
@@ -25,7 +24,7 @@ void main() {
     runtimeDatabase = _CountingRuntimeDatabase();
     runtimeStore = RuntimeStore(runtimeDatabase);
     await runtimeStore.initialize();
-    eventRegistry = EventRegistry()..register(const _TestEventCodec());
+    eventRegistry = EventRegistry()..add(const _TestEventCodec());
   });
 
   ProjectionRuntime<_TestEvent, String> runner(

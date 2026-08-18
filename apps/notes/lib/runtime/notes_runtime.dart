@@ -71,22 +71,25 @@ class NotesRuntime {
       logger,
     );
 
+    final eventRegistry =
+        EventRegistry()
+          ..add(const NoteContentUpdatedCodec())
+          ..add(const NoteCreatedCodec())
+          ..add(const NoteRestoredCodec())
+          ..add(const NoteTitleUpdatedCodec())
+          ..add(const NoteTrashedCodec())
+          ..add(const TagAssignedCodec())
+          ..add(const TagCreatedCodec())
+          ..add(const TagRemovedCodec())
+          ..add(const TagRenamedCodec())
+          ..add(const TagUnassignedCodec());
+
     _cqrsRuntime = CqrsRuntime(
       dependencies: cqrsDependencies,
+      eventRegistry: eventRegistry,
       projections: [noteProjection, searchProjection],
       runtimeName: 'notes',
     );
-    _cqrsRuntime
-      ..registerEvent(const NoteContentUpdatedCodec())
-      ..registerEvent(const NoteCreatedCodec())
-      ..registerEvent(const NoteRestoredCodec())
-      ..registerEvent(const NoteTitleUpdatedCodec())
-      ..registerEvent(const NoteTrashedCodec())
-      ..registerEvent(const TagAssignedCodec())
-      ..registerEvent(const TagCreatedCodec())
-      ..registerEvent(const TagRemovedCodec())
-      ..registerEvent(const TagRenamedCodec())
-      ..registerEvent(const TagUnassignedCodec());
 
     commands = CqrsCommands(
       createNote: _cqrsRuntime.bindCommand(CreateNote(logger), [

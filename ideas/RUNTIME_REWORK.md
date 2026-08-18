@@ -35,7 +35,7 @@ path may be considered later, after the durable path is correct and measured.
 - `EventStore` remains the authoritative event source.
 - Local command events and promoted replicated events reach projections through
   the same pump.
-- Event serialization is registered once with the runtime.
+- The application assembles one event registry and passes it to the runtime.
 - A projection defines one typed event family and one `StreamRoute`.
 - Projection version and replay progress are tracked per projection.
 - Projection startup uses `scannedThroughLocalSequence` rather than the last
@@ -92,10 +92,11 @@ configuring -> initializing -> running -> failed
                              closing -> closed
 ```
 
-During `configuring`, callers may register event codecs and projections. During
-`initializing`, the runtime freezes registration, initializes stores, validates
-the registry, prepares projections, and catches them up. Commands cannot run
-until initialization succeeds.
+Before constructing the runtime, the application adds event codecs to an
+`EventRegistry` and passes that registry together with the projections to the
+runtime. During `initializing`, the runtime freezes configuration, initializes
+stores, validates the registry, prepares projections, and catches them up.
+Commands cannot run until initialization succeeds.
 
 A failed runtime is terminal. It stops pumping, rejects later commands, and is
 never automatically repaired, restarted, or reconstructed. The application may
@@ -145,14 +146,23 @@ abstract interface class EventCodec<T extends Object> {
 }
 ```
 
-The runtime registers codecs before initialization:
+The application assembles the registry before constructing the runtime:
 
 ```dart
-runtime.registerEvent<AccountOpened>(AccountOpenedCodec());
-runtime.registerEvent<AccountRenamed>(AccountRenamedCodec());
+final eventRegistry =
+    EventRegistry()
+      ..add(AccountOpenedCodec())
+      ..add(AccountRenamedCodec());
+
+final runtime = CqrsRuntime(
+  dependencies: dependencies,
+  eventRegistry: eventRegistry,
+  runtimeName: 'accounts',
+  projections: projections,
+);
 ```
 
-The internal registry maps:
+The registry maps:
 
 - Stable persisted kind to a decoder.
 - Dart event type to an encoder.
@@ -574,15 +584,15 @@ Gate: commands and existing replay behavior pass through one registry, with no
 old codec API remaining.
 
 Stage 2 is complete. `EventCodec<T>` now owns one stable persisted kind and
-converts only between its concrete event type and bytes. The internal event
-registry validates registrations, encodes by Dart event type, and decodes by
-persisted kind. Commands, command-stream reads, live projection delivery, and
-projection replay all use the runtime-owned registry. Notes and finance
-register one codec per concrete event centrally. Event-family codecs,
-projection-owned codecs, command-stream codec arguments, and codec-based test
-helpers were removed. Command execution and live envelopes retain only encoded
-events, so typed stream parameters and original event objects no longer travel
-through the direct dispatch path.
+converts only between its concrete event type and bytes. The event registry
+validates additions, encodes by Dart event type, and decodes by persisted kind.
+The application assembles it and passes it into `CqrsRuntime`; commands,
+command-stream reads, live projection delivery, and projection replay all use
+that injected instance. Notes and finance add one codec per concrete event
+centrally. Event-family codecs, projection-owned codecs, command-stream codec
+arguments, and codec-based test helpers were removed. Command execution and
+live envelopes retain only encoded events, so typed stream parameters and
+original event objects no longer travel through the direct dispatch path.
 
 ### Stage 3: Introduce typed projections
 
@@ -690,6 +700,7 @@ direct delivery remain Stage 7 work.
 ### Stage 7: Perform the runtime cutover
 
 - Replace current command-owned routing with `CqrsRuntime.execute`.
+- Freeze the injected event registry when runtime initialization begins.
 - Change local save to `Future<void>` and remove `SaveChangesResult`,
   `StreamAppendOrder`, and append-order reconstruction.
 - Make startup and EventStore signals use the same public single-flight pump.

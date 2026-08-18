@@ -9,7 +9,7 @@ final class EventRegistry {
   final Map<String, _RegisteredEventCodec> _byKind = {};
   final Map<Type, _RegisteredEventCodec> _byType = {};
 
-  void register<T extends Object>(EventCodec<T> codec) {
+  void add<T extends Object>(EventCodec<T> codec) {
     final kind = codec.kind;
     if (kind.trim().isEmpty) {
       throw EventRegistryException('Event codec kind must not be empty');
