@@ -29,7 +29,6 @@ class NotesRuntime {
   late final CqrsCommands commands;
 
   late final CompositeNoteSearch compositeNoteSearch;
-  Function(Object error)? _onFatalError;
 
   NotesRuntime({
     required CqrsRuntimeDependencies cqrsDependencies,
@@ -40,35 +39,8 @@ class NotesRuntime {
   }) : logger = cqrsDependencies.logger,
        _noteProjectionRepo = noteProjectionRepo,
        _searchProjectionRepo = searchProjectionRepo {
-    // where does the deviceId come from?
-    // does it come during the init phase or fetched automatically inside the CqrsRuntime?
-
-    // this is an error handler that transitions the app into a "fatal state"
-    final fatalErrorHandler = StandardProjectionFailureHandler(
-      notifyFn: (e) {
-        if (_onFatalError == null) {
-          throw StateError(
-            'allpcation fatal error not handled, as it is not set: ${e.error}',
-          );
-        }
-
-        _onFatalError!(e.error);
-      },
-    );
-
-    // technically search can use a different error handler.
-    // Failure in search projection should just disable search functionality.
-    // This is too much for now though
-
-    final noteProjection = NoteProjection(
-      _noteProjectionRepo,
-      fatalErrorHandler,
-    );
-    final searchProjection = SearchProjection(
-      _searchProjectionRepo,
-      fatalErrorHandler,
-      logger,
-    );
+    final noteProjection = NoteProjection(_noteProjectionRepo);
+    final searchProjection = SearchProjection(_searchProjectionRepo, logger);
     final projectionRegistry =
         ProjectionRegistry()
           ..add(noteProjection)
@@ -111,10 +83,6 @@ class NotesRuntime {
 
   TimeProvider get timeProvider => _cqrsRuntime.timeProvider;
   IdGenerator get idGenerator => _cqrsRuntime.idGenerator;
-
-  void setFatalErrorHandler(Function(Object error) handler) {
-    _onFatalError = handler;
-  }
 
   Future<void> initialize() async {
     await _cqrsRuntime.initializeProjections();

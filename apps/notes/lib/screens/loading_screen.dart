@@ -36,19 +36,17 @@ class _LoadingScreenState extends State<LoadingScreen> {
       final baseDir = await getApplicationDirectory();
       await application.initialize(baseDir);
 
-      // TODO: implement proper error handling:
-      // https://docs.flutter.dev/testing/errors#handling-all-types-of-errors
-      // This will only work if there is an issue during initialization
-      application.notesRuntime.setFatalErrorHandler((error) {
-        application.notesRuntime.logger.error(
-          'FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted',
-          error,
-        );
+      // FIXME: error handling is missing pre-rework
+      // The application should go to an error state
+      // application.notesRuntime.setFatalErrorHandler((error) {
+      //   application.notesRuntime.logger.error(
+      //     'FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted',
+      //     error,
+      //   );
 
-        // TODO: the mount does not exist after navigation
-        if (!mounted) return;
-        navigateToErrorScreen(context, error.toString());
-      });
+      //   if (!mounted) return;
+      //   navigateToErrorScreen(context, error.toString());
+      // });
 
       try {
         await application.notesRuntime.commands.createNote.runThrowable(

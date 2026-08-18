@@ -6,10 +6,9 @@ import 'package:notes/stream_route/note_stream_route.dart';
 
 class SearchProjection implements Projection<NoteEvent, String> {
   final SearchProjectionRepo _repo;
-  final StandardProjectionFailureHandler _failureHandler;
   final Logger _logger;
 
-  const SearchProjection(this._repo, this._failureHandler, this._logger);
+  const SearchProjection(this._repo, this._logger);
 
   @override
   String get name => 'search';
@@ -21,7 +20,9 @@ class SearchProjection implements Projection<NoteEvent, String> {
   StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
-  ProjectionFailureHandler get failureHandler => _failureHandler;
+  // temporary, this is getting reworked
+  ProjectionFailureHandler get failureHandler =>
+      ThrowingProjectionFailureHandler();
 
   @override
   Future<void> reset() => _repo.reset();

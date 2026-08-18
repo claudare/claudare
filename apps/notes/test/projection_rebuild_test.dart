@@ -1,5 +1,4 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/event/note.dart';
@@ -18,10 +17,7 @@ void main() {
     addTearDown(database.close);
 
     final noteDatabase = SqliteNoteDatabase(database);
-    final projection = NoteProjection(
-      noteDatabase,
-      StandardProjectionFailureHandler(),
-    );
+    final projection = NoteProjection(noteDatabase);
     final tester =
         ProjectionTester(projection)
           ..withEvent('note/note-1', const NoteCreated(), occuredAt: occurredAt)
@@ -47,11 +43,7 @@ void main() {
     addTearDown(database.close);
 
     final repository = SqliteSearchDatabase(database);
-    final projection = SearchProjection(
-      repository,
-      StandardProjectionFailureHandler(),
-      const NoopLogger(),
-    );
+    final projection = SearchProjection(repository, const NoopLogger());
     final tester = ProjectionTester(projection)..withEvent(
       'note/note-1',
       const NoteTitleUpdated(noteId: 'note-1', newTitle: 'hello'),

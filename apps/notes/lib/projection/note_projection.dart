@@ -7,9 +7,8 @@ import 'package:notes/stream_route/note_stream_route.dart';
 
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;
-  final StandardProjectionFailureHandler _failureHandler;
 
-  const NoteProjection(this._repo, this._failureHandler);
+  const NoteProjection(this._repo);
 
   @override
   String get name => 'notes';
@@ -21,7 +20,9 @@ class NoteProjection implements Projection<NoteEvent, String> {
   StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
-  ProjectionFailureHandler get failureHandler => _failureHandler;
+  // temporary, this is being reworked
+  ProjectionFailureHandler get failureHandler =>
+      ThrowingProjectionFailureHandler();
 
   @override
   Future<void> reset() => _repo.reset();
