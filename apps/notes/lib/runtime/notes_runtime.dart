@@ -8,7 +8,6 @@ import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
 import 'package:notes/event/note/note.dart';
-import 'package:notes/event/tag/tag.dart';
 import 'package:notes/projection/note/note_projection.dart';
 import 'package:notes/projection/note/note_projection_repo.dart';
 import 'package:notes/projection/search/search_projection.dart';
@@ -81,12 +80,7 @@ class NotesRuntime {
           ..add(const NoteCreatedCodec())
           ..add(const NoteRestoredCodec())
           ..add(const NoteTitleUpdatedCodec())
-          ..add(const NoteTrashedCodec())
-          ..add(const TagAssignedCodec())
-          ..add(const TagCreatedCodec())
-          ..add(const TagRemovedCodec())
-          ..add(const TagRenamedCodec())
-          ..add(const TagUnassignedCodec());
+          ..add(const NoteTrashedCodec());
 
     _cqrsRuntime = CqrsRuntime(
       dependencies: cqrsDependencies,

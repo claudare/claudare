@@ -188,10 +188,6 @@ class _NoteScreenState extends State<NoteScreen> {
             _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
           ),
           actions: [
-            // IconButton(
-            //   icon: Icon(Icons.tag),
-            //   onPressed: () => _onTagPressed(context),
-            // ),
             _controller.isTrashed
                 ? IconButton(
                   icon: Icon(Icons.restore),
@@ -257,19 +253,6 @@ class _NoteScreenState extends State<NoteScreen> {
                 ],
               ),
 
-              // only show below if tags are present... what a wierd syntax
-              // if (widget.note.tags.isNotEmpty) SizedBox(height: 8),
-              // Wrap(
-              //   spacing: 4.0,
-              //   runSpacing: 4.0,
-              //   children:
-              //       widget.note.tags.map((tagName) {
-              //         return TagWidget(
-              //           tagName: tagName,
-              //           onRemove: (value) => _unassignTag(controller, value),
-              //         );
-              //       }).toList(),
-              // ),
             ],
           ),
         ),
