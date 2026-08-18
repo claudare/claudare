@@ -1,7 +1,7 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:notes/event/note/note.dart';
-import 'package:notes/projection/search/search_projection_repo.dart';
+import 'package:notes/event/note.dart';
+import 'package:notes/read_model/search/search_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
 class SearchProjection implements Projection<NoteEvent, String> {

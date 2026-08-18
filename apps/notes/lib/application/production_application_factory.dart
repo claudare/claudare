@@ -5,9 +5,8 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/application.dart';
 import 'package:notes/application/application_factory.dart';
-import 'package:notes/repo/note/sqlite_note_projection_repo.dart';
-import 'package:notes/repo/note/sqlite_resolved_note_repo.dart';
-import 'package:notes/repo/search/sqlite_search_repo.dart';
+import 'package:notes/read_model/note/sqlite_note_database.dart';
+import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:notes/runtime/notes_runtime.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -43,13 +42,11 @@ class ProductionApplicationFactory implements ApplicationFactory {
       runtimeDatabase: runtimeDatabase,
     );
 
-    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
-    final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
+    final noteDatabase = SqliteNoteDatabase(sqliteDb);
 
     final searchDb = IsolateSqlite();
 
-    final searchProjectionRepo = SqliteSearchRepo(searchDb);
-    final searchReadModel = SqliteSearchRepo(searchDb);
+    final searchDatabase = SqliteSearchDatabase(searchDb);
 
     return Application(
       sqliteDb: sqliteDb,
@@ -59,10 +56,10 @@ class ProductionApplicationFactory implements ApplicationFactory {
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
         cqrsDependencies: cqrsDependencies,
-        noteProjectionRepo: noteProjectionRepo,
-        resolvedNoteReadModel: resolvedNoteReadModel,
-        searchProjectionRepo: searchProjectionRepo,
-        searchReadModel: searchReadModel,
+        noteProjectionRepo: noteDatabase,
+        resolvedNoteReadModel: noteDatabase,
+        searchProjectionRepo: searchDatabase,
+        searchReadModel: searchDatabase,
       ),
     );
   }

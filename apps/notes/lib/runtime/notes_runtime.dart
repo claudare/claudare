@@ -7,13 +7,13 @@ import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
-import 'package:notes/event/note/note.dart';
-import 'package:notes/projection/note/note_projection.dart';
-import 'package:notes/projection/note/note_projection_repo.dart';
-import 'package:notes/projection/search/search_projection.dart';
-import 'package:notes/projection/search/search_projection_repo.dart';
+import 'package:notes/event/note.dart';
+import 'package:notes/projection/note_projection.dart';
+import 'package:notes/projection/search_projection.dart';
 import 'package:notes/read_model/composite_note_search.dart';
-import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes/read_model/note/note_projection_repo.dart';
+import 'package:notes/read_model/note/resolved_note_read_model.dart';
+import 'package:notes/read_model/search/search_projection_repo.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 
 class NotesRuntime {

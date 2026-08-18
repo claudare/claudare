@@ -2,12 +2,11 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/event/note/note.dart';
-import 'package:notes/projection/note/note_projection.dart';
-import 'package:notes/projection/search/search_projection.dart';
-import 'package:notes/repo/note/sqlite_note_projection_repo.dart';
-import 'package:notes/repo/note/sqlite_resolved_note_repo.dart';
-import 'package:notes/repo/search/sqlite_search_repo.dart';
+import 'package:notes/event/note.dart';
+import 'package:notes/projection/note_projection.dart';
+import 'package:notes/projection/search_projection.dart';
+import 'package:notes/read_model/note/sqlite_note_database.dart';
+import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -18,8 +17,9 @@ void main() {
     await database.openInMemory();
     addTearDown(database.close);
 
+    final noteDatabase = SqliteNoteDatabase(database);
     final projection = NoteProjection(
-      SqliteNoteProjectionRepo(database),
+      noteDatabase,
       StandardProjectionFailureHandler(),
     );
     final tester =
@@ -30,7 +30,7 @@ void main() {
             const NoteTitleUpdated(noteId: 'note-1', newTitle: 'Title'),
             occuredAt: occurredAt,
           );
-    final readModel = SqliteResolvedNoteReadModel(database);
+    final readModel = noteDatabase;
 
     expect(await tester.run(), isTrue);
     final first = await readModel.getById('note-1');
@@ -46,7 +46,7 @@ void main() {
     await database.openInMemory();
     addTearDown(database.close);
 
-    final repository = SqliteSearchRepo(database);
+    final repository = SqliteSearchDatabase(database);
     final projection = SearchProjection(
       repository,
       StandardProjectionFailureHandler(),

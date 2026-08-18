@@ -1,16 +1,14 @@
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/projection/search/search_projection_repo.dart';
+import 'package:notes/read_model/search/search_projection_repo.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 
-class SqliteSearchRepo implements SearchProjectionRepo, SearchReadModel {
+class SqliteSearchDatabase implements SearchProjectionRepo, SearchReadModel {
   final IsolateSqlite _db;
 
-  const SqliteSearchRepo(this._db);
+  const SqliteSearchDatabase(this._db);
 
   void _optimizeSearchFts(SyncContext ctx) {
-    ctx.execute('''
-        INSERT INTO fts(fts) VALUES('optimize');
-      ''');
+    ctx.execute("INSERT INTO fts(fts) VALUES('optimize');");
   }
 
   @override
@@ -41,21 +39,17 @@ class SqliteSearchRepo implements SearchProjectionRepo, SearchReadModel {
   @override
   Future<List<String>> query(String query) async {
     final ftsQuery = _toFtsQuery(query);
-    if (ftsQuery == null) {
-      return const [];
-    }
+    if (ftsQuery == null) return const [];
 
     final rows = await _db.query(
-      '''
-      SELECT f.id
+      '''SELECT f.id
       FROM fts f
       JOIN meta m ON m.id = f.id
       WHERE fts MATCH ?
       ORDER BY
         bm25(fts, 10.0, 1.0),
         m.updated_at DESC,
-        m.created_at DESC;
-      ''',
+        m.created_at DESC;''',
       [ftsQuery],
     );
 
@@ -63,75 +57,37 @@ class SqliteSearchRepo implements SearchProjectionRepo, SearchReadModel {
   }
 
   @override
-  Future<void> upsertTitle(UpsertInput input) async {
-    final integerDatetime = input.timestamp.millisecondsSinceEpoch;
-
-    await _db.transaction((ctx) {
-      final prevContent =
-          ctx.queryValue<String?>(
-            '''
-        SELECT content
-        FROM fts
-        WHERE id = ?
-        LIMIT 1;
-        ''',
-            [input.noteId],
-          ) ??
-          '';
-
-      ctx.execute('DELETE FROM fts WHERE id = ?;', [input.noteId]);
-      ctx.execute(
-        '''
-        INSERT INTO fts (id, title, content)
-        VALUES (?, ?, ?);
-        ''',
-        [input.noteId, input.value, prevContent],
-      );
-
-      ctx.execute(
-        '''
-        INSERT INTO meta (id, created_at, updated_at)
-        VALUES (?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at;
-        ''',
-        [input.noteId, integerDatetime, integerDatetime],
-      );
-    });
-  }
+  Future<void> upsertTitle(UpsertInput input) => _upsert(input, isTitle: true);
 
   @override
-  Future<void> upsertContent(UpsertInput input) async {
-    final integerDatetime = input.timestamp.millisecondsSinceEpoch;
+  Future<void> upsertContent(UpsertInput input) =>
+      _upsert(input, isTitle: false);
 
+  Future<void> _upsert(UpsertInput input, {required bool isTitle}) async {
+    final timestamp = input.timestamp.millisecondsSinceEpoch;
     await _db.transaction((ctx) {
-      final prevTitle =
+      final value =
           ctx.queryValue<String?>(
-            '''
-        SELECT title
-        FROM fts
-        WHERE id = ?
-        LIMIT 1;
-        ''',
+            isTitle
+                ? 'SELECT content FROM fts WHERE id = ? LIMIT 1;'
+                : 'SELECT title FROM fts WHERE id = ? LIMIT 1;',
             [input.noteId],
           ) ??
           '';
+      final title = isTitle ? input.value : value;
+      final content = isTitle ? value : input.value;
 
       ctx.execute('DELETE FROM fts WHERE id = ?;', [input.noteId]);
+      ctx.execute('INSERT INTO fts (id, title, content) VALUES (?, ?, ?);', [
+        input.noteId,
+        title,
+        content,
+      ]);
       ctx.execute(
-        '''
-        INSERT INTO fts (id, title, content)
-        VALUES (?, ?, ?);
-        ''',
-        [input.noteId, prevTitle, input.value],
-      );
-
-      ctx.execute(
-        '''
-        INSERT INTO meta (id, created_at, updated_at)
+        '''INSERT INTO meta (id, created_at, updated_at)
         VALUES (?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at;
-        ''',
-        [input.noteId, integerDatetime, integerDatetime],
+        ON CONFLICT(id) DO UPDATE SET updated_at = excluded.updated_at;''',
+        [input.noteId, timestamp, timestamp],
       );
     });
   }
@@ -149,14 +105,10 @@ String? _toFtsQuery(String rawQuery) {
   final tokens = rawQuery
       .trim()
       .split(RegExp(r'\s+'))
-      .where((t) => t.isNotEmpty)
-      .map((t) => '"${t.replaceAll('"', '""')}"*')
+      .where((token) => token.isNotEmpty)
+      .map((token) => '"${token.replaceAll('"', '""')}"*')
       .toList(growable: false);
 
-  if (tokens.isEmpty) {
-    return null;
-  }
-
-  // Require all terms and allow prefix matching per term.
+  if (tokens.isEmpty) return null;
   return tokens.join(' AND ');
 }

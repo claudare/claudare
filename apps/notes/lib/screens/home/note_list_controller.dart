@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:notes/command/trash_note.dart';
-import 'package:notes/model/resolved_note.dart';
-import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes/read_model/note/resolved_note.dart';
+import 'package:notes/read_model/note/resolved_note_read_model.dart';
 import 'package:notes/runtime/notes_runtime.dart';
 
 class NoteListController extends ChangeNotifier {

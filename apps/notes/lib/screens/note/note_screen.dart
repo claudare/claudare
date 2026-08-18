@@ -252,7 +252,6 @@ class _NoteScreenState extends State<NoteScreen> {
                       : SizedBox.shrink(),
                 ],
               ),
-
             ],
           ),
         ),

@@ -1,10 +1,9 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt.dart';
-import 'package:notes/event/note/note.dart';
-import 'package:notes/model/note_data.dart';
+import 'package:notes/event/note.dart';
+import 'package:notes/read_model/note/note_data.dart';
+import 'package:notes/read_model/note/note_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
-
-import 'note_projection_repo.dart';
 
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;

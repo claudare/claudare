@@ -1,6 +1,5 @@
-import 'package:notes/model/note_data.dart';
+import 'package:notes/read_model/note/note_data.dart';
 
-// Get and store repo style
 abstract interface class NoteProjectionRepo {
   Future<void> reset();
 

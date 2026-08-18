@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes/model/resolved_note.dart';
+import 'package:notes/read_model/note/resolved_note.dart';
 import 'package:notes/screens/home/widget/note_list_item.dart';
 
 class NoteList extends StatelessWidget {

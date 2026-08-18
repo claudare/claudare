@@ -1,7 +1,8 @@
 # Application patterns
 
 This guide describes application-owned patterns built on CQRS. It does not add
-CQRS APIs or require every application to use the same domain layout.
+CQRS APIs. Applications without domain separation keep event and projection
+files directly in their respective folders.
 
 ## Event codecs
 
@@ -21,25 +22,25 @@ projections do not receive codecs directly.
 
 ## Event-family layout
 
-Keep each event family beside its domain rather than in CQRS. A typical layout
-is:
+Keep application event families outside CQRS. Use a flat event and projection
+layout until the application has an explicit domain boundary:
 
 ```text
 lib/
-  domain/
-    <feature>/
-      <feature>_event/
-        <feature>_event.dart
-        <feature>_created.dart
-        <feature>_renamed.dart
-        <feature>_archived.dart
-      command/
-        create_<feature>.dart
-        rename_<feature>.dart
-      projection/
-        <feature>_projection.dart
-      read_model/
-        <feature>_read_model.dart
+  event/
+    <event_family>.dart
+    <event>_created.dart
+    <event>_renamed.dart
+    <event>_archived.dart
+  command/
+    create_<event>.dart
+    rename_<event>.dart
+  projection/
+    <event>_projection.dart
+    search_projection.dart
+  read_model/
+    <event>/
+      <event>_read_model.dart
 ```
 
 The event-family root file contains the sealed event root and declares the event
@@ -49,9 +50,9 @@ payload conversion.
 
 Use `part` files only for a cohesive event family. They keep related variants
 grouped while letting each event remain in its own file. Use ordinary imports
-for independent domain types, commands, projections, read models, and shared
-helpers. Do not use `part` to cross feature boundaries or to expose application
-internals as a package API.
+for commands, projections, read models, and shared helpers. Do not create
+domain subdirectories before there is a domain boundary, and do not use `part`
+to expose application internals as a package API.
 
 ## Adding an event
 

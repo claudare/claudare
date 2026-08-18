@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:notes/common.dart';
-import 'package:notes/model/resolved_note.dart';
+import 'package:notes/read_model/note/resolved_note.dart';
 
 class NoteListItem extends StatelessWidget {
   final ResolvedNote note;

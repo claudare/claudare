@@ -1,7 +1,6 @@
 class UpsertInput {
   final String noteId;
   final String value;
-  // this is the meta of when action was emitted. the repo uses it as a createdAt for insert, and updatedAt for update
   final DateTime timestamp;
 
   UpsertInput({

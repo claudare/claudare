@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
-import 'package:notes/event/note/note.dart';
+import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
 class RestoreNoteInput implements CommandInput {

@@ -1,9 +1,9 @@
-// quick and dirty combination of two different dbs
-import 'package:notes/model/resolved_note.dart';
-import 'package:notes/read_model/resolved_note/resolved_note_read_model.dart';
+import 'package:notes/read_model/note/resolved_note.dart';
+import 'package:notes/read_model/note/resolved_note_read_model.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 
-/// TODO: this is temporary...
+// Quick and dirty way to query multiple databases at the same time
+// This is done to simplify the search display functionality.
 class CompositeNoteSearch {
   final ResolvedNoteReadModel _resolvedNoteReadModel;
   final SearchReadModel _searchReadModel;

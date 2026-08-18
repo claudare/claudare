@@ -4,11 +4,10 @@ import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/application.dart';
-import 'package:notes/repo/note/sqlite_resolved_note_repo.dart';
-import 'package:notes/repo/search/sqlite_search_repo.dart';
+import 'package:notes/read_model/note/sqlite_note_database.dart';
+import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:notes/runtime/notes_runtime.dart';
 
-import '../repo/note/sqlite_note_projection_repo.dart';
 import 'application_factory.dart';
 
 class FakeApplicationFactory implements ApplicationFactory {
@@ -42,13 +41,11 @@ class FakeApplicationFactory implements ApplicationFactory {
       runtimeDatabase: runtimeDatabase,
     );
 
-    final noteProjectionRepo = SqliteNoteProjectionRepo(sqliteDb);
-    final resolvedNoteReadModel = SqliteResolvedNoteReadModel(sqliteDb);
+    final noteDatabase = SqliteNoteDatabase(sqliteDb);
 
     final searchDb = IsolateSqlite();
 
-    final searchProjectionRepo = SqliteSearchRepo(searchDb);
-    final searchReadModel = SqliteSearchRepo(searchDb);
+    final searchDatabase = SqliteSearchDatabase(searchDb);
 
     return Application(
       sqliteDb: sqliteDb,
@@ -58,10 +55,10 @@ class FakeApplicationFactory implements ApplicationFactory {
       timeProvider: timeProvider,
       notesRuntime: NotesRuntime(
         cqrsDependencies: cqrsDependencies,
-        noteProjectionRepo: noteProjectionRepo,
-        resolvedNoteReadModel: resolvedNoteReadModel,
-        searchProjectionRepo: searchProjectionRepo,
-        searchReadModel: searchReadModel,
+        noteProjectionRepo: noteDatabase,
+        resolvedNoteReadModel: noteDatabase,
+        searchProjectionRepo: searchDatabase,
+        searchReadModel: searchDatabase,
       ),
     );
   }

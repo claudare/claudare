@@ -1,19 +1,14 @@
-/// [ResolvedNote] is a read-only representation of a note that has been fully resolved.
-/// There is no CRDT information, only final values.
-class ResolvedNote {
+import 'package:crdt/crdt.dart';
+
+class NoteData {
   final String noteId;
-
-  final String title;
+  final CrdtValueLatestWriteWins<String> title;
   final String content;
-
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  // nullable confustion here. untrashing will not be registered
-  // hhhhh
   final DateTime? trashedAt;
 
-  const ResolvedNote({
+  const NoteData({
     required this.noteId,
     required this.title,
     required this.content,
@@ -22,8 +17,8 @@ class ResolvedNote {
     required this.trashedAt,
   });
 
-  ResolvedNote.empty(this.noteId, DateTime currentTime)
-    : title = '',
+  NoteData.empty(this.noteId, DateTime currentTime)
+    : title = CrdtValueLatestWriteWins<String>.zero(''),
       content = '',
       createdAt = currentTime,
       updatedAt = currentTime,
@@ -31,15 +26,16 @@ class ResolvedNote {
 
   bool get isTrashed => trashedAt != null;
 
-  ResolvedNote copyWith({
-    String? title,
+  NoteData copyWith({
+    CrdtValueDateTimePair<String>? titlePair,
     String? content,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
-    return ResolvedNote(
+    final newTitle = titlePair == null ? title : title.mergePair(titlePair);
+    return NoteData(
       noteId: noteId,
-      title: title ?? this.title,
+      title: newTitle,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -47,9 +43,8 @@ class ResolvedNote {
     );
   }
 
-  // because null is both a value and default non-existing condition
-  ResolvedNote copyTrashedSet({required DateTime trashedAt}) {
-    return ResolvedNote(
+  NoteData copyWithTrashedValue({required DateTime? trashedAt}) {
+    return NoteData(
       noteId: noteId,
       title: title,
       content: content,
@@ -60,7 +55,7 @@ class ResolvedNote {
   }
 
   @override
-  toString() {
-    return 'NoteData(noteId: $noteId, title: $title, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, trashedAt: $trashedAt)';
+  String toString() {
+    return 'NoteData(noteId: $noteId, title: ${title.value}, content: $content, createdAt: $createdAt, updatedAt: $updatedAt, trashedAt: $trashedAt)';
   }
 }
