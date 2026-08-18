@@ -34,6 +34,7 @@ export 'src/cqrs/command/command_context.dart';
 
 // projection
 export 'src/cqrs/projection/projection.dart';
+export 'src/cqrs/projection/projection_registry.dart';
 export 'src/cqrs/projection/sqlite_projection.dart';
 export 'src/cqrs/projection/projection_failure_handler.dart';
 export 'src/cqrs/projection/failure_handler/standard_projection_failure_handler.dart';

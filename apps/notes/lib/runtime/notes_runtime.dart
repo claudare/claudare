@@ -70,6 +70,10 @@ class NotesRuntime {
       fatalErrorHandler,
       logger,
     );
+    final projectionRegistry =
+        ProjectionRegistry()
+          ..add(noteProjection)
+          ..add(searchProjection);
 
     final eventRegistry =
         EventRegistry()
@@ -87,7 +91,7 @@ class NotesRuntime {
     _cqrsRuntime = CqrsRuntime(
       dependencies: cqrsDependencies,
       eventRegistry: eventRegistry,
-      projections: [noteProjection, searchProjection],
+      projectionRegistry: projectionRegistry,
       runtimeName: 'notes',
     );
 

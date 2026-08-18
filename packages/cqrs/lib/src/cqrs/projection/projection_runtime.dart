@@ -33,7 +33,6 @@ class ProjectionRuntime<TEvent extends Object, TParams>
        _runtimeName = runtimeName,
        _runtimeStore = runtimeStore,
        _eventRegistry = eventRegistry {
-    validateProjection(_projection);
     _queue = AsyncFIFOQueue<QueueItem<TEvent, TParams>>(_handleApply);
   }
 
@@ -206,29 +205,6 @@ class ProjectionRuntime<TEvent extends Object, TParams>
 
   @override
   String toString() => 'ProjectionRuntime(${_projection.name})';
-}
-
-void validateProjection(Projection projection) {
-  if (projection.name.trim().isEmpty) {
-    throw const ProjectionConfigurationException(
-      'Projection name must not be empty',
-    );
-  }
-  if (projection.name != projection.name.trim()) {
-    throw ProjectionConfigurationException(
-      'Projection name ${projection.name} must not have surrounding whitespace',
-    );
-  }
-  if (projection.version <= 0) {
-    throw ProjectionConfigurationException(
-      'Projection ${projection.name} must have a positive version',
-    );
-  }
-  if (projection.streamRoute.pattern.trim().isEmpty) {
-    throw ProjectionConfigurationException(
-      'Projection ${projection.name} has an empty stream route pattern',
-    );
-  }
 }
 
 final class QueueItem<TEvent extends Object, TParams> {

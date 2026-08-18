@@ -33,6 +33,7 @@ Future<void> _testRestarts(
       await cleanup();
     });
 
+    // TODO: this test needs to be split into multiple tests
     test(
       'adding, changing, and interrupting reset only one projection',
       () async {
@@ -163,6 +164,10 @@ Future<void> _initialize(
   List<Projection<_RestartEvent, String>> projections,
 ) async {
   final eventRegistry = EventRegistry()..add(const _RestartEventCodec());
+  final projectionRegistry = ProjectionRegistry();
+  for (final projection in projections) {
+    projectionRegistry.add(projection);
+  }
   final runtime = CqrsRuntime(
     dependencies: CqrsRuntimeDependencies(
       eventStore: session.eventStore,
@@ -172,8 +177,8 @@ Future<void> _initialize(
       timeProvider: FakeTimeProviderStatic.zero(),
     ),
     eventRegistry: eventRegistry,
+    projectionRegistry: projectionRegistry,
     runtimeName: 'restart-test',
-    projections: projections,
   );
   await runtime.initializeProjections();
 }

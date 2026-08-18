@@ -93,9 +93,10 @@ configuring -> initializing -> running -> failed
 ```
 
 Before constructing the runtime, the application adds event codecs to an
-`EventRegistry` and passes that registry together with the projections to the
-runtime. During `initializing`, the runtime freezes configuration, initializes
-stores, validates the registry, prepares projections, and catches them up.
+`EventRegistry`, adds projections to a `ProjectionRegistry`, and passes both
+registries to the runtime. During `initializing`, the runtime freezes
+configuration, initializes stores, validates the registry, prepares projections,
+and catches them up.
 Commands cannot run until initialization succeeds.
 
 A failed runtime is terminal. It stops pumping, rejects later commands, and is
@@ -153,12 +154,15 @@ final eventRegistry =
     EventRegistry()
       ..add(AccountOpenedCodec())
       ..add(AccountRenamedCodec());
+final projectionRegistry =
+    ProjectionRegistry()
+      ..add(accountProjection);
 
 final runtime = CqrsRuntime(
   dependencies: dependencies,
   eventRegistry: eventRegistry,
+  projectionRegistry: projectionRegistry,
   runtimeName: 'accounts',
-  projections: projections,
 );
 ```
 
@@ -229,6 +233,22 @@ When the rare projection must handle unrelated event types, it implements
 `Projection<Object, TParams>` and checks the registry-decoded object's runtime
 type inside `apply`. A separate route primitive and multiple routes per
 projection are unnecessary.
+
+The application-owned `ProjectionRegistry` validates each projection when it is
+added and rejects duplicate projection names. During Stage 7 initialization,
+the runtime will prepare durable page adapters from the registered projections:
+
+```dart
+final projections = await projectionRegistry.prepare(
+  runtimeStore,
+  forceReset: false,
+);
+```
+
+Preparation retains only consistent positions whose stored version matches the
+projection version. New, inconsistent, version-changed, and explicitly
+force-reset projections reset and start at sequence zero. The runtime store must
+already be initialized before preparation.
 
 `onBatchApplied()` is required, but projections that do not notify an
 application listener may leave it empty. The pump calls it once after the
@@ -609,8 +629,8 @@ Stage 3 is complete. `Projection` now declares a globally unique name, a
 positive model version, one typed `StreamRoute`, one typed `apply` handler,
 reset behavior, and the required batch callback. `Projection<Object, TParams>`
 supports the rare handler that checks decoded runtime types manually. Runtime
-construction rejects empty and duplicate projection names, non-positive
-versions, and empty stream route patterns.
+registration rejects empty and duplicate projection names, surrounding name
+whitespace, non-positive versions, and empty stream route patterns.
 The existing runtime does not yet define page batches; production invocation of
 `onBatchApplied()` arrives with the pump in Stages 6-7.
 
@@ -696,6 +716,11 @@ The slice is imported only by white-box tests. `CqrsRuntime` does not own it,
 subscribe to `EventStore.appliedChanges`, pump at startup, expose public failure
 state, or shut it down. Those production lifecycle changes and removal of
 direct delivery remain Stage 7 work.
+
+`ProjectionRegistry` is implemented as Stage 7 preparation. The legacy runtime
+temporarily reads its immutable registered projection list, while
+`ProjectionRegistry.prepare` owns selective reset and durable page-adapter
+construction for the Stage 7 pump cutover.
 
 ### Stage 7: Perform the runtime cutover
 

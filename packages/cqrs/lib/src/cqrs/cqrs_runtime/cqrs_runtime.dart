@@ -6,6 +6,7 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/bound_command.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection.dart';
+import 'package:cqrs/src/cqrs/projection/projection_registry.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
@@ -19,26 +20,19 @@ class CqrsRuntime {
   final String runtimeName;
   final CqrsRuntimeDependencies _dependencies;
   final EventRegistry _eventRegistry;
+  final ProjectionRegistry _projectionRegistry;
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
     required EventRegistry eventRegistry,
+    required ProjectionRegistry projectionRegistry,
     required this.runtimeName,
-    required List<Projection> projections,
   }) : _runtimeStore = RuntimeStore(dependencies.runtimeDatabase),
        _dependencies = dependencies,
-       _eventRegistry = eventRegistry {
-    final projectionNames = <String>{};
-    for (final projection in projections) {
-      if (!projectionNames.add(projection.name)) {
-        throw ProjectionConfigurationException(
-          'Projection name ${projection.name} is registered more than once',
-        );
-      }
-    }
-
+       _eventRegistry = eventRegistry,
+       _projectionRegistry = projectionRegistry {
     _projectionRunners =
-        projections
+        _projectionRegistry.projections
             .map(
               (projector) => ProjectionRuntime(
                 projector,

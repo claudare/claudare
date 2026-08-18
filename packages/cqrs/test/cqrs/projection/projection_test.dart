@@ -6,11 +6,8 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/projection/projection_runtime.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:test/test.dart';
-import 'package:time_provider/time_provider.dart';
 
 void main() {
   final occurredAt = DateTime.fromMillisecondsSinceEpoch(1, isUtc: true);
@@ -88,68 +85,6 @@ void main() {
       expect(projection.ints, [7]);
     });
   });
-
-  group('projection validation', () {
-    test('rejects empty names', () {
-      expect(
-        () => _runner(_ConfigurableProjection(name: '')),
-        throwsA(isA<ProjectionConfigurationException>()),
-      );
-    });
-
-    test('rejects non-positive versions', () {
-      expect(
-        () => _runner(_ConfigurableProjection(version: 0)),
-        throwsA(isA<ProjectionConfigurationException>()),
-      );
-    });
-
-    test('rejects an empty stream route pattern', () {
-      expect(
-        () => _runner(
-          _ConfigurableProjection(streamRoute: const _EmptyStreamRoute()),
-        ),
-        throwsA(isA<ProjectionConfigurationException>()),
-      );
-    });
-
-    test('rejects duplicate projection names', () {
-      expect(
-        () => CqrsRuntime(
-          dependencies: _dependencies(),
-          eventRegistry: EventRegistry(),
-          runtimeName: 'test',
-          projections: [
-            _ConfigurableProjection(name: 'duplicate'),
-            _ConfigurableProjection(name: 'duplicate'),
-          ],
-        ),
-        throwsA(isA<ProjectionConfigurationException>()),
-      );
-    });
-  });
-}
-
-ProjectionRuntime<String, String> _runner(
-  Projection<String, String> projection,
-) {
-  return ProjectionRuntime(
-    projection,
-    logger: const NoopLogger(),
-    runtimeName: 'test',
-    runtimeStore: RuntimeStore(MemoryRuntimeDatabase()),
-    eventRegistry: EventRegistry(),
-  );
-}
-
-CqrsRuntimeDependencies _dependencies() {
-  return CqrsRuntimeDependencies(
-    eventStore: EventStore(MemoryEventDatabase()),
-    runtimeDatabase: MemoryRuntimeDatabase(),
-    logger: const NoopLogger(),
-    idGenerator: IdGeneratorSequential(),
-    timeProvider: FakeTimeProviderStatic.zero(),
-  );
 }
 
 final class _StringProjection implements Projection<String, String> {
@@ -231,54 +166,6 @@ final class _ObjectProjection implements Projection<Object, String> {
 
   @override
   void onBatchApplied() {}
-}
-
-final class _ConfigurableProjection implements Projection<String, String> {
-  @override
-  final String name;
-  @override
-  final int version;
-  @override
-  final StreamRoute<String> streamRoute;
-
-  _ConfigurableProjection({
-    this.name = 'configured',
-    this.version = 1,
-    this.streamRoute = const StreamRouteAll(),
-  });
-
-  @override
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
-
-  @override
-  Future<void> reset() async {}
-
-  @override
-  Future<void> apply(
-    String streamParams,
-    String event,
-    EventMetadata metadata,
-  ) async {}
-
-  @override
-  void onBatchApplied() {}
-}
-
-final class _EmptyStreamRoute extends StreamRoute<String> {
-  const _EmptyStreamRoute();
-
-  @override
-  String get pattern => '';
-
-  @override
-  PatternFilter get filter => const PatternFilter.exact('');
-
-  @override
-  String buildPath(String streamParams) => streamParams;
-
-  @override
-  String parseParams(String streamPath) => streamPath;
 }
 
 final class _StringCodec implements EventCodec<String> {

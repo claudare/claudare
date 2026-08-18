@@ -26,6 +26,10 @@ class FinanceApp {
       accountSummaryRepo,
     );
     final totalBalanceProjection = TotalBalanceProjection(totalBalanceRepo);
+    final projectionRegistry =
+        ProjectionRegistry()
+          ..add(accountSummaryProjection)
+          ..add(totalBalanceProjection);
 
     readModel = ReadModels(
       accountsSummary: accountSummaryRepo,
@@ -43,8 +47,8 @@ class FinanceApp {
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
       eventRegistry: eventRegistry,
+      projectionRegistry: projectionRegistry,
       runtimeName: 'finance-main',
-      projections: [accountSummaryProjection, totalBalanceProjection],
     );
 
     command = Commands(

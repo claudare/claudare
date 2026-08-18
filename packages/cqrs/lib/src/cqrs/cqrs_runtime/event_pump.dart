@@ -18,16 +18,14 @@ typedef AppliedEventReaderFactory =
 /// contiguous from the scan's starting position.
 ///
 /// ```dart
+/// final projections = await projectionRegistry.prepare(
+///   runtimeStore,
+///   forceReset: false,
+/// );
 /// final pump = EventPump(
 ///   createReader: eventStore.getAppliedEventReader,
 ///   eventRegistry: eventRegistry,
-///   projections: [
-///     ProjectionPageAdapter(
-///       projection: projection,
-///       position: preparedPosition,
-///       runtimeStore: runtimeStore,
-///     ),
-///   ],
+///   projections: projections,
 /// );
 /// await pump.pump();
 /// ```
