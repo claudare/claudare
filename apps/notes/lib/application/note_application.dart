@@ -13,34 +13,43 @@ import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:time_provider/time_provider.dart';
 
 class NoteApplication {
-  final IsolateSqlite _sqliteDb;
-  final IsolateSqlite _searchDb;
+  late final IsolateSqlite _sqliteDb;
+  late final IsolateSqlite _searchDb;
 
-  final EventStore eventStore;
+  late final EventStore eventStore;
   final Logger logger;
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;
 
-  final ResolvedNoteReadModel resolvedNoteReadModel;
-  final SearchReadModel searchReadModel;
+  late final ResolvedNoteReadModel resolvedNoteReadModel;
+  late final SearchReadModel searchReadModel;
   late final CompositeNoteSearch compositeNoteSearch;
 
   late final CqrsRuntime _cqrsRuntime;
 
   NoteApplication({
-    required IsolateSqlite sqliteDb,
-    required IsolateSqlite searchDb,
-    required CqrsRuntimeDependencies cqrsDependencies,
-    required SqliteNoteDatabase noteDatabase,
-    required SqliteSearchDatabase searchDatabase,
-  }) : _searchDb = searchDb,
-       _sqliteDb = sqliteDb,
-       eventStore = cqrsDependencies.eventStore,
-       logger = cqrsDependencies.logger,
-       idGenerator = cqrsDependencies.idGenerator,
-       timeProvider = cqrsDependencies.timeProvider,
-       resolvedNoteReadModel = noteDatabase,
-       searchReadModel = searchDatabase {
+    required this.idGenerator,
+    required this.timeProvider,
+    required this.logger,
+  }) {
+    _sqliteDb = IsolateSqlite();
+    eventStore = EventStore(SqliteEventDatabase(_sqliteDb));
+
+    final cqrsDependencies = CqrsRuntimeDependencies(
+      idGenerator: idGenerator,
+      timeProvider: timeProvider,
+      logger: logger,
+      eventStore: eventStore,
+      runtimeDatabase: SqliteRuntimeDatabase(_sqliteDb),
+    );
+
+    final noteDatabase = SqliteNoteDatabase(_sqliteDb);
+    resolvedNoteReadModel = noteDatabase;
+
+    _searchDb = IsolateSqlite();
+    final searchDatabase = SqliteSearchDatabase(_searchDb);
+    searchReadModel = searchDatabase;
+
     final projectionRegistry =
         ProjectionRegistry()
           ..add(NoteProjection(noteDatabase))
@@ -66,6 +75,16 @@ class NoteApplication {
       searchReadModel,
     );
   }
+
+  NoteApplication.test({
+    IdGenerator? idGenerator,
+    TimeProvider? timeProvider,
+    Logger? logger,
+  }) : this(
+         idGenerator: idGenerator ?? IdGeneratorSequential(),
+         timeProvider: timeProvider ?? FakeTimeProviderStatic.zero(),
+         logger: logger ?? const NoopLogger(),
+       );
 
   Future<void> commandExecute<Input extends CommandInput>(
     Command<Input> command,

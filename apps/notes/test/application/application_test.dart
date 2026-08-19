@@ -1,10 +1,10 @@
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/application/fake_application_factory.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:test/test.dart';
 
 void main() {
   test('initializes', () async {
-    final application = FakeApplicationFactory().create();
+    final application = NoteApplication.test();
     addTearDown(() async {
       await application.close();
     });
