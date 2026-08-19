@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:notes/runtime/notes_runtime.dart';
+import 'package:notes/application/application.dart';
 import 'package:notes/screens/home/note_list_controller.dart';
 import 'package:notes/screens/home/widget/note_list.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final NotesRuntime notesRuntime;
+  final Application application;
 
-  const HomeScreen({super.key, required this.notesRuntime});
+  const HomeScreen({super.key, required this.application});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -24,7 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    _controller = NoteListController(widget.notesRuntime);
+    _controller = NoteListController(widget.application);
     _controller.addListener(() => setState(() {}));
     _controller.reloadNotes();
     _searchController.addListener(() {
@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder:
             (context) =>
-                NoteScreen(noteId: noteId, notesRuntime: widget.notesRuntime),
+                NoteScreen(noteId: noteId, application: widget.application),
       ),
     );
     // this will rerun after push is over

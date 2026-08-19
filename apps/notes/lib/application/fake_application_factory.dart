@@ -6,18 +6,15 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/application.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
-import 'package:notes/runtime/notes_runtime.dart';
 
 import 'application_factory.dart';
 
 class FakeApplicationFactory implements ApplicationFactory {
-  final NotesRuntime? mockNotesRuntime;
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
   final Logger? mockLogger;
 
   FakeApplicationFactory({
-    this.mockNotesRuntime,
     this.mockIdGenerator,
     this.mockTimeProvider,
     this.mockLogger,
@@ -50,16 +47,9 @@ class FakeApplicationFactory implements ApplicationFactory {
     return Application(
       sqliteDb: sqliteDb,
       searchDb: searchDb,
-      eventStore: eventStore,
-      idGenerator: idGenerator,
-      timeProvider: timeProvider,
-      notesRuntime: NotesRuntime(
-        cqrsDependencies: cqrsDependencies,
-        noteProjectionRepo: noteDatabase,
-        resolvedNoteReadModel: noteDatabase,
-        searchProjectionRepo: searchDatabase,
-        searchReadModel: searchDatabase,
-      ),
+      cqrsDependencies: cqrsDependencies,
+      noteDatabase: noteDatabase,
+      searchDatabase: searchDatabase,
     );
   }
 }

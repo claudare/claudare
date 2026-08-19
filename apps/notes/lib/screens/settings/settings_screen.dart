@@ -17,7 +17,7 @@ class SettingsScreen extends StatelessWidget {
     final dbRes = await application.eventStore.getStatistics();
 
     // quick and dirty :)
-    final allNotes = await application.notesRuntime.resolvedNoteReadModel.query(
+    final allNotes = await application.resolvedNoteReadModel.query(
       ResolvedNoteQueryCategory.notTrashed,
       ResolvedNoteQueryOrder.createdAtAscending,
     );
@@ -30,11 +30,11 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _resetApplication(Application application) async {
     await application.eventStore.reset();
-    await application.notesRuntime.recreateProjections();
+    await application.recreateProjections();
   }
 
   Future<void> _reloadAllProjections(Application application) async {
-    await application.notesRuntime.recreateProjections();
+    await application.recreateProjections();
   }
 
   @override

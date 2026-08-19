@@ -7,7 +7,6 @@ import 'package:notes/application/application.dart';
 import 'package:notes/application/application_factory.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
-import 'package:notes/runtime/notes_runtime.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ProductionApplicationFactory implements ApplicationFactory {
@@ -51,16 +50,9 @@ class ProductionApplicationFactory implements ApplicationFactory {
     return Application(
       sqliteDb: sqliteDb,
       searchDb: searchDb,
-      eventStore: eventStore,
-      idGenerator: idGenerator,
-      timeProvider: timeProvider,
-      notesRuntime: NotesRuntime(
-        cqrsDependencies: cqrsDependencies,
-        noteProjectionRepo: noteDatabase,
-        resolvedNoteReadModel: noteDatabase,
-        searchProjectionRepo: searchDatabase,
-        searchReadModel: searchDatabase,
-      ),
+      cqrsDependencies: cqrsDependencies,
+      noteDatabase: noteDatabase,
+      searchDatabase: searchDatabase,
     );
   }
 }

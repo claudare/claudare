@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:notes/application/application.dart';
 import 'package:notes/common.dart';
-import 'package:notes/runtime/notes_runtime.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
 class NoteScreen extends StatefulWidget {
-  final NotesRuntime notesRuntime;
+  final Application application;
 
   final String? noteId;
 
   const NoteScreen({
     super.key,
     required this.noteId,
-    required this.notesRuntime,
+    required this.application,
   });
 
   @override
@@ -51,7 +51,7 @@ class _NoteScreenState extends State<NoteScreen> {
       return KeyEventResult.ignored;
     };
 
-    _controller = NoteController(widget.notesRuntime);
+    _controller = NoteController(widget.application);
     _controller.addListener(() => setState(() {}));
 
     _controller.load(widget.noteId).then((values) {
@@ -174,7 +174,7 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   void _onPopInvokedWithResult() async {
-    widget.notesRuntime.logger.debug('invoking pop with result');
+    widget.application.logger.debug('invoking pop with result');
     await _flushChanges();
   }
 

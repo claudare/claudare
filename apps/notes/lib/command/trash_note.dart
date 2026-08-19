@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:notes/event/note.dart';

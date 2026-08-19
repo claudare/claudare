@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:notes/application/application.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
-import 'package:notes/runtime/notes_runtime.dart';
 
 class NoteController extends ChangeNotifier {
-  final NotesRuntime notesRuntime;
+  final Application application;
 
   String? _noteId;
 
@@ -23,8 +23,8 @@ class NoteController extends ChangeNotifier {
 
   bool _isLoading = false;
 
-  NoteController(this.notesRuntime) {
-    final optimisitcTime = notesRuntime.timeProvider.now();
+  NoteController(this.application) {
+    final optimisitcTime = application.timeProvider.now();
     _createdAt = optimisitcTime;
     _updatedAt = optimisitcTime;
   }
@@ -47,7 +47,7 @@ class NoteController extends ChangeNotifier {
         return LoadResolvedText.empty();
       }
 
-      final noteData = await notesRuntime.resolvedNoteReadModel.getById(noteId);
+      final noteData = await application.resolvedNoteReadModel.getById(noteId);
 
       if (noteData == null) {
         throw Exception('Note not found');
@@ -81,7 +81,7 @@ class NoteController extends ChangeNotifier {
     }
 
     if (_trashedAt != null) {
-      notesRuntime.logger.warning('Duplicate note trashing detected');
+      application.logger.warning('Duplicate note trashing detected');
       return false;
     }
 
@@ -89,12 +89,12 @@ class NoteController extends ChangeNotifier {
       // always flush changes internally before trashing?
       await flushChanges();
 
-      await notesRuntime.executeCommand(
+      await application.commandExecute(
         const TrashNote(),
         TrashNoteInput(noteId: _noteId!),
       );
 
-      _trashedAt = notesRuntime.timeProvider.now();
+      _trashedAt = application.timeProvider.now();
 
       return true;
     } finally {
@@ -110,12 +110,12 @@ class NoteController extends ChangeNotifier {
     }
 
     if (_trashedAt == null) {
-      notesRuntime.logger.warning('Duplicate note restoration detected');
+      application.logger.warning('Duplicate note restoration detected');
       return false;
     }
 
     try {
-      await notesRuntime.executeCommand(
+      await application.commandExecute(
         const RestoreNote(),
         RestoreNoteInput(noteId: _noteId!),
       );
@@ -130,7 +130,7 @@ class NoteController extends ChangeNotifier {
 
   /// Returns true if changes were applied. Throws on error
   Future<bool> flushChanges() async {
-    notesRuntime.logger.debug('flushing changes on note $_noteId');
+    application.logger.debug('flushing changes on note $_noteId');
 
     // do nothing if no note exists and nothing was changed
     if (_noteId == null && _titleLatest == '' && _contentLatest == '') {
@@ -140,18 +140,18 @@ class NoteController extends ChangeNotifier {
     try {
       int changeCount = 0;
 
-      final noteId = _noteId ?? notesRuntime.idGenerator.generateId();
+      final noteId = _noteId ?? application.idGenerator.generateId();
 
       if (_noteId == null) {
         // create it
-        await notesRuntime.executeCommand(
+        await application.commandExecute(
           const CreateNote(),
           CreateNoteInput(noteId: noteId),
         );
 
         _noteId = noteId;
 
-        final optimisticTime = notesRuntime.timeProvider.now();
+        final optimisticTime = application.timeProvider.now();
         _createdAt = optimisticTime;
         _updatedAt = optimisticTime;
 
@@ -160,7 +160,7 @@ class NoteController extends ChangeNotifier {
 
       // update title if it was changed
       if (_titleLatest != _titleStored) {
-        await notesRuntime.executeCommand(
+        await application.commandExecute(
           const UpdateNoteTitle(),
           UpdateNoteTitleInput(noteId: noteId, fullValue: _titleLatest),
         );
@@ -170,7 +170,7 @@ class NoteController extends ChangeNotifier {
 
       // update content if it was changed
       if (_contentLatest != _contentStored) {
-        await notesRuntime.executeCommand(
+        await application.commandExecute(
           const UpdateNoteContent(),
           UpdateNoteContentInput(
             noteId: noteId,
@@ -186,7 +186,7 @@ class NoteController extends ChangeNotifier {
       }
 
       // optimistic edit timestamp
-      _updatedAt = notesRuntime.timeProvider.now();
+      _updatedAt = application.timeProvider.now();
 
       return true;
     } finally {

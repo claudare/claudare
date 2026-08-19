@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:notes/application/application.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/read_model/note/resolved_note.dart';
 import 'package:notes/read_model/note/resolved_note_read_model.dart';
-import 'package:notes/runtime/notes_runtime.dart';
 
 class NoteListController extends ChangeNotifier {
-  final NotesRuntime notesRuntime;
+  final Application application;
 
   List<ResolvedNote> _noteData = [];
   ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.all;
@@ -13,7 +13,7 @@ class NoteListController extends ChangeNotifier {
   String _search = '';
   bool _isLoading = false;
 
-  NoteListController(this.notesRuntime);
+  NoteListController(this.application);
 
   List<ResolvedNote> get noteData => _noteData;
   bool get isLoading => _isLoading;
@@ -51,18 +51,18 @@ class NoteListController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // final data = await notesRuntime.resolvedNoteReadModel.query(
+      // final data = await application.resolvedNoteReadModel.query(
       //   _category,
       //   _order,
       // );
-      final data = await notesRuntime.compositeNoteSearch.queryComposite(
+      final data = await application.compositeNoteSearch.queryComposite(
         _search,
         _category,
         _order,
       );
       _noteData = data;
     } on Exception catch (error, stackTrace) {
-      notesRuntime.logger.error(
+      application.logger.error(
         'Failed to load notes: $error',
         error,
         stackTrace,
@@ -75,7 +75,7 @@ class NoteListController extends ChangeNotifier {
 
   Future<void> deleteNotes(List<String> noteIds) async {
     final promises = noteIds.map(
-      (noteId) => notesRuntime.executeCommand(
+      (noteId) => application.commandExecute(
         const TrashNote(),
         TrashNoteInput(noteId: noteId),
       ),

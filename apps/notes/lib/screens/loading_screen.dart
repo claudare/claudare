@@ -22,9 +22,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
     super.didChangeDependencies();
 
     final application = ApplicationProvider.of(context);
-    application.notesRuntime.logger.debug(
-      'LoadingScreen didChangeDependencies',
-    );
+    application.logger.debug('LoadingScreen didChangeDependencies');
 
     _initApplication();
   }
@@ -38,8 +36,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
       // FIXME: error handling is missing pre-rework
       // The application should go to an error state
-      // application.notesRuntime.setFatalErrorHandler((error) {
-      //   application.notesRuntime.logger.error(
+      // application.setFatalErrorHandler((error) {
+      //   application.logger.error(
       //     'FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted',
       //     error,
       //   );
@@ -49,15 +47,15 @@ class _LoadingScreenState extends State<LoadingScreen> {
       // });
 
       try {
-        await application.notesRuntime.executeCommand(
+        await application.commandExecute(
           const CreateNote(),
           CreateNoteInput(noteId: 'test'),
         );
-        await application.notesRuntime.executeCommand(
+        await application.commandExecute(
           const UpdateNoteTitle(),
           UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
         );
-        await application.notesRuntime.executeCommand(
+        await application.commandExecute(
           const UpdateNoteContent(),
           UpdateNoteContentInput(
             noteId: 'test',
@@ -66,7 +64,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
           ),
         );
       } on Exception {
-        application.notesRuntime.logger.debug('test data was not inserted');
+        application.logger.debug('test data was not inserted');
       }
 
       if (!mounted) {
@@ -74,13 +72,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
       }
       await Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder:
-              (context) => HomeScreen(notesRuntime: application.notesRuntime),
+          builder: (context) => HomeScreen(application: application),
         ),
       );
     } on Exception catch (error, stackTrace) {
       if (!mounted) return;
-      application.notesRuntime.logger.error(
+      application.logger.error(
         'error in initialization: $error',
         error,
         stackTrace,
