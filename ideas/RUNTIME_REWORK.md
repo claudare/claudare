@@ -2,9 +2,11 @@
 
 Status: decision-complete design proposal. Stages 0-4, the durable event source
 and signaling portion of Stage 5, and the isolated Stage 6 pump are implemented.
-The save-return cutover and Stages 7-9 remain future work. Nothing in those
-remaining parts should be treated as implemented behavior until the source and
-repository documentation say so.
+The save-return cutover and Stages 7-10 remain future work. Stage 7 performs the
+runtime cutover, Stage 8 validates that migration, Stage 9 adds only deterministic
+test synchronization, and Stage 10 separately designs production synchronization.
+Nothing in those remaining stages should be treated as implemented behavior
+until the source and repository documentation say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -99,10 +101,25 @@ configuration, initializes stores, validates the registry, prepares projections,
 and catches them up.
 Commands cannot run until initialization succeeds.
 
+`initialize()` freezes event and projection registration synchronously before
+returning its future. Initialization is single-flight: concurrent callers receive
+the same in-progress future and initialization work runs once. After successful
+initialization the runtime accepts ordinary commands concurrently. EventStore
+locking and optimistic stream checks remain responsible for protecting durable
+state; the runtime does not serialize all command handlers.
+
+Pumping is also single-flight. Projection rebuilds serialize with pumping. A
+pump signal received during a rebuild does not run projection work concurrently;
+it records a trailing scan that runs after the rebuild finishes. Stage 9 extends
+runtime admission with a writer-preferred synchronization gate: ordinary
+commands share admission, while an exclusive test-sync operation prevents new
+commands and waits for admitted handlers before reading or importing records.
+
 A failed runtime is terminal. It stops pumping, rejects later commands, and is
 never automatically repaired, restarted, or reconstructed. The application may
 show an error screen or banner. `close()` cancels subscriptions and releases
-runtime-owned resources; it is also useful for tests.
+runtime-owned resources; it is also useful for tests. The application continues
+to own injected databases and closes them after the runtime.
 
 ## Stream routing terminology
 
@@ -404,9 +421,11 @@ Future<void> close();
 ```
 
 `failures` is a broadcast stream and subscription is optional. The first fatal
-failure stores only the original object and stack trace. The same
-`CqrsRuntimeFailure` is stored and emitted once. Later `execute()` and `pump()`
-calls throw that stored failure.
+initialization, codec, persistence, projection, callback, runtime-store, or
+unexpected thrown-object failure stores only the original object and stack
+trace. The same `CqrsRuntimeFailure` is stored and emitted once. Later
+`execute()` and `pump()` calls throw that stored failure. Expected application
+command exceptions and `ConcurrencyProblem` remain non-fatal command outcomes.
 
 This boundary intentionally contains every thrown object, including Dart
 `Error`, so the application can fail gracefully with an error screen. This is a
@@ -419,9 +438,16 @@ committed because the callback runs after the end boundary. The outer runtime
 boundary records the callback failure and stops the runtime; the callback does
 not contain or translate its own failure.
 
-`close()` stops accepting work, cancels the EventStore subscription, waits for
-active runtime work to settle, closes the failure stream, and enters `closed`.
-It does not reconstruct or restart a failed runtime.
+`close()` is idempotent. Its first call stops accepting commands, pumps,
+rebuilds, and synchronization work, then waits for every command admitted before
+that boundary. It performs one final pump, cancels the EventStore subscription,
+waits for remaining runtime maintenance, closes the failure stream, and enters
+`closed`. Concurrent callers share that teardown.
+
+Teardown continues after a final-pump failure. Once cleanup is complete,
+`close()` rethrows the single retained `CqrsRuntimeFailure`. Closing does not
+reconstruct or restart a failed runtime and does not close injected databases,
+which remain application-owned.
 
 ## Command execution
 
@@ -445,6 +471,10 @@ await runtime.execute(
 `execute()` returns `Future<void>`. It does not expose committed command IDs,
 event IDs, local sequences, or projection progress. The EventStore signal
 requests pumping after the commit, but `execute()` does not await the pump.
+Commands are admitted only in `running`. Multiple admitted handlers may execute
+concurrently; durable writes remain serialized where required by EventStore,
+and conflicting stream versions produce `ConcurrencyProblem` without failing
+the runtime.
 
 Consistent projection selection is removed. `BoundCommand`, its consistent and
 eventual projection lists, and direct live-event routing are deleted. Application
@@ -464,11 +494,22 @@ CQRS provides the page boundary, not a UI framework. A projection that owns a
 listenable read model calls its application notifier from `onBatchApplied()`.
 Controllers subscribe to that notifier and reload their query when necessary.
 
-If another notification arrives during a reload, application code marks another
-reload as pending and runs it after the current reload. This coalesces work
-without a timer or debounce and cannot lose the final read-model state. Local
-commands and replicated events therefore update the UI through the same
-application listener path.
+Every independently observable read model may own its own application notifier.
+In Notes, only `ResolvedNoteReadModel` has one. `NoteProjection.onBatchApplied()`
+signals that notifier. `SearchProjection.onBatchApplied()` remains empty:
+updating the search index does not force the UI to query and display the current
+search again, while the next user-initiated search reads the available index.
+
+`NoteListController` subscribes to the resolved-note notifier. If another
+notification arrives during a reload, it marks another reload as pending and
+runs it after the active reload. This coalesces work without a timer or debounce
+and cannot lose the final resolved-note state. Disposal removes the listener.
+Local commands and replicated events therefore update the note list through the
+same application listener path.
+
+Command completion continues to mean durable persistence, not read-model
+visibility. Tests and maintenance flows call `pump()` explicitly whenever they
+need deterministic projection state.
 
 ## Event-store contract changes
 
@@ -514,6 +555,99 @@ Promotion assigns new receiver-local sequences and requests the same event pump.
 Fresh-device and distant-peer synchronization need a separate protocol plan.
 The runtime rework should make that protocol easier to integrate, but it does
 not define or claim it.
+
+### Stage 9 device-identity translation
+
+Stage 9 adds a concrete identity store for deterministic tests:
+
+```dart
+abstract interface class DeviceIdentityDatabase {
+  Future<int?> getLocalId(String universalId);
+  Future<String?> getUniversalId(int localId);
+  Future<void> add(String universalId, int localId);
+}
+
+final class DeviceIdentityStore {
+  Future<int?> getLocalId(String universalId);
+  Future<String?> getUniversalId(int localId);
+  Future<void> add(String universalId, int localId);
+}
+
+final class MemoryDeviceIdentityDatabase
+    implements DeviceIdentityDatabase {
+  // String -> int map
+  // int -> String map
+}
+```
+
+The memory database uses two maps for constant-time lookup in both directions.
+Adding an existing identical pair is idempotent. Reusing either the universal
+ID or local ID for a different pair is rejected.
+
+Each registered runtime receives its own `DeviceIdentityStore`. Registration
+maps that runtime's non-empty universal string ID to database-local device ID
+zero. Previously unseen remote universal IDs receive positive local IDs chosen
+by `TestSyncSystem`, then recorded explicitly through `add`. Mappings are not
+shared between runtimes.
+
+Export translates the device component of every local command ID, event ID,
+and dependency-vector key from its local integer through the source identity
+store to a universal string. Import resolves every universal string through the
+destination identity store, allocating a positive local ID when necessary.
+This includes identities learned indirectly when records from a third device
+are relayed.
+
+### Stage 9 test synchronization
+
+Stage 9 introduces only this test utility:
+
+```dart
+final class TestSyncSystem {
+  void register(String universalId, CqrsRuntime runtime);
+
+  Future<void> sync(String from, String to);
+  Future<void> syncAll();
+  Future<void> close();
+}
+```
+
+There is no `SyncSystem` interface, `MemorySyncSystem`, registration handle, or
+automatic synchronization. Registration requires a running runtime and a
+unique, non-empty universal ID. Not calling `sync` represents an offline
+period. The utility has no connectivity state, connect or disconnect methods,
+queue, timer, or retry behavior.
+
+`sync(from, to)` is asynchronous and one-way. It acquires exclusive
+synchronization access to both runtimes in stable universal-ID order. The
+writer-preferred gate blocks new commands and waits for active handlers before
+the utility reads or imports records, preventing command/sync starvation and
+ensuring the operation sees a stable invocation boundary.
+
+The operation pages every source applied command needed at invocation time,
+loads its applied events, translates all device identities, and constructs
+translated `ReplicatedCommand` and `ReplicatedEvent` objects. It passes those
+objects directly to the destination. No record serialization, packet, or
+envelope type is introduced, and the existing `EncodedCommand` and
+`EncodedEvent` objects inside the records are preserved.
+
+The destination stages command metadata and events through the existing
+EventStore APIs and repeatedly promotes as dependencies become ready. `sync`
+completes only after all source records needed at its invocation boundary have
+been delivered and their commands promoted by the destination. Projection
+pumping remains a separate explicit operation.
+
+`syncAll()` synchronizes every ordered runtime pair repeatedly until no runtime
+gains another applied command. This provides deterministic memory-only delivery
+for tests, including relayed dependencies. Delivery is assumed to succeed, so
+there are no retry, backoff, transport-error, or partial-network policies.
+Duplicate delivery relies on the existing idempotent staging behavior.
+
+`close()` prevents new sync calls and awaits active synchronization work. It is
+idempotent and does not close registered runtimes, identity stores, or their
+storage. Production synchronization intentionally inherits no interface from
+this utility. Its transport, lifecycle, durable cursors, identity,
+authentication, retries, resource bounds, and protocol remain a separate Stage
+10 design.
 
 ## Migration strategy
 
@@ -725,15 +859,22 @@ construction for the Stage 7 pump cutover.
 ### Stage 7: Perform the runtime cutover
 
 - Replace current command-owned routing with `CqrsRuntime.execute`.
-- Freeze the injected event registry when runtime initialization begins.
+- Freeze the injected event and projection registries synchronously when
+  single-flight initialization begins.
 - Change local save to `Future<void>` and remove `SaveChangesResult`,
   `StreamAppendOrder`, and append-order reconstruction.
-- Make startup and EventStore signals use the same public single-flight pump.
+- Accept concurrent commands only while running, with EventStore locking and
+  optimistic stream checks preserving the durable boundary.
+- Make startup and EventStore signals use the same public single-flight pump;
+  serialize projection rebuilds with pumping and retain a trailing scan request.
 - Add terminal runtime state, stored `CqrsRuntimeFailure`, optional failure
-  stream subscription, and `close()`.
+  stream subscription, and idempotent final-pump `close()` teardown.
 - Migrate application wiring and command call sites.
-- Migrate application read models to listenable callbacks triggered by
-  `onBatchApplied()`; coalesce application reload requests without CQRS debounce.
+- Give only `ResolvedNoteReadModel` a Notes notifier, signal it from
+  `NoteProjection.onBatchApplied()`, and keep
+  `SearchProjection.onBatchApplied()` empty.
+- Make `NoteListController` subscribe, dispose its subscription, and coalesce
+  active/pending reload requests without CQRS debounce.
 - Remove `ProjectionRouter`, direct runtime-event dispatch, consistent/eventual
   routing, obsolete projection queues, and `BoundCommand`.
 - Remove `CqrsRuntimeV2Idea` and any other superseded prototype code.
@@ -754,22 +895,67 @@ Gate: there is exactly one projection-delivery path in production code.
   behavior.
 - Verify commands complete after persistence while the public pump provides
   deterministic catch-up for tests.
-- Verify a projection failure stops before the next page and later calls throw
-  the stored runtime failure.
+- Test lifecycle transitions, single-flight initialization and pumping,
+  synchronous registration freezing, concurrent command admission, rebuild/pump
+  exclusion, and trailing scans.
+- Test fatal initialization, codec, persistence, projection, callback,
+  runtime-store, and unexpected thrown-object failures. Verify the first failure
+  object is stored and rethrown by identity while expected command exceptions
+  and `ConcurrencyProblem` remain non-fatal.
+- Test idempotent close, rejection of new work, admitted-command draining, the
+  final pump, subscription cancellation, maintenance draining, failure-stream
+  closure, teardown after final-pump failure, and application ownership of
+  injected databases.
+- Test resolved-note notification after matched batches, no notification after
+  unmatched batches, lossless active/pending controller reloads, listener
+  disposal, and that search projection updates do not redisplay search results.
+- Verify command completion can precede read-model visibility and explicit
+  `pump()` makes projection state deterministic.
 - Update source-backed repository and package documentation to describe only the
   implemented behavior.
 
 Gate: all old runtime paths are gone and all validation passes.
 
-### Stage 9: Design replication scheduling separately
+### Stage 9: Add deterministic test synchronization
 
-- Define peer cursors, export pages, command/event batching, missing dependency
-  requests, promotion scheduling, retries, and reconnect behavior.
-- Use sender-local command sequence only as a hint.
-- Test different valid receiver-local orders for concurrent commands.
-- Make no convergence or security claims beyond implemented behavior.
+- Add `DeviceIdentityDatabase`, `DeviceIdentityStore`, and
+  `MemoryDeviceIdentityDatabase` with bidirectional lookup and conflict checks.
+- Add the writer-preferred runtime gate used by exclusive sync access.
+- Add `TestSyncSystem` with explicit registration, one-way `sync`, fixed-point
+  `syncAll`, and non-owning `close`.
+- Translate local integer identities to universal strings during export and
+  into each destination's independent integer namespace during import.
+- Transfer translated runtime records directly, preserving their encoded
+  command and event objects, and use existing staging and promotion APIs.
+- Keep projection pumping explicit and separate from sync completion.
+- Do not add production interfaces, automatic sync, connectivity state,
+  transport models, serialization, timers, queues, retries, or security claims.
+- Test forward and reverse identity lookup, idempotent pair insertion, conflicts,
+  local ID zero, positive remote allocation, and independent runtime mappings.
+- Test command/sync exclusion and writer preference.
+- Test one-way sync, reverse sync, `syncAll`, no transfer without an explicit
+  call, encoded-object preservation, dependency translation, third-device relay,
+  duplicate delivery, promotion, and completion before explicit projection
+  pumping.
 
-This stage is intentionally outside the runtime cutover.
+Gate: independent runtimes can exchange deterministic in-memory test records
+only when the test explicitly requests it, without implying a production sync
+capability.
+
+### Stage 10: Design production synchronization separately
+
+- Design transport and lifecycle independently from `TestSyncSystem`.
+- Define durable peer cursors, versioned wire records, batching, missing
+  dependency requests, promotion scheduling, retries, reconnect behavior,
+  identity, authentication, resource bounds, and protocol evolution.
+- Use sender-local command sequence only as a paging hint and preserve
+  receiver-local ordering.
+- Define and test application convergence separately from record delivery.
+- Make no convergence, security, backup, or availability claims beyond
+  implemented and validated behavior.
+
+This stage intentionally receives no interface or transport abstraction from
+the Stage 9 test utility.
 
 ## Why not migrate everything in one step?
 

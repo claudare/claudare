@@ -109,8 +109,8 @@ part of the Stage 7 cutover.
 
 - SQLite migration markers use `db.execute` rather than the transaction
   context, so schema work and its marker are not atomic.
-- Runtime lifecycle, projection queue draining, degraded state, and shutdown
-  are not explicit public behavior.
+- Runtime lifecycle, terminal failure identity, pump/rebuild coordination, and
+  shutdown are not explicit public behavior.
 - The runtime-store SQLite schema is a clean development replacement and does
   not migrate existing global-version or old projection-progress tables.
 - Integer device IDs are database-local and are not authenticated identity.

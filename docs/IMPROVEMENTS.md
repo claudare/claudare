@@ -22,10 +22,11 @@ tests. A migration must be all applied or safely retried.
 
 ### Make projection lifecycle explicit
 
-Give the runtime lifecycle states and queue barriers for initialize, rebuild,
-ready, degraded, and shutdown. Prevent resets from racing command projection
-work, expose eventual-projection health/lag, and provide a graceful close path
-for runtime queues and both SQLite isolates.
+Perform the clean Stage 7 runtime cutover specified in
+[`ideas/RUNTIME_REWORK.md`](../ideas/RUNTIME_REWORK.md): explicit runtime states,
+single-flight initialization and pumping, serialized projection rebuilds,
+terminal failure identity, and final-pump shutdown. The runtime must drain its
+own admitted work but leave injected databases under application ownership.
 
 ## P1 - strengthen reusable core behavior
 
@@ -59,6 +60,11 @@ bytes, authenticated device identity and database-local integer translation,
 bounded orphan and pending scheduling, range exchange, and resumable
 import/export. Preserve idempotent `CommandId` and `EventId` handling and keep
 receiver-local order separate from replicated identity.
+
+The planned Stage 9 `TestSyncSystem` is only an explicit memory-only test
+utility for identity translation and record delivery. It does not satisfy these
+production transport, lifecycle, identity, resource-bound, or security
+requirements and intentionally supplies no production interface.
 
 ### Define convergent note semantics
 

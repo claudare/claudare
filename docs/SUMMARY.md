@@ -54,8 +54,8 @@ contracts but does not define the architecture or public API for other apps.
 
 ## Documentation map
 
-- [ARCHITECTURE_ECOSYSTEM.md](ARCHITECTURE_ECOSYSTEM.md): general overview of
-  the Claudare project.
+- [ARCHITECTURE_ECOSYSTEM.md](ARCHITECTURE_ECOSYSTEM.md): explicitly
+  unimplemented long-term product vision.
 - [ARCHITECTURE_COMMON.md](ARCHITECTURE_COMMON.md): reusable core contracts.
 - [ARCHITECTURE_APPS.md](ARCHITECTURE_APPS.md): application composition.
 - [APP_PATTERNS.md](APP_PATTERNS.md): application-owned concrete event codecs,

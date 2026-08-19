@@ -10,7 +10,7 @@ packages; shared packages must not depend on applications.
 This document describes the general application flow. Domain-specific screens,
 event kinds, tables, and product features belong in their owning application.
 
-## Composition flow
+## Current composition flow
 
 ```text
 UI
@@ -28,9 +28,13 @@ database owners. It registers one codec per concrete event type with the CQRS
 runtime, then opens storage, applies migrations, and initializes the runtime
 before exposing interactive UI.
 
-The application owns this lifecycle: initialization must be single-flight,
-errors must reach a defined UI state, and shutdown must close runtime queues and
-storage owners.
+This is the current pre-Stage-7 production path. Applications still choose
+bound consistent and eventual projection delivery, and the production runtime
+does not yet own the isolated durable event pump or its planned lifecycle and
+failure boundary. The future cutover is specified in
+[`ideas/RUNTIME_REWORK.md`](../ideas/RUNTIME_REWORK.md), but that plan is not
+implemented behavior. No consistent projections will be used after runtime
+rework is implemented.
 
 ## Command flow
 
@@ -44,7 +48,8 @@ storage owners.
 5. The UI reads the resulting projection/read model rather than reconstructing
    domain state directly from the event store.
 
-With `bindCommand`, applications choose which projections are **consistent**.
+In the current runtime, `bindCommand` lets applications choose which projections
+are **consistent**.
 The bound command waits for those projection callbacks before reporting
 success, while its other projections are **eventual** and may lag. With
 `executeCommand`, every matching registered projection is dispatched
