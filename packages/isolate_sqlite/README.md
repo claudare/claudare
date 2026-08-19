@@ -12,11 +12,17 @@ start using the package.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+Open an in-memory database with the convenience method:
 
 ```dart
-const like = 'sample';
+final database = IsolateSqlite();
+await database.openInMemory();
+```
+
+Code that supplies database filenames can use the public memory filename:
+
+```dart
+await database.open(IsolateSqlite.memoryFilename);
 ```
 
 ## Additional information

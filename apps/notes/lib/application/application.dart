@@ -10,7 +10,6 @@ import 'package:notes/read_model/note/resolved_note_read_model.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
-import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
 
 class Application {
@@ -71,13 +70,13 @@ class Application {
     Input input,
   ) => _cqrsRuntime.executeCommand(command, input);
 
-  Future<void> initialize(String applicationDirectory) async {
-    final mainDbPath = path.join(applicationDirectory, 'notes.db');
-    logger.debug('main database path: $mainDbPath');
-    await sqliteDb.open(mainDbPath);
-
-    final searchDbPath = path.join(applicationDirectory, 'search.db');
-    await searchDb.open(searchDbPath);
+  Future<void> initialize({
+    required String notesDbFilepath,
+    required String searchDbFilepath,
+  }) async {
+    logger.debug('main database path: $notesDbFilepath');
+    await sqliteDb.open(notesDbFilepath);
+    await searchDb.open(searchDbFilepath);
 
     await eventStore.migrate();
     await _cqrsRuntime.initializeProjections();

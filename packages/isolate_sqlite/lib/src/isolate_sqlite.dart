@@ -7,18 +7,20 @@ import 'row.dart';
 import 'rows.dart';
 import 'sync_context.dart';
 
-const _memoryFilename = ':memory:';
-
 typedef SetupFn = void Function(Database);
 
 class IsolateSqlite {
+  /// The SQLite filename that opens an in-memory database.
+  static const memoryFilename = ':memory:';
+
   bool _isOpen = false;
   late final SendPort _cmdPort;
   late final Isolate _isolate;
 
   IsolateSqlite();
 
-  /// Opens a database file.
+  /// Opens a database file, or an in-memory database when [filename] is
+  /// [memoryFilename].
   ///
   /// The [vfs] option can be used to set the appropriate virtual file system
   /// implementation. When null, the default file system will be used.
@@ -65,14 +67,14 @@ class IsolateSqlite {
   /// The [vfs] option can be used to set the appropriate virtual file system
   /// implementation. When null, the default file system will be used.
   Future<void> openInMemory({String? vfs, SetupFn? setup}) {
-    return open(_memoryFilename, vfs: vfs, setup: setup);
+    return open(memoryFilename, vfs: vfs, setup: setup);
   }
 
   @pragma('vm:entry-point')
   static FutureOr<void> _isolateMain((_OpenOptions, SendPort) args) async {
     final (options, initPort) = args;
 
-    final db = options.filename == _memoryFilename
+    final db = options.filename == memoryFilename
         ? sqlite3.openInMemory(vfs: options.vfs)
         : sqlite3.open(
             options.filename,

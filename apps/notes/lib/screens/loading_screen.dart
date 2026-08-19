@@ -6,6 +6,7 @@ import 'package:notes/command/update_note_title.dart';
 import 'package:notes/screens/error_screen.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/util/get_application_directory.dart';
+import 'package:path/path.dart' as path;
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
@@ -32,7 +33,10 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
     try {
       final baseDir = await getApplicationDirectory();
-      await application.initialize(baseDir);
+      await application.initialize(
+        notesDbFilepath: path.join(baseDir, 'notes.db'),
+        searchDbFilepath: path.join(baseDir, 'search.db'),
+      );
 
       // FIXME: error handling is missing pre-rework
       // The application should go to an error state
