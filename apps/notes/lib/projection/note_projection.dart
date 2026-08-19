@@ -5,6 +5,7 @@ import 'package:notes/read_model/note/note_data.dart';
 import 'package:notes/read_model/note/note_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
+// Note projection utilized onBatchApplied and that is used to refresh the UI
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;
 

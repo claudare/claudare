@@ -4,6 +4,8 @@ import 'package:notes/event/note.dart';
 import 'package:notes/read_model/search/search_projection_repo.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
+// Note: there is no callback for the batch changes.
+// The UI is not driven by search projection changes.
 class SearchProjection implements Projection<NoteEvent, String> {
   final SearchProjectionRepo _repo;
   final Logger _logger;
