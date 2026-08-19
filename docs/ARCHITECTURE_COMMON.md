@@ -27,8 +27,9 @@ Command input
       -> application-owned read models
 ```
 
-`CommandContext` supplies typed stream access, new IDs, and current time. A
-command locks a stream by reading it and records expected stream versions.
+`CommandContext` supplies typed stream access, new IDs, current time, and the
+runtime's `Logger`. A command locks a stream by reading it and records expected
+stream versions.
 `CommandExecutor` sends successful event-producing commands to the event store.
 Application exceptions propagate unchanged and are not persisted. Successful
 commands without events are discarded.
@@ -43,9 +44,11 @@ a globally unique name, a positive model version, one typed stream route, and
 one typed event handler. The runtime store owns each projection's version plus
 applying-through and scanned-through local event-sequence boundaries. Missing,
 changed, or interrupted projections rebuild independently while unchanged
-projections resume. The runtime separates consistent projection routing from
-eventual routing. Events remain authoritative; read models are disposable
-derived state.
+projections resume. `bindCommand` separates consistent projection routing from
+eventual routing. The additive `executeCommand` API routes every matching
+projection asynchronously and completes after persistence and queue dispatch,
+without waiting for projection processing. Events remain authoritative; read
+models are disposable derived state.
 
 ## Event-store contract
 

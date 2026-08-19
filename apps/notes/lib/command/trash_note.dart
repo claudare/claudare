@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
 import 'package:notes/event/note.dart';
@@ -23,6 +25,8 @@ class TrashNoteInput implements CommandInput {
 }
 
 class TrashNote implements Command<TrashNoteInput> {
+  const TrashNote();
+
   @override
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;

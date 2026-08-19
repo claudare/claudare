@@ -1,6 +1,5 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -24,9 +23,7 @@ class CreateNoteInput implements CommandInput {
 }
 
 class CreateNote implements Command<CreateNoteInput> {
-  final Logger _logger;
-
-  const CreateNote(this._logger);
+  const CreateNote();
 
   @override
   Future<void> handle(input, ctx) async {
@@ -38,6 +35,6 @@ class CreateNote implements Command<CreateNoteInput> {
 
     stream.append(NoteCreated());
 
-    _logger.debug('note $noteId created');
+    ctx.logger.debug('note $noteId created');
   }
 }

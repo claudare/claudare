@@ -2,11 +2,6 @@ import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:notes/command/create_note.dart';
-import 'package:notes/command/restore_note.dart';
-import 'package:notes/command/trash_note.dart';
-import 'package:notes/command/update_note_content.dart';
-import 'package:notes/command/update_note_title.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/projection/note_projection.dart';
 import 'package:notes/projection/search_projection.dart';
@@ -26,7 +21,6 @@ class NotesRuntime {
   final Logger logger;
 
   late final CqrsRuntime _cqrsRuntime;
-  late final CqrsCommands commands;
 
   late final CompositeNoteSearch compositeNoteSearch;
 
@@ -61,20 +55,6 @@ class NotesRuntime {
       runtimeName: 'notes',
     );
 
-    commands = CqrsCommands(
-      createNote: _cqrsRuntime.bindCommand(CreateNote(logger), [
-        noteProjection,
-      ]),
-      trashNote: _cqrsRuntime.bindCommand(TrashNote(), [noteProjection]),
-      restoreNote: _cqrsRuntime.bindCommand(RestoreNote(), [noteProjection]),
-      updateNoteContent: _cqrsRuntime.bindCommand(UpdateNoteContent(logger), [
-        noteProjection,
-      ]),
-      updateNoteTitle: _cqrsRuntime.bindCommand(UpdateNoteTitle(logger), [
-        noteProjection,
-      ]),
-    );
-
     compositeNoteSearch = CompositeNoteSearch(
       resolvedNoteReadModel,
       searchReadModel,
@@ -92,23 +72,8 @@ class NotesRuntime {
     await _cqrsRuntime.recreateProjections();
   }
 
-  // commands can be implemented like this too? need to keep projections on top level
-  // BoundCommand<CreateNoteInput> get createNoteCommand =>
-  //     _cqrsRuntime.bindCommand(CreateNote(), []);
-}
-
-class CqrsCommands {
-  final BoundCommand<CreateNoteInput> createNote;
-  final BoundCommand<TrashNoteInput> trashNote;
-  final BoundCommand<RestoreNoteInput> restoreNote;
-  final BoundCommand<UpdateNoteContentInput> updateNoteContent;
-  final BoundCommand<UpdateNoteTitleInput> updateNoteTitle;
-
-  const CqrsCommands({
-    required this.createNote,
-    required this.trashNote,
-    required this.restoreNote,
-    required this.updateNoteContent,
-    required this.updateNoteTitle,
-  });
+  Future<void> executeCommand<Input extends CommandInput>(
+    Command<Input> command,
+    Input input,
+  ) => _cqrsRuntime.executeCommand(command, input);
 }

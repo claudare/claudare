@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
@@ -13,6 +14,7 @@ import 'package:time_provider/time_provider.dart';
 // It may have issues, and could silently fail.
 const int _maxIntValue = -1 >>> 1;
 
+// TODO: create a proper CqrsRuntime for testing.
 class CommandTester {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
@@ -143,6 +145,7 @@ class CommandTester {
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
       eventRegistry: _eventRegistry,
+      logger: const NoopLogger(),
     );
 
     await executer.executeThrowable(command, input);

@@ -17,8 +17,9 @@ UI
   -> application composition root
       -> CqrsRuntime
           -> event store
-          -> consistent projections -> read models used by the command response
-          -> eventual projections   -> asynchronous read models
+          -> bound consistent projections -> awaited read models
+          -> bound eventual projections   -> asynchronous read models
+          -> unbound matching projections -> asynchronous read models
 ```
 
 At startup, the composition root creates the event store, runtime store,
@@ -34,19 +35,23 @@ storage owners.
 ## Command flow
 
 1. A UI controller translates user intent into a typed command input.
-2. A bound command obtains stream state through its `CommandContext`, declares
-   existence/version constraints, and appends domain events.
+2. A command obtains stream state, the runtime logger, IDs, and time through its
+   `CommandContext`, declares existence/version constraints, and appends domain
+   events.
 3. The event store atomically records the command outcome and accepted event
    changes.
 4. The runtime routes committed events to projections.
 5. The UI reads the resulting projection/read model rather than reconstructing
    domain state directly from the event store.
 
-Applications choose which projections are **consistent** for a command. The
-command waits for those projection callbacks before reporting success. Other
-projections are **eventual** and may lag. Neither mode makes event persistence
-and read-model storage one transaction; projections must remain resettable and
-replayable.
+With `bindCommand`, applications choose which projections are **consistent**.
+The bound command waits for those projection callbacks before reporting
+success, while its other projections are **eventual** and may lag. With
+`executeCommand`, every matching registered projection is dispatched
+asynchronously. Its future completes after durable command persistence and
+queue dispatch, without waiting for read-model updates. None of these modes
+makes event persistence and read-model storage one transaction; projections
+must remain resettable and replayable.
 
 ## Projection and read-model responsibilities
 

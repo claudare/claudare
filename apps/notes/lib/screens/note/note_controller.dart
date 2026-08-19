@@ -89,7 +89,8 @@ class NoteController extends ChangeNotifier {
       // always flush changes internally before trashing?
       await flushChanges();
 
-      await notesRuntime.commands.trashNote.runThrowable(
+      await notesRuntime.executeCommand(
+        const TrashNote(),
         TrashNoteInput(noteId: _noteId!),
       );
 
@@ -114,7 +115,8 @@ class NoteController extends ChangeNotifier {
     }
 
     try {
-      await notesRuntime.commands.restoreNote.runThrowable(
+      await notesRuntime.executeCommand(
+        const RestoreNote(),
         RestoreNoteInput(noteId: _noteId!),
       );
 
@@ -142,7 +144,8 @@ class NoteController extends ChangeNotifier {
 
       if (_noteId == null) {
         // create it
-        await notesRuntime.commands.createNote.runThrowable(
+        await notesRuntime.executeCommand(
+          const CreateNote(),
           CreateNoteInput(noteId: noteId),
         );
 
@@ -157,7 +160,8 @@ class NoteController extends ChangeNotifier {
 
       // update title if it was changed
       if (_titleLatest != _titleStored) {
-        await notesRuntime.commands.updateNoteTitle.runThrowable(
+        await notesRuntime.executeCommand(
+          const UpdateNoteTitle(),
           UpdateNoteTitleInput(noteId: noteId, fullValue: _titleLatest),
         );
         _titleStored = _titleLatest;
@@ -166,7 +170,8 @@ class NoteController extends ChangeNotifier {
 
       // update content if it was changed
       if (_contentLatest != _contentStored) {
-        await notesRuntime.commands.updateNoteContent.runThrowable(
+        await notesRuntime.executeCommand(
+          const UpdateNoteContent(),
           UpdateNoteContentInput(
             noteId: noteId,
             overrideContent: _contentLatest,

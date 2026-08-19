@@ -49,13 +49,16 @@ class _LoadingScreenState extends State<LoadingScreen> {
       // });
 
       try {
-        await application.notesRuntime.commands.createNote.runThrowable(
+        await application.notesRuntime.executeCommand(
+          const CreateNote(),
           CreateNoteInput(noteId: 'test'),
         );
-        await application.notesRuntime.commands.updateNoteTitle.runThrowable(
+        await application.notesRuntime.executeCommand(
+          const UpdateNoteTitle(),
           UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
         );
-        await application.notesRuntime.commands.updateNoteContent.runThrowable(
+        await application.notesRuntime.executeCommand(
+          const UpdateNoteContent(),
           UpdateNoteContentInput(
             noteId: 'test',
             overrideContent:

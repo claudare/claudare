@@ -52,6 +52,7 @@ class CqrsRuntimeV2Idea {
       eventRegistry: _eventRegistry,
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
+      logger: _dependencies.logger,
     );
 
     await command.handle(input, context);

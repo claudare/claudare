@@ -3,9 +3,6 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/projection/projection_router.dart';
 
-// TODO: Should automatic retries be implemented here?
-// Retry on ConcurrencyProblem or on EventStoreException?
-// They can be configured when the command is being bound.
 class BoundCommand<Input extends CommandInput> {
   final CommandExecutor _executor;
   final Command<Input> _command;

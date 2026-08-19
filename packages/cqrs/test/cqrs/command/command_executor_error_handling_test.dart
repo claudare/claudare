@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -98,6 +99,7 @@ CommandExecutor _executor(MemoryEventDatabase database) => CommandExecutor(
   timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
   idGenerator: IdGeneratorSequential(),
   eventRegistry: EventRegistry(),
+  logger: const NoopLogger(),
 );
 
 class _Input implements CommandInput {

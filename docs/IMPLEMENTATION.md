@@ -31,7 +31,8 @@ deterministic static implementation. `packages/crdt` exposes the
 timestamp-based CRDT helpers.
 
 A command uses `CommandContext` to access typed streams, declare locks, append
-events, request IDs, and read the current time. `CommandExecutor` serializes
+events, request IDs, read the current time, and use the runtime's `Logger`.
+`CommandExecutor` serializes
 successful event-producing commands through `CommandCodecSafe` and calls
 `EventStore.saveChanges`. Command handling exceptions propagate unchanged and
 are not serialized or stored. Applications may use the exported
@@ -85,9 +86,12 @@ manual runtime-type checks without bypassing registry decoding.
 scanned-through local sequence boundaries by globally unique projection name.
 A missing state, version mismatch, or boundary mismatch resets only that
 projection before replay from zero. Matching projections resume after their
-scanned-through boundary. Applications choose whether a projection is
-consistent, so command completion waits for its callback, or eventual, so it is
-queued without blocking the command.
+scanned-through boundary. `bindCommand` lets applications choose whether a
+projection is consistent, so command completion waits for its callback, or
+eventual, so it is queued without blocking the command. `executeCommand`
+instead dispatches every matching registered projection as eventual work and
+returns after persistence and queue dispatch without awaiting projection
+completion.
 
 Events are authoritative. Projections are disposable derived state and repair
 themselves through reset and replay. Projection read-model changes and runtime

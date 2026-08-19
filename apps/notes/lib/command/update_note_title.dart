@@ -1,6 +1,5 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:common/common.dart';
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -25,9 +24,7 @@ class UpdateNoteTitleInput implements CommandInput {
 }
 
 class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
-  final Logger _logger;
-
-  const UpdateNoteTitle(this._logger);
+  const UpdateNoteTitle();
 
   @override
   Future<void> handle(input, ctx) async {
@@ -44,6 +41,6 @@ class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
 
     stream.append(NoteTitleUpdated(noteId: noteId, newTitle: input.fullValue));
 
-    _logger.debug('note $noteId title updated');
+    ctx.logger.debug('note $noteId title updated');
   }
 }

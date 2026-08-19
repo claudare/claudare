@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -11,6 +12,7 @@ class CommandContext {
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
+  final Logger _logger;
 
   const CommandContext({
     required EventStore eventStore,
@@ -18,11 +20,15 @@ class CommandContext {
     required EventRegistry eventRegistry,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
+    required Logger logger,
   }) : _eventStore = eventStore,
        _executionState = executionState,
        _eventRegistry = eventRegistry,
        _timeProvider = timeProvider,
-       _idGenerator = idGenerator;
+       _idGenerator = idGenerator,
+       _logger = logger;
+
+  Logger get logger => _logger;
 
   CommandStream<TEvent> stream<TEvent extends Object>(String streamPath) {
     return CommandStream<TEvent>(

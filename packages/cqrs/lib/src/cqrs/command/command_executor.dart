@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -17,14 +18,17 @@ class CommandExecutor {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final EventRegistry _eventRegistry;
+  final Logger _logger;
 
   const CommandExecutor({
     required EventStore eventStore,
     required TimeProvider timeProvider,
     required IdGenerator idGenerator,
     required EventRegistry eventRegistry,
+    required Logger logger,
   }) : _idGenerator = idGenerator,
        _eventRegistry = eventRegistry,
+       _logger = logger,
        _timeProvider = timeProvider,
        _eventStore = eventStore;
 
@@ -41,6 +45,7 @@ class CommandExecutor {
       eventRegistry: _eventRegistry,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
+      logger: _logger,
     );
 
     await command.handle(input, context);

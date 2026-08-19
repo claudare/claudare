@@ -24,6 +24,8 @@ class RestoreNoteInput implements CommandInput {
 
 /// aka "Untrash note"
 class RestoreNote implements Command<RestoreNoteInput> {
+  const RestoreNote();
+
   @override
   Future<void> handle(input, ctx) async {
     final noteId = input.noteId;

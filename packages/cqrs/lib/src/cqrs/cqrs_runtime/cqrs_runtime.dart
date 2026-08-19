@@ -103,6 +103,7 @@ class CqrsRuntime {
       timeProvider: _dependencies.timeProvider,
       idGenerator: _dependencies.idGenerator,
       eventRegistry: _eventRegistry,
+      logger: _dependencies.logger,
     );
 
     final consistentRunners = <ProjectionRuntime>[];
@@ -126,5 +127,21 @@ class CqrsRuntime {
       consistentRouter: ProjectionRouter(consistentRunners),
       eventualRouter: ProjectionRouter(eventualRunners),
     );
+  }
+
+  Future<void> executeCommand<Input extends CommandInput>(
+    Command<Input> command,
+    Input input,
+  ) async {
+    final executor = CommandExecutor(
+      eventStore: _dependencies.eventStore,
+      timeProvider: _dependencies.timeProvider,
+      idGenerator: _dependencies.idGenerator,
+      eventRegistry: _eventRegistry,
+      logger: _dependencies.logger,
+    );
+
+    final liveEvents = await executor.executeThrowable(command, input);
+    ProjectionRouter(_projectionRunners).dispatch(liveEvents);
   }
 }
