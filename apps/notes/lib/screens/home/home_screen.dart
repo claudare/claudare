@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/screens/home/note_list_controller.dart';
 import 'package:notes/screens/home/widget/note_list.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  final Application application;
+  final NoteApplication application;
 
   const HomeScreen({super.key, required this.application});
 

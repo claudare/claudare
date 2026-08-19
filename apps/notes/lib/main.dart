@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application_provider.dart';
+import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/production_application_factory.dart';
 
 import 'package:notes/screens/loading_screen.dart';
@@ -9,7 +9,9 @@ void main() {
 
   final application = const ProductionApplicationFactory().create();
 
-  runApp(ApplicationProvider(application: application, child: const MyApp()));
+  runApp(
+    NoteApplicationProvider(application: application, child: const MyApp()),
+  );
 }
 
 class MyApp extends StatelessWidget {

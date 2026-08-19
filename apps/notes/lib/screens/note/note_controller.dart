@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
@@ -7,7 +7,7 @@ import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
 
 class NoteController extends ChangeNotifier {
-  final Application application;
+  final NoteApplication application;
 
   String? _noteId;
 

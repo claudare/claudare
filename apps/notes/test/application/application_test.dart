@@ -6,8 +6,7 @@ void main() {
   test('initializes', () async {
     final application = FakeApplicationFactory().create();
     addTearDown(() async {
-      await application.searchDb.close();
-      await application.sqliteDb.close();
+      await application.close();
     });
 
     await application.initialize(

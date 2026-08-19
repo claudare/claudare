@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application_provider.dart';
+import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
@@ -22,14 +22,14 @@ class _LoadingScreenState extends State<LoadingScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final application = ApplicationProvider.of(context);
+    final application = NoteApplicationProvider.of(context);
     application.logger.debug('LoadingScreen didChangeDependencies');
 
     _initApplication();
   }
 
   Future<void> _initApplication() async {
-    final application = ApplicationProvider.of(context);
+    final application = NoteApplicationProvider.of(context);
 
     try {
       final baseDir = await getApplicationDirectory();

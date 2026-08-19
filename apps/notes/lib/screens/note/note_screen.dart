@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/common.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
 class NoteScreen extends StatefulWidget {
-  final Application application;
+  final NoteApplication application;
 
   final String? noteId;
 

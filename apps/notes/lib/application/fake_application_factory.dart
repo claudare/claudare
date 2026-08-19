@@ -3,13 +3,13 @@ import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/application/application.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
 
-import 'application_factory.dart';
+import 'note_application_factory.dart';
 
-class FakeApplicationFactory implements ApplicationFactory {
+class FakeApplicationFactory implements NoteApplicationFactory {
   final IdGenerator? mockIdGenerator;
   final TimeProvider? mockTimeProvider;
   final Logger? mockLogger;
@@ -21,7 +21,7 @@ class FakeApplicationFactory implements ApplicationFactory {
   });
 
   @override
-  Application create() {
+  NoteApplication create() {
     final IdGenerator idGenerator = mockIdGenerator ?? IdGeneratorSequential();
     final timeProvider = mockTimeProvider ?? FakeTimeProviderStatic.zero();
     final logger = mockLogger ?? const NoopLogger();
@@ -41,10 +41,9 @@ class FakeApplicationFactory implements ApplicationFactory {
     final noteDatabase = SqliteNoteDatabase(sqliteDb);
 
     final searchDb = IsolateSqlite();
-
     final searchDatabase = SqliteSearchDatabase(searchDb);
 
-    return Application(
+    return NoteApplication(
       sqliteDb: sqliteDb,
       searchDb: searchDb,
       cqrsDependencies: cqrsDependencies,

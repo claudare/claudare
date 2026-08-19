@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
-import 'package:notes/application/application.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/read_model/note/resolved_note.dart';
 import 'package:notes/read_model/note/resolved_note_read_model.dart';
 
 class NoteListController extends ChangeNotifier {
-  final Application application;
+  final NoteApplication application;
 
   List<ResolvedNote> _noteData = [];
   ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.all;

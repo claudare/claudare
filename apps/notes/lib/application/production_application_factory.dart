@@ -3,13 +3,13 @@ import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:notes/application/application.dart';
-import 'package:notes/application/application_factory.dart';
+import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_application_factory.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:path_provider/path_provider.dart';
 
-class ProductionApplicationFactory implements ApplicationFactory {
+class ProductionApplicationFactory implements NoteApplicationFactory {
   const ProductionApplicationFactory();
 
   static Future<String> getSupportDir() async {
@@ -24,7 +24,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
   }
 
   @override
-  Application create() {
+  NoteApplication create() {
     final IdGenerator idGenerator = IdGeneratorSecure();
     final timeProvider = SystemTimeProvider();
     final logger = ConsoleLogger(name: 'notes', minimumLevel: LogLevel.debug);
@@ -47,7 +47,7 @@ class ProductionApplicationFactory implements ApplicationFactory {
 
     final searchDatabase = SqliteSearchDatabase(searchDb);
 
-    return Application(
+    return NoteApplication(
       sqliteDb: sqliteDb,
       searchDb: searchDb,
       cqrsDependencies: cqrsDependencies,

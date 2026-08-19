@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:notes/application/application.dart';
-import 'package:notes/application/application_provider.dart';
+import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/read_model/note/resolved_note_read_model.dart';
 
 class SettingsData {
@@ -13,7 +13,7 @@ class SettingsData {
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  Future<SettingsData> fetchSettings(Application application) async {
+  Future<SettingsData> fetchSettings(NoteApplication application) async {
     final dbRes = await application.eventStore.getStatistics();
 
     // quick and dirty :)
@@ -28,18 +28,18 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _resetApplication(Application application) async {
+  Future<void> _resetApplication(NoteApplication application) async {
     await application.eventStore.reset();
     await application.recreateProjections();
   }
 
-  Future<void> _reloadAllProjections(Application application) async {
+  Future<void> _reloadAllProjections(NoteApplication application) async {
     await application.recreateProjections();
   }
 
   @override
   Widget build(BuildContext context) {
-    final application = ApplicationProvider.of(context);
+    final application = NoteApplicationProvider.of(context);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
