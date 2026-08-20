@@ -4,7 +4,6 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:time_provider/time_provider.dart';
@@ -17,7 +16,6 @@ const int _maxIntValue = -1 >>> 1;
 // TODO: create a proper CqrsRuntime for testing.
 class CommandTester {
   final TimeProvider _timeProvider;
-  final IdGenerator _idGenerator;
   final EventDatabase _eventDatabase;
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
@@ -27,20 +25,16 @@ class CommandTester {
 
   CommandTester({
     required TimeProvider timeProvider,
-    required IdGenerator idGenerator,
     EventDatabase? eventDatabase,
   }) : this._(
          timeProvider: timeProvider,
-         idGenerator: idGenerator,
          eventDatabase: eventDatabase ?? MemoryEventDatabase(),
        );
 
   CommandTester._({
     required TimeProvider timeProvider,
-    required IdGenerator idGenerator,
     required EventDatabase eventDatabase,
   }) : _timeProvider = timeProvider,
-       _idGenerator = idGenerator,
        _eventDatabase = eventDatabase,
        _eventStore = EventStore(
          eventDatabase,
@@ -143,7 +137,6 @@ class CommandTester {
     final executer = CommandExecutor(
       eventStore: _eventStore,
       timeProvider: _timeProvider,
-      idGenerator: _idGenerator,
       eventRegistry: _eventRegistry,
       logger: const NoopLogger(),
     );

@@ -10,7 +10,6 @@ import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/exception/command_codec_exception.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -98,7 +97,6 @@ CommandExecutor _executor(MemoryEventDatabase database) {
   return CommandExecutor(
     eventStore: EventStore(database),
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
-    idGenerator: IdGeneratorSequential(),
     eventRegistry: registry,
     logger: const NoopLogger(),
   );

@@ -10,7 +10,6 @@ import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -21,7 +20,6 @@ void main() {
         eventStore: EventStore(MemoryEventDatabase()),
         runtimeDatabase: MemoryRuntimeDatabase(),
         logger: const NoopLogger(),
-        idGenerator: IdGeneratorSequential(),
         timeProvider: FakeTimeProviderStatic.zero(),
       ),
       eventRegistry: EventRegistry(),
@@ -510,7 +508,6 @@ CqrsRuntime _runtime({
       eventStore: eventStore,
       runtimeDatabase: runtimeDatabase ?? MemoryRuntimeDatabase(),
       logger: const NoopLogger(),
-      idGenerator: IdGeneratorSequential(),
       timeProvider: FakeTimeProviderStatic.zero(),
     ),
     eventRegistry: events,

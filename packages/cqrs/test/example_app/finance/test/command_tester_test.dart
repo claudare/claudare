@@ -1,6 +1,5 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:test/test.dart';
 
@@ -13,14 +12,12 @@ import '../stream_route/account_stream_route.dart';
 void main() {
   group('Command tester', () {
     late TimeProvider timeProvider;
-    late IdGenerator idGenerator;
     late CommandTester commandTester;
 
     setUp(() {
       timeProvider = FakeTimeProviderStatic.unixMilliseconds(0);
-      idGenerator = IdGeneratorSequential();
       commandTester =
-          CommandTester(timeProvider: timeProvider, idGenerator: idGenerator)
+          CommandTester(timeProvider: timeProvider)
             ..registerEvent(const AccountAtmDepositedCodec())
             ..registerEvent(const AccountAtmWithdrawnCodec())
             ..registerEvent(const AccountInnerTransferCodec())

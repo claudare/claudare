@@ -7,7 +7,6 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
@@ -173,7 +172,6 @@ Future<void> _initialize(
       eventStore: session.eventStore,
       runtimeDatabase: session.runtimeDatabase,
       logger: const NoopLogger(),
-      idGenerator: IdGeneratorSequential(),
       timeProvider: FakeTimeProviderStatic.zero(),
     ),
     eventRegistry: eventRegistry,

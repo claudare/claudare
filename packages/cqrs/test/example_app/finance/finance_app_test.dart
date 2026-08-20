@@ -6,7 +6,6 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:test/test.dart';
@@ -23,14 +22,13 @@ import 'read_model/total_balance_read_model.dart';
 
 void main() {
   group('Finance App Example', () {
-    const firstAccountId = 'AAAAAAAAAAAAAAAAAAAAAA';
-    const secondAccountId = 'AAAAAAAAAAAAAAAAAAAAAQ';
+    const firstAccountId = 'first';
+    const secondAccountId = 'second';
     final t0 = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     late EventStore eventStore;
     late MemoryRuntimeDatabase runtimeDatabase;
     late TimeProvider commandTimeProvider;
-    late IdGenerator commandIdGenerator;
     late AccountsSummaryReadModel accountsSummaryRepo;
     late TotalBalanceReadModel totalBalanceRepo;
     late FinanceApp app;
@@ -39,7 +37,6 @@ void main() {
       eventStore = EventStore(MemoryEventDatabase());
       runtimeDatabase = MemoryRuntimeDatabase();
       commandTimeProvider = FakeTimeProviderStatic.zero();
-      commandIdGenerator = IdGeneratorSequential();
       accountsSummaryRepo = AccountsSummaryReadModel();
       totalBalanceRepo = TotalBalanceReadModel();
 
@@ -48,7 +45,6 @@ void main() {
           eventStore: eventStore,
           runtimeDatabase: runtimeDatabase,
           logger: const NoopLogger(),
-          idGenerator: commandIdGenerator,
           timeProvider: commandTimeProvider,
         ),
         accountSummaryRepo: accountsSummaryRepo,
@@ -61,7 +57,9 @@ void main() {
 
     test('rough happy path', () async {
       // first ops
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
@@ -83,7 +81,9 @@ void main() {
       expect(firstAccounts.first.lastTransactionAt, t0);
 
       // second ops
-      await app.command.openAccount(OpenAccountInput(name: 'second'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: secondAccountId, name: 'second'),
+      );
 
       await app.command.transferFundsBetweenAccounts(
         TransferFundsBetweenAccountsInput(
@@ -108,7 +108,9 @@ void main() {
     });
 
     test('command completion follows durable local persistence', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
 
       final commands = await eventStore.getAppliedCommands(0);
       final events = await eventStore.getAppliedEvents(
@@ -121,7 +123,9 @@ void main() {
     });
 
     test('handles negative balance operations', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       expect(
         () => app.command.atmWithdrawal(
           AtmWithdrawalInput(accountId: firstAccountId, amount: 40),
@@ -137,7 +141,9 @@ void main() {
     });
 
     test('handles concurrency errors', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
@@ -169,7 +175,9 @@ void main() {
 
       expect(initialTotalBalance, 0);
 
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
@@ -184,21 +192,22 @@ void main() {
       expect(newTotalBalance, 150);
     });
 
-    test('eventual dispatch accepts work while actively draining', () async {
+    test('application accepts new commands while actively draining', () async {
       final blockingTotalBalance = _BlockingTotalBalanceReadModel();
       final raceApp = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
           eventStore: EventStore(MemoryEventDatabase()),
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
-          idGenerator: IdGeneratorSequential(),
           timeProvider: FakeTimeProviderStatic.zero(),
         ),
         accountSummaryRepo: AccountsSummaryReadModel(),
         totalBalanceRepo: blockingTotalBalance,
       );
       await raceApp.init();
-      await raceApp.command.openAccount(OpenAccountInput(name: 'first'));
+      await raceApp.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
 
       await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
@@ -221,14 +230,15 @@ void main() {
           eventStore: EventStore(MemoryEventDatabase()),
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
-          idGenerator: IdGeneratorSequential(),
           timeProvider: FakeTimeProviderStatic.zero(),
         ),
         accountSummaryRepo: AccountsSummaryReadModel(),
         totalBalanceRepo: trackingTotalBalance,
       );
       await raceApp.init();
-      await raceApp.command.openAccount(OpenAccountInput(name: 'first'));
+      await raceApp.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
 
       await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
@@ -245,7 +255,9 @@ void main() {
     test(
       'runtime owns progress for live events and intentional no-ops',
       () async {
-        await app.command.openAccount(OpenAccountInput(name: 'first'));
+        await app.command.openAccount(
+          OpenAccountInput(accountId: firstAccountId, name: 'first'),
+        );
         await app.pump();
 
         final store = RuntimeStore(runtimeDatabase);
@@ -263,7 +275,9 @@ void main() {
     );
 
     test('repeated pump does not reapply stored events', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
@@ -286,14 +300,15 @@ void main() {
           eventStore: pagedEventStore,
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
-          idGenerator: IdGeneratorSequential(),
           timeProvider: FakeTimeProviderStatic.zero(),
         ),
         accountSummaryRepo: AccountsSummaryReadModel(),
         totalBalanceRepo: TotalBalanceReadModel(),
       );
       await producer.init();
-      await producer.command.openAccount(OpenAccountInput(name: 'first'));
+      await producer.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       for (final amount in [1, 2, 3, 4]) {
         await producer.command.atmDeposit(
           AtmDepositInput(accountId: firstAccountId, amount: amount),
@@ -307,7 +322,6 @@ void main() {
           eventStore: pagedEventStore,
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
-          idGenerator: IdGeneratorSequential(),
           timeProvider: FakeTimeProviderStatic.zero(),
         ),
         accountSummaryRepo: replayedAccounts,
@@ -360,7 +374,9 @@ void main() {
     });
 
     test('manual rebuild resets and fully replays', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       accountsSummaryRepo.summaries['stale'] = AccountSummary(
         accountId: 'stale',
         name: 'stale',
@@ -378,7 +394,9 @@ void main() {
     });
 
     test('manual replay rebuilds identical read models', () async {
-      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.openAccount(
+        OpenAccountInput(accountId: firstAccountId, name: 'first'),
+      );
       await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );

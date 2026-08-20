@@ -7,21 +7,23 @@ import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
 class OpenAccountInput implements CommandInput {
+  final String accountId;
   final String name;
 
-  const OpenAccountInput({required this.name});
+  const OpenAccountInput({required this.accountId, required this.name});
 
   @override
   String get kind => 'OpenAccount';
 
   @override
-  Uint8List encode() => JsonConverter.encode({'name': name});
+  Uint8List encode() =>
+      JsonConverter.encode({'accountId': accountId, 'name': name});
 }
 
 class OpenAccount implements Command<OpenAccountInput> {
   @override
   Future<void> handle(input, ctx) async {
-    final accountId = ctx.newId();
+    final accountId = input.accountId;
 
     final stream = ctx.stream<AccountEvent>(
       accountStreamRoute.buildPath(accountId),

@@ -10,7 +10,6 @@ import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/exception/cqrs_runtime_failure.dart';
 import 'package:cqrs/src/cqrs/projection/projection_registry.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
@@ -48,14 +47,12 @@ final class CqrsRuntime {
     _commandExecutor = CommandExecutor(
       eventStore: dependencies.eventStore,
       timeProvider: dependencies.timeProvider,
-      idGenerator: dependencies.idGenerator,
       eventRegistry: _eventRegistry,
       logger: dependencies.logger,
     );
   }
 
   TimeProvider get timeProvider => _dependencies.timeProvider;
-  IdGenerator get idGenerator => _dependencies.idGenerator;
   CqrsRuntimeFailure? get failure => _lifecycle.failure;
   Stream<CqrsRuntimeFailure> get failures => _lifecycle.failures;
 

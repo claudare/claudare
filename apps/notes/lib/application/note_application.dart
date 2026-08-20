@@ -40,7 +40,6 @@ class NoteApplication {
     eventStore = EventStore(SqliteEventDatabase(_sqliteDb));
 
     final cqrsDependencies = CqrsRuntimeDependencies(
-      idGenerator: idGenerator,
       timeProvider: timeProvider,
       logger: logger,
       eventStore: eventStore,

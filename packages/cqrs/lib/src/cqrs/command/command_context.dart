@@ -3,7 +3,6 @@ import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
 class CommandContext {
@@ -11,7 +10,6 @@ class CommandContext {
   final CommandExecutionState _executionState;
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
-  final IdGenerator _idGenerator;
   final Logger _logger;
 
   const CommandContext({
@@ -19,13 +17,11 @@ class CommandContext {
     required CommandExecutionState executionState,
     required EventRegistry eventRegistry,
     required TimeProvider timeProvider,
-    required IdGenerator idGenerator,
     required Logger logger,
   }) : _eventStore = eventStore,
        _executionState = executionState,
        _eventRegistry = eventRegistry,
        _timeProvider = timeProvider,
-       _idGenerator = idGenerator,
        _logger = logger;
 
   Logger get logger => _logger;
@@ -40,7 +36,8 @@ class CommandContext {
     );
   }
 
-  String newId() => _idGenerator.generateId();
-
+  /// Avoid using this functionality
+  /// It may be removed later, but is kept around for now
+  @Deprecated('Try not to use this')
   DateTime currentTime() => _timeProvider.now();
 }
