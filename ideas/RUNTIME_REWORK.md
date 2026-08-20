@@ -1,10 +1,10 @@
 # CQRS runtime rework plan
 
-Status: Stages 0-7 are implemented. Stage 8 validation and Stages 9-10 remain
-future work. Stage 9 adds only deterministic test synchronization, and Stage 10
-separately designs production synchronization. Nothing in those remaining
-stages should be treated as implemented behavior until the source and
-repository documentation say so.
+Status: Stages 0-8 are implemented. Stages 9-10 remain future work. Stage 9
+adds only deterministic test synchronization, and Stage 10 separately designs
+production synchronization. Nothing in those remaining stages should be
+treated as implemented behavior until the source and repository documentation
+say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -903,6 +903,13 @@ compatibility paths.
   implemented behavior.
 
 Gate: all old runtime paths are gone and all validation passes.
+
+Stage 8 is implemented. Root dependency resolution, workspace discovery,
+analysis, focused CQRS and Notes tests, and the complete Melos suite pass.
+Memory and SQLite projection rebuild coverage passes, and stale symbol, path,
+and compatibility-alias scans find no implementation references to removed
+runtime paths. Source-backed repository documentation describes the durable
+pump, lifecycle, projection progress, and the absence of synchronization.
 
 ### Stage 9: Add deterministic test synchronization
 
