@@ -73,7 +73,7 @@ void main() {
       tearDown(() => session.close());
 
       test('local commands use device zero and contiguous sequences', () async {
-        final first = await store.saveChanges(
+        await store.saveChanges(
           _commandChanges(
             'create',
             localLocks: const [
@@ -90,7 +90,6 @@ void main() {
         );
         await _appendOne(store, streamPath: 'test/2', kind: 'next');
 
-        expect(first.orders.map((order) => order.localSequence), [1, 2]);
         final commands = await session.readAppliedCommands();
         expect(commands.map((command) => command.commandId), [
           CommandId(0, 1),

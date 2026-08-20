@@ -2,8 +2,9 @@
 
 Claudare is a Dart Pub workspace developing a reusable core for Dart and
 Flutter applications. Core is a logical layer that will span multiple packages.
-It currently includes CQRS, common causal and serialization primitives, SQLite
-isolation, logging, IDs, time, and small CRDT helpers across shared packages.
+It currently includes CQRS, common async coordination, causal, pagination, and
+serialization primitives, SQLite isolation, logging, IDs, time, and small CRDT
+helpers across shared packages.
 
 `apps/notes` is the first prototype consumer of that infrastructure. It exists
 to exercise core behavior through a real Flutter application. It is not the
@@ -20,7 +21,7 @@ them as implemented without corresponding source and validation evidence.
 | Path                        | Purpose                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------ |
 | `packages/cqrs`             | CQRS portion of the reusable core                                              |
-| `packages/common`           | Shared causal and serialization primitives                                     |
+| `packages/common`           | Shared async coordination, causal, pagination, and serialization primitives     |
 | `packages/crdt`             | Timestamp-based CRDT value helpers                                             |
 | `packages/id_generator`     | 128-bit ID generator contract and implementations                              |
 | `packages/time_provider`    | Time provider contract and implementations                                     |

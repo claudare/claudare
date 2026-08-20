@@ -49,7 +49,7 @@ class SqliteEventDatabaseTestBackend implements EventStoreTestBackend {
     final database = SqliteEventDatabase(sqlite);
     final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
     await store.migrate();
-    return _SqliteEventDatabaseTestSession(store, database, sqlite);
+    return _SqliteEventDatabaseTestSession(store, database);
   }
 }
 
@@ -75,6 +75,7 @@ class _MemoryEventDatabaseTestSession implements EventStoreTestSession {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    await store.close();
   }
 }
 
@@ -83,10 +84,9 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
   final EventStore store;
   @override
   final SqliteEventDatabase database;
-  final IsolateSqlite _sqlite;
   bool _closed = false;
 
-  _SqliteEventDatabaseTestSession(this.store, this.database, this._sqlite);
+  _SqliteEventDatabaseTestSession(this.store, this.database);
 
   @override
   Future<List<AppliedCommand>> readAppliedCommands() =>
@@ -96,6 +96,6 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
-    await _sqlite.close();
+    await store.close();
   }
 }

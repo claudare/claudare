@@ -89,6 +89,9 @@ class SqliteEventDatabase implements EventDatabase {
   int get defaultEventFetchPageSize => 50;
 
   @override
+  Future<void> close() => database.close();
+
+  @override
   Future<void> migrate() => eventDatabaseMigrations.migrate(database);
 
   @override

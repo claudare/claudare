@@ -51,49 +51,39 @@ class FinanceApp {
       runtimeName: 'finance-main',
     );
 
-    command = Commands(
-      atmDeposit: _cqrsRuntime.bindCommand(AtmDeposit(), [
-        accountSummaryProjection,
-      ]),
-      atmWithdrawal: _cqrsRuntime.bindCommand(AtmWithdrawal(), [
-        accountSummaryProjection,
-      ]),
-      openAccount: _cqrsRuntime.bindCommand(OpenAccount(), [
-        accountSummaryProjection,
-      ]),
-      renameAccount: _cqrsRuntime.bindCommand(RenameAccount(), [
-        accountSummaryProjection,
-      ]),
-      transferFundsBetweenAccounts: _cqrsRuntime.bindCommand(
-        TransferFundsBetweenAccounts(),
-        [accountSummaryProjection],
-      ),
-    );
+    command = Commands(_cqrsRuntime);
   }
 
   Future<void> init() async {
     // TODO: how to show progress? This could take a while.
-    await _cqrsRuntime.initializeProjections();
+    await _cqrsRuntime.initialize();
   }
 
+  Future<void> pump() => _cqrsRuntime.pump();
   Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();
+  Future<void> close() => _cqrsRuntime.close();
 }
 
 class Commands {
-  final BoundCommand<AtmDepositInput> atmDeposit;
-  final BoundCommand<AtmWithdrawalInput> atmWithdrawal;
-  final BoundCommand<OpenAccountInput> openAccount;
-  final BoundCommand<RenameAccountInput> renameAccount;
-  final BoundCommand<TransferFundsBetweenAccountsInput>
-  transferFundsBetweenAccounts;
+  final CqrsRuntime _runtime;
 
-  const Commands({
-    required this.atmDeposit,
-    required this.atmWithdrawal,
-    required this.openAccount,
-    required this.renameAccount,
-    required this.transferFundsBetweenAccounts,
-  });
+  const Commands(this._runtime);
+
+  Future<void> atmDeposit(AtmDepositInput input) =>
+      _runtime.execute(AtmDeposit(), input);
+
+  Future<void> atmWithdrawal(AtmWithdrawalInput input) =>
+      _runtime.execute(AtmWithdrawal(), input);
+
+  Future<void> openAccount(OpenAccountInput input) =>
+      _runtime.execute(OpenAccount(), input);
+
+  Future<void> renameAccount(RenameAccountInput input) =>
+      _runtime.execute(RenameAccount(), input);
+
+  Future<void> transferFundsBetweenAccounts(
+    TransferFundsBetweenAccountsInput input,
+  ) => _runtime.execute(TransferFundsBetweenAccounts(), input);
 }
 
 class ReadModels {

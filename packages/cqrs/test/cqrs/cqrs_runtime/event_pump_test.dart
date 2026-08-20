@@ -172,7 +172,6 @@ void main() {
                 '${testCase.found}',
           ),
         );
-        expect(await _captureFailure(pump.pump()), same(failure));
         expect(await fixture.position('sequence'), testCase.start);
         expect(projection.events, isEmpty);
         expect(fixture.stringCodec.decodeCount, 0);
@@ -389,7 +388,7 @@ void main() {
     });
   });
 
-  group('callbacks and terminal failures', () {
+  group('callbacks and page failures', () {
     test('calls back once per matched page after progress commits', () async {
       final observedPositions = <Future<int>>[];
       late _TestProjection<String> projection;
@@ -415,68 +414,22 @@ void main() {
       expect(await Future.wait(observedPositions), [2, 3]);
     });
 
-    test('codec failure is terminal and leaves progress unchanged', () async {
-      final projection = _TestProjection<String>(name: 'codec-failure');
-      final source = _ReaderSource([
-        LocalEvent(
-          streamPath: 'all',
-          encodedEvent: EncodedEvent(kind: 'missing', bytes: Uint8List(0)),
-          occuredAt: _occurredAt,
-          localSequence: 1,
-        ),
-      ]);
+    test('projection Error leaves progress inconsistent', () async {
+      final failure = StateError('projection failed');
+      final projection = _TestProjection<String>(
+        name: 'projection-failure',
+        onApply: (_, _, _) async => throw failure,
+      );
+      final source = _ReaderSource([fixture.stringEvent(1, 'event')]);
       final pump = fixture.pump(source, [await fixture.adapter(projection)]);
 
-      final firstFailure = await _captureFailure(pump.pump());
-      final laterFailure = await _captureFailure(pump.pump());
+      final activeFailure = await _captureFailureWithStack(pump.pump());
 
-      expect(firstFailure, isA<EventCodecException>());
-      expect(laterFailure, same(firstFailure));
-      expect(await fixture.position('codec-failure'), 0);
-      expect(source.readCount, 1);
-    });
-
-    test(
-      'projection Error is terminal and leaves progress inconsistent',
-      () async {
-        final failure = StateError('projection failed');
-        final projection = _TestProjection<String>(
-          name: 'projection-failure',
-          onApply: (_, _, _) async => throw failure,
-        );
-        final source = _ReaderSource([fixture.stringEvent(1, 'event')]);
-        final pump = fixture.pump(source, [await fixture.adapter(projection)]);
-
-        final activeFailure = await _captureFailureWithStack(pump.pump());
-        final laterFailure = await _captureFailureWithStack(pump.pump());
-
-        expect(activeFailure.error, same(failure));
-        expect(laterFailure.error, same(failure));
-        expect(
-          laterFailure.stackTrace.toString(),
-          activeFailure.stackTrace.toString(),
-        );
-        expect(
-          await fixture.rawPosition('projection-failure'),
-          isA<ProjectionInconsistent>(),
-        );
-      },
-    );
-
-    test('callback failure is terminal after progress commits', () async {
-      final failure = StateError('callback failed');
-      final projection = _TestProjection<String>(
-        name: 'callback-failure',
-        onBatchApplied: () => throw failure,
+      expect(activeFailure.error, same(failure));
+      expect(
+        await fixture.rawPosition('projection-failure'),
+        isA<ProjectionInconsistent>(),
       );
-      final pump = fixture.pump(
-        _ReaderSource([fixture.stringEvent(1, 'event')]),
-        [await fixture.adapter(projection)],
-      );
-
-      expect(await _captureFailure(pump.pump()), same(failure));
-      expect(await fixture.position('callback-failure'), 1);
-      expect(await _captureFailure(pump.pump()), same(failure));
     });
 
     test('waits for every started projection after one fails', () async {
@@ -703,10 +656,6 @@ final class _TestProjection<TEvent extends Object>
 
   @override
   int get version => 1;
-
-  @override
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
 
   @override
   Future<void> reset() async {

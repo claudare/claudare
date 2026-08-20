@@ -42,6 +42,15 @@ void main() {
       );
     });
 
+    test('rejects additions after freezing', () {
+      final registry = EventRegistry()..freeze();
+
+      expect(
+        () => registry.add(const _TestEventCodec('test')),
+        throwsA(isA<EventRegistryException>()),
+      );
+    });
+
     test('fails explicitly for an unregistered Dart event type', () {
       expect(
         () => EventRegistry().encode(const _TestEvent('value')),

@@ -20,8 +20,8 @@ new or modified Core code.
 ## CQRS implementation
 
 `packages/cqrs` exposes command inputs and handlers, stream contexts, event
-codecs, a mutexed event store, memory and SQLite event databases, projection
-runtime, runtime and projection-progress stores, and test utilities.
+codecs, a mutexed event store, memory and SQLite event databases, the CQRS
+runtime and event pump, projection-progress stores, and test utilities.
 `packages/id_generator` exposes the ID
 generator contract and secure, seeded, sequential, and static implementations.
 `packages/common` exposes dots, integer-keyed version vectors, and JSON byte
@@ -55,43 +55,47 @@ The unfiltered `EventStore.getAppliedEventReader` pages every applied event in
 ascending receiver-local sequence order after an exclusive cursor.
 `EventStore.appliedChanges` asynchronously broadcasts once after a successful
 non-empty local append or pending-command promotion. It does not emit for
-empty, failed, rejected, staged, missing, or not-ready changes. Notification
-listeners read durable data rather than receiving event payloads. Production
-runtime signal consumption is not implemented yet, and `saveChanges` retains
-its append-order result until direct live delivery is removed.
+empty, failed, rejected, staged, missing, or not-ready changes. The signal
+carries no records. `CqrsRuntime` uses it only to request another durable scan.
+`EventStore.saveChanges` returns after the command batch is durable and exposes
+no append-order reconstruction.
 
-An internal isolated `EventPump` exercises the future durable consumption path
-without production wiring. It starts each requested scan after the minimum
-prepared projection position, decodes each durable event once, processes
-projection adapters concurrently behind a per-page barrier, and advances every
-participating projection through the page end. Matching events remain
-sequential within a projection, and its batch callback runs once after committed
-page progress. Concurrent pump requests coalesce while forcing another scan, so
-events added during processing or an empty read are not stranded. The first
-codec, projection, callback, reader, or progress failure is terminal for that
-pump instance and is rethrown with its original stack after all projection work
-already started for the page settles.
+`EventPump` starts each requested scan after the minimum prepared projection
+position, decodes each durable event once, processes projection adapters
+concurrently behind a per-page barrier, and advances every participating
+projection through the page end. Matching events remain sequential within a
+projection, and its batch callback runs once after committed page progress.
+Concurrent requests coalesce while forcing another scan, so events added during
+processing or an empty read are not stranded. The pump waits for every
+projection task started for a page and reports the first page failure before
+reading another page.
 
-This pump is currently imported only by white-box tests. `CqrsRuntime` does not
-construct it, subscribe it to `appliedChanges`, run it at startup, expose its
-failure, or own its shutdown. Direct live delivery remains the production path
-until the Stage 7 cutover.
+`CqrsRuntime.initialize` freezes registration, migrates the event store,
+initializes runtime storage, selectively prepares projections, subscribes to
+applied changes, and awaits startup pumping. It exposes explicit pumping,
+serialized rebuild-all maintenance, a stored terminal pump failure, a broadcast
+failure stream, and idempotent close. Internal lifecycle state rejects misuse
+with synchronous `StateError`. Only failures reached through `EventPump.pump()`
+become `CqrsRuntimeFailure`; command, persistence, and non-pump initialization
+or rebuild failures propagate unchanged. Initialization failures automatically
+close the runtime, while non-pump command and rebuild failures leave a running
+runtime available.
+Closing the runtime cancels its EventStore subscription but does not close the
+injected `EventStore`. Its owner closes the store separately. `EventStore.close`
+closes its notification stream and its injected `EventDatabase`; other
+application-owned databases remain the application's responsibility.
 
-`CqrsRuntime` validates projection names, versions, and route definitions, then
-creates projection runners and initializes or rebuilds them from stored
-per-projection version and page state. A generic projection owns one
+The runtime initializes or rebuilds projections from stored per-projection
+version and page state. A generic projection owns one
 typed stream route and event handler. `Projection<Object, TParams>` supports
 manual runtime-type checks without bypassing registry decoding.
 `RuntimeStore` records the projection version plus applying-through and
 scanned-through local sequence boundaries by globally unique projection name.
 A missing state, version mismatch, or boundary mismatch resets only that
 projection before replay from zero. Matching projections resume after their
-scanned-through boundary. `bindCommand` lets applications choose whether a
-projection is consistent, so command completion waits for its callback, or
-eventual, so it is queued without blocking the command. `executeCommand`
-instead dispatches every matching registered projection as eventual work and
-returns after persistence and queue dispatch without awaiting projection
-completion.
+scanned-through boundary. Commands complete after durable persistence and never
+wait for projection progress. Tests may await `pump` for deterministic read
+models.
 
 Events are authoritative. Projections are disposable derived state and repair
 themselves through reset and replay. Projection read-model changes and runtime
@@ -100,17 +104,13 @@ interruption. Reset implementations drop and recreate all schema they own.
 Startup replay reads unfiltered event pages and advances each projection to the
 page end, including pages with no matching routes. It writes runtime progress
 once before and once after each page while keeping matching read-model writes
-sequential. The current direct live-delivery path still advances matching
-events individually. The isolated pump invokes the required projection batch
-callback, but production callback delivery and signal-driven pumping remain
-part of the Stage 7 cutover.
+sequential. Projection `onBatchApplied` callbacks let applications notify
+listenable read models after a matched page commits.
 
 ## Current core limits
 
 - SQLite migration markers use `db.execute` rather than the transaction
   context, so schema work and its marker are not atomic.
-- Runtime lifecycle, terminal failure identity, pump/rebuild coordination, and
-  shutdown are not explicit public behavior.
 - The runtime-store SQLite schema is a clean development replacement and does
   not migrate existing global-version or old projection-progress tables.
 - Integer device IDs are database-local and are not authenticated identity.
@@ -136,7 +136,8 @@ data, and search behavior are prototype details, not core contracts.
 
 ## Tests and validation
 
-The repository has Dart tests for core commands, stores, projections, finance
-examples, logging, and SQLite isolation. The notes smoke test does not exercise
-product behavior. Run root analysis plus relevant member tests while iterating;
-use `fvm dart run melos run test` for cross-workspace work.
+The repository has Dart tests for core commands, stores, projections, runtime
+lifecycle and failures, finance examples, logging, and SQLite isolation. Notes
+tests cover projection rebuilds, read-model notifications, and reload
+coalescing. Run root analysis plus relevant member tests while iterating; use
+`fvm dart run melos run test` for cross-workspace work.

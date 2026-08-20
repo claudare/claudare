@@ -8,8 +8,9 @@ import 'package:notes/stream_route/note_stream_route.dart';
 // Note projection utilized onBatchApplied and that is used to refresh the UI
 class NoteProjection implements Projection<NoteEvent, String> {
   final NoteProjectionRepo _repo;
+  final void Function() _notifyReadModel;
 
-  const NoteProjection(this._repo);
+  const NoteProjection(this._repo, this._notifyReadModel);
 
   @override
   String get name => 'notes';
@@ -21,15 +22,10 @@ class NoteProjection implements Projection<NoteEvent, String> {
   StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
-  // temporary, this is being reworked
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
-
-  @override
   Future<void> reset() => _repo.reset();
 
   @override
-  void onBatchApplied() {}
+  void onBatchApplied() => _notifyReadModel();
 
   @override
   Future<void> apply(String noteId, NoteEvent event, EventMetadata metadata) {

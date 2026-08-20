@@ -15,28 +15,20 @@ class ProjectionTester<TEvent extends Object, TParams> {
     return this;
   }
 
-  Future<bool> run() async {
-    try {
-      await projection.reset();
+  Future<void> run() async {
+    await projection.reset();
 
-      for (final event in _events) {
-        final streamParams = projection.streamRoute.parseParams(
-          event.streamPath,
-        );
-        await projection.apply(
-          streamParams,
-          event.event,
-          EventMetadata(occuredAt: event.occuredAt),
-        );
-      }
+    for (final event in _events) {
+      final streamParams = projection.streamRoute.parseParams(event.streamPath);
+      await projection.apply(
+        streamParams,
+        event.event,
+        EventMetadata(occuredAt: event.occuredAt),
+      );
+    }
 
-      if (_events.isNotEmpty) {
-        projection.onBatchApplied();
-      }
-      return true;
-    } on Exception catch (error, stackTrace) {
-      projection.failureHandler.capture(error, stackTrace);
-      return false;
+    if (_events.isNotEmpty) {
+      projection.onBatchApplied();
     }
   }
 }

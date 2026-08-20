@@ -13,9 +13,8 @@ typedef AppliedEventReaderFactory =
 ///
 /// Create one pump after preparing every projection and call [pump] whenever
 /// durable history may have advanced. Callers do not pass events. Concurrent
-/// calls share the active work and request another scan. The first failure is
-/// terminal and is rethrown by later calls. Durable local sequences must be
-/// contiguous from the scan's starting position.
+/// calls share the active work and request another scan. Durable local
+/// sequences must be contiguous from the scan's starting position.
 ///
 /// ```dart
 /// final projections = await projectionRegistry.prepare(
@@ -36,7 +35,6 @@ final class EventPump {
 
   Future<void>? _active;
   bool _scanRequested = false;
-  _PumpFailure? _failure;
 
   EventPump({
     required AppliedEventReaderFactory createReader,
@@ -47,9 +45,6 @@ final class EventPump {
        _projections = List.unmodifiable(projections);
 
   Future<void> pump() {
-    final failure = _failure;
-    if (failure != null) return failure.rethrowAsFuture();
-
     _scanRequested = true;
     final active = _active;
     if (active != null) return active;
@@ -71,9 +66,8 @@ final class EventPump {
       _active = null;
       completer.complete();
     } catch (error, stackTrace) {
-      final failure = _failure ??= _PumpFailure(error, stackTrace);
       _active = null;
-      completer.completeError(failure.error, failure.stackTrace);
+      completer.completeError(error, stackTrace);
     }
   }
 
@@ -123,13 +117,13 @@ final class EventPump {
   }
 
   Future<void> _applyPage(List<DecodedLocalEvent> page) async {
-    _PumpFailure? firstFailure;
+    _PageFailure? firstFailure;
 
     Future<void> apply(PreparedProjectionPageAdapter projection) async {
       try {
         await projection.applyPage(page);
       } catch (error, stackTrace) {
-        firstFailure ??= _PumpFailure(error, stackTrace);
+        firstFailure ??= _PageFailure(error, stackTrace);
       }
     }
 
@@ -141,13 +135,11 @@ final class EventPump {
   }
 }
 
-final class _PumpFailure {
+final class _PageFailure {
   final Object error;
   final StackTrace stackTrace;
 
-  const _PumpFailure(this.error, this.stackTrace);
-
-  Future<void> rethrowAsFuture() => Future<void>.error(error, stackTrace);
+  const _PageFailure(this.error, this.stackTrace);
 
   Never rethrowNow() => Error.throwWithStackTrace(error, stackTrace);
 }

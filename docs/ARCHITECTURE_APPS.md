@@ -17,9 +17,9 @@ UI
   -> application composition root
       -> CqrsRuntime
           -> event store
-          -> bound consistent projections -> awaited read models
-          -> bound eventual projections   -> asynchronous read models
-          -> unbound matching projections -> asynchronous read models
+          -> applied-change signal
+          -> durable event pump
+          -> asynchronous read models
 ```
 
 At startup, the composition root creates the event store, runtime store,
@@ -28,13 +28,10 @@ database owners. It registers one codec per concrete event type with the CQRS
 runtime, then opens storage, applies migrations, and initializes the runtime
 before exposing interactive UI.
 
-This is the current pre-Stage-7 production path. Applications still choose
-bound consistent and eventual projection delivery, and the production runtime
-does not yet own the isolated durable event pump or its planned lifecycle and
-failure boundary. The future cutover is specified in
-[`ideas/RUNTIME_REWORK.md`](../ideas/RUNTIME_REWORK.md), but that plan is not
-implemented behavior. No consistent projections will be used after runtime
-rework is implemented.
+The runtime owns the durable event pump, internal lifecycle, rebuild
+serialization, and terminal pump-failure boundary. Applications own injected
+stores and dispose the runtime before closing them. Closing an `EventStore`
+also closes its `EventDatabase`.
 
 ## Command flow
 
@@ -44,19 +41,15 @@ rework is implemented.
    events.
 3. The event store atomically records the command outcome and accepted event
    changes.
-4. The runtime routes committed events to projections.
+4. The event-store signal asks the runtime pump to read committed events.
 5. The UI reads the resulting projection/read model rather than reconstructing
    domain state directly from the event store.
 
-In the current runtime, `bindCommand` lets applications choose which projections
-are **consistent**.
-The bound command waits for those projection callbacks before reporting
-success, while its other projections are **eventual** and may lag. With
-`executeCommand`, every matching registered projection is dispatched
-asynchronously. Its future completes after durable command persistence and
-queue dispatch, without waiting for read-model updates. None of these modes
-makes event persistence and read-model storage one transaction; projections
-must remain resettable and replayable.
+`execute` completes after durable command persistence and does not wait for
+read-model updates. Automatic signals provide live eventual catch-up. Tests and
+maintenance code may await `pump` when deterministic visibility is required.
+Event persistence and read-model storage are not one transaction, so
+projections remain resettable and replayable.
 
 ## Projection and read-model responsibilities
 
@@ -80,10 +73,13 @@ interrupted apply or reset is detected by disagreeing boundaries on the next
 startup, at which point the disposable read model is rebuilt from event history.
 
 Keep a projection's write-model and read-model boundaries explicit. A UI query
-must state whether it reads a consistent model, an eventual model, or a merged
-result from multiple models. If a feature depends on durable visibility before
-navigation, the application must wait for the appropriate command/projection
-boundary rather than relying on widget disposal or post-navigation work.
+may merge multiple disposable read models. If a feature requires deterministic
+read-model visibility, it must explicitly await the pump instead of treating
+durable command completion as projection completion.
+
+Applications may notify UI controllers from `onBatchApplied`. An asynchronous
+controller reload remembers notifications received during active work and runs
+one trailing reload, preserving the final read-model state without a debounce.
 
 ## Current scope
 

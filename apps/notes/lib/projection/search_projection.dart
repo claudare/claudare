@@ -22,11 +22,6 @@ class SearchProjection implements Projection<NoteEvent, String> {
   StreamRoute<String> get streamRoute => noteStreamRoute;
 
   @override
-  // temporary, this is getting reworked
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
-
-  @override
   Future<void> reset() => _repo.reset();
 
   @override

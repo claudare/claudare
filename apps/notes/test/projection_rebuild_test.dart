@@ -17,7 +17,8 @@ void main() {
     addTearDown(database.close);
 
     final noteDatabase = SqliteNoteDatabase(database);
-    final projection = NoteProjection(noteDatabase);
+    var notifications = 0;
+    final projection = NoteProjection(noteDatabase, () => notifications++);
     final tester =
         ProjectionTester(projection)
           ..withEvent('note/note-1', const NoteCreated(), occuredAt: occurredAt)
@@ -28,11 +29,12 @@ void main() {
           );
     final readModel = noteDatabase;
 
-    expect(await tester.run(), isTrue);
+    await tester.run();
     final first = await readModel.getById('note-1');
     expect(first?.title, 'Title');
+    expect(notifications, 1);
 
-    expect(await tester.run(), isTrue);
+    await tester.run();
     final rebuilt = await readModel.getById('note-1');
     expect(rebuilt?.toString(), first?.toString());
   });
@@ -50,9 +52,9 @@ void main() {
       occuredAt: occurredAt,
     );
 
-    expect(await tester.run(), isTrue);
+    await tester.run();
     expect(await repository.query('hello'), ['note-1']);
-    expect(await tester.run(), isTrue);
+    await tester.run();
     expect(await repository.query('hello'), ['note-1']);
   });
 }

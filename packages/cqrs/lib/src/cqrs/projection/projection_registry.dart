@@ -6,8 +6,16 @@ import 'package:cqrs/src/cqrs/runtime_store/runtime_store_projection.dart';
 final class ProjectionRegistry {
   final Set<String> _names = {};
   final List<Projection> _projections = [];
+  bool _frozen = false;
+
+  void freeze() => _frozen = true;
 
   void add(Projection projection) {
+    if (_frozen) {
+      throw const ProjectionConfigurationException(
+        'Projection registry is frozen',
+      );
+    }
     final name = projection.name;
     if (name.trim().isEmpty) {
       throw const ProjectionConfigurationException(
@@ -38,11 +46,6 @@ final class ProjectionRegistry {
 
     _projections.add(projection);
   }
-
-  /// Temporary bridge for the legacy runtime.
-  ///
-  /// Stage 7 must remove this getter when `CqrsRuntime` switches to [prepare].
-  List<Projection> get projections => List.unmodifiable(_projections);
 
   Future<List<PreparedProjectionPageAdapter>> prepare(
     RuntimeStoreProjection runtimeStore, {

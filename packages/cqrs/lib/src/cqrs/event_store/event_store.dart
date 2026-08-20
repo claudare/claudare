@@ -24,23 +24,6 @@ class GetStreamInfoResult {
   const GetStreamInfoResult({required this.originatingStreamVersion});
 }
 
-class StreamAppendOrder {
-  final int localSequence;
-
-  const StreamAppendOrder({required this.localSequence});
-}
-
-class SaveChangesResult {
-  // TODO: add localSequence of the command
-  // TODO: add commandId
-  // TODO: use eventId instead of StreamAppendOrder
-  final List<StreamAppendOrder> orders;
-
-  const SaveChangesResult({required this.orders});
-
-  SaveChangesResult.empty() : orders = [];
-}
-
 class GetStatisticsResult {
   final int eventCount;
   final int storageSize; // bytes
@@ -54,6 +37,7 @@ class EventStore {
   final ReadWriteMutex _mutex = ReadWriteMutex();
   final StreamController<void> _appliedChangesController =
       StreamController<void>.broadcast(sync: false);
+  Future<void>? _closeFuture;
 
   EventStore(EventDatabase database, {int? eventFetchPageSize})
     : _database = database,
@@ -61,6 +45,16 @@ class EventStore {
           eventFetchPageSize ?? database.defaultEventFetchPageSize;
 
   Stream<void> get appliedChanges => _appliedChangesController.stream;
+
+  Future<void> close() => _closeFuture ??= _close();
+
+  Future<void> _close() async {
+    try {
+      await _appliedChangesController.close();
+    } finally {
+      await _database.close();
+    }
+  }
 
   Future<void> migrate() => _mutex.protectWrite(() async {
     try {
@@ -88,16 +82,14 @@ class EventStore {
         }
       });
 
-  // TODO: change the return type. This shall return AppliedCommand with
-  // List<AppliedEvent>
-  Future<SaveChangesResult> saveChanges(CommandChanges changes) async {
+  Future<void> saveChanges(CommandChanges changes) async {
     final deviceId = 0; // own device id is always 0
-    if (changes.events.isEmpty) return SaveChangesResult.empty();
+    if (changes.events.isEmpty) return;
     if (!changes.isValid()) {
       throw ArgumentError('every appended event must have one stream lock');
     }
 
-    final result = await _mutex.protectWrite(() async {
+    await _mutex.protectWrite(() async {
       try {
         final state = await _database.getState();
         final streamVersions = <String, int>{};
@@ -143,12 +135,6 @@ class EventStore {
           ),
           appliedEvents,
         );
-        return SaveChangesResult(
-          orders: [
-            for (final event in appliedEvents)
-              StreamAppendOrder(localSequence: event.localSequence),
-          ],
-        );
       } on ConcurrencyProblem {
         rethrow;
       } on Exception catch (cause) {
@@ -159,7 +145,6 @@ class EventStore {
       }
     });
     _appliedChangesController.add(null);
-    return result;
   }
 
   Future<StageReplicatedCommandResult> stageReplicatedCommand(

@@ -1,6 +1,5 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
-import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
@@ -32,7 +31,7 @@ class CommandExecutor {
        _timeProvider = timeProvider,
        _eventStore = eventStore;
 
-  Future<List<EventEnvelope>> executeThrowable<Input extends CommandInput>(
+  Future<void> execute<Input extends CommandInput>(
     Command<Input> command,
     Input input,
   ) async {
@@ -50,10 +49,11 @@ class CommandExecutor {
 
     await command.handle(input, context);
 
-    return _saveEvents<Input>(executionState, startedAt, input);
+    if (executionState.events.isEmpty) return;
+    await _saveEvents<Input>(executionState, startedAt, input);
   }
 
-  Future<List<EventEnvelope>> _saveEvents<TInput extends CommandInput>(
+  Future<void> _saveEvents<TInput extends CommandInput>(
     CommandExecutionState executionState,
     DateTime startedAt,
     TInput input,
@@ -64,17 +64,9 @@ class CommandExecutor {
       startedAt: startedAt,
       completedAt: _timeProvider.now(),
       locks: executionState.locks,
-      events:
-          executionState.events.map((event) => event.toEventAppend()).toList(),
+      events: executionState.events,
     );
 
-    final appendResult = await _eventStore.saveChanges(changes);
-
-    return List.generate(executionState.events.length, (index) {
-      final order = appendResult.orders[index];
-      return executionState.events[index].toEventEnvelope(
-        localSequence: order.localSequence,
-      );
-    }, growable: false);
+    await _eventStore.saveChanges(changes);
   }
 }

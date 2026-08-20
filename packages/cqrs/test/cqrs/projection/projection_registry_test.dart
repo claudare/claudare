@@ -49,6 +49,15 @@ void main() {
         throwsA(isA<ProjectionConfigurationException>()),
       );
     });
+
+    test('rejects additions after freezing', () {
+      final registry = ProjectionRegistry()..freeze();
+
+      expect(
+        () => registry.add(_TestProjection()),
+        throwsA(isA<ProjectionConfigurationException>()),
+      );
+    });
   });
 
   group('ProjectionRegistry.prepare', () {
@@ -199,10 +208,6 @@ final class _TestProjection implements Projection<String, String> {
     this.streamRoute = const StreamRouteAll(),
     Future<void> Function()? onReset,
   }) : _onReset = onReset;
-
-  @override
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
 
   @override
   Future<void> reset() async {

@@ -61,15 +61,14 @@ void main() {
 
     test('rough happy path', () async {
       // first ops
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
-      await app.command.atmWithdrawal.runThrowable(
+      await app.command.atmWithdrawal(
         AtmWithdrawalInput(accountId: firstAccountId, amount: 10),
       );
+      await app.pump();
 
       final firstAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(firstAccounts, hasLength(1));
@@ -84,20 +83,19 @@ void main() {
       expect(firstAccounts.first.lastTransactionAt, t0);
 
       // second ops
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'second'),
-      );
+      await app.command.openAccount(OpenAccountInput(name: 'second'));
 
-      await app.command.transferFundsBetweenAccounts.runThrowable(
+      await app.command.transferFundsBetweenAccounts(
         TransferFundsBetweenAccountsInput(
           fromAccountId: firstAccountId,
           toAccountId: secondAccountId,
           amount: 20,
         ),
       );
-      await app.command.renameAccount.runThrowable(
+      await app.command.renameAccount(
         RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
       );
+      await app.pump();
 
       final secondAccounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(secondAccounts, hasLength(2));
@@ -110,9 +108,7 @@ void main() {
     });
 
     test('command completion follows durable local persistence', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
 
       final commands = await eventStore.getAppliedCommands(0);
       final events = await eventStore.getAppliedEvents(
@@ -122,18 +118,12 @@ void main() {
       expect(commands, hasLength(1));
       expect(events, hasLength(1));
       expect(events.single.encodedEvent.kind, AccountOpened.kind);
-      expect(
-        (await accountsSummaryRepo.getAllSortedByNameDesc()).single.name,
-        'first',
-      );
     });
 
     test('handles negative balance operations', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
       expect(
-        () => app.command.atmWithdrawal.runThrowable(
+        () => app.command.atmWithdrawal(
           AtmWithdrawalInput(accountId: firstAccountId, amount: 40),
         ),
         throwsA(
@@ -147,17 +137,15 @@ void main() {
     });
 
     test('handles concurrency errors', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
 
-      final f1 = app.command.atmWithdrawal.runThrowable(
+      final f1 = app.command.atmWithdrawal(
         AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
       );
-      final f2 = app.command.atmWithdrawal.runThrowable(
+      final f2 = app.command.atmWithdrawal(
         AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
       );
 
@@ -171,28 +159,25 @@ void main() {
       expect(errors.length, 1);
       expect(errors.single, isA<ConcurrencyProblem>());
 
+      await app.pump();
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 20);
     });
 
-    test('eventual consistency', () async {
+    test('explicit pump catches projections up', () async {
       final initialTotalBalance = await app.readModel.totalBalance.get();
 
       expect(initialTotalBalance, 0);
 
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 100),
       );
-      await app.command.atmDeposit.runThrowable(
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 50),
       );
 
-      // TODO: currently no way to wait for the eventual projection to stop resolving
-      // this will need to be implemented, atleast for testing
-      await Future.delayed(Duration(milliseconds: 10));
+      await app.pump();
 
       final newTotalBalance = await app.readModel.totalBalance.get();
 
@@ -213,15 +198,13 @@ void main() {
         totalBalanceRepo: blockingTotalBalance,
       );
       await raceApp.init();
-      await raceApp.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await raceApp.command.openAccount(OpenAccountInput(name: 'first'));
 
-      await raceApp.command.atmDeposit.runThrowable(
+      await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
       await blockingTotalBalance.firstStoreStarted;
-      await raceApp.command.atmDeposit.runThrowable(
+      await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 2),
       );
 
@@ -245,15 +228,13 @@ void main() {
         totalBalanceRepo: trackingTotalBalance,
       );
       await raceApp.init();
-      await raceApp.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await raceApp.command.openAccount(OpenAccountInput(name: 'first'));
 
-      await raceApp.command.atmDeposit.runThrowable(
+      await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
       await trackingTotalBalance.waitForStores(1);
-      await raceApp.command.atmDeposit.runThrowable(
+      await raceApp.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 2),
       );
       await trackingTotalBalance.waitForStores(2);
@@ -264,9 +245,8 @@ void main() {
     test(
       'runtime owns progress for live events and intentional no-ops',
       () async {
-        await app.command.openAccount.runThrowable(
-          OpenAccountInput(name: 'first'),
-        );
+        await app.command.openAccount(OpenAccountInput(name: 'first'));
+        await app.pump();
 
         final store = RuntimeStore(runtimeDatabase);
         final accountPosition =
@@ -282,15 +262,14 @@ void main() {
       },
     );
 
-    test('resumes without reapplying stored events', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
+    test('repeated pump does not reapply stored events', () async {
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
 
-      await app.init();
+      await app.pump();
+      await app.pump();
 
       final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
       expect(accounts.single.balance, 40);
@@ -314,11 +293,9 @@ void main() {
         totalBalanceRepo: TotalBalanceReadModel(),
       );
       await producer.init();
-      await producer.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await producer.command.openAccount(OpenAccountInput(name: 'first'));
       for (final amount in [1, 2, 3, 4]) {
-        await producer.command.atmDeposit.runThrowable(
+        await producer.command.atmDeposit(
           AtmDepositInput(accountId: firstAccountId, amount: amount),
         );
       }
@@ -374,7 +351,7 @@ void main() {
       ]);
       expect(await eventStore.promotePendingCommand(commandId), isTrue);
 
-      await app.init();
+      await app.pump();
 
       final account =
           (await accountsSummaryRepo.getAllSortedByNameDesc()).single;
@@ -382,28 +359,8 @@ void main() {
       expect(account.name, 'replicated');
     });
 
-    test('matching projection versions catch up without resetting', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      accountsSummaryRepo.summaries['stale'] = AccountSummary(
-        accountId: 'stale',
-        name: 'stale',
-        balance: 0,
-        transactionCount: 0,
-        openedAt: t0,
-        lastTransactionAt: t0,
-      );
-
-      await app.init();
-
-      expect(accountsSummaryRepo.summaries, contains('stale'));
-    });
-
     test('manual rebuild resets and fully replays', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
       accountsSummaryRepo.summaries['stale'] = AccountSummary(
         accountId: 'stale',
         name: 'stale',
@@ -420,46 +377,9 @@ void main() {
       expect(accounts.single.name, 'first');
     });
 
-    test('interrupted projection state resets and fully replays', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      accountsSummaryRepo.summaries['stale'] = AccountSummary(
-        accountId: 'stale',
-        name: 'stale',
-        balance: 0,
-        transactionCount: 0,
-        openedAt: t0,
-        lastTransactionAt: t0,
-      );
-      await runtimeDatabase.setProjectionState(
-        'account-summary',
-        const RuntimeProjectionState(
-          version: 1,
-          applyingThroughLocalSequence: 2,
-          scannedThroughLocalSequence: 1,
-        ),
-      );
-
-      await app.init();
-
-      expect(accountsSummaryRepo.summaries, isNot(contains('stale')));
-      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
-      expect(accounts.single.name, 'first');
-      final position =
-          await RuntimeStore(
-                runtimeDatabase,
-              ).getProjectionPosition('account-summary')
-              as ProjectionAtSequence;
-      expect(position.version, 1);
-      expect(position.scannedThroughLocalSequence, 1);
-    });
-
     test('manual replay rebuilds identical read models', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      await app.command.atmDeposit.runThrowable(
+      await app.command.openAccount(OpenAccountInput(name: 'first'));
+      await app.command.atmDeposit(
         AtmDepositInput(accountId: firstAccountId, amount: 40),
       );
 
@@ -469,32 +389,6 @@ void main() {
       expect(accounts.single.balance, 40);
       expect(accounts.single.transactionCount, 1);
       expect(await totalBalanceRepo.get(), 40);
-    });
-
-    test('inconsistent apply boundary triggers reset and replay', () async {
-      await app.command.openAccount.runThrowable(
-        OpenAccountInput(name: 'first'),
-      );
-      final store = RuntimeStore(runtimeDatabase);
-      final error = StateError('interrupted apply');
-      await expectLater(
-        store.advanceProjection(
-          'account-summary',
-          1,
-          2,
-          () async => throw error,
-        ),
-        throwsA(same(error)),
-      );
-
-      await app.init();
-
-      final accounts = await accountsSummaryRepo.getAllSortedByNameDesc();
-      expect(accounts.single.name, 'first');
-      final position =
-          await store.getProjectionPosition('account-summary')
-              as ProjectionAtSequence;
-      expect(position.scannedThroughLocalSequence, 1);
     });
   });
 }

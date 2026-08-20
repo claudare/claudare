@@ -1,5 +1,5 @@
 name: common
-description: Shared device, sequence, serialization, and pagination primitives.
+description: Shared async coordination, causal, serialization, and pagination primitives.
 version: 1.0.0
 publish_to: none
 resolution: workspace

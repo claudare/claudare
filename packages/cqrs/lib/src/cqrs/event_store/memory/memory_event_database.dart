@@ -23,6 +23,9 @@ class MemoryEventDatabase implements EventDatabase {
   @override
   int get defaultEventFetchPageSize => 10;
 
+  @override
+  Future<void> close() async {}
+
   List<AppliedCommand> get testAppliedCommands => List.unmodifiable(_commands);
   List<AppliedEvent> get testAppliedEvents => List.unmodifiable(_events);
   List<ReplicatedCommand> get testPendingCommands =>

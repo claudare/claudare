@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/command/trash_note.dart';
@@ -12,8 +15,14 @@ class NoteListController extends ChangeNotifier {
   ResolvedNoteQueryOrder _order = ResolvedNoteQueryOrder.createdAtDescending;
   String _search = '';
   bool _isLoading = false;
+  late final AsyncTrailingRunner _reloadRunner;
 
-  NoteListController(this.application);
+  NoteListController(this.application) {
+    _reloadRunner = AsyncTrailingRunner(_reloadOnce);
+    application.resolvedNoteReadModelNotifier.addListener(
+      _onResolvedNoteReadModelChanged,
+    );
+  }
 
   List<ResolvedNote> get noteData => _noteData;
   bool get isLoading => _isLoading;
@@ -42,11 +51,9 @@ class NoteListController extends ChangeNotifier {
     await reloadNotes();
   }
 
-  Future<void> reloadNotes() async {
-    if (_isLoading) {
-      throw Exception('Already loading');
-    }
+  Future<void> reloadNotes() => _reloadRunner.run();
 
+  Future<void> _reloadOnce() async {
     _isLoading = true;
     notifyListeners();
 
@@ -73,6 +80,10 @@ class NoteListController extends ChangeNotifier {
     }
   }
 
+  void _onResolvedNoteReadModelChanged() {
+    unawaited(reloadNotes());
+  }
+
   Future<void> deleteNotes(List<String> noteIds) async {
     final promises = noteIds.map(
       (noteId) => application.commandExecute(
@@ -82,7 +93,13 @@ class NoteListController extends ChangeNotifier {
     );
 
     await Future.wait(promises);
+  }
 
-    await reloadNotes();
+  @override
+  void dispose() {
+    application.resolvedNoteReadModelNotifier.removeListener(
+      _onResolvedNoteReadModelChanged,
+    );
+    super.dispose();
   }
 }

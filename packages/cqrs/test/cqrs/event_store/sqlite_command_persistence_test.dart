@@ -21,7 +21,13 @@ void main() {
     await store.migrate();
   });
 
-  tearDown(() => sqlite.close());
+  tearDown(() => store.close());
+
+  test('store closure closes the SQLite database', () async {
+    await store.close();
+
+    await expectLater(sqlite.queryValue<int>('SELECT 1'), throwsStateError);
+  });
 
   test('stores canonical integer-key dependency bytes', () async {
     final command = _command(dependency: VersionVector({2: 4, -1: 3}));
@@ -74,15 +80,6 @@ void main() {
     expect(applied.localSequence, 1);
     expect(event.localSequence, 1);
     expect(event.streamVersion, 1);
-  });
-
-  test('rejects the incompatible development schema', () async {
-    final oldSqlite = IsolateSqlite();
-    await oldSqlite.openInMemory();
-    addTearDown(oldSqlite.close);
-    await oldSqlite.execute('CREATE TABLE applied_command(id INTEGER)');
-    final oldStore = EventStore(SqliteEventDatabase(oldSqlite));
-    await expectLater(oldStore.migrate(), throwsA(isA<EventStoreException>()));
   });
 }
 

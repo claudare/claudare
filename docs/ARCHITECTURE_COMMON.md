@@ -4,7 +4,8 @@
 
 Core is the reusable, application-independent foundation of Claudare. It will
 span multiple packages as the system grows. Today, `packages/cqrs` contains the
-CQRS runtime, `packages/common` owns shared causal and serialization primitives,
+CQRS runtime, `packages/common` owns shared async coordination, causal,
+pagination, and serialization primitives,
 `packages/id_generator` owns ID generation, `packages/time_provider`
 owns time providers, `packages/crdt` contains CRDT value helpers,
 `packages/isolate_sqlite` owns the SQLite isolation boundary, and
@@ -13,6 +14,10 @@ owns time providers, `packages/crdt` contains CRDT value helpers,
 The current core supports local event-sourced applications. It does not provide
 replication, network transport, cryptography, device membership, blob storage,
 or backup.
+
+`AsyncTrailingRunner` provides framework-neutral coordination for async work.
+It starts work immediately, prevents overlap, and coalesces requests made during
+active work into a trailing run.
 
 ## CQRS flow
 
@@ -23,7 +28,8 @@ Command input
       -> appended encoded events
   -> EventStore.saveChanges
       -> EventDatabase atomic command/event records
-  -> ProjectionRuntime replay and live routing
+      -> appliedChanges signal
+  -> EventPump durable replay and live catch-up
       -> application-owned read models
 ```
 
@@ -35,27 +41,28 @@ Application exceptions propagate unchanged and are not persisted. Successful
 commands without events are discarded.
 
 Each concrete event type has one application-owned `EventCodec` with an
-explicit persisted kind. `CqrsRuntime` owns the internal registry that encodes
-command events by Dart type and decodes command-stream reads, live delivery,
-and replay by persisted kind.
+explicit persisted kind. The application assembles the `EventRegistry` that
+encodes command events by Dart type and decodes command-stream reads and replay
+by persisted kind. Runtime initialization freezes both application registries.
 
-`CqrsRuntime` validates and constructs projection runners. Each projection has
+`CqrsRuntime` prepares registered projections and owns their durable pump. Each
+projection has
 a globally unique name, a positive model version, one typed stream route, and
 one typed event handler. The runtime store owns each projection's version plus
 applying-through and scanned-through local event-sequence boundaries. Missing,
 changed, or interrupted projections rebuild independently while unchanged
-projections resume. `bindCommand` separates consistent projection routing from
-eventual routing. The additive `executeCommand` API routes every matching
-projection asynchronously and completes after persistence and queue dispatch,
-without waiting for projection processing. Events remain authoritative; read
-models are disposable derived state.
+projections resume. `execute` completes after durable persistence without
+waiting for projection processing. `appliedChanges` requests an asynchronous
+scan, while callers that need deterministic read-model state explicitly await
+`pump`. Events remain authoritative; read models are disposable derived state.
 
 ## Event-store contract
 
 `EventStore` owns locking, optimistic stream checks, causal-frontier
 advancement, and receiver-local sequence allocation. It wraps a raw
 `EventDatabase`; memory and SQLite databases accept resolved records and write
-them atomically without generating identifiers.
+them atomically without generating identifiers. Closing the store closes its
+notification stream and delegates closure to that database exactly once.
 
 Each replicated command has a CQRS-owned `CommandId`, a causal `dependency`,
 encoded command data, timestamps, and a positive event count. Each replicated
@@ -77,7 +84,8 @@ starts at the beginning. `appliedChanges` is an asynchronous broadcast signal
 emitted after a successful non-empty local append or pending-command promotion.
 It carries no records, and staging, unsuccessful promotion, empty commands, and
 failed writes do not emit. Consumers recover details from the durable reader.
-The current runtime does not subscribe to this signal yet.
+`CqrsRuntime` subscribes to the signal and uses it only to request another pump
+scan.
 
 Event `local_sequence` orders projection replay. Receiver-local command
 sequence orders export and diagnostics. `stream_version` is only a local
@@ -99,23 +107,21 @@ decoded events with parsed stream parameters, can reset its derived state, and
 declares a required batch-completion callback. For manual runtime-type checks,
 `Projection<Object, TParams>` receives the registry-decoded object and checks
 its type inside `apply`.
-`ProjectionRuntime` catches up after the sequence stored by `RuntimeStore` and
-routes live committed events through the same advancement protocol. Startup
+`EventPump` catches up after the sequence stored by `RuntimeStore` and routes
+all committed events through the same advancement protocol. Startup
 replay reads complete unfiltered event pages, applies only matching routes, and
 advances scanned progress to each page end even when nothing matches. A missing
 state, changed version, or disagreeing applying/scanned boundary triggers reset
 and replay from sequence zero. Projection errors make the derived state
 unhealthy; the event history remains available for repair by reset/replay.
 
-The batch callback is part of the implemented projection contract. An isolated
-internal event pump now advances page progress and invokes the callback once
-after each matched page commits. It also exercises single-flight scans, page
-barriers, and terminal failure behavior in white-box tests. The production
-runtime does not own or invoke this pump yet: startup and the current live path
-still use legacy projection delivery, and direct delivery still uses the
-temporary append-order save result. Runtime signal consumption, production
-callback delivery, public failure state, shutdown, and removal of direct
-delivery belong to the Stage 7 cutover.
+The batch callback is part of the implemented projection contract. The pump
+advances page progress and invokes the callback once after each matched page
+commits. It provides single-flight scans and page barriers, and the runtime
+wraps its first pump failure with the original object and stack trace. Pumping
+and rebuild-all maintenance are serialized. Internal lifecycle state governs
+admission and shutdown; the public runtime exposes the terminal pump failure and
+stream plus idempotent shutdown.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.

@@ -8,8 +8,14 @@ import 'package:cqrs/src/cqrs/exception/event_codec_exception.dart';
 final class EventRegistry {
   final Map<String, _RegisteredEventCodec> _byKind = {};
   final Map<Type, _RegisteredEventCodec> _byType = {};
+  bool _frozen = false;
+
+  void freeze() => _frozen = true;
 
   void add<T extends Object>(EventCodec<T> codec) {
+    if (_frozen) {
+      throw const EventRegistryException('Event registry is frozen');
+    }
     final kind = codec.kind;
     if (kind.trim().isEmpty) {
       throw EventRegistryException('Event codec kind must not be empty');

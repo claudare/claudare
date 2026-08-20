@@ -130,7 +130,7 @@ void main() async {
       return _Session(
         eventStore: eventStore,
         runtimeDatabase: runtimeDatabase,
-        close: () async {},
+        close: eventStore.close,
       );
     }
 
@@ -151,7 +151,7 @@ void main() async {
       return _Session(
         eventStore: eventStore,
         runtimeDatabase: SqliteRuntimeDatabase(database),
-        close: database.close,
+        close: eventStore.close,
       );
     }
 
@@ -180,7 +180,7 @@ Future<void> _initialize(
     projectionRegistry: projectionRegistry,
     runtimeName: 'restart-test',
   );
-  await runtime.initializeProjections();
+  await runtime.initialize();
 }
 
 Future<void> _appendEvent(EventStore eventStore) async {
@@ -238,10 +238,6 @@ final class _RecordingProjection implements Projection<_RestartEvent, String> {
 
   @override
   StreamRoute<String> get streamRoute => StreamRouteWildcard('match/*');
-
-  @override
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
 
   @override
   Future<void> reset() async {

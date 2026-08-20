@@ -2,6 +2,7 @@ import 'package:time_provider/time_provider.dart';
 
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
@@ -121,7 +122,7 @@ class CommandStream<Event extends Object> {
     final encodedEvent = _eventRegistry.encode(event);
 
     _executionState.events.add(
-      CommandExecutionEvent(
+      EventAppend(
         streamPath: _streamPath,
         encodedEvent: encodedEvent,
         occuredAt: occuredAt,

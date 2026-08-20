@@ -20,6 +20,19 @@ import 'package:test/test.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
+  test('close is idempotent and closes its stream and database', () async {
+    final database = _ClosingDatabase();
+    final store = EventStore(database);
+    final streamClosed = expectLater(store.appliedChanges, emitsDone);
+
+    final first = store.close();
+
+    expect(store.close(), same(first));
+    await first;
+    await streamClosed;
+    expect(database.closeCount, 1);
+  });
+
   test('reuses every generated sequence after a failed write', () async {
     final database = _FailOnceDatabase();
     final store = EventStore(database);
@@ -28,8 +41,7 @@ void main() {
     expect((await database.getState()).lastLocalCommandSequence, 0);
     expect((await database.getState()).lastLocalEventSequence, 0);
 
-    final result = await _append(store);
-    expect(result.orders.single.localSequence, 1);
+    await _append(store);
     final command = database.testAppliedCommands.single;
     expect(command.localSequence, 1);
     expect(command.commandId.sequence, 1);
@@ -82,7 +94,7 @@ void main() {
   test('listener failures do not alter a successful save', () async {
     final database = MemoryEventDatabase();
     final store = EventStore(database);
-    final saveCompleted = Completer<SaveChangesResult>();
+    final saveCompleted = Completer<void>();
     final listenerFailure = Completer<Object>();
     late StreamSubscription<void> subscription;
 
@@ -96,8 +108,7 @@ void main() {
     }, (error, _) => listenerFailure.complete(error));
     addTearDown(subscription.cancel);
 
-    final result = await saveCompleted.future;
-    expect(result.orders.single.localSequence, 1);
+    await saveCompleted.future;
     expect(database.testAppliedEvents.single.localSequence, 1);
     expect(await listenerFailure.future, isA<Exception>());
   });
@@ -126,8 +137,7 @@ void main() {
   });
 }
 
-Future<SaveChangesResult> _append(EventStore store) =>
-    store.saveChanges(_changes());
+Future<void> _append(EventStore store) => store.saveChanges(_changes());
 
 CommandChanges _changes() => CommandChanges(
   encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
@@ -160,6 +170,15 @@ class _FailOnceDatabase extends MemoryEventDatabase {
       throw Exception('write failed');
     }
     await super.appendApplied(command, events);
+  }
+}
+
+class _ClosingDatabase extends MemoryEventDatabase {
+  int closeCount = 0;
+
+  @override
+  Future<void> close() async {
+    closeCount++;
   }
 }
 

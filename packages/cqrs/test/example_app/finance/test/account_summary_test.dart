@@ -1,4 +1,3 @@
-import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
@@ -23,42 +22,36 @@ void main() {
     });
 
     test('initializes', () async {
-      final ok = await tester.run();
+      await tester.run();
 
       expect(model.isInitialized, true);
-      expect(ok, true);
-      expect(tester.projection.failureHandler.hasErrored(), false);
     });
 
     test('applies all events', () async {
-      final ok =
-          await tester
-              .withEvent(
-                'account/1',
-                AccountOpened(name: 'first'),
-                occuredAt: _occuredAt,
-              )
-              .withEvent(
-                'account/1',
-                AccountAtmDeposited(amount: 40),
-                occuredAt: _occuredAt,
-              )
-              .withEvent(
-                'account/2',
-                AccountOpened(name: 'second'),
-                occuredAt: _occuredAt,
-              )
-              .withEvent(
-                'account/2',
-                AccountRenamed(newName: 'second-renamed'),
-                occuredAt: _occuredAt,
-              )
-              .run();
+      await tester
+          .withEvent(
+            'account/1',
+            AccountOpened(name: 'first'),
+            occuredAt: _occuredAt,
+          )
+          .withEvent(
+            'account/1',
+            AccountAtmDeposited(amount: 40),
+            occuredAt: _occuredAt,
+          )
+          .withEvent(
+            'account/2',
+            AccountOpened(name: 'second'),
+            occuredAt: _occuredAt,
+          )
+          .withEvent(
+            'account/2',
+            AccountRenamed(newName: 'second-renamed'),
+            occuredAt: _occuredAt,
+          )
+          .run();
 
       expect(model.isInitialized, true);
-
-      expect(ok, true);
-      expect(projection.failureHandler.hasErrored(), false);
 
       final accounts = await model.getAllSortedByNameDesc();
 
@@ -72,24 +65,18 @@ void main() {
     });
 
     test('handles errors', () async {
-      final ok =
-          await tester
-              .withEvent(
-                'account/1',
-                AccountAtmDeposited(amount: 9001),
-                occuredAt: _occuredAt,
-              )
-              .run();
+      await expectLater(
+        tester
+            .withEvent(
+              'account/1',
+              AccountAtmDeposited(amount: 9001),
+              occuredAt: _occuredAt,
+            )
+            .run(),
+        throwsA(isA<Exception>()),
+      );
 
       expect(model.isInitialized, true);
-
-      expect(ok, false);
-      expect(projection.failureHandler.hasErrored(), true);
-      // TODO: this needs improvement for sure
-      final stdError =
-          (projection.failureHandler as StandardProjectionFailureHandler)
-              .error!;
-      expect(stdError.error.toString(), 'Exception: invalid getAndStore id');
     });
   });
 }

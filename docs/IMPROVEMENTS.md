@@ -20,14 +20,6 @@ migration marker through `db.execute`. Record the marker with `tx.execute`,
 validate unique/increasing migration versions, and add reopen/interruption
 tests. A migration must be all applied or safely retried.
 
-### Make projection lifecycle explicit
-
-Perform the clean Stage 7 runtime cutover specified in
-[`ideas/RUNTIME_REWORK.md`](../ideas/RUNTIME_REWORK.md): explicit runtime states,
-single-flight initialization and pumping, serialized projection rebuilds,
-terminal failure identity, and final-pump shutdown. The runtime must drain its
-own admitted work but leave injected databases under application ownership.
-
 ## P1 - strengthen reusable core behavior
 
 ### Define supported public APIs

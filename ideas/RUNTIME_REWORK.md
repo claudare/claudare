@@ -1,12 +1,10 @@
 # CQRS runtime rework plan
 
-Status: decision-complete design proposal. Stages 0-4, the durable event source
-and signaling portion of Stage 5, and the isolated Stage 6 pump are implemented.
-The save-return cutover and Stages 7-10 remain future work. Stage 7 performs the
-runtime cutover, Stage 8 validates that migration, Stage 9 adds only deterministic
-test synchronization, and Stage 10 separately designs production synchronization.
-Nothing in those remaining stages should be treated as implemented behavior
-until the source and repository documentation say so.
+Status: Stages 0-7 are implemented. Stage 8 validation and Stages 9-10 remain
+future work. Stage 9 adds only deterministic test synchronization, and Stage 10
+separately designs production synchronization. Nothing in those remaining
+stages should be treated as implemented behavior until the source and
+repository documentation say so.
 
 This is a clean development migration. The implementation does not need
 backwards-compatible APIs, aliases, adapters, or parallel old and new runtime
@@ -15,11 +13,10 @@ cutover.
 
 ## Motivation
 
-The current live event path is centered on `BoundCommand`. Events produced by a
-command are persisted and then passed directly to selected projection queues.
-Startup replay and future replicated-command promotion use different paths.
-This makes the runtime harder to reason about and creates several places where
-ordering, decoding, catch-up, and projection failure behavior can diverge.
+Before Stage 7, the live event path was centered on `BoundCommand`. Events
+produced by a command were persisted and then passed directly to selected
+projection queues, while startup replay and replicated-command promotion used
+different paths.
 
 The reworked runtime will use the applied event history as the single source of
 truth. Every event, including an event just produced by a local command, is
@@ -118,8 +115,9 @@ commands and waits for admitted handlers before reading or importing records.
 A failed runtime is terminal. It stops pumping, rejects later commands, and is
 never automatically repaired, restarted, or reconstructed. The application may
 show an error screen or banner. `close()` cancels subscriptions and releases
-runtime-owned resources; it is also useful for tests. The application continues
-to own injected databases and closes them after the runtime.
+runtime-owned resources; it is also useful for tests. The application owns the
+injected `EventStore` and closes it after the runtime; store closure also closes
+its `EventDatabase`.
 
 ## Stream routing terminology
 
@@ -196,9 +194,9 @@ Codec exception translation remains centralized at the codec boundary. Unknown
 kinds and decoded values with an unexpected type are explicit runtime or
 projection failures. They must not be silently skipped.
 
-Any event or command encoding failure is a fatal runtime failure, even though no
-invalid event was committed. A durable event that cannot be decoded is also a
-fatal runtime failure.
+Event and command encoding failures propagate from command execution without
+failing the runtime because no invalid event was committed. A durable event that
+cannot be decoded fails the pump and is therefore a terminal runtime failure.
 
 `CommandContext` and `CommandStream` use the registry supplied by the runtime.
 Commands no longer carry an event-family codec when opening a stream. Appending
@@ -380,31 +378,26 @@ decoded event objects to projections.
 
 ### Failure behavior
 
-A codec, registry, projection handler, or batch callback failure is fatal. The
-pump finishes waiting for every projection task already started for the page,
-stores the first observed failure, and reads no next page. A failed projection
-handler leaves its applying/scanned boundaries mismatched. Projections that
-completed the page remain at the page end and are not rolled back.
+A codec, registry, or projection handler failure is fatal. The pump finishes
+waiting for every projection task already started for the page, stores the first
+observed failure, and reads no next page. A failed projection handler leaves its
+applying/scanned boundaries mismatched. Projections that completed the page
+remain at the page end and are not rolled back. `onBatchApplied()` does not
+throw.
 
 The event store is the durable backlog, so no in-memory queue grows after a
 failure. There is no in-process repair API. A later application start resets
 inconsistent projections and resumes consistent projections from their stored
 positions.
 
-## Runtime failure boundary
+## Runtime lifecycle and pump-failure boundary
 
-The runtime exposes its state and one nullable terminal failure:
+An internal `CqrsRuntimeLifecycle` owns runtime phases, admission checks,
+transitions, and the first terminal pump failure. Lifecycle phases are not part
+of the public API. The retained failure contains only the original pump error
+and stack trace:
 
 ```dart
-enum CqrsRuntimeState {
-  configuring,
-  initializing,
-  running,
-  failed,
-  closing,
-  closed,
-}
-
 final class CqrsRuntimeFailure implements Exception {
   final Object error;
   final StackTrace stackTrace;
@@ -414,40 +407,36 @@ final class CqrsRuntimeFailure implements Exception {
 The public lifecycle surface includes:
 
 ```dart
-CqrsRuntimeState get state;
 CqrsRuntimeFailure? get failure;
 Stream<CqrsRuntimeFailure> get failures;
 Future<void> close();
 ```
 
-`failures` is a broadcast stream and subscription is optional. The first fatal
-initialization, codec, persistence, projection, callback, runtime-store, or
-unexpected thrown-object failure stores only the original object and stack
-trace. The same `CqrsRuntimeFailure` is stored and emitted once. Later
-`execute()` and `pump()` calls throw that stored failure. Expected application
-command exceptions and `ConcurrencyProblem` remain non-fatal command outcomes.
+`failures` is a broadcast stream and subscription is optional. Only failures
+from actual `EventPump.pump()` calls, including startup, signal-driven,
+explicit, and rebuild pumping, are terminal. The same
+`CqrsRuntimeFailure` is stored and emitted once. Later operations on a failed
+running runtime return that stored failure. Lifecycle misuse, including work
+before initialization, calling `close()` during initialization, or work during
+or after closure, throws `StateError` synchronously.
 
-This boundary intentionally contains every thrown object, including Dart
-`Error`, so the application can fail gracefully with an error screen. This is a
-new explicit exception to the repository's ordinary fatal-`Error` convention
-and must be recorded in `CONVENTIONS.md` during implementation. Codec-safe
-translation remains a separate defense against invalid encoding and decoding.
-
-If `onBatchApplied()` throws, projection data and scanned progress remain
-committed because the callback runs after the end boundary. The outer runtime
-boundary records the callback failure and stops the runtime; the callback does
-not contain or translate its own failure.
+Command-handler exceptions and `Error`s, command encoding, persistence,
+projection preparation, and projection reset failures propagate unchanged and
+do not fail a running runtime. Initialization failures also propagate unchanged
+unless startup pumping produced a `CqrsRuntimeFailure`; every initialization
+failure automatically tears down and closes the runtime and initialization
+cannot be retried.
 
 `close()` is idempotent. Its first call stops accepting commands, pumps,
 rebuilds, and synchronization work, then waits for every command admitted before
-that boundary. It performs one final pump, cancels the EventStore subscription,
-waits for remaining runtime maintenance, closes the failure stream, and enters
-`closed`. Concurrent callers share that teardown.
+that boundary. It does not request a final pump. It cancels the EventStore
+subscription, waits for remaining runtime maintenance, closes the failure
+stream, and enters `closed`. Concurrent callers share that teardown and closure
+does not replay a retained failure.
 
-Teardown continues after a final-pump failure. Once cleanup is complete,
-`close()` rethrows the single retained `CqrsRuntimeFailure`. Closing does not
-reconstruct or restart a failed runtime and does not close injected databases,
-which remain application-owned.
+Closing does not reconstruct or restart a failed runtime and does not close the
+injected `EventStore`, which remains application-owned. Closing the store closes
+its `EventDatabase`.
 
 ## Command execution
 
@@ -480,10 +469,9 @@ Consistent projection selection is removed. `BoundCommand`, its consistent and
 eventual projection lists, and direct live-event routing are deleted. Application
 UI observes read-model changes through `onBatchApplied()` notifications.
 
-Expected domain command exceptions and concurrency rejection remain command
-failures and do not fail the runtime. Event or command encoding failures,
-unexpected persistence failures, and fatal thrown objects transition the runtime
-to `failed`.
+Command-handler exceptions and `Error`s, concurrency rejection, encoding
+failures, and persistence failures remain command failures and do not fail the
+runtime.
 
 Commands that produce no events do not request projection work, are not
 persisted, and are not replicated.
@@ -812,10 +800,8 @@ complete applied-event history in exclusive receiver-local sequence pages, and
 or pending-command promotion. Memory and SQLite contract tests cover page
 boundaries, interleaved local and promoted ordering, broadcast delivery to
 multiple test subscribers, subscriber-side durable reads, and no-signal
-outcomes. Production runtime signal consumption is not implemented yet.
-`SaveChangesResult` and
-`StreamAppendOrder` remain temporarily for direct live delivery and move to the
-Stage 7 cutover.
+outcomes. Stage 7 now consumes the signal in production and removed the
+temporary append-order save result.
 
 ### Stage 6: Build the pump as an isolated vertical slice
 
@@ -827,34 +813,28 @@ Stage 7 cutover.
 - Test an event routed to multiple projections.
 - Test concurrent projection processing with sequential calls inside each
   projection.
-- Test codec, projection, and batch-callback failures as terminal runtime
-  failures.
+- Test codec and projection failures as terminal runtime failures.
 - Test events committed during active drain and at the empty-page boundary.
 - Assert that no more than one page is in flight.
 
 Gate: the pump is fully testable without command handlers or an application.
 
-Stage 6 is complete as an internal isolated vertical slice. `EventPump` creates
+Stage 6 established the pump as an isolated vertical slice. `EventPump` creates
 a fresh reader for each requested scan from the minimum prepared projection
 position, decodes each durable event once, processes projection pages
 concurrently behind a page barrier, and coalesces concurrent requests without
 losing active-processing or empty-read wakeups. Typed page adapters keep each
 projection sequential, advance scanned progress through unmatched pages, and
 invoke the batch callback once after committed progress for matched pages. The
-pump stores and rethrows the first failure, including `Error`, after all started
-projection work settles, and never reads a later page after failure. Focused
+pump rethrows the first page failure, including `Error`, after all started
+projection work settles, and never reads a later page in that scan. Focused
 tests cover positions, routing and typing, decode count, ordering and barriers,
 wakeup races, callbacks, terminal failures, and empty projection lists.
 
-The slice is imported only by white-box tests. `CqrsRuntime` does not own it,
-subscribe to `EventStore.appliedChanges`, pump at startup, expose public failure
-state, or shut it down. Those production lifecycle changes and removal of
-direct delivery remain Stage 7 work.
+Stage 7 integrated this slice into `CqrsRuntime`.
 
-`ProjectionRegistry` is implemented as Stage 7 preparation. The legacy runtime
-temporarily reads its immutable registered projection list, while
 `ProjectionRegistry.prepare` owns selective reset and durable page-adapter
-construction for the Stage 7 pump cutover.
+construction for the production pump.
 
 ### Stage 7: Perform the runtime cutover
 
@@ -867,8 +847,9 @@ construction for the Stage 7 pump cutover.
   optimistic stream checks preserving the durable boundary.
 - Make startup and EventStore signals use the same public single-flight pump;
   serialize projection rebuilds with pumping and retain a trailing scan request.
-- Add terminal runtime state, stored `CqrsRuntimeFailure`, optional failure
-  stream subscription, and idempotent final-pump `close()` teardown.
+- Add internal runtime lifecycle handling, stored pump-only
+  `CqrsRuntimeFailure`, optional failure stream subscription, and idempotent
+  non-pumping `close()` teardown.
 - Migrate application wiring and command call sites.
 - Give only `ResolvedNoteReadModel` a Notes notifier, signal it from
   `NoteProjection.onBatchApplied()`, and keep
@@ -884,6 +865,14 @@ construction for the Stage 7 pump cutover.
 
 Gate: there is exactly one projection-delivery path in production code.
 
+Stage 7 is implemented. Commands and promoted events reach projections only
+through durable applied history and `EventPump`. The runtime owns registry
+freezing, initialization, signal-driven and explicit pumping, serialized
+rebuilds, terminal pump-failure identity, and shutdown. Finance and Notes use
+`execute`; Notes notifies only its resolved-note read model and coalesces UI
+reloads. Removed direct-delivery APIs and their queue dependency are not kept as
+compatibility paths.
+
 ### Stage 8: Validate the complete migration
 
 - Run root dependency resolution if package dependencies changed.
@@ -895,17 +884,16 @@ Gate: there is exactly one projection-delivery path in production code.
   behavior.
 - Verify commands complete after persistence while the public pump provides
   deterministic catch-up for tests.
-- Test lifecycle transitions, single-flight initialization and pumping,
-  synchronous registration freezing, concurrent command admission, rebuild/pump
-  exclusion, and trailing scans.
-- Test fatal initialization, codec, persistence, projection, callback,
-  runtime-store, and unexpected thrown-object failures. Verify the first failure
-  object is stored and rethrown by identity while expected command exceptions
-  and `ConcurrencyProblem` remain non-fatal.
-- Test idempotent close, rejection of new work, admitted-command draining, the
-  final pump, subscription cancellation, maintenance draining, failure-stream
-  closure, teardown after final-pump failure, and application ownership of
-  injected databases.
+- Test lifecycle admission, one-shot initialization, rejected closure during
+  initialization, single-flight pumping, synchronous registration freezing,
+  concurrent command admission, rebuild/pump exclusion, and trailing scans.
+- Test raw initialization, command, encoding, persistence, preparation, and
+  reset failures. Verify that only startup and running pump failures are stored
+  and returned by identity, while lifecycle misuse throws synchronous
+  `StateError`.
+- Test idempotent close, rejection of new work, admitted-command draining,
+  absence of shutdown pumping, subscription cancellation, maintenance draining,
+  failure-stream closure, and application ownership of injected databases.
 - Test resolved-note notification after matched batches, no notification after
   unmatched batches, lossless active/pending controller reloads, listener
   disposal, and that search projection updates do not redisplay search results.

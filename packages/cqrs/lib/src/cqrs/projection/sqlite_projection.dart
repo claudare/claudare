@@ -5,7 +5,6 @@ abstract class SqliteProjection<TEvent extends Object, TParams> {
   String get name;
   int get version;
   StreamRoute<TParams> get streamRoute;
-  ProjectionFailureHandler get failureHandler;
 
   Future<void> reset(IsolateSqlite db);
 
@@ -38,9 +37,6 @@ final class _AdaptedSqliteProjection<TEvent extends Object, TParams>
 
   @override
   StreamRoute<TParams> get streamRoute => _projection.streamRoute;
-
-  @override
-  ProjectionFailureHandler get failureHandler => _projection.failureHandler;
 
   @override
   Future<void> reset() => _projection.reset(_db);

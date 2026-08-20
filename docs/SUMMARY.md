@@ -8,7 +8,8 @@ local event-sourced command handling, optimistic stream locks, memory/SQLite
 event databases behind a mutexed store, replayable projections, flat causal
 command/event records, independent pending command and event persistence,
 versioned per-projection page progress, IDs, time, logging, SQLite isolation,
-and limited CRDT helpers in the separate `crdt` package.
+an explicit CQRS lifecycle and durable event pump, and limited CRDT helpers in
+the separate `crdt` package.
 
 `apps/notes` is the first prototype consumer. It gives feedback on core
 contracts but does not define the architecture or public API for other apps.
@@ -22,11 +23,11 @@ contracts but does not define the architecture or public API for other apps.
 | Flat causal records and pending persistence | Implemented locally               |
 | Replayable application-defined projections | Implemented                        |
 | Generic typed projections                   | Implemented                        |
-| Consistent and eventual projection routing | Implemented                        |
+| Durable command-to-projection delivery      | Implemented                        |
 | Version-selective projection rebuild        | Implemented                        |
 | Runtime-owned projection page progress      | Implemented with mismatch rebuilds |
-| Durable applied-event reader and signal     | Implemented, not runtime-consumed  |
-| Isolated durable event pump                  | Implemented, not runtime-consumed  |
+| Durable applied-event reader and signal     | Implemented and runtime-consumed   |
+| Runtime lifecycle and durable event pump     | Implemented                        |
 | Timestamp latest-write-wins helper         | Implemented with local-only limits |
 | SQLite isolate boundary                    | Implemented                        |
 | Explicit logging abstraction               | Implemented                        |

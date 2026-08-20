@@ -7,6 +7,7 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
+import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
 import 'package:cqrs/src/cqrs/exception/command_codec_exception.dart';
 import 'package:id_generator/id_generator.dart';
@@ -19,9 +20,7 @@ void main() {
     final exception = FormatException('invalid command');
 
     await expectLater(
-      _executor(
-        database,
-      ).executeThrowable(_ThrowingCommand(exception), _Input()),
+      _executor(database).execute(_ThrowingCommand(exception), _Input()),
       throwsA(same(exception)),
     );
 
@@ -33,7 +32,7 @@ void main() {
     final error = StateError('broken invariant');
 
     await expectLater(
-      _executor(database).executeThrowable(_ThrowingCommand(error), _Input()),
+      _executor(database).execute(_ThrowingCommand(error), _Input()),
       throwsA(same(error)),
     );
 
@@ -47,7 +46,7 @@ void main() {
     await expectLater(
       _executor(
         database,
-      ).executeThrowable(const _SuccessfulCommand(), _ThrowingInput(exception)),
+      ).execute(const _SuccessfulCommand(), _ThrowingInput(exception)),
       throwsA(
         isA<CommandCodecException>()
             .having(
@@ -80,7 +79,7 @@ void main() {
     await expectLater(
       _executor(
         database,
-      ).executeThrowable(const _SuccessfulCommand(), _ThrowingInput(error)),
+      ).execute(const _SuccessfulCommand(), _ThrowingInput(error)),
       throwsA(
         isA<CommandCodecException>().having(
           (failure) => failure.error,
@@ -94,13 +93,16 @@ void main() {
   });
 }
 
-CommandExecutor _executor(MemoryEventDatabase database) => CommandExecutor(
-  eventStore: EventStore(database),
-  timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
-  idGenerator: IdGeneratorSequential(),
-  eventRegistry: EventRegistry(),
-  logger: const NoopLogger(),
-);
+CommandExecutor _executor(MemoryEventDatabase database) {
+  final registry = EventRegistry()..add(const _EventCodec());
+  return CommandExecutor(
+    eventStore: EventStore(database),
+    timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
+    idGenerator: IdGeneratorSequential(),
+    eventRegistry: registry,
+    logger: const NoopLogger(),
+  );
+}
 
 class _Input implements CommandInput {
   @override
@@ -134,5 +136,26 @@ class _SuccessfulCommand implements Command<_Input> {
   const _SuccessfulCommand();
 
   @override
-  Future<void> handle(_Input input, CommandContext ctx) async {}
+  Future<void> handle(_Input input, CommandContext ctx) async {
+    final stream = ctx.stream<_Event>('test');
+    await stream.lock();
+    stream.append(const _Event());
+  }
+}
+
+final class _Event {
+  const _Event();
+}
+
+final class _EventCodec implements EventCodec<_Event> {
+  const _EventCodec();
+
+  @override
+  String get kind => 'event';
+
+  @override
+  _Event fromBytes(Uint8List bytes) => const _Event();
+
+  @override
+  Uint8List toBytes(_Event event) => Uint8List(0);
 }

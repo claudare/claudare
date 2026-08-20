@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
@@ -7,6 +9,7 @@ import 'package:notes/projection/note_projection.dart';
 import 'package:notes/projection/search_projection.dart';
 import 'package:notes/read_model/composite_note_search.dart';
 import 'package:notes/read_model/note/resolved_note_read_model.dart';
+import 'package:notes/read_model/read_model_notifier.dart';
 import 'package:notes/read_model/note/sqlite_note_database.dart';
 import 'package:notes/read_model/search/search_read_model.dart';
 import 'package:notes/read_model/search/sqlite_search_database.dart';
@@ -24,6 +27,7 @@ class NoteApplication {
   late final ResolvedNoteReadModel resolvedNoteReadModel;
   late final SearchReadModel searchReadModel;
   late final CompositeNoteSearch compositeNoteSearch;
+  final ReadModelNotifier resolvedNoteReadModelNotifier = ReadModelNotifier();
 
   late final CqrsRuntime _cqrsRuntime;
 
@@ -52,7 +56,12 @@ class NoteApplication {
 
     final projectionRegistry =
         ProjectionRegistry()
-          ..add(NoteProjection(noteDatabase))
+          ..add(
+            NoteProjection(
+              noteDatabase,
+              resolvedNoteReadModelNotifier.notifyChanged,
+            ),
+          )
           ..add(SearchProjection(searchDatabase, logger));
 
     final eventRegistry =
@@ -89,7 +98,12 @@ class NoteApplication {
   Future<void> commandExecute<Input extends CommandInput>(
     Command<Input> command,
     Input input,
-  ) => _cqrsRuntime.executeCommand(command, input);
+  ) => _cqrsRuntime.execute(command, input);
+
+  Future<void> pump() => _cqrsRuntime.pump();
+
+  CqrsRuntimeFailure? get runtimeFailure => _cqrsRuntime.failure;
+  Stream<CqrsRuntimeFailure> get runtimeFailures => _cqrsRuntime.failures;
 
   Future<void> initialize({
     required String notesDbFilepath,
@@ -99,13 +113,17 @@ class NoteApplication {
     await _sqliteDb.open(notesDbFilepath);
     await _searchDb.open(searchDbFilepath);
 
-    await eventStore.migrate();
-    await _cqrsRuntime.initializeProjections();
+    await _cqrsRuntime.initialize();
   }
 
   Future<void> close() async {
-    await _sqliteDb.close();
-    await _searchDb.close();
+    try {
+      await _cqrsRuntime.close();
+    } finally {
+      resolvedNoteReadModelNotifier.dispose();
+      await eventStore.close();
+      await _searchDb.close();
+    }
   }
 
   Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();

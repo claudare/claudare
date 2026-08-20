@@ -6,8 +6,6 @@ import '../stream_route/account_stream_route.dart';
 
 class AccountSummaryProjection implements Projection<AccountEvent, String> {
   final AccountsSummaryReadModel _repo;
-  final _failureHandler = StandardProjectionFailureHandler();
-
   AccountSummaryProjection(this._repo);
 
   @override
@@ -18,9 +16,6 @@ class AccountSummaryProjection implements Projection<AccountEvent, String> {
 
   @override
   StreamRoute<String> get streamRoute => accountStreamRoute;
-
-  @override
-  ProjectionFailureHandler get failureHandler => _failureHandler;
 
   @override
   Future<void> reset() => _repo.reset();

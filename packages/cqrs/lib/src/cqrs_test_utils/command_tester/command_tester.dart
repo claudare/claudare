@@ -148,7 +148,7 @@ class CommandTester {
       logger: const NoopLogger(),
     );
 
-    await executer.executeThrowable(command, input);
+    await executer.execute(command, input);
   }
 
   // TODO: this can be cleaned up

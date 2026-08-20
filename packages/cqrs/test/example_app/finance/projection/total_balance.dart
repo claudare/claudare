@@ -17,10 +17,6 @@ class TotalBalanceProjection implements Projection<AccountEvent, String> {
   StreamRoute<String> get streamRoute => accountStreamRoute;
 
   @override
-  ProjectionFailureHandler get failureHandler =>
-      ThrowingProjectionFailureHandler();
-
-  @override
   Future<void> reset() => _repo.reset();
 
   @override

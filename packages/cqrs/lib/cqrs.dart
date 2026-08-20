@@ -3,7 +3,6 @@ library;
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 export 'src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
-export 'src/cqrs/cqrs_runtime/bound_command.dart';
 
 // runtime store
 export 'src/cqrs/runtime_store/runtime_store.dart';
@@ -36,9 +35,6 @@ export 'src/cqrs/command/command_context.dart';
 export 'src/cqrs/projection/projection.dart';
 export 'src/cqrs/projection/projection_registry.dart';
 export 'src/cqrs/projection/sqlite_projection.dart';
-export 'src/cqrs/projection/projection_failure_handler.dart';
-export 'src/cqrs/projection/failure_handler/standard_projection_failure_handler.dart';
-export 'src/cqrs/projection/failure_handler/throwing_projection_failure_handler.dart';
 
 // stream route
 export 'src/cqrs/stream_route/stream_route.dart';
@@ -49,6 +45,7 @@ export 'src/cqrs/stream_route/stream_route_wildcard.dart';
 export 'src/cqrs/exception/command_codec_exception.dart';
 export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';
+export 'src/cqrs/exception/cqrs_runtime_failure.dart';
 export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
