@@ -6,9 +6,7 @@ import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
-import 'package:cqrs/src/cqrs/exception/stream_already_locked_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_found_exception.dart';
-import 'package:cqrs/src/cqrs/exception/stream_not_locked_exception.dart';
 
 class CommandStream<Event extends Object> {
   final EventStore _eventStore;
@@ -29,13 +27,13 @@ class CommandStream<Event extends Object> {
 
   void _ensureLocked() {
     if (!_locked) {
-      throw StreamNotLockedException(_streamPath);
+      throw StateError('Stream not locked: $_streamPath');
     }
   }
 
   void _tryLock() {
     if (_locked) {
-      throw StreamAlreadyLockedException(_streamPath);
+      throw StateError('Stream already locked: $_streamPath');
     }
     _locked = true;
   }

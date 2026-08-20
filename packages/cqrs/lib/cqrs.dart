@@ -51,7 +51,5 @@ export 'src/cqrs/exception/event_store_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
 export 'src/cqrs/exception/replicated_command_conflict.dart';
-export 'src/cqrs/exception/stream_already_exists_exception.dart';
-export 'src/cqrs/exception/stream_already_locked_exception.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
-export 'src/cqrs/exception/stream_not_locked_exception.dart';
+export 'src/cqrs/exception/stream_already_exists_exception.dart';
