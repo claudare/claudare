@@ -428,11 +428,11 @@ failure automatically tears down and closes the runtime and initialization
 cannot be retried.
 
 `close()` is idempotent. Its first call stops accepting commands, pumps,
-rebuilds, and synchronization work, then waits for every command admitted before
-that boundary. It does not request a final pump. It cancels the EventStore
-subscription, waits for remaining runtime maintenance, closes the failure
-stream, and enters `closed`. Concurrent callers share that teardown and closure
-does not replay a retained failure.
+rebuilds, and synchronization work. It does not request a final pump or wait for
+commands already in progress. It cancels the EventStore subscription, waits for
+remaining runtime maintenance, closes the failure stream, and enters `closed`.
+Concurrent callers share that teardown and closure does not replay a retained
+failure.
 
 Closing does not reconstruct or restart a failed runtime. It closes the
 runtime-owned `EventStore`, which closes its `EventDatabase`.
@@ -890,9 +890,9 @@ compatibility paths.
   reset failures. Verify that only startup and running pump failures are stored
   and returned by identity, while lifecycle misuse throws synchronous
   `StateError`.
-- Test idempotent close, rejection of new work, admitted-command draining,
-  absence of shutdown pumping, subscription cancellation, maintenance draining,
-  failure-stream closure, and runtime ownership of the injected event database.
+- Test idempotent close, rejection of new work, absence of shutdown pumping,
+  subscription cancellation, maintenance draining, failure-stream closure, and
+  runtime ownership of the injected event database.
 - Test resolved-note notification after matched batches, no notification after
   unmatched batches, lossless active/pending controller reloads, listener
   disposal, and that search projection updates do not redisplay search results.

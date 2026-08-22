@@ -411,41 +411,6 @@ void main() {
     },
   );
 
-  test('close waits for an active command without pumping it', () async {
-    final started = Completer<void>();
-    final release = Completer<void>();
-    final projection = _RecordingProjection();
-    final runtime = _runtime(
-      eventDatabase: MemoryEventDatabase(),
-      projection: projection,
-    );
-    await runtime.initialize();
-
-    final command = runtime.execute(
-      _BlockingCommand(started, release),
-      const _Input('closing'),
-    );
-    await started.future;
-    final closing = runtime.close();
-    expect(
-      () => runtime.execute(const _NoEventCommand(), const _Input('later')),
-      throwsStateError,
-    );
-    expect(runtime.pump, throwsStateError);
-    expect(runtime.recreateProjections, throwsStateError);
-    expect(runtime.initialize, throwsStateError);
-
-    var closed = false;
-    unawaited(closing.then((_) => closed = true));
-    await Future<void>.delayed(Duration.zero);
-    expect(closed, isFalse);
-    release.complete();
-    await command;
-    await closing;
-    expect(projection.values, isEmpty);
-    expect(runtime.pump, throwsStateError);
-  });
-
   test('close during initialization throws StateError synchronously', () async {
     final migrationStarted = Completer<void>();
     final releaseMigration = Completer<void>();
@@ -684,22 +649,6 @@ final class _ThrowingObjectCommand implements Command<_Input> {
 
   @override
   Future<void> handle(_Input input, CommandContext ctx) async => throw failure;
-}
-
-final class _BlockingCommand implements Command<_Input> {
-  final Completer<void> started;
-  final Completer<void> release;
-
-  const _BlockingCommand(this.started, this.release);
-
-  @override
-  Future<void> handle(_Input input, CommandContext ctx) async {
-    started.complete();
-    await release.future;
-    final stream = ctx.stream<_TestEvent>('test');
-    await stream.lock();
-    stream.append(_TestEvent(input.value));
-  }
 }
 
 final class _RecordingProjection implements Projection<_TestEvent, String> {

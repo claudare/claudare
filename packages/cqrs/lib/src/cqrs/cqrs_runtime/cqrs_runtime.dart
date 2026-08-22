@@ -21,8 +21,6 @@ final class CqrsRuntime {
   final EventRegistry _eventRegistry;
   final ProjectionRegistry _projectionRegistry;
   final CqrsRuntimeLifecycle _lifecycle = CqrsRuntimeLifecycle();
-  // TODO: abstract me
-  final Set<Future<void>> _activeCommands = {};
 
   late final RuntimeStore _runtimeStore;
   late final CommandExecutor _commandExecutor;
@@ -101,15 +99,7 @@ final class CqrsRuntime {
       return Future<void>.error(unavailable, unavailable.stackTrace);
     }
 
-    final execution = _commandExecutor.execute(command, input);
-    _activeCommands.add(execution);
-    execution.then<void>(
-      (_) => _activeCommands.remove(execution),
-      onError: (Object _, StackTrace _) {
-        _activeCommands.remove(execution);
-      },
-    );
-    return execution;
+    return _commandExecutor.execute(command, input);
   }
 
   // TODO: rework me greatly
@@ -272,9 +262,6 @@ final class CqrsRuntime {
   }
 
   Future<void> _teardown() async {
-    await Future.wait([
-      for (final command in _activeCommands) _settle(command),
-    ]);
     await _settle(_activeRebuild);
     await _settle(_scheduledPump);
     await _settle(_exclusiveWork);
