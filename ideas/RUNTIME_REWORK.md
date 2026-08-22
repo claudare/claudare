@@ -115,9 +115,9 @@ commands and waits for admitted handlers before reading or importing records.
 A failed runtime is terminal. It stops pumping, rejects later commands, and is
 never automatically repaired, restarted, or reconstructed. The application may
 show an error screen or banner. `close()` cancels subscriptions and releases
-runtime-owned resources; it is also useful for tests. The application owns the
-injected `EventStore` and closes it after the runtime; store closure also closes
-its `EventDatabase`.
+runtime-owned resources; it is also useful for tests. The runtime constructs and
+owns exactly one `EventStore` from its injected `EventDatabase`. Runtime closure
+closes that store, which also closes its database.
 
 ## Stream routing terminology
 
@@ -434,9 +434,8 @@ subscription, waits for remaining runtime maintenance, closes the failure
 stream, and enters `closed`. Concurrent callers share that teardown and closure
 does not replay a retained failure.
 
-Closing does not reconstruct or restart a failed runtime and does not close the
-injected `EventStore`, which remains application-owned. Closing the store closes
-its `EventDatabase`.
+Closing does not reconstruct or restart a failed runtime. It closes the
+runtime-owned `EventStore`, which closes its `EventDatabase`.
 
 ## Command execution
 
@@ -893,7 +892,7 @@ compatibility paths.
   `StateError`.
 - Test idempotent close, rejection of new work, admitted-command draining,
   absence of shutdown pumping, subscription cancellation, maintenance draining,
-  failure-stream closure, and application ownership of injected databases.
+  failure-stream closure, and runtime ownership of the injected event database.
 - Test resolved-note notification after matched batches, no notification after
   unmatched batches, lossless active/pending controller reloads, listener
   disposal, and that search projection updates do not redisplay search results.

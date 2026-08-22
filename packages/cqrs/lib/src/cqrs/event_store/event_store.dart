@@ -31,6 +31,9 @@ class GetStatisticsResult {
   GetStatisticsResult({required this.eventCount, required this.storageSize});
 }
 
+/// Event store is responsible for storing commands and events for a
+/// `CqrsRuntime`. Do not reuse [EventDatabase] or [EventStore] across
+/// different `CqrsRuntime` instances.
 class EventStore {
   final EventDatabase _database;
   final int _eventFetchPageSize;

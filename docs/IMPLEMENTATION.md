@@ -80,10 +80,11 @@ become `CqrsRuntimeFailure`; command, persistence, and non-pump initialization
 or rebuild failures propagate unchanged. Initialization failures automatically
 close the runtime, while non-pump command and rebuild failures leave a running
 runtime available.
-Closing the runtime cancels its EventStore subscription but does not close the
-injected `EventStore`. Its owner closes the store separately. `EventStore.close`
-closes its notification stream and its injected `EventDatabase`; other
-application-owned databases remain the application's responsibility.
+The runtime constructs exactly one `EventStore` from its injected
+`EventDatabase`. Closing the runtime cancels its EventStore subscription and
+closes the store. `EventStore.close()` closes its notification stream and its
+database; other application-owned databases remain the application's
+responsibility.
 
 The runtime initializes or rebuilds projections from stored per-projection
 version and page state. A generic projection owns one

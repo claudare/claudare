@@ -7,6 +7,7 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_lifecycle.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/event_pump.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/cqrs_runtime_failure.dart';
 import 'package:cqrs/src/cqrs/projection/projection_registry.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
@@ -15,6 +16,7 @@ import 'package:time_provider/time_provider.dart';
 /// Coordinates durable command execution and projection delivery.
 final class CqrsRuntime {
   final String runtimeName;
+  final EventStore eventStore;
   final CqrsRuntimeDependencies _dependencies;
   final EventRegistry _eventRegistry;
   final ProjectionRegistry _projectionRegistry;
@@ -40,12 +42,13 @@ final class CqrsRuntime {
     required EventRegistry eventRegistry,
     required ProjectionRegistry projectionRegistry,
     required this.runtimeName,
-  }) : _dependencies = dependencies,
+  }) : eventStore = EventStore(dependencies.eventDatabase),
+       _dependencies = dependencies,
        _eventRegistry = eventRegistry,
        _projectionRegistry = projectionRegistry {
     _runtimeStore = RuntimeStore(dependencies.runtimeDatabase);
     _commandExecutor = CommandExecutor(
-      eventStore: dependencies.eventStore,
+      eventStore: eventStore,
       timeProvider: dependencies.timeProvider,
       eventRegistry: _eventRegistry,
       logger: dependencies.logger,
@@ -67,18 +70,19 @@ final class CqrsRuntime {
 
   Future<void> _initialize() async {
     try {
-      await _dependencies.eventStore.migrate();
+      await eventStore.migrate();
       await _runtimeStore.initialize();
       _eventPump = EventPump(
-        createReader: _dependencies.eventStore.getAppliedEventReader,
+        createReader: eventStore.getAppliedEventReader,
         eventRegistry: _eventRegistry,
         projections: await _projectionRegistry.prepare(
           _runtimeStore,
           forceReset: false,
         ),
       );
-      _appliedChangesSubscription = _dependencies.eventStore.appliedChanges
-          .listen((_) => _handleAppliedChanges());
+      _appliedChangesSubscription = eventStore.appliedChanges.listen(
+        (_) => _handleAppliedChanges(),
+      );
       await _pumpEventPump(_eventPump!);
       _lifecycle.completeInitialization();
     } catch (error, stackTrace) {
@@ -169,7 +173,7 @@ final class CqrsRuntime {
         'runtime $runtimeName: recreating all projections',
       );
       _eventPump = EventPump(
-        createReader: _dependencies.eventStore.getAppliedEventReader,
+        createReader: eventStore.getAppliedEventReader,
         eventRegistry: _eventRegistry,
         projections: await _projectionRegistry.prepare(
           _runtimeStore,
@@ -276,7 +280,11 @@ final class CqrsRuntime {
     await _settle(_exclusiveWork);
     await _settle(_appliedChangesSubscription?.cancel());
     await _settle(_exclusiveWork);
-    await _lifecycle.completeClosing();
+    try {
+      await eventStore.close();
+    } finally {
+      await _lifecycle.completeClosing();
+    }
   }
 
   Future<void> _settle(Future<void>? future) async {

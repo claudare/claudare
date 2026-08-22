@@ -34,7 +34,6 @@ void main() {
     late FinanceApp app;
 
     setUp(() async {
-      eventStore = EventStore(MemoryEventDatabase());
       runtimeDatabase = MemoryRuntimeDatabase();
       commandTimeProvider = FakeTimeProviderStatic.zero();
       accountsSummaryRepo = AccountsSummaryReadModel();
@@ -42,7 +41,7 @@ void main() {
 
       app = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
-          eventStore: eventStore,
+          eventDatabase: MemoryEventDatabase(),
           runtimeDatabase: runtimeDatabase,
           logger: const NoopLogger(),
           timeProvider: commandTimeProvider,
@@ -50,6 +49,7 @@ void main() {
         accountSummaryRepo: accountsSummaryRepo,
         totalBalanceRepo: totalBalanceRepo,
       );
+      eventStore = app.eventStore;
       await app.init();
     });
 
@@ -196,7 +196,7 @@ void main() {
       final blockingTotalBalance = _BlockingTotalBalanceReadModel();
       final raceApp = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
-          eventStore: EventStore(MemoryEventDatabase()),
+          eventDatabase: MemoryEventDatabase(),
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
           timeProvider: FakeTimeProviderStatic.zero(),
@@ -227,7 +227,7 @@ void main() {
       final trackingTotalBalance = _TrackingTotalBalanceReadModel();
       final raceApp = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
-          eventStore: EventStore(MemoryEventDatabase()),
+          eventDatabase: MemoryEventDatabase(),
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
           timeProvider: FakeTimeProviderStatic.zero(),
@@ -291,13 +291,10 @@ void main() {
     });
 
     test('startup replay scans every event page', () async {
-      final pagedEventStore = EventStore(
-        MemoryEventDatabase(),
-        eventFetchPageSize: 2,
-      );
+      final eventDatabase = _PagedMemoryEventDatabase(2);
       final producer = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
-          eventStore: pagedEventStore,
+          eventDatabase: eventDatabase,
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
           timeProvider: FakeTimeProviderStatic.zero(),
@@ -314,12 +311,13 @@ void main() {
           AtmDepositInput(accountId: firstAccountId, amount: amount),
         );
       }
+      await producer.close();
 
       final replayedAccounts = AccountsSummaryReadModel();
       final replayedTotal = TotalBalanceReadModel();
       final consumer = FinanceApp(
         dependencies: CqrsRuntimeDependencies(
-          eventStore: pagedEventStore,
+          eventDatabase: eventDatabase,
           runtimeDatabase: MemoryRuntimeDatabase(),
           logger: const NoopLogger(),
           timeProvider: FakeTimeProviderStatic.zero(),
@@ -409,6 +407,15 @@ void main() {
       expect(await totalBalanceRepo.get(), 40);
     });
   });
+}
+
+final class _PagedMemoryEventDatabase extends MemoryEventDatabase {
+  final int pageSize;
+
+  _PagedMemoryEventDatabase(this.pageSize);
+
+  @override
+  int get defaultEventFetchPageSize => pageSize;
 }
 
 class _BlockingTotalBalanceReadModel extends TotalBalanceReadModel {

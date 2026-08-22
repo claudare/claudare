@@ -40,10 +40,12 @@ Future<void> _testRestarts(
         final secondState = _ProjectionState();
 
         var session = await open();
-        await _appendEvent(session.eventStore);
-        await _initialize(session, [
+        final firstRuntime = _createRuntime(session, [
           _RecordingProjection('first', 1, firstState),
         ]);
+        await firstRuntime.eventStore.migrate();
+        await _appendEvent(firstRuntime.eventStore);
+        await firstRuntime.initialize();
         await session.close();
 
         expect(firstState.resetCount, 1);
@@ -124,12 +126,9 @@ void main() async {
     final runtimeDatabase = MemoryRuntimeDatabase();
 
     Future<_Session> open() async {
-      final eventStore = EventStore(eventDatabase);
-      await eventStore.migrate();
       return _Session(
-        eventStore: eventStore,
+        eventDatabase: eventDatabase,
         runtimeDatabase: runtimeDatabase,
-        close: eventStore.close,
       );
     }
 
@@ -145,12 +144,9 @@ void main() async {
     Future<_Session> open() async {
       final database = IsolateSqlite();
       await database.open(databasePath);
-      final eventStore = EventStore(SqliteEventDatabase(database));
-      await eventStore.migrate();
       return _Session(
-        eventStore: eventStore,
+        eventDatabase: SqliteEventDatabase(database),
         runtimeDatabase: SqliteRuntimeDatabase(database),
-        close: eventStore.close,
       );
     }
 
@@ -158,10 +154,10 @@ void main() async {
   });
 }
 
-Future<void> _initialize(
+CqrsRuntime _createRuntime(
   _Session session,
   List<Projection<_RestartEvent, String>> projections,
-) async {
+) {
   final eventRegistry = EventRegistry()..add(const _RestartEventCodec());
   final projectionRegistry = ProjectionRegistry();
   for (final projection in projections) {
@@ -169,7 +165,7 @@ Future<void> _initialize(
   }
   final runtime = CqrsRuntime(
     dependencies: CqrsRuntimeDependencies(
-      eventStore: session.eventStore,
+      eventDatabase: session.eventDatabase,
       runtimeDatabase: session.runtimeDatabase,
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
@@ -178,7 +174,15 @@ Future<void> _initialize(
     projectionRegistry: projectionRegistry,
     runtimeName: 'restart-test',
   );
-  await runtime.initialize();
+  session.runtime = runtime;
+  return runtime;
+}
+
+Future<void> _initialize(
+  _Session session,
+  List<Projection<_RestartEvent, String>> projections,
+) async {
+  await _createRuntime(session, projections).initialize();
 }
 
 Future<void> _appendEvent(EventStore eventStore) async {
@@ -207,15 +211,20 @@ Future<void> _appendEvent(EventStore eventStore) async {
 }
 
 final class _Session {
-  final EventStore eventStore;
+  final EventDatabase eventDatabase;
   final RuntimeDatabase runtimeDatabase;
-  final Future<void> Function() close;
+  CqrsRuntime? runtime;
 
-  const _Session({
-    required this.eventStore,
-    required this.runtimeDatabase,
-    required this.close,
-  });
+  _Session({required this.eventDatabase, required this.runtimeDatabase});
+
+  Future<void> close() async {
+    final currentRuntime = runtime;
+    if (currentRuntime != null) {
+      await currentRuntime.close();
+    } else {
+      await eventDatabase.close();
+    }
+  }
 }
 
 final class _ProjectionState {

@@ -62,6 +62,7 @@ class FinanceApp {
   Future<void> pump() => _cqrsRuntime.pump();
   Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();
   Future<void> close() => _cqrsRuntime.close();
+  EventStore get eventStore => _cqrsRuntime.eventStore;
 }
 
 class Commands {

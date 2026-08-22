@@ -5,10 +5,12 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
@@ -17,7 +19,7 @@ void main() {
   test('work before initialization throws StateError synchronously', () async {
     final runtime = CqrsRuntime(
       dependencies: CqrsRuntimeDependencies(
-        eventStore: EventStore(MemoryEventDatabase()),
+        eventDatabase: MemoryEventDatabase(),
         runtimeDatabase: MemoryRuntimeDatabase(),
         logger: const NoopLogger(),
         timeProvider: FakeTimeProviderStatic.zero(),
@@ -41,7 +43,7 @@ void main() {
     final migrationStarted = Completer<void>();
     final releaseMigration = Completer<void>();
     final runtime = _runtime(
-      eventStore: _BlockingMigrationEventStore(
+      eventDatabase: _BlockingMigrationEventDatabase(
         migrationStarted,
         releaseMigration,
       ),
@@ -61,18 +63,17 @@ void main() {
   test(
     'initializes, pumps startup history, freezes registration, and closes',
     () async {
-      final eventStore = EventStore(MemoryEventDatabase());
-      await eventStore.migrate();
-      await _appendDirect(eventStore, 'startup');
       final projection = _RecordingProjection();
       final eventRegistry = EventRegistry();
       final projectionRegistry = ProjectionRegistry();
       final runtime = _runtime(
-        eventStore: eventStore,
+        eventDatabase: MemoryEventDatabase(),
         projection: projection,
         eventRegistry: eventRegistry,
         projectionRegistry: projectionRegistry,
       );
+      await runtime.eventStore.migrate();
+      await _appendDirect(runtime.eventStore, 'startup');
 
       await runtime.initialize();
 
@@ -103,13 +104,15 @@ void main() {
         await release.future;
       },
     );
-    final eventStore = EventStore(MemoryEventDatabase());
-    final runtime = _runtime(eventStore: eventStore, projection: projection);
+    final runtime = _runtime(
+      eventDatabase: MemoryEventDatabase(),
+      projection: projection,
+    );
     await runtime.initialize();
     addTearDown(() => _settle(runtime.close()));
 
     await runtime.execute(const _AppendCommand(), const _Input('durable'));
-    expect((await eventStore.getAppliedCommands(0)), hasLength(1));
+    expect((await runtime.eventStore.getAppliedCommands(0)), hasLength(1));
     await applied.future;
 
     var pumpCompleted = false;
@@ -126,7 +129,7 @@ void main() {
     'expected command and concurrency failures leave runtime running',
     () async {
       final runtime = _runtime(
-        eventStore: _ConcurrencyEventStore(),
+        eventDatabase: _ConcurrencyEventDatabase(),
         projection: _RecordingProjection(),
       );
       await runtime.initialize();
@@ -150,7 +153,7 @@ void main() {
     'command Error is non-terminal and preserves later availability',
     () async {
       final runtime = _runtime(
-        eventStore: EventStore(MemoryEventDatabase()),
+        eventDatabase: MemoryEventDatabase(),
         projection: _RecordingProjection(),
       );
       await runtime.initialize();
@@ -171,15 +174,14 @@ void main() {
     'startup pump failure is wrapped once and automatically closes',
     () async {
       final projectionError = StateError('projection failed');
-      final eventStore = EventStore(
-        MemoryEventDatabase(),
-        eventFetchPageSize: 1,
-      );
-      await eventStore.migrate();
-      await _appendDirect(eventStore, 'first');
-      await _appendDirect(eventStore, 'second', streamVersion: 1);
       final projection = _RecordingProjection(failure: projectionError);
-      final runtime = _runtime(eventStore: eventStore, projection: projection);
+      final runtime = _runtime(
+        eventDatabase: _PagedMemoryEventDatabase(1),
+        projection: projection,
+      );
+      await runtime.eventStore.migrate();
+      await _appendDirect(runtime.eventStore, 'first');
+      await _appendDirect(runtime.eventStore, 'second', streamVersion: 1);
       final emitted = <CqrsRuntimeFailure>[];
       runtime.failures.listen(emitted.add);
 
@@ -209,7 +211,7 @@ void main() {
       final codec = _ConditionalEventCodec();
       codec.shouldFail = false;
       final runtime = _runtime(
-        eventStore: EventStore(MemoryEventDatabase()),
+        eventDatabase: MemoryEventDatabase(),
         projection: _RecordingProjection(),
         codec: codec,
       );
@@ -239,9 +241,9 @@ void main() {
 
   test('persistence failures are non-terminal', () async {
     final persistenceFailure = Exception('persistence failed');
-    final eventStore = _PersistenceEventStore(persistenceFailure);
+    final eventDatabase = _PersistenceEventDatabase(persistenceFailure);
     final runtime = _runtime(
-      eventStore: eventStore,
+      eventDatabase: eventDatabase,
       projection: _RecordingProjection(),
     );
     await runtime.initialize();
@@ -251,10 +253,17 @@ void main() {
       runtime.execute(const _AppendCommand(), const _Input('fatal')),
     );
 
-    expect(result.error, same(persistenceFailure));
+    expect(
+      result.error,
+      isA<EventStoreException>().having(
+        (error) => error.cause,
+        'cause',
+        same(persistenceFailure),
+      ),
+    );
     expect(runtime.failure, isNull);
 
-    eventStore.shouldFail = false;
+    eventDatabase.shouldFail = false;
     await runtime.execute(const _AppendCommand(), const _Input('later'));
   });
 
@@ -262,7 +271,7 @@ void main() {
     final initializationFailure = StateError('runtime store failed');
     final initializationStackTrace = StackTrace.current;
     final runtime = _runtime(
-      eventStore: _MigrationFailingEventStore(
+      eventDatabase: _MigrationFailingEventDatabase(
         initializationFailure,
         initializationStackTrace,
       ),
@@ -280,14 +289,16 @@ void main() {
 
   test('running pump failure is retained and emitted once', () async {
     final projection = _RecordingProjection();
-    final eventStore = _SilentEventStore();
-    final runtime = _runtime(eventStore: eventStore, projection: projection);
+    final runtime = _runtime(
+      eventDatabase: MemoryEventDatabase(),
+      projection: projection,
+    );
     final emitted = <CqrsRuntimeFailure>[];
     runtime.failures.listen(emitted.add);
     await runtime.initialize();
     final projectionFailure = StateError('projection failed');
     projection.failure = projectionFailure;
-    await _appendDirect(eventStore, 'failed');
+    await _appendDirect(runtime.eventStore, 'failed');
 
     final result = await _capture(runtime.pump());
     await Future<void>.delayed(Duration.zero);
@@ -312,7 +323,7 @@ void main() {
     final resetFailure = Exception('reset failed');
     final projection = _RecordingProjection();
     final runtime = _runtime(
-      eventStore: EventStore(MemoryEventDatabase()),
+      eventDatabase: MemoryEventDatabase(),
       projection: projection,
     );
     await runtime.initialize();
@@ -329,9 +340,11 @@ void main() {
   });
 
   test('promoted events use the signal-driven durable pump', () async {
-    final eventStore = EventStore(MemoryEventDatabase());
     final projection = _RecordingProjection();
-    final runtime = _runtime(eventStore: eventStore, projection: projection);
+    final runtime = _runtime(
+      eventDatabase: MemoryEventDatabase(),
+      projection: projection,
+    );
     await runtime.initialize();
     addTearDown(() => _settle(runtime.close()));
 
@@ -343,8 +356,8 @@ void main() {
       completedAt: _timestamp,
       eventCount: 1,
     );
-    await eventStore.stageReplicatedCommand(command);
-    await eventStore.stageReplicatedEvents([
+    await runtime.eventStore.stageReplicatedCommand(command);
+    await runtime.eventStore.stageReplicatedEvents([
       ReplicatedEvent(
         eventId: EventId(9, 1, 0),
         streamPath: 'test',
@@ -355,7 +368,10 @@ void main() {
         occuredAt: _timestamp,
       ),
     ]);
-    expect(await eventStore.promotePendingCommand(command.commandId), isTrue);
+    expect(
+      await runtime.eventStore.promotePendingCommand(command.commandId),
+      isTrue,
+    );
 
     await runtime.pump();
     expect(projection.values, ['remote']);
@@ -376,8 +392,10 @@ void main() {
           }
         },
       );
-      final eventStore = EventStore(MemoryEventDatabase());
-      final runtime = _runtime(eventStore: eventStore, projection: projection);
+      final runtime = _runtime(
+        eventDatabase: MemoryEventDatabase(),
+        projection: projection,
+      );
       await runtime.initialize();
       addTearDown(() => _settle(runtime.close()));
 
@@ -398,7 +416,7 @@ void main() {
     final release = Completer<void>();
     final projection = _RecordingProjection();
     final runtime = _runtime(
-      eventStore: EventStore(MemoryEventDatabase()),
+      eventDatabase: MemoryEventDatabase(),
       projection: projection,
     );
     await runtime.initialize();
@@ -432,7 +450,7 @@ void main() {
     final migrationStarted = Completer<void>();
     final releaseMigration = Completer<void>();
     final runtime = _runtime(
-      eventStore: _BlockingMigrationEventStore(
+      eventDatabase: _BlockingMigrationEventDatabase(
         migrationStarted,
         releaseMigration,
       ),
@@ -455,7 +473,7 @@ void main() {
       final releaseMigration = Completer<void>();
       final failure = StateError('migration failed');
       final runtime = _runtime(
-        eventStore: _BlockingFailingMigrationEventStore(
+        eventDatabase: _BlockingFailingMigrationEventDatabase(
           migrationStarted,
           releaseMigration,
           failure,
@@ -474,25 +492,26 @@ void main() {
     },
   );
 
-  test('close leaves the injected EventStore open and usable', () async {
-    final eventStore = EventStore(MemoryEventDatabase());
+  test('close closes the runtime-owned EventStore', () async {
     final projection = _RecordingProjection();
-    final runtime = _runtime(eventStore: eventStore, projection: projection);
+    final eventDatabase = _ClosingEventDatabase();
+    final runtime = _runtime(
+      eventDatabase: eventDatabase,
+      projection: projection,
+    );
     await runtime.initialize();
 
     await runtime.close();
-    await _appendDirect(eventStore, 'outside');
-
-    expect((await eventStore.getAppliedCommands(0)), hasLength(1));
-    expect(projection.values, isEmpty);
-    await eventStore.close();
+    expect(eventDatabase.closeCount, 1);
+    await runtime.close();
+    expect(eventDatabase.closeCount, 1);
   });
 }
 
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 CqrsRuntime _runtime({
-  required EventStore eventStore,
+  required EventDatabase eventDatabase,
   required Projection<_TestEvent, String> projection,
   RuntimeDatabase? runtimeDatabase,
   EventRegistry? eventRegistry,
@@ -505,7 +524,7 @@ CqrsRuntime _runtime({
   projections.add(projection);
   return CqrsRuntime(
     dependencies: CqrsRuntimeDependencies(
-      eventStore: eventStore,
+      eventDatabase: eventDatabase,
       runtimeDatabase: runtimeDatabase ?? MemoryRuntimeDatabase(),
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
@@ -727,45 +746,47 @@ final class _RecordingProjection implements Projection<_TestEvent, String> {
   void onBatchApplied() {}
 }
 
-final class _ConcurrencyEventStore extends EventStore {
-  _ConcurrencyEventStore() : super(MemoryEventDatabase());
-
+final class _ConcurrencyEventDatabase extends MemoryEventDatabase {
   @override
-  Future<void> saveChanges(CommandChanges changes) async {
+  Future<void> appendApplied(
+    AppliedCommand command,
+    List<AppliedEvent> events,
+  ) async {
     throw const ConcurrencyProblem();
   }
 }
 
-final class _PersistenceEventStore extends EventStore {
+final class _PersistenceEventDatabase extends MemoryEventDatabase {
   final Object failure;
   bool shouldFail = true;
 
-  _PersistenceEventStore(this.failure) : super(MemoryEventDatabase());
+  _PersistenceEventDatabase(this.failure);
 
   @override
-  Future<void> saveChanges(CommandChanges changes) async {
+  Future<void> appendApplied(
+    AppliedCommand command,
+    List<AppliedEvent> events,
+  ) async {
     if (shouldFail) throw failure;
-    await super.saveChanges(changes);
+    await super.appendApplied(command, events);
   }
 }
 
-final class _MigrationFailingEventStore extends EventStore {
+final class _MigrationFailingEventDatabase extends MemoryEventDatabase {
   final Object failure;
   final StackTrace stackTrace;
 
-  _MigrationFailingEventStore(this.failure, this.stackTrace)
-    : super(MemoryEventDatabase());
+  _MigrationFailingEventDatabase(this.failure, this.stackTrace);
 
   @override
   Future<void> migrate() => Future<void>.error(failure, stackTrace);
 }
 
-final class _BlockingMigrationEventStore extends EventStore {
+final class _BlockingMigrationEventDatabase extends MemoryEventDatabase {
   final Completer<void> started;
   final Completer<void> release;
 
-  _BlockingMigrationEventStore(this.started, this.release)
-    : super(MemoryEventDatabase());
+  _BlockingMigrationEventDatabase(this.started, this.release);
 
   @override
   Future<void> migrate() async {
@@ -775,13 +796,16 @@ final class _BlockingMigrationEventStore extends EventStore {
   }
 }
 
-final class _BlockingFailingMigrationEventStore extends EventStore {
+final class _BlockingFailingMigrationEventDatabase extends MemoryEventDatabase {
   final Completer<void> started;
   final Completer<void> release;
   final Object failure;
 
-  _BlockingFailingMigrationEventStore(this.started, this.release, this.failure)
-    : super(MemoryEventDatabase());
+  _BlockingFailingMigrationEventDatabase(
+    this.started,
+    this.release,
+    this.failure,
+  );
 
   @override
   Future<void> migrate() async {
@@ -791,9 +815,20 @@ final class _BlockingFailingMigrationEventStore extends EventStore {
   }
 }
 
-final class _SilentEventStore extends EventStore {
-  _SilentEventStore() : super(MemoryEventDatabase());
+final class _PagedMemoryEventDatabase extends MemoryEventDatabase {
+  final int pageSize;
+
+  _PagedMemoryEventDatabase(this.pageSize);
 
   @override
-  Stream<void> get appliedChanges => const Stream<void>.empty();
+  int get defaultEventFetchPageSize => pageSize;
+}
+
+final class _ClosingEventDatabase extends MemoryEventDatabase {
+  int closeCount = 0;
+
+  @override
+  Future<void> close() async {
+    closeCount++;
+  }
 }

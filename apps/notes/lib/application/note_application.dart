@@ -19,7 +19,7 @@ class NoteApplication {
   late final IsolateSqlite _sqliteDb;
   late final IsolateSqlite _searchDb;
 
-  late final EventStore eventStore;
+  EventStore get eventStore => _cqrsRuntime.eventStore;
   final Logger logger;
   final IdGenerator idGenerator;
   final TimeProvider timeProvider;
@@ -37,12 +37,11 @@ class NoteApplication {
     required this.logger,
   }) {
     _sqliteDb = IsolateSqlite();
-    eventStore = EventStore(SqliteEventDatabase(_sqliteDb));
 
     final cqrsDependencies = CqrsRuntimeDependencies(
       timeProvider: timeProvider,
       logger: logger,
-      eventStore: eventStore,
+      eventDatabase: SqliteEventDatabase(_sqliteDb),
       runtimeDatabase: SqliteRuntimeDatabase(_sqliteDb),
     );
 
@@ -120,7 +119,6 @@ class NoteApplication {
       await _cqrsRuntime.close();
     } finally {
       resolvedNoteReadModelNotifier.dispose();
-      await eventStore.close();
       await _searchDb.close();
     }
   }
