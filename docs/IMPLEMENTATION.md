@@ -74,12 +74,13 @@ reading another page.
 initializes runtime storage, selectively prepares projections, subscribes to
 applied changes, and awaits startup pumping. It exposes explicit pumping,
 serialized rebuild-all maintenance, a stored terminal pump failure, a broadcast
-failure stream, and idempotent close. Internal lifecycle state rejects misuse
-with synchronous `StateError`. Only failures reached through `EventPump.pump()`
-become `CqrsRuntimeFailure`; command, persistence, and non-pump initialization
-or rebuild failures propagate unchanged. Initialization failures automatically
-close the runtime, while non-pump command and rebuild failures leave a running
-runtime available.
+failure stream, and one-shot close. Startup pumping and later rebuild-all work
+run in an exclusive rebuilding lifecycle phase. Internal lifecycle state rejects
+overlapping or repeated misuse with synchronous `StateError`. Only failures
+reached through `EventPump.pump()` become `CqrsRuntimeFailure`; command,
+persistence, and non-pump initialization or rebuild failures propagate
+unchanged. Initialization failures automatically close the runtime, while
+non-pump command and rebuild failures leave a running runtime available.
 The runtime constructs exactly one `EventStore` from its injected
 `EventDatabase`. Closing the runtime cancels its EventStore subscription and
 closes the store. `EventStore.close()` closes its notification stream and its

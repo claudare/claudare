@@ -3,8 +3,9 @@ import 'dart:async';
 import 'package:cqrs/src/cqrs/exception/cqrs_runtime_failure.dart';
 
 enum _CqrsRuntimePhase {
-  configuring,
+  uninitialized,
   initializing,
+  rebuilding,
   running,
   failed,
   closing,
@@ -15,25 +16,45 @@ final class CqrsRuntimeLifecycle {
   final StreamController<CqrsRuntimeFailure> _failureController =
       StreamController<CqrsRuntimeFailure>.broadcast(sync: false);
 
-  _CqrsRuntimePhase _phase = _CqrsRuntimePhase.configuring;
+  _CqrsRuntimePhase _phase = _CqrsRuntimePhase.uninitialized;
   CqrsRuntimeFailure? _failure;
 
   CqrsRuntimeFailure? get failure => _failure;
   Stream<CqrsRuntimeFailure> get failures => _failureController.stream;
-  bool get isInitializing => _phase == _CqrsRuntimePhase.initializing;
   bool get isRunning => _phase == _CqrsRuntimePhase.running;
-  bool get isClosed => _phase == _CqrsRuntimePhase.closed;
 
   void beginInitialization() {
-    if (_phase != _CqrsRuntimePhase.configuring) {
+    if (_phase != _CqrsRuntimePhase.uninitialized) {
       throw StateError('Cannot initialize runtime while it is ${_phase.name}');
     }
     _phase = _CqrsRuntimePhase.initializing;
   }
 
-  void completeInitialization() {
-    if (_phase == _CqrsRuntimePhase.initializing) {
+  void beginInitialRebuild() {
+    if (_phase != _CqrsRuntimePhase.initializing) {
+      throw StateError(
+        'Cannot begin initial rebuild while runtime is ${_phase.name}',
+      );
+    }
+    _phase = _CqrsRuntimePhase.rebuilding;
+  }
+
+  void beginRebuilding() {
+    if (_phase != _CqrsRuntimePhase.running) {
+      throw StateError('Cannot rebuild runtime while it is ${_phase.name}');
+    }
+    _phase = _CqrsRuntimePhase.rebuilding;
+  }
+
+  void completeRebuilding() {
+    if (_phase == _CqrsRuntimePhase.rebuilding) {
       _phase = _CqrsRuntimePhase.running;
+      return;
+    }
+    if (_phase != _CqrsRuntimePhase.failed) {
+      throw StateError(
+        'Cannot complete rebuild while runtime is ${_phase.name}',
+      );
     }
   }
 
@@ -44,8 +65,9 @@ final class CqrsRuntimeLifecycle {
       case _CqrsRuntimePhase.failed:
         return _failure ??
             (throw StateError('Failed runtime has no recorded pump failure'));
-      case _CqrsRuntimePhase.configuring ||
+      case _CqrsRuntimePhase.uninitialized ||
           _CqrsRuntimePhase.initializing ||
+          _CqrsRuntimePhase.rebuilding ||
           _CqrsRuntimePhase.closing ||
           _CqrsRuntimePhase.closed:
         throw StateError('Cannot $operation while runtime is ${_phase.name}');
@@ -67,16 +89,23 @@ final class CqrsRuntimeLifecycle {
   }
 
   void beginClosing() {
-    if (_phase == _CqrsRuntimePhase.initializing) {
-      throw StateError('Cannot close runtime while it is initializing');
-    }
-    if (_phase != _CqrsRuntimePhase.closed) {
-      _phase = _CqrsRuntimePhase.closing;
+    switch (_phase) {
+      case _CqrsRuntimePhase.uninitialized ||
+          _CqrsRuntimePhase.running ||
+          _CqrsRuntimePhase.failed:
+        _phase = _CqrsRuntimePhase.closing;
+        return;
+      case _CqrsRuntimePhase.initializing ||
+          _CqrsRuntimePhase.rebuilding ||
+          _CqrsRuntimePhase.closing ||
+          _CqrsRuntimePhase.closed:
+        throw StateError('Cannot close runtime while it is ${_phase.name}');
     }
   }
 
   void beginInitializationFailureTeardown() {
     if (_phase != _CqrsRuntimePhase.initializing &&
+        _phase != _CqrsRuntimePhase.rebuilding &&
         _phase != _CqrsRuntimePhase.failed) {
       throw StateError(
         'Cannot tear down failed initialization while runtime is ${_phase.name}',
@@ -86,7 +115,11 @@ final class CqrsRuntimeLifecycle {
   }
 
   Future<void> completeClosing() async {
-    if (_phase == _CqrsRuntimePhase.closed) return;
+    if (_phase != _CqrsRuntimePhase.closing) {
+      throw StateError(
+        'Cannot complete closing while runtime is ${_phase.name}',
+      );
+    }
     await _failureController.close();
     _phase = _CqrsRuntimePhase.closed;
   }

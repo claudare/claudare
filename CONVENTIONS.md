@@ -48,9 +48,10 @@ deviations.
   encoding or decoding failures may add context but must not hide other faults.
 - Use assertions for defensive invariants.
 - `CqrsRuntime` lifecycle misuse is a programmer error and throws `StateError`
-  synchronously, including calling `close()` during initialization. Its internal
-  lifecycle owns phases and stores only failures produced by `EventPump.pump()`
-  as terminal `CqrsRuntimeFailure` values.
+  synchronously. Initialization and close are one-shot, and rebuilding rejects
+  all other public work until it completes. Its internal lifecycle owns phases
+  and stores only failures produced by `EventPump.pump()` as terminal
+  `CqrsRuntimeFailure` values.
   Command handling, encoding, persistence, projection preparation, and reset
   failures propagate unchanged. Runtime closure does not request a pump and
   completes successfully when a terminal pump failure was already retained.

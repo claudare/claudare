@@ -27,13 +27,8 @@ final class CqrsRuntime {
   EventPump? _eventPump;
   StreamSubscription<void>? _appliedChangesSubscription;
   Future<void> _exclusiveWork = Future<void>.value();
-  Future<void>? _initialization;
   Future<void>? _scheduledPump;
-  Future<void>? _activeRebuild;
-  Future<void>? _closeFuture;
-  Future<void>? _teardownFuture;
   bool _pumpStarted = false;
-  bool _trailingRebuildScan = false;
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
@@ -61,9 +56,7 @@ final class CqrsRuntime {
     _lifecycle.beginInitialization();
     _eventRegistry.freeze();
     _projectionRegistry.freeze();
-    final initialization = _initialize();
-    _initialization = initialization;
-    return initialization;
+    return _initialize();
   }
 
   Future<void> _initialize() async {
@@ -81,11 +74,12 @@ final class CqrsRuntime {
       _appliedChangesSubscription = eventStore.appliedChanges.listen(
         (_) => _handleAppliedChanges(),
       );
+      _lifecycle.beginInitialRebuild();
       await _pumpEventPump(_eventPump!);
-      _lifecycle.completeInitialization();
+      _lifecycle.completeRebuilding();
     } catch (error, stackTrace) {
       _lifecycle.beginInitializationFailureTeardown();
-      await _ensureTeardown();
+      await _teardown();
       Error.throwWithStackTrace(error, stackTrace);
     }
   }
@@ -107,12 +101,6 @@ final class CqrsRuntime {
     final unavailable = _lifecycle.admitWork('pump projections');
     if (unavailable != null) {
       return Future<void>.error(unavailable, unavailable.stackTrace);
-    }
-
-    final rebuild = _activeRebuild;
-    if (rebuild != null) {
-      _trailingRebuildScan = true;
-      return rebuild;
     }
 
     final scheduled = _scheduledPump;
@@ -153,49 +141,35 @@ final class CqrsRuntime {
       return Future<void>.error(unavailable, unavailable.stackTrace);
     }
 
-    final active = _activeRebuild;
-    if (active != null) return active;
+    _lifecycle.beginRebuilding();
+    return _recreateProjections();
+  }
 
-    _trailingRebuildScan = false;
-    late final Future<void> result;
-    result = _enqueueExclusive(() async {
-      _dependencies.logger.info(
-        'runtime $runtimeName: recreating all projections',
-      );
-      _eventPump = EventPump(
-        createReader: eventStore.getAppliedEventReader,
-        eventRegistry: _eventRegistry,
-        projections: await _projectionRegistry.prepare(
-          _runtimeStore,
-          forceReset: true,
-        ),
-      );
-      do {
-        _trailingRebuildScan = false;
+  Future<void> _recreateProjections() async {
+    try {
+      await _enqueueExclusive(() async {
+        _dependencies.logger.info(
+          'runtime $runtimeName: recreating all projections',
+        );
+        _eventPump = EventPump(
+          createReader: eventStore.getAppliedEventReader,
+          eventRegistry: _eventRegistry,
+          projections: await _projectionRegistry.prepare(
+            _runtimeStore,
+            forceReset: true,
+          ),
+        );
         await _pumpEventPump(_eventPump!);
-      } while (_trailingRebuildScan && _lifecycle.isRunning);
-      _dependencies.logger.info(
-        'runtime $runtimeName: recreated all projections',
-      );
-    });
-    _activeRebuild = result;
-    result.then<void>(
-      (_) {
-        if (identical(_activeRebuild, result)) _activeRebuild = null;
-      },
-      onError: (Object _, StackTrace _) {
-        if (identical(_activeRebuild, result)) _activeRebuild = null;
-      },
-    );
-    return result;
+        _dependencies.logger.info(
+          'runtime $runtimeName: recreated all projections',
+        );
+      });
+    } finally {
+      _lifecycle.completeRebuilding();
+    }
   }
 
   void _handleAppliedChanges() {
-    if (_lifecycle.isInitializing) {
-      final result = _pumpEventPump(_eventPump!);
-      unawaited(_containSignalFailure(result));
-      return;
-    }
     if (!_lifecycle.isRunning) return;
     final result = pump();
     unawaited(_containSignalFailure(result));
@@ -238,31 +212,11 @@ final class CqrsRuntime {
   }
 
   Future<void> close() {
-    final existing = _closeFuture;
-    if (existing != null) return existing;
-    if (_lifecycle.isClosed) return Future<void>.value();
-
     _lifecycle.beginClosing();
-    final result = _close();
-    _closeFuture = result;
-    return result;
-  }
-
-  Future<void> _close() async {
-    await _settle(_initialization);
-    await _ensureTeardown();
-  }
-
-  Future<void> _ensureTeardown() {
-    final existing = _teardownFuture;
-    if (existing != null) return existing;
-    final teardown = _teardown();
-    _teardownFuture = teardown;
-    return teardown;
+    return _teardown();
   }
 
   Future<void> _teardown() async {
-    await _settle(_activeRebuild);
     await _settle(_scheduledPump);
     await _settle(_exclusiveWork);
     await _settle(_appliedChangesSubscription?.cancel());

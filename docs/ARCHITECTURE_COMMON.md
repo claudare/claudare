@@ -121,7 +121,8 @@ commits. It provides single-flight scans and page barriers, and the runtime
 wraps its first pump failure with the original object and stack trace. Pumping
 and rebuild-all maintenance are serialized. Internal lifecycle state governs
 admission and shutdown; the public runtime exposes the terminal pump failure and
-stream plus idempotent shutdown.
+stream. Initialization, rebuilding, and shutdown are exclusive one-shot
+lifecycle operations; invalid overlapping or repeated calls throw `StateError`.
 
 See [APP_PATTERNS.md](APP_PATTERNS.md) for the application event-codec pattern
 and its file layout.

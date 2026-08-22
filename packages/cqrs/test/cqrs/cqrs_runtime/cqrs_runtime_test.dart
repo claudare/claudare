@@ -16,7 +16,7 @@ import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
 void main() {
-  test('work before initialization throws StateError synchronously', () async {
+  test('work while uninitialized throws StateError synchronously', () async {
     final runtime = CqrsRuntime(
       dependencies: CqrsRuntimeDependencies(
         eventDatabase: MemoryEventDatabase(),
@@ -36,7 +36,7 @@ void main() {
     );
     expect(runtime.recreateProjections, throwsStateError);
     await runtime.close();
-    await runtime.close();
+    expect(runtime.close, throwsStateError);
   });
 
   test('initialization can only be requested once', () async {
@@ -57,6 +57,38 @@ void main() {
     releaseMigration.complete();
     await initialization;
     expect(runtime.initialize, throwsStateError);
+    await runtime.close();
+  });
+
+  test('startup pump uses the rebuilding lifecycle phase', () async {
+    final rebuildStarted = Completer<void>();
+    final releaseRebuild = Completer<void>();
+    final runtime = _runtime(
+      eventDatabase: MemoryEventDatabase(),
+      projection: _RecordingProjection(
+        onApply: (_) async {
+          rebuildStarted.complete();
+          await releaseRebuild.future;
+        },
+      ),
+    );
+    await runtime.eventStore.migrate();
+    await _appendDirect(runtime.eventStore, 'startup');
+
+    final initialization = runtime.initialize();
+    await rebuildStarted.future;
+
+    expect(runtime.initialize, throwsStateError);
+    expect(
+      () => runtime.execute(const _NoEventCommand(), const _Input('unused')),
+      throwsStateError,
+    );
+    expect(runtime.pump, throwsStateError);
+    expect(runtime.recreateProjections, throwsStateError);
+    expect(runtime.close, throwsStateError);
+
+    releaseRebuild.complete();
+    await initialization;
     await runtime.close();
   });
 
@@ -88,9 +120,10 @@ void main() {
         throwsA(isA<ProjectionConfigurationException>()),
       );
 
-      final firstClose = runtime.close();
-      expect(runtime.close(), same(firstClose));
-      await firstClose;
+      final closing = runtime.close();
+      expect(runtime.close, throwsStateError);
+      await closing;
+      expect(runtime.close, throwsStateError);
       expect(runtime.pump, throwsStateError);
     },
   );
@@ -201,7 +234,7 @@ void main() {
 
       expect(runtime.pump, throwsStateError);
       expect(runtime.initialize, throwsStateError);
-      await runtime.close();
+      expect(runtime.close, throwsStateError);
     },
   );
 
@@ -284,7 +317,7 @@ void main() {
     expect(result.stackTrace.toString(), initializationStackTrace.toString());
     expect(runtime.failure, isNull);
     expect(runtime.initialize, throwsStateError);
-    await runtime.close();
+    expect(runtime.close, throwsStateError);
   });
 
   test('running pump failure is retained and emitted once', () async {
@@ -378,7 +411,7 @@ void main() {
   });
 
   test(
-    'rebuild waits for active pumping and includes a trailing signal',
+    'rebuild waits for active pumping and rejects overlapping work',
     () async {
       final firstStarted = Completer<void>();
       final releaseFirst = Completer<void>();
@@ -402,12 +435,21 @@ void main() {
       await runtime.execute(const _AppendCommand(), const _Input('first'));
       await firstStarted.future;
       final rebuild = runtime.recreateProjections();
-      await runtime.execute(const _AppendCommand(), const _Input('second'));
+
+      expect(runtime.initialize, throwsStateError);
+      expect(
+        () => runtime.execute(const _NoEventCommand(), const _Input('unused')),
+        throwsStateError,
+      );
+      expect(runtime.pump, throwsStateError);
+      expect(runtime.recreateProjections, throwsStateError);
+      expect(runtime.close, throwsStateError);
+
       releaseFirst.complete();
 
       await rebuild;
       expect(projection.resetCount, 2);
-      expect(projection.values, ['first', 'second']);
+      expect(projection.values, ['first']);
     },
   );
 
@@ -452,7 +494,7 @@ void main() {
       releaseMigration.complete();
 
       expect((await _capture(initialization)).error, same(failure));
-      await runtime.close();
+      expect(runtime.close, throwsStateError);
       expect(runtime.pump, throwsStateError);
     },
   );
@@ -468,7 +510,7 @@ void main() {
 
     await runtime.close();
     expect(eventDatabase.closeCount, 1);
-    await runtime.close();
+    expect(runtime.close, throwsStateError);
     expect(eventDatabase.closeCount, 1);
   });
 }

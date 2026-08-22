@@ -85,30 +85,33 @@ CQRS package. Tests may construct isolated runtimes with their own dependencies.
 The runtime has an explicit lifecycle:
 
 ```text
-configuring -> initializing -> running -> failed
-                                  |
-                                  v
-                             closing -> closed
+uninitialized -> initializing -> rebuilding -> running -> failed
+                                  ^           |
+                                  +-----------+
+
+uninitialized | running | failed -> closing -> closed
 ```
 
 Before constructing the runtime, the application adds event codecs to an
 `EventRegistry`, adds projections to a `ProjectionRegistry`, and passes both
 registries to the runtime. During `initializing`, the runtime freezes
-configuration, initializes stores, validates the registry, prepares projections,
-and catches them up.
+configuration, initializes stores, validates the registry, and prepares
+projections. The startup pump runs in `rebuilding` before the runtime enters
+`running`.
 Commands cannot run until initialization succeeds.
 
 `initialize()` freezes event and projection registration synchronously before
-returning its future. Initialization is single-flight: concurrent callers receive
-the same in-progress future and initialization work runs once. After successful
-initialization the runtime accepts ordinary commands concurrently. EventStore
-locking and optimistic stream checks remain responsible for protecting durable
-state; the runtime does not serialize all command handlers.
+returning its future. Initialization is one-shot; another call during or after
+initialization throws `StateError` synchronously. After successful initialization
+the runtime accepts ordinary commands concurrently. EventStore locking and
+optimistic stream checks remain responsible for protecting durable state; the
+runtime does not serialize all command handlers.
 
 Pumping is also single-flight. Projection rebuilds serialize with pumping. A
-pump signal received during a rebuild does not run projection work concurrently;
-it records a trailing scan that runs after the rebuild finishes. Stage 9 extends
-runtime admission with a writer-preferred synchronization gate: ordinary
+pump already admitted before a rebuild finishes before rebuild work starts.
+Rebuilding is an exclusive lifecycle phase, so commands, explicit pumps, close,
+initialization, and another rebuild are rejected until it completes. Stage 9
+extends runtime admission with a writer-preferred synchronization gate: ordinary
 commands share admission, while an exclusive test-sync operation prevents new
 commands and waits for admitted handlers before reading or importing records.
 
@@ -417,8 +420,8 @@ from actual `EventPump.pump()` calls, including startup, signal-driven,
 explicit, and rebuild pumping, are terminal. The same
 `CqrsRuntimeFailure` is stored and emitted once. Later operations on a failed
 running runtime return that stored failure. Lifecycle misuse, including work
-before initialization, calling `close()` during initialization, or work during
-or after closure, throws `StateError` synchronously.
+before initialization, public work during rebuilding, repeated initialization
+or closure, and work during or after closure, throws `StateError` synchronously.
 
 Command-handler exceptions and `Error`s, command encoding, persistence,
 projection preparation, and projection reset failures propagate unchanged and
@@ -427,12 +430,12 @@ unless startup pumping produced a `CqrsRuntimeFailure`; every initialization
 failure automatically tears down and closes the runtime and initialization
 cannot be retried.
 
-`close()` is idempotent. Its first call stops accepting commands, pumps,
-rebuilds, and synchronization work. It does not request a final pump or wait for
-commands already in progress. It cancels the EventStore subscription, waits for
-remaining runtime maintenance, closes the failure stream, and enters `closed`.
-Concurrent callers share that teardown and closure does not replay a retained
-failure.
+`close()` is one-shot. It stops accepting commands, pumps, rebuilds, and
+synchronization work. It does not request a final pump or wait for commands
+already in progress. It cancels the EventStore subscription, waits for remaining
+runtime maintenance, closes the failure stream, and enters `closed`. Calling it
+again while closing or after closure throws `StateError` synchronously. Closure
+does not replay a retained failure.
 
 Closing does not reconstruct or restart a failed runtime. It closes the
 runtime-owned `EventStore`, which closes its `EventDatabase`.
@@ -839,15 +842,15 @@ construction for the production pump.
 
 - Replace current command-owned routing with `CqrsRuntime.execute`.
 - Freeze the injected event and projection registries synchronously when
-  single-flight initialization begins.
+  one-shot initialization begins.
 - Change local save to `Future<void>` and remove `SaveChangesResult`,
   `StreamAppendOrder`, and append-order reconstruction.
 - Accept concurrent commands only while running, with EventStore locking and
   optimistic stream checks preserving the durable boundary.
-- Make startup and EventStore signals use the same public single-flight pump;
-  serialize projection rebuilds with pumping and retain a trailing scan request.
+- Make startup and EventStore signals use the same public single-flight pump and
+  serialize projection rebuilds with pumping.
 - Add internal runtime lifecycle handling, stored pump-only
-  `CqrsRuntimeFailure`, optional failure stream subscription, and idempotent
+  `CqrsRuntimeFailure`, optional failure stream subscription, and one-shot
   non-pumping `close()` teardown.
 - Migrate application wiring and command call sites.
 - Give only `ResolvedNoteReadModel` a Notes notifier, signal it from
@@ -884,13 +887,13 @@ compatibility paths.
 - Verify commands complete after persistence while the public pump provides
   deterministic catch-up for tests.
 - Test lifecycle admission, one-shot initialization, rejected closure during
-  initialization, single-flight pumping, synchronous registration freezing,
-  concurrent command admission, rebuild/pump exclusion, and trailing scans.
+  initialization and rebuilding, single-flight pumping, synchronous registration
+  freezing, concurrent command admission, and rebuild/pump exclusion.
 - Test raw initialization, command, encoding, persistence, preparation, and
   reset failures. Verify that only startup and running pump failures are stored
   and returned by identity, while lifecycle misuse throws synchronous
   `StateError`.
-- Test idempotent close, rejection of new work, absence of shutdown pumping,
+- Test one-shot close, rejection of new work, absence of shutdown pumping,
   subscription cancellation, maintenance draining, failure-stream closure, and
   runtime ownership of the injected event database.
 - Test resolved-note notification after matched batches, no notification after
