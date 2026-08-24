@@ -4,10 +4,7 @@ This is an ideation document. It is non-authoritative and is used to keep ideas
 in one place. For better defined and conrete documentation read markdowns at
 `docs`.
 
-## TODOs
-
-- Rethrow the original errors. Good point to fix is `ConcurrencyProblem` in the
-  event store safe.
+## todos
 
 ## Maybe todo's?
 
@@ -24,8 +21,6 @@ in one place. For better defined and conrete documentation read markdowns at
   ids as unique identifiers. Use them for deduplication.
 - Pull model for blob sync. Get inspired by by Bittorrent protocol: use want,
   interested, choked, and unchoked concepts.
-- Use a separate mutex for the replicated commands/events in the event store.
-  They dont need to block applied ones.
 - Remove the string interpolations from `StreamIdPattern`. Instead use
   `id` and `kind`. ID and kind are always a strings?
 

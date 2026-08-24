@@ -7,17 +7,16 @@ These instructions apply to the entire repository.
 - `apps/*` contains Flutter applications. Use short package names and
   `com.claudare.<app>` for every platform application identifier.
 - Shared packages own their respective concerns: `cqrs` owns CQRS and domain
-  infrastructure, `common` owns shared device, sequence, and serialization
-  primitives, `id_generator` owns IDs, `time_provider` owns time, `crdt` owns
-  CRDT helpers, `isolate_sqlite` owns SQLite isolation, and `claudare_logging`
-  owns logging.
+  infrastructure; `common` owns shared async, causal, pagination, and
+  serialization primitives; `id_generator` owns IDs; `time_provider` owns time;
+  `crdt` owns CRDT helpers; `isolate_sqlite` owns SQLite isolation; and
+  `claudare_logging` owns logging. `queue` and `package_template` are support
+  packages.
 - Shared packages must not depend on applications. `apps/notes` is a prototype
   consumer, not the architectural center.
-- Keep repository-wide, source-backed documentation in `docs`; keep package-
-  and app-specific documentation beside its owner. Markdown files in `ideas`
-  should not be used as documentation.
-- The root `pubspec.yaml` discovers `apps/*` and `packages/*`. Every member must
-  declare `resolution: workspace` and inherit the root `analysis_options.yaml`.
+- Keep repository-wide, documentation in `docs`. Keep package- and app-specific
+  documentation beside its owner. Do not use `ideas` as maintained
+  documentation.
 
 ## Dependencies
 
@@ -26,48 +25,44 @@ These instructions apply to the entire repository.
 - Change dependencies through the owning `pubspec.yaml` or Pub command. Use
   `fvm dart pub` for Dart packages and `fvm flutter pub` for Flutter apps.
 - Resolve the workspace from its root with `fvm flutter pub get`, not separate
-  member-level `pub get` commands.
+  member-level resolves.
 - Reference workspace members by compatible version constraints, never by path,
   Git dependency, or submodule.
 - Do not add external dependencies unless requested or approved. Local workspace
-  references are always allowed.
+  references are allowed.
 
 ## Code
 
-- Follow [CONVENTIONS.md](CONVENTIONS.md) for Core wiring. It applies to new and
-  modified code; do not refactor existing deviations unless required by the task.
-- Before changing CQRS runtime, event-codec, command event-flow, projection
-  routing/replay, or runtime-store projection-progress code, read
-  [ideas/RUNTIME_REWORK.md](ideas/RUNTIME_REWORK.md). It is the active rewrite
-  plan, not implemented behavior. The rewrite is a clean breaking migration, so
-  do not retain compatibility aliases or parallel old and new paths.
-- Pass logging through Core's `Logger`. Use `NoopLogger` or `RecordingLogger`
-  when output is suppressed or inspected; do not add ad-hoc prints.
-- Do not generate backwards compatible changes. The project is under development
-  and breaking changes are welcome.
+- Follow [CONVENTIONS.md](CONVENTIONS.md) for new and modified code. Do not
+  refactor unrelated existing deviations.
+- Use the logger from `claudare_logging`. There is no global logger. Do not add
+  ad hoc prints.
+- Breaking changes are allowed as the project is under development. Do not
+  add compatibility paths.
 - Keep shared analyzer policy at the repository root without member overrides.
-- Avoid em-dashes and unnecessary comments in code and user-facing text. Do not
-  add unrequested UI help text or meaningless expressive language.
+- Use `///` to document key classes and interfaces. Use `[]` to reference code. 
+  Keep documentation short and to the point.
 
 ## Documentation
 
-- Do not claim replication, device enrollment, encryption, blob storage, backup,
-  or production security. They are not implemented.
-- Treat the root and package `README.md` and `docs/*.md` as AI orientation
-  material. State ownership, supported behavior, limitations, and actual
-  validation evidence.
-- Verify source before changing implementation status or retaining old paths.
-- Keep normative Core wiring in `CONVENTIONS.md`; other documents should link to
-  it instead of duplicating it.
-- Update relevant root documentation when public behavior, ownership, validation,
-  or security posture changes. Fix repository links when moving documents.
+- Do not claim a working replication or synchronization system, device
+  enrollment, encryption, blob storage, backup, or production security. They are
+  not implemented.
+- Treat root and package `README.md` files and `docs/*.md` as orientation
+  material. State ownership, supported behavior, limitations, and only
+  validation evidence that was actually collected.
+- Verify source before changing implementation status. Update relevant root
+  documentation when public behavior, ownership, validation, or security posture
+  changes, and fix links when documents move.
+- Keep normative coding conventions in `CONVENTIONS.md` rather than duplicating
+  them elsewhere.
 
 ## Tests
 
 - Prefer tests that verify one behavior or invariant. Split unrelated APIs,
   success and failure paths, or outcomes into separate tests, and share setup
-  through helpers instead of combining cases in one test.
-- Use table-driven tests when many variants exercise the same behavior.
+  through helpers.
+- Use table-driven tests when variants exercise the same behavior.
 
 ## Validation
 
@@ -77,15 +72,20 @@ For workspace or dependency changes, run:
 fvm flutter pub get
 fvm dart pub workspace list
 fvm dart analyze
-fvm dart run melos run test
+fvm dart run melos test
 ```
 
-The project-local Melos test command runs every package and application test,
-using all detected processor cores for parallel member suites. Flutter tests use
-`--no-pub`, so run `fvm flutter pub get` or `fvm dart run melos bootstrap` after
-dependency changes. For code changes within one member, run root analysis and
-its relevant tests; use the full Melos command for cross-workspace code changes.
-For documentation-only changes, inspect the diff and run `git diff --check`;
-analysis and tests are unnecessary unless generated docs or executable examples
-changed. Report only checks actually run, categorized as static checks, tests,
-builds, or runtime verification.
+For a code change within one member, run root analysis and the relevant tests.
+Use the full Melos command for cross-workspace code changes. Flutter tests use
+`--no-pub`, so resolve dependencies before testing after dependency changes.
+
+For documentation-only changes analysis and tests are unnecessary. Report only
+checks actually run, categorized as static checks, tests, builds, or runtime
+verification.
+
+## Communication style
+
+Avoid em dashes and unnecessary comments in code and user-facing text. Do not
+use meaningless expressive language.
+
+When unsure about something, do not guess and ask user instead.

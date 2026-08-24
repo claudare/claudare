@@ -1,62 +1,39 @@
 # Claudare
 
-Claudare is a Dart Pub workspace developing a reusable core for Dart and
-Flutter applications. Core is a logical layer that will span multiple packages.
-It currently includes CQRS, common async coordination, causal, pagination, and
-serialization primitives, SQLite isolation, logging, IDs, time, and small CRDT
-helpers across shared packages.
+Claudare is exploring a family of local-first applications for personal data.
+The long-term goal is software that works offline across mobile and desktop,
+does not require a central application server, and can eventually synchronize
+encrypted data between devices controlled by the user.
 
-`apps/notes` is the first prototype consumer of that infrastructure. It exists
-to exercise core behavior through a real Flutter application. It is not the
-definition of Claudare's architecture or a promise that future applications
-will use the same domain model, storage layout, or UI.
+## Current status
 
-It is not an offline-sync or encrypted-notes product yet. There is no working
-replication, device enrollment, event encryption, blob storage, or backup.
-Those boundaries are intentional documentation constraints: do not describe
-them as implemented without corresponding source and validation evidence.
+Claudare is a development prototype, not a finished local-first product.
+`apps/notes` is the first Flutter application and exists to exercise the shared
+packages through a real consumer. Its note domain, storage layout, and user
+interface are examples, not the architectural center of the repository.
 
-## Workspace map
+The current code supports local event-sourced application development. It does
+not implement network transport, device identity or enrollment, multi-device
+convergence, encryption, blob storage, or backup. The replicated-command staging
+primitives in `cqrs` are storage building blocks, not a working synchronization
+system.
 
-| Path                        | Purpose                                                                        |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| `packages/cqrs`             | CQRS portion of the reusable core                                              |
-| `packages/common`           | Shared async coordination, causal, pagination, and serialization primitives     |
-| `packages/crdt`             | Timestamp-based CRDT value helpers                                             |
-| `packages/id_generator`     | 128-bit ID generator contract and implementations                              |
-| `packages/time_provider`    | Time provider contract and implementations                                     |
-| `packages/queue`            | Multiple queue implementations                                                 |
-| `packages/isolate_sqlite`   | SQLite connection owner running database callbacks in a dedicated isolate      |
-| `packages/claudare_logging` | Shared explicit logging abstraction                                            |
-| `apps/notes`                | First Flutter prototype consumer of the core packages                          |
-| `docs`                      | Source-backed architecture, implementation, security, and improvement guidance |
+## Documentation
 
-The root `pubspec.yaml` discovers `apps/*` and `packages/*`. Every member uses
-`resolution: workspace`; compatible version constraints resolve other members
-locally. Pub owns one root lockfile.
+- [App Development Guide](docs/APP_DEVELOPMENT_GUIDE.md) explains how Flutter
+  applications compose and consume the shared packages.
+- [Implementation Details](docs/IMPLEMENTATION_DETAILS.md) describes package
+  ownership and the implemented architecture.
+- [Security](docs/SECURITY.md) defines the current security posture and the
+  claims the project cannot yet make.
+- [AGENTS.md](AGENTS.md) contains repository workflow rules for AI agents.
+- [CONVENTIONS.md](CONVENTIONS.md) contains durable coding conventions for
+  shared code.
 
-## Start here
+## Setup
 
-Read these documents in order when working on the repository:
-
-1. [AGENTS.md](AGENTS.md) for repository rules and validation boundaries.
-2. [Core wiring conventions](CONVENTIONS.md) for contracts, implementations,
-   errors, and code-writing practices.
-3. [Core architecture](docs/ARCHITECTURE_COMMON.md) for the reusable common,
-   CQRS, CRDT, SQLite, and logging contracts.
-4. [Application architecture](docs/ARCHITECTURE_APPS.md) for how an application
-   composes and consumes the core.
-5. [Application patterns](docs/APP_PATTERNS.md) for event codecs and their
-   application-owned layout.
-6. [Implementation](docs/IMPLEMENTATION.md) for actual behavior and known
-   limitations.
-7. [Security](docs/SECURITY.md) before making confidentiality, sync, or
-   identity claims.
-8. [Improvements](docs/IMPROVEMENTS.md) for source-backed next work.
-
-## Setup and run
-
-FVM must be installed and on `PATH`. From the workspace root:
+Install [FVM](https://fvm.app/) and make it available on `PATH`. From the
+workspace root, install the pinned SDK and resolve all workspace dependencies:
 
 ```sh
 fvm install
@@ -64,47 +41,25 @@ fvm flutter pub get
 fvm flutter doctor
 ```
 
-Run the notes prototype with the pinned Flutter SDK:
+## Run and validate
+
+Run the notes prototype:
 
 ```sh
 cd apps/notes
 fvm flutter run
 ```
 
-## Validate
-
-For a code change, analyze the workspace and run the relevant tests. The full
-Melos test command runs Dart package tests in parallel, then Flutter app tests.
+Analyze the whole workspace and run all Dart and Flutter tests from the root:
 
 ```sh
 fvm dart analyze
-fvm dart run melos run test
+fvm dart run melos test
 ```
 
-For dependency or workspace changes, first resolve from the root and confirm
-the discovered members:
+After workspace or dependency changes, also verify discovery:
 
 ```sh
 fvm flutter pub get
 fvm dart pub workspace list
-fvm dart analyze
-fvm dart run melos run test
 ```
-
-Flutter tests run with `--no-pub` to keep their output concise. After changing
-dependencies, run `fvm flutter pub get` or `fvm dart run melos bootstrap` before
-testing.
-
-For documentation-only changes, inspect the diff and run:
-
-```sh
-git diff --check
-```
-
-## Pub workflow
-
-Add a dependency to the member that imports it. Use `fvm dart pub` for plain
-Dart packages and `fvm flutter pub` for Flutter applications. Do not manually
-edit `pubspec.lock`, use relative `path:` dependencies between members, or run
-separate root-level resolves for each member. After changing dependencies,
-resolve the mixed workspace from the root with `fvm flutter pub get`.
