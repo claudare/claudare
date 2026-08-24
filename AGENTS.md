@@ -37,10 +37,10 @@ These instructions apply to the entire repository.
   refactor unrelated existing deviations.
 - Use the logger from `claudare_logging`. There is no global logger. Do not add
   ad hoc prints.
-- Breaking changes are allowed as the project is under development. Do not
-  add compatibility paths.
+- Breaking changes are allowed as the project is under development. Do not add
+  compatibility paths.
 - Keep shared analyzer policy at the repository root without member overrides.
-- Use `///` to document key classes and interfaces. Use `[]` to reference code. 
+- Use `///` to document key classes and interfaces. Use `[]` to reference code.
   Keep documentation short and to the point.
 
 ## Documentation
@@ -86,6 +86,6 @@ verification.
 ## Communication style
 
 Avoid em dashes and unnecessary comments in code and user-facing text. Do not
-use meaningless expressive language.
+use meaningless expressive language. Be concise when responding.
 
 When unsure about something, do not guess and ask user instead.
