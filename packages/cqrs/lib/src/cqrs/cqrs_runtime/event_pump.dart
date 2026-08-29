@@ -4,6 +4,7 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/projection_page_adapter.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/local_event.dart';
+import 'package:cqrs/src/cqrs/exception/cqrs_projection_failure.dart';
 
 typedef AppliedEventReaderFactory =
     PaginatedReader<LocalEvent> Function(int localSequenceCursor);
@@ -83,7 +84,11 @@ final class EventPump {
       completer.complete();
     } catch (error, stackTrace) {
       _active = null;
-      completer.completeError(error, stackTrace);
+      final failure = switch (error) {
+        CqrsProjectionFailure() => error,
+        _ => CqrsProjectionFailure([(error: error, stackTrace: stackTrace)]),
+      };
+      completer.completeError(failure, failure.stackTrace);
     }
   }
 
@@ -133,29 +138,23 @@ final class EventPump {
   }
 
   Future<void> _applyPage(List<DecodedLocalEvent> page) async {
-    _PageFailure? firstFailure;
+    final results = <Future<CqrsProjectionError?>>[];
 
-    Future<void> apply(PreparedProjectionPageAdapter projection) async {
+    Future<CqrsProjectionError?> apply(
+      PreparedProjectionPageAdapter projection,
+    ) async {
       try {
         await projection.applyPage(page);
+        return null;
       } catch (error, stackTrace) {
-        firstFailure ??= _PageFailure(error, stackTrace);
+        return (error: error, stackTrace: stackTrace);
       }
     }
 
-    // Run all projections in parallel
-    await Future.wait([
-      for (final projection in _projections) apply(projection),
-    ]);
-    firstFailure?.rethrowNow();
+    for (final projection in _projections) {
+      results.add(apply(projection));
+    }
+    final errors = (await Future.wait(results)).nonNulls.toList();
+    if (errors.isNotEmpty) throw CqrsProjectionFailure(errors);
   }
-}
-
-final class _PageFailure {
-  final Object error;
-  final StackTrace stackTrace;
-
-  const _PageFailure(this.error, this.stackTrace);
-
-  Never rethrowNow() => Error.throwWithStackTrace(error, stackTrace);
 }

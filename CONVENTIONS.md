@@ -34,9 +34,9 @@ the shared packages but does not define their architecture or APIs.
 
 ## Errors and invariants
 
-- Treat `Error` as fatal and let it reach the application boundary. Use an
-  `Exception` for validation, rejected commands, stale state, and other expected
-  non-fatal outcomes.
+- Unless specified explicity, treat `Error` as fatal and let it reach the
+  application boundary. Use an `Exception` for validation, rejected commands,
+  stale state, and other expected non-fatal outcomes.
 - `CommandException` is the conventional CQRS command-rejection type, but
   applications may use another `Exception`.
 - Handle an `Exception` only where recovery, reporting, or translation is

@@ -194,18 +194,18 @@ void main() {
       await runtime.eventStore.migrate();
       await _appendDirect(runtime.eventStore, 'first');
       await _appendDirect(runtime.eventStore, 'second', streamVersion: 1);
-      final emitted = <CqrsRuntimeFailure>[];
+      final emitted = <CqrsProjectionFailure>[];
       runtime.failures.listen(emitted.add);
 
       final initialization = await _capture(runtime.initialize());
       await Future<void>.delayed(Duration.zero);
 
-      expect(initialization.error, isA<CqrsRuntimeFailure>());
-      final failure = initialization.error as CqrsRuntimeFailure;
-      expect(failure.error, same(projectionError));
+      expect(initialization.error, isA<CqrsProjectionFailure>());
+      final failure = initialization.error as CqrsProjectionFailure;
+      expect(failure.errors.single.error, same(projectionError));
       expect(
         initialization.stackTrace.toString(),
-        failure.stackTrace.toString(),
+        failure.errors.single.stackTrace.toString(),
       );
       expect(runtime.failure, same(failure));
       expect(emitted, [same(failure)]);
@@ -305,7 +305,7 @@ void main() {
       eventDatabase: MemoryEventDatabase(),
       projection: projection,
     );
-    final emitted = <CqrsRuntimeFailure>[];
+    final emitted = <CqrsProjectionFailure>[];
     runtime.failures.listen(emitted.add);
     await runtime.initialize();
     final projectionFailure = StateError('projection failed');
@@ -314,9 +314,9 @@ void main() {
 
     final result = await _capture(runtime.pump());
     await Future<void>.delayed(Duration.zero);
-    final failure = result.error as CqrsRuntimeFailure;
+    final failure = result.error as CqrsProjectionFailure;
 
-    expect(failure.error, same(projectionFailure));
+    expect(failure.errors.single.error, same(projectionFailure));
     expect(result.stackTrace.toString(), failure.stackTrace.toString());
     expect(runtime.failure, same(failure));
     expect(emitted, [same(failure)]);
@@ -364,9 +364,9 @@ void main() {
     projection.failure = pumpFailure;
 
     final result = await _capture(runtime.recreateProjections());
-    final failure = result.error as CqrsRuntimeFailure;
+    final failure = result.error as CqrsProjectionFailure;
 
-    expect(failure.error, same(pumpFailure));
+    expect(failure.errors.single.error, same(pumpFailure));
     expect(runtime.failure, same(failure));
     expect((await _capture(runtime.pump())).error, same(failure));
     await runtime.close();

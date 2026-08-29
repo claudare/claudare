@@ -1,3 +1,4 @@
+import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/command/create_note.dart';
@@ -38,18 +39,6 @@ class _LoadingScreenState extends State<LoadingScreen> {
         searchDbFilepath: path.join(baseDir, 'search.db'),
       );
 
-      // FIXME: error handling is missing pre-rework
-      // The application should go to an error state
-      // application.setFatalErrorHandler((error) {
-      //   application.logger.error(
-      //     'FATAL ERROR WAS DETETCED. error: $error, isMounted: $mounted',
-      //     error,
-      //   );
-
-      //   if (!mounted) return;
-      //   navigateToErrorScreen(context, error.toString());
-      // });
-
       try {
         await application.commandExecute(
           const CreateNote(),
@@ -80,13 +69,17 @@ class _LoadingScreenState extends State<LoadingScreen> {
         ),
       );
     } on Exception catch (error, stackTrace) {
+      if (error is CqrsProjectionFailure &&
+          identical(application.runtimeFailure, error)) {
+        return;
+      }
       if (!mounted) return;
       application.logger.error(
         'error in initialization: $error',
         error,
         stackTrace,
       );
-      navigateToErrorScreen(context, error.toString());
+      navigateToErrorScreen(context, error, stackTrace);
     }
   }
 

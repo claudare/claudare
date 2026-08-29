@@ -18,6 +18,27 @@ void main() {
     fixture = await _PumpFixture.create();
   });
 
+  group('projection failure', () {
+    test('requires errors and keeps them unmodifiable', () {
+      expect(() => CqrsProjectionFailure(const []), throwsArgumentError);
+
+      final errors = [
+        (error: StateError('first'), stackTrace: StackTrace.current),
+      ];
+      final failure = CqrsProjectionFailure(errors);
+      errors.clear();
+
+      expect(failure.errors, hasLength(1));
+      expect(
+        () => failure.errors.add((
+          error: StateError('second'),
+          stackTrace: StackTrace.current,
+        )),
+        throwsUnsupportedError,
+      );
+    });
+  });
+
   group('routing and page processing', () {
     test('starts after the minimum projection position', () async {
       final first = _TestProjection<String>(name: 'first');
@@ -75,7 +96,16 @@ void main() {
       final source = _ReaderSource([fixture.intEvent(1, 1)]);
       final pump = fixture.pump(source, [await fixture.adapter(projection)]);
 
-      await expectLater(pump.pump(), throwsA(isA<EventCodecException>()));
+      await expectLater(
+        pump.pump(),
+        throwsA(
+          isA<CqrsProjectionFailure>().having(
+            (failure) => failure.errors.single.error,
+            'error',
+            isA<EventCodecException>(),
+          ),
+        ),
+      );
 
       expect(await fixture.rawPosition('typed'), isA<ProjectionInconsistent>());
     });
@@ -161,10 +191,10 @@ void main() {
           await fixture.adapter(projection, position: testCase.start),
         ]);
 
-        final failure = await _captureFailure(pump.pump());
+        final failure = _projectionFailure(await _captureFailure(pump.pump()));
 
         expect(
-          failure,
+          failure.errors.single.error,
           isA<StateError>().having(
             (error) => error.message,
             'message',
@@ -188,10 +218,10 @@ void main() {
       ], pageSize: 1);
       final pump = fixture.pump(source, [await fixture.adapter(projection)]);
 
-      final failure = await _captureFailure(pump.pump());
+      final failure = _projectionFailure(await _captureFailure(pump.pump()));
 
       expect(
-        failure,
+        failure.errors.single.error,
         isA<StateError>().having(
           (error) => error.message,
           'message',
@@ -475,9 +505,10 @@ void main() {
       final closedPump = pump.pump();
       releaseRead.complete();
 
-      expect(await _captureFailure(active), same(failure));
-      expect(await _captureFailure(stopping), same(failure));
-      expect(await _captureFailure(closedPump), same(failure));
+      final activeFailure = _projectionFailure(await _captureFailure(active));
+      expect(activeFailure.errors.single.error, same(failure));
+      expect(await _captureFailure(stopping), same(activeFailure));
+      expect(await _captureFailure(closedPump), same(activeFailure));
       await pump.stop();
       await pump.pump();
       expect(source.readerStarts, [0]);
@@ -521,7 +552,12 @@ void main() {
 
       final activeFailure = await _captureFailureWithStack(pump.pump());
 
-      expect(activeFailure.error, same(failure));
+      final projectionFailure = _projectionFailure(activeFailure.error);
+      expect(projectionFailure.errors.single.error, same(failure));
+      expect(
+        projectionFailure.errors.single.stackTrace.toString(),
+        activeFailure.stackTrace.toString(),
+      );
       expect(
         await fixture.rawPosition('projection-failure'),
         isA<ProjectionInconsistent>(),
@@ -559,8 +595,57 @@ void main() {
       expect(settled, isFalse);
       releaseOther.complete();
 
-      expect(await observed, same(failure));
+      final projectionFailure = _projectionFailure((await observed)!);
+      expect(projectionFailure.errors.single.error, same(failure));
       expect(await fixture.position('successful'), 1);
+    });
+
+    test('aggregates page failures in projection registration order', () async {
+      final firstFailure = StateError('first failed');
+      final secondFailure = StateError('second failed');
+      final firstStarted = Completer<void>();
+      final secondSettled = Completer<void>();
+      final releaseFirst = Completer<void>();
+      final first = _TestProjection<String>(
+        name: 'first-failure',
+        onApply: (_, _, _) async {
+          firstStarted.complete();
+          await releaseFirst.future;
+          throw firstFailure;
+        },
+      );
+      final second = _TestProjection<String>(
+        name: 'second-failure',
+        onApply: (_, _, _) async {
+          secondSettled.complete();
+          throw secondFailure;
+        },
+      );
+      final source = _ReaderSource([
+        fixture.stringEvent(1, 'one'),
+        fixture.stringEvent(2, 'two'),
+      ], pageSize: 1);
+      final pump = fixture.pump(source, [
+        await fixture.adapter(first),
+        await fixture.adapter(second),
+      ]);
+
+      final pumping = pump.pump();
+      await Future.wait([firstStarted.future, secondSettled.future]);
+      final joined = pump.pump();
+      final stopping = pump.stop();
+      expect(joined, same(pumping));
+      expect(stopping, same(pumping));
+      releaseFirst.complete();
+      final failure = _projectionFailure(await _captureFailure(pumping));
+
+      expect(failure.errors.map((entry) => entry.error), [
+        same(firstFailure),
+        same(secondFailure),
+      ]);
+      expect(await _captureFailure(joined), same(failure));
+      expect(await _captureFailure(stopping), same(failure));
+      expect(source.readCount, 1);
     });
 
     test('does not read a later page after failure', () async {
@@ -575,7 +660,10 @@ void main() {
       ], pageSize: 1);
       final pump = fixture.pump(source, [await fixture.adapter(projection)]);
 
-      expect(await _captureFailure(pump.pump()), same(failure));
+      final projectionFailure = _projectionFailure(
+        await _captureFailure(pump.pump()),
+      );
+      expect(projectionFailure.errors.single.error, same(failure));
       expect(source.readCount, 1);
     });
   });
@@ -601,6 +689,11 @@ Future<Object> _captureFailure(Future<void> future) async {
     return error;
   }
   fail('Expected the future to fail');
+}
+
+CqrsProjectionFailure _projectionFailure(Object error) {
+  expect(error, isA<CqrsProjectionFailure>());
+  return error as CqrsProjectionFailure;
 }
 
 Future<({Object error, StackTrace stackTrace})> _captureFailureWithStack(

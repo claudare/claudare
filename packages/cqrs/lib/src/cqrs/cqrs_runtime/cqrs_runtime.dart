@@ -8,7 +8,7 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_lifecycle.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/event_pump.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/exception/cqrs_runtime_failure.dart';
+import 'package:cqrs/src/cqrs/exception/cqrs_projection_failure.dart';
 import 'package:cqrs/src/cqrs/projection/projection_registry.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
 import 'package:time_provider/time_provider.dart';
@@ -46,8 +46,8 @@ final class CqrsRuntime {
   }
 
   TimeProvider get timeProvider => _dependencies.timeProvider;
-  CqrsRuntimeFailure? get failure => _lifecycle.failure;
-  Stream<CqrsRuntimeFailure> get failures => _lifecycle.failures;
+  CqrsProjectionFailure? get failure => _lifecycle.failure;
+  Stream<CqrsProjectionFailure> get failures => _lifecycle.failures;
 
   Future<void> initialize() {
     _lifecycle.beginInitialization();
@@ -151,8 +151,8 @@ final class CqrsRuntime {
   Future<void> _pumpEventPump(EventPump eventPump) async {
     try {
       await eventPump.pump();
-    } catch (error, stackTrace) {
-      final failure = _lifecycle.recordPumpFailure(error, stackTrace);
+    } on CqrsProjectionFailure catch (error) {
+      final failure = _lifecycle.recordPumpFailure(error);
       Error.throwWithStackTrace(failure, failure.stackTrace);
     }
   }
@@ -160,8 +160,8 @@ final class CqrsRuntime {
   Future<void> _stopEventPump(EventPump eventPump) async {
     try {
       await eventPump.stop();
-    } catch (error, stackTrace) {
-      final failure = _lifecycle.recordPumpFailure(error, stackTrace);
+    } on CqrsProjectionFailure catch (error) {
+      final failure = _lifecycle.recordPumpFailure(error);
       Error.throwWithStackTrace(failure, failure.stackTrace);
     }
   }

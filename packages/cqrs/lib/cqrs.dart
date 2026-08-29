@@ -45,7 +45,7 @@ export 'src/cqrs/stream_route/stream_route_wildcard.dart';
 export 'src/cqrs/exception/command_codec_exception.dart';
 export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';
-export 'src/cqrs/exception/cqrs_runtime_failure.dart';
+export 'src/cqrs/exception/cqrs_projection_failure.dart';
 export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';

@@ -1,3 +1,4 @@
+import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
@@ -29,12 +30,20 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _resetApplication(NoteApplication application) async {
-    await application.eventStore.reset();
-    await application.recreateProjections();
+    try {
+      await application.eventStore.reset();
+      await application.recreateProjections();
+    } on CqrsProjectionFailure catch (error) {
+      if (!identical(application.runtimeFailure, error)) rethrow;
+    }
   }
 
   Future<void> _reloadAllProjections(NoteApplication application) async {
-    await application.recreateProjections();
+    try {
+      await application.recreateProjections();
+    } on CqrsProjectionFailure catch (error) {
+      if (!identical(application.runtimeFailure, error)) rethrow;
+    }
   }
 
   @override

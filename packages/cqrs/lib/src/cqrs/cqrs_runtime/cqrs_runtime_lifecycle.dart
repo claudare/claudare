@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cqrs/src/cqrs/exception/cqrs_runtime_failure.dart';
+import 'package:cqrs/src/cqrs/exception/cqrs_projection_failure.dart';
 
 enum _CqrsRuntimePhase {
   uninitialized,
@@ -12,14 +12,14 @@ enum _CqrsRuntimePhase {
 }
 
 final class CqrsRuntimeLifecycle {
-  final StreamController<CqrsRuntimeFailure> _failureController =
-      StreamController<CqrsRuntimeFailure>.broadcast(sync: false);
+  final StreamController<CqrsProjectionFailure> _failureController =
+      StreamController<CqrsProjectionFailure>.broadcast(sync: false);
 
   _CqrsRuntimePhase _phase = _CqrsRuntimePhase.uninitialized;
-  CqrsRuntimeFailure? _failure;
+  CqrsProjectionFailure? _failure;
 
-  CqrsRuntimeFailure? get failure => _failure;
-  Stream<CqrsRuntimeFailure> get failures => _failureController.stream;
+  CqrsProjectionFailure? get failure => _failure;
+  Stream<CqrsProjectionFailure> get failures => _failureController.stream;
   bool get isRunning => _phase == _CqrsRuntimePhase.running;
 
   void beginInitialization() {
@@ -59,7 +59,7 @@ final class CqrsRuntimeLifecycle {
     }
   }
 
-  CqrsRuntimeFailure? admitWork(String operation) {
+  CqrsProjectionFailure? admitWork(String operation) {
     switch (_phase) {
       case _CqrsRuntimePhase.running:
         return null;
@@ -74,11 +74,10 @@ final class CqrsRuntimeLifecycle {
     }
   }
 
-  CqrsRuntimeFailure recordPumpFailure(Object error, StackTrace stackTrace) {
+  CqrsProjectionFailure recordPumpFailure(CqrsProjectionFailure failure) {
     final existing = _failure;
     if (existing != null) return existing;
 
-    final failure = CqrsRuntimeFailure(error, stackTrace);
     _failure = failure;
     if (_phase != _CqrsRuntimePhase.closing &&
         _phase != _CqrsRuntimePhase.closed) {

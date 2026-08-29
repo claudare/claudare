@@ -100,8 +100,8 @@ class NoteApplication {
 
   Future<void> pump() => _cqrsRuntime.pump();
 
-  CqrsRuntimeFailure? get runtimeFailure => _cqrsRuntime.failure;
-  Stream<CqrsRuntimeFailure> get runtimeFailures => _cqrsRuntime.failures;
+  CqrsProjectionFailure? get runtimeFailure => _cqrsRuntime.failure;
+  Stream<CqrsProjectionFailure> get runtimeFailures => _cqrsRuntime.failures;
 
   Future<void> initialize({
     required String notesDbFilepath,
