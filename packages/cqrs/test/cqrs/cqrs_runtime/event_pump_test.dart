@@ -388,6 +388,102 @@ void main() {
     });
   });
 
+  group('stopping', () {
+    test('stops an idle pump and makes later calls no-ops', () async {
+      final source = _ReaderSource(const []);
+      final pump = fixture.pump(source, [
+        await fixture.adapter(_TestProjection<String>(name: 'idle-stop')),
+      ]);
+
+      await pump.stop();
+      await pump.pump();
+      await pump.stop();
+
+      expect(source.readerStarts, isEmpty);
+      expect(source.readCount, 0);
+    });
+
+    test('shares the active future with stop and closed pump calls', () async {
+      final readStarted = Completer<void>();
+      final releaseRead = Completer<void>();
+      final source = _ReaderSource(
+        const [],
+        onRead: (_, _) async {
+          readStarted.complete();
+          await releaseRead.future;
+        },
+      );
+      final pump = fixture.pump(source, [
+        await fixture.adapter(_TestProjection<String>(name: 'active-stop')),
+      ]);
+
+      final active = pump.pump();
+      await readStarted.future;
+      final stopping = pump.stop();
+      final closedPump = pump.pump();
+
+      expect(stopping, same(active));
+      expect(closedPump, same(active));
+
+      releaseRead.complete();
+      await active;
+    });
+
+    test('finishes the active scan and suppresses a trailing scan', () async {
+      final applyStarted = Completer<void>();
+      final releaseApply = Completer<void>();
+      final projection = _TestProjection<String>(
+        name: 'stop-trailing',
+        onApply: (_, _, _) async {
+          applyStarted.complete();
+          await releaseApply.future;
+        },
+      );
+      final source = _ReaderSource([fixture.stringEvent(1, 'one')]);
+      final pump = fixture.pump(source, [await fixture.adapter(projection)]);
+
+      final active = pump.pump();
+      await applyStarted.future;
+      expect(pump.pump(), same(active));
+      expect(pump.stop(), same(active));
+      releaseApply.complete();
+      await active;
+
+      expect(projection.events, ['one']);
+      expect(source.readerStarts, [0]);
+    });
+
+    test('propagates an active failure then becomes a no-op', () async {
+      final failure = StateError('scan failed');
+      final readStarted = Completer<void>();
+      final releaseRead = Completer<void>();
+      final source = _ReaderSource(
+        const [],
+        onRead: (_, _) async {
+          readStarted.complete();
+          await releaseRead.future;
+          throw failure;
+        },
+      );
+      final pump = fixture.pump(source, [
+        await fixture.adapter(_TestProjection<String>(name: 'failed-stop')),
+      ]);
+
+      final active = pump.pump();
+      await readStarted.future;
+      final stopping = pump.stop();
+      final closedPump = pump.pump();
+      releaseRead.complete();
+
+      expect(await _captureFailure(active), same(failure));
+      expect(await _captureFailure(stopping), same(failure));
+      expect(await _captureFailure(closedPump), same(failure));
+      await pump.stop();
+      await pump.pump();
+      expect(source.readerStarts, [0]);
+    });
+  });
+
   group('callbacks and page failures', () {
     test('calls back once per matched page after progress commits', () async {
       final observedPositions = <Future<int>>[];

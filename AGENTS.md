@@ -49,11 +49,16 @@ These instructions apply to the entire repository.
   enrollment, encryption, blob storage, backup, or production security. They are
   not implemented.
 - Treat root and package `README.md` files and `docs/*.md` as orientation
-  material. State ownership, supported behavior, limitations, and only
-  validation evidence that was actually collected.
-- Verify source before changing implementation status. Update relevant root
-  documentation when public behavior, ownership, validation, or security posture
-  changes, and fix links when documents move.
+  overviews, not in-depth implementation guides. State ownership, supported
+  behavior, significant limitations, setup, security posture, and only
+  validation evidence that was actually collected in the relevant documentation.
+- During implementation work, update maintained documentation only when one of
+  those overview-level facts changes. Do not add internal algorithms, lifecycle
+  transitions, coordination details, or similar implementation specifics unless
+  documentation was explicitly requested. When unsure, ask before editing
+  documentation.
+- Verify source before changing implementation status, and fix links when
+  documents move.
 - Keep normative coding conventions in `CONVENTIONS.md` rather than duplicating
   them elsewhere.
 

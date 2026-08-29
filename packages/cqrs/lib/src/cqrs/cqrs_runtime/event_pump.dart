@@ -13,8 +13,11 @@ typedef AppliedEventReaderFactory =
 ///
 /// Create one pump after preparing every projection and call [pump] whenever
 /// durable history may have advanced. Callers do not pass events. Concurrent
-/// calls share the active work and request another scan. Durable local
-/// sequences must be contiguous from the scan's starting position.
+/// calls share the active work and request another scan. Call [stop] before
+/// replacing the prepared projections or closing their owner. Stopping lets an
+/// active scan finish, suppresses its trailing scan, and permanently closes the
+/// pump. Durable local sequences must be contiguous from the scan's starting
+/// position.
 ///
 /// ```dart
 /// final projections = await projectionRegistry.prepare(
@@ -35,6 +38,7 @@ final class EventPump {
 
   Future<void>? _active;
   bool _scanRequested = false;
+  bool _closed = false;
 
   EventPump({
     required AppliedEventReaderFactory createReader,
@@ -45,6 +49,8 @@ final class EventPump {
        _projections = List.unmodifiable(projections);
 
   Future<void> pump() {
+    if (_closed) return _active ?? Future<void>.value();
+
     _scanRequested = true;
     final active = _active;
     if (active != null) return active;
@@ -53,6 +59,16 @@ final class EventPump {
     _active = completer.future;
     _drain(completer);
     return completer.future;
+  }
+
+  /// Permanently closes this pump after its active scan settles.
+  ///
+  /// A requested trailing scan is suppressed. Calls to [pump] and [stop] share
+  /// the active future while it is pending and become no-ops after it settles.
+  Future<void> stop() {
+    _closed = true;
+    _scanRequested = false;
+    return _active ?? Future<void>.value();
   }
 
   Future<void> _drain(Completer<void> completer) async {

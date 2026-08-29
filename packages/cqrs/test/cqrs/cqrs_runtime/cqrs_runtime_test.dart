@@ -39,36 +39,15 @@ void main() {
     expect(runtime.close, throwsStateError);
   });
 
-  test('initialization can only be requested once', () async {
-    final migrationStarted = Completer<void>();
-    final releaseMigration = Completer<void>();
-    final runtime = _runtime(
-      eventDatabase: _BlockingMigrationEventDatabase(
-        migrationStarted,
-        releaseMigration,
-      ),
-      projection: _RecordingProjection(),
-    );
-
-    final initialization = runtime.initialize();
-    await migrationStarted.future;
-    expect(runtime.initialize, throwsStateError);
-    expect(runtime.pump, throwsStateError);
-    releaseMigration.complete();
-    await initialization;
-    expect(runtime.initialize, throwsStateError);
-    await runtime.close();
-  });
-
-  test('startup pump uses the rebuilding lifecycle phase', () async {
-    final rebuildStarted = Completer<void>();
-    final releaseRebuild = Completer<void>();
+  test('initializing phase disallows other operations', () async {
+    final catchUpStarted = Completer<void>();
+    final releaseCatchUp = Completer<void>();
     final runtime = _runtime(
       eventDatabase: MemoryEventDatabase(),
       projection: _RecordingProjection(
         onApply: (_) async {
-          rebuildStarted.complete();
-          await releaseRebuild.future;
+          catchUpStarted.complete();
+          await releaseCatchUp.future;
         },
       ),
     );
@@ -76,7 +55,7 @@ void main() {
     await _appendDirect(runtime.eventStore, 'startup');
 
     final initialization = runtime.initialize();
-    await rebuildStarted.future;
+    await catchUpStarted.future;
 
     expect(runtime.initialize, throwsStateError);
     expect(
@@ -87,7 +66,7 @@ void main() {
     expect(runtime.recreateProjections, throwsStateError);
     expect(runtime.close, throwsStateError);
 
-    releaseRebuild.complete();
+    releaseCatchUp.complete();
     await initialization;
     await runtime.close();
   });
@@ -372,6 +351,27 @@ void main() {
     await runtime.pump();
   });
 
+  test('replacement pump failure is terminal', () async {
+    final projection = _RecordingProjection();
+    final runtime = _runtime(
+      eventDatabase: MemoryEventDatabase(),
+      projection: projection,
+    );
+    await runtime.eventStore.migrate();
+    await _appendDirect(runtime.eventStore, 'existing');
+    await runtime.initialize();
+    final pumpFailure = StateError('replacement pump failed');
+    projection.failure = pumpFailure;
+
+    final result = await _capture(runtime.recreateProjections());
+    final failure = result.error as CqrsRuntimeFailure;
+
+    expect(failure.error, same(pumpFailure));
+    expect(runtime.failure, same(failure));
+    expect((await _capture(runtime.pump())).error, same(failure));
+    await runtime.close();
+  });
+
   test('promoted events use the signal-driven durable pump', () async {
     final projection = _RecordingProjection();
     final runtime = _runtime(
@@ -411,7 +411,7 @@ void main() {
   });
 
   test(
-    'rebuild waits for active pumping and rejects overlapping work',
+    'recreation waits for active pumping and rejects overlapping work',
     () async {
       final firstStarted = Completer<void>();
       final releaseFirst = Completer<void>();
@@ -444,6 +444,7 @@ void main() {
       expect(runtime.pump, throwsStateError);
       expect(runtime.recreateProjections, throwsStateError);
       expect(runtime.close, throwsStateError);
+      expect(projection.resetCount, 1);
 
       releaseFirst.complete();
 
@@ -511,6 +512,37 @@ void main() {
     await runtime.close();
     expect(eventDatabase.closeCount, 1);
     expect(runtime.close, throwsStateError);
+    expect(eventDatabase.closeCount, 1);
+  });
+
+  test('close settles the current pump before closing EventStore', () async {
+    final applyStarted = Completer<void>();
+    final releaseApply = Completer<void>();
+    final projection = _RecordingProjection(
+      onApply: (_) async {
+        applyStarted.complete();
+        await releaseApply.future;
+      },
+    );
+    final eventDatabase = _ClosingEventDatabase();
+    final runtime = _runtime(
+      eventDatabase: eventDatabase,
+      projection: projection,
+    );
+    await runtime.initialize();
+
+    await runtime.execute(const _AppendCommand(), const _Input('active'));
+    await applyStarted.future;
+    var closeCompleted = false;
+    final closing = runtime.close().then((_) => closeCompleted = true);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(closeCompleted, isFalse);
+    expect(eventDatabase.closeCount, 0);
+    expect(runtime.pump, throwsStateError);
+
+    releaseApply.complete();
+    await closing;
     expect(eventDatabase.closeCount, 1);
   });
 }

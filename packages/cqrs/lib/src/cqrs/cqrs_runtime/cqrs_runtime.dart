@@ -26,9 +26,6 @@ final class CqrsRuntime {
   late final CommandExecutor _commandExecutor;
   EventPump? _eventPump;
   StreamSubscription<void>? _appliedChangesSubscription;
-  Future<void> _exclusiveWork = Future<void>.value();
-  Future<void>? _scheduledPump;
-  bool _pumpStarted = false;
 
   CqrsRuntime({
     required CqrsRuntimeDependencies dependencies,
@@ -74,9 +71,8 @@ final class CqrsRuntime {
       _appliedChangesSubscription = eventStore.appliedChanges.listen(
         (_) => _handleAppliedChanges(),
       );
-      _lifecycle.beginInitialRebuild();
       await _pumpEventPump(_eventPump!);
-      _lifecycle.completeRebuilding();
+      _lifecycle.completeInitialization();
     } catch (error, stackTrace) {
       _lifecycle.beginInitializationFailureTeardown();
       await _teardown();
@@ -96,43 +92,13 @@ final class CqrsRuntime {
     return _commandExecutor.execute(command, input);
   }
 
-  // TODO: rework me greatly
   Future<void> pump() {
     final unavailable = _lifecycle.admitWork('pump projections');
     if (unavailable != null) {
       return Future<void>.error(unavailable, unavailable.stackTrace);
     }
 
-    final scheduled = _scheduledPump;
-    if (scheduled != null) {
-      if (_pumpStarted) {
-        final wakeup = _pumpEventPump(_eventPump!);
-        unawaited(
-          wakeup.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
-        );
-      }
-      return scheduled;
-    }
-
-    late final Future<void> result;
-    result = _enqueueExclusive(() async {
-      _pumpStarted = true;
-      try {
-        await _pumpEventPump(_eventPump!);
-      } finally {
-        _pumpStarted = false;
-      }
-    });
-    _scheduledPump = result;
-    result.then<void>(
-      (_) {
-        if (identical(_scheduledPump, result)) _scheduledPump = null;
-      },
-      onError: (Object _, StackTrace _) {
-        if (identical(_scheduledPump, result)) _scheduledPump = null;
-      },
-    );
-    return result;
+    return _pumpEventPump(_eventPump!);
   }
 
   Future<void> recreateProjections() {
@@ -141,31 +107,30 @@ final class CqrsRuntime {
       return Future<void>.error(unavailable, unavailable.stackTrace);
     }
 
-    _lifecycle.beginRebuilding();
+    _lifecycle.beginRecreation();
     return _recreateProjections();
   }
 
   Future<void> _recreateProjections() async {
     try {
-      await _enqueueExclusive(() async {
-        _dependencies.logger.info(
-          'runtime $runtimeName: recreating all projections',
-        );
-        _eventPump = EventPump(
-          createReader: eventStore.getAppliedEventReader,
-          eventRegistry: _eventRegistry,
-          projections: await _projectionRegistry.prepare(
-            _runtimeStore,
-            forceReset: true,
-          ),
-        );
-        await _pumpEventPump(_eventPump!);
-        _dependencies.logger.info(
-          'runtime $runtimeName: recreated all projections',
-        );
-      });
+      await _stopEventPump(_eventPump!);
+      _dependencies.logger.info(
+        'runtime $runtimeName: recreating all projections',
+      );
+      _eventPump = EventPump(
+        createReader: eventStore.getAppliedEventReader,
+        eventRegistry: _eventRegistry,
+        projections: await _projectionRegistry.prepare(
+          _runtimeStore,
+          forceReset: true,
+        ),
+      );
+      await _pumpEventPump(_eventPump!);
+      _dependencies.logger.info(
+        'runtime $runtimeName: recreated all projections',
+      );
     } finally {
-      _lifecycle.completeRebuilding();
+      _lifecycle.completeRecreation();
     }
   }
 
@@ -183,28 +148,18 @@ final class CqrsRuntime {
     }
   }
 
-  // TODO: abstract me
-  Future<void> _enqueueExclusive(Future<void> Function() action) {
-    final previous = _exclusiveWork;
-    final result = () async {
-      try {
-        await previous;
-      } catch (_) {
-        // A terminal failure is stored separately and must not poison cleanup.
-      }
-      final failure = _lifecycle.failure;
-      if (failure != null) {
-        Error.throwWithStackTrace(failure, failure.stackTrace);
-      }
-      await action();
-    }();
-    _exclusiveWork = result;
-    return result;
-  }
-
   Future<void> _pumpEventPump(EventPump eventPump) async {
     try {
       await eventPump.pump();
+    } catch (error, stackTrace) {
+      final failure = _lifecycle.recordPumpFailure(error, stackTrace);
+      Error.throwWithStackTrace(failure, failure.stackTrace);
+    }
+  }
+
+  Future<void> _stopEventPump(EventPump eventPump) async {
+    try {
+      await eventPump.stop();
     } catch (error, stackTrace) {
       final failure = _lifecycle.recordPumpFailure(error, stackTrace);
       Error.throwWithStackTrace(failure, failure.stackTrace);
@@ -217,10 +172,9 @@ final class CqrsRuntime {
   }
 
   Future<void> _teardown() async {
-    await _settle(_scheduledPump);
-    await _settle(_exclusiveWork);
     await _settle(_appliedChangesSubscription?.cancel());
-    await _settle(_exclusiveWork);
+    final eventPump = _eventPump;
+    if (eventPump != null) await _settle(eventPump.stop());
     try {
       await eventStore.close();
     } finally {
