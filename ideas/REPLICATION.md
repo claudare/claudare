@@ -6,19 +6,20 @@ implemented.
 
 ## Package boundaries
 
-| Package                  | Owns                                                                                                                                  | Does not own                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `device_identity`        | Device public keys, persistent local ID mappings, QR invitation data, and enrollment registration                                     | CQRS event storage, transport connections, membership policy, or replication |
-| `networking`             | Transport connections, connection addresses, connection-type factory selection, hosting, broadcasting, and inbound connection streams | Device identity, enrollment, retry policy, or replication protocol           |
-| system storage           | One separate SQLite handle shared by system subsystems, plus one adapter and migration table per subsystem                            | CQRS/runtime storage or application event history                            |
-| `cqrs`                   | Local event storage and database-local integer device IDs used by commands and version vectors                                        | Stable device identity, enrollment, discovery, or transport                  |
-| future replication layer | Identity-map exchange, local-ID translation, and transfer protocol coordination                                                       | Transport implementation, identity persistence, or retry policy              |
+| Package | Owns | Does not own |
+| --- | --- | --- |
+| `device_identity` | Device public keys and persistent local ID mappings | CQRS event storage, transport connections, peer registration, or replication |
+| `networking` | Transport connections, connection addresses, factory selection, hosting, broadcasting, and inbound connection streams | Device identity, enrollment, retry policy, or replication protocol |
+| `peers` | Peer registration, peer connection, public-key preambles, and host/broadcast coordination | Identity persistence, transport implementation, or replication |
+| system storage | One separate SQLite handle shared by system subsystems, plus one adapter and migration table per subsystem | CQRS/runtime storage or application event history |
+| `cqrs` | Local event storage and database-local integer device IDs used by commands and version vectors | Stable device identity, enrollment, discovery, or transport |
+| future replication layer | Identity-map exchange, local-ID translation, and transfer protocol coordination | Transport implementation, identity persistence, or retry policy |
 
 The replication layer sits above `networking` and `device_identity`. It must
 translate all received device IDs and version-vector keys through stable public
 keys before giving records to local CQRS storage.
 
-## Identity and enrollment
+## Identity
 
 ```dart
 /// A 32-byte public key encoded as a base64url string.
@@ -55,22 +56,6 @@ final class DeviceIdentityMap {
   const DeviceIdentityMap(Map<int, DevicePublicKey> entries);
 
   Map<int, DevicePublicKey> get entries;
-}
-```
-
-```dart
-/// Transfers an inviter identity and available connection addresses by QR.
-///
-/// Scanning registers [inviterPublicKey] locally. Reciprocal registration
-/// occurs over the later direct connection.
-final class PairingInvitation {
-  const PairingInvitation({
-    required this.inviterPublicKey,
-    required this.connectionAddresses,
-  });
-
-  final DevicePublicKey inviterPublicKey;
-  final List<ConnectionAddress> connectionAddresses;
 }
 ```
 
@@ -135,6 +120,92 @@ abstract interface class ConnectionFactoryRegistry {
 ```
 
 Retry policy and the decision to host or broadcast belong above networking.
+
+## Peers
+
+`peers` composes `device_identity` and `networking` without merging their
+ownership. It maintains one shared hosting and broadcast lifecycle while
+registration is active. Unknown inbound peers are registered and disconnected;
+known inbound peers are passed to the connection system as active channels.
+
+```dart
+/// Transfers an inviter identity and available connection addresses by QR.
+final class PairingInvitation {
+  const PairingInvitation({
+    required this.inviterPublicKey,
+    required this.connectionAddresses,
+  });
+
+  final DevicePublicKey inviterPublicKey;
+  final List<ConnectionAddress> connectionAddresses;
+}
+
+/// The first message on every raw peer channel.
+///
+/// This MVP only exchanges a public-key claim. It does not authenticate that
+/// claim or encrypt the channel.
+final class PeerPreamble {
+  const PeerPreamble(this.publicKey);
+
+  final DevicePublicKey publicKey;
+}
+
+/// An open channel to a registered peer after the preamble completes.
+final class PeerConnection {
+  const PeerConnection({
+    required this.publicKey,
+    required this.channel,
+    required this.disconnected,
+  });
+
+  final DevicePublicKey publicKey;
+  final StreamChannel<Uint8List> channel;
+
+  /// Completes when [channel] disconnects or fails.
+  final Future<void> disconnected;
+}
+
+/// Registers unknown peers through temporary channels.
+abstract interface class PeerRegistrar {
+  /// Starts hosting and broadcasting through every selected connection type.
+  ///
+  /// Returns a QR invitation containing the local key and hosted addresses.
+  Future<PairingInvitation> startRegistration(
+    Iterable<String> connectionTypes,
+  );
+
+  /// Accepts a scanned QR invitation and closes the temporary channel after
+  /// registration completes.
+  ///
+  /// The peer's preamble key must match [invitation.inviterPublicKey]. The
+  /// remote side receives this device's key and registers it in turn.
+  Future<void> acceptInvitation(PairingInvitation invitation);
+
+  /// Stops shared hosting, broadcasting, and new registration intake.
+  Future<void> close();
+}
+
+/// Connects to peers that are already registered locally.
+abstract interface class PeerConnector {
+  /// Actively connects to discovered addresses until a preamble claims
+  /// [publicKey], then emits the connection through [connections].
+  ///
+  /// Every invocation starts a new attempt from discovery. Call it again after
+  /// [PeerConnection.disconnected] completes to reconnect.
+  ///
+  /// Completes with an error if [publicKey] is not registered or no matching
+  /// connection can be established. Unmatched channels are closed.
+  Future<void> connect(DevicePublicKey publicKey);
+
+  /// Every established peer channel, whether dialed or accepted.
+  Stream<PeerConnection> get connections;
+}
+```
+
+`PeerConnector` receives discovered addresses from the active factories, such
+as mDNS or Bluetooth broadcasts. Subscribe to [PeerConnector.connections]
+before calling `connect`. It must only expose a channel after the peer has
+claimed a public key that is already registered locally.
 
 ## Limits
 
