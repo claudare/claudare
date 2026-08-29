@@ -35,8 +35,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
     try {
       final baseDir = await getApplicationDirectory();
       await application.initialize(
-        notesDbFilepath: path.join(baseDir, 'notes.db'),
-        searchDbFilepath: path.join(baseDir, 'search.db'),
+        eventsDbFilepath: path.join(baseDir, 'events.sqlite'),
+        notesDbFilepath: path.join(baseDir, 'notes.sqlite'),
+        searchDbFilepath: path.join(baseDir, 'search.sqlite'),
       );
 
       try {

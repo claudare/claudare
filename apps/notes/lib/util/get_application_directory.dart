@@ -1,6 +1,8 @@
 import 'package:path_provider/path_provider.dart'
     show getApplicationSupportDirectory;
 
+// on linux app directory is at
+// ~/.local/share/com.claudare.notes
 Future<String> getApplicationDirectory() async {
   final appDir = await getApplicationSupportDirectory();
   if (!await appDir.exists()) {

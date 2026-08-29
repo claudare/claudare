@@ -74,6 +74,7 @@ void main() {
 Future<NoteApplication> _application() async {
   final application = NoteApplication.test();
   await application.initialize(
+    eventsDbFilepath: IsolateSqlite.memoryFilename,
     notesDbFilepath: IsolateSqlite.memoryFilename,
     searchDbFilepath: IsolateSqlite.memoryFilename,
   );

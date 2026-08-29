@@ -10,6 +10,7 @@ void main() {
     });
 
     await application.initialize(
+      eventsDbFilepath: IsolateSqlite.memoryFilename,
       notesDbFilepath: IsolateSqlite.memoryFilename,
       searchDbFilepath: IsolateSqlite.memoryFilename,
     );

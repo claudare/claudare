@@ -16,7 +16,8 @@ import 'package:notes/read_model/search/sqlite_search_database.dart';
 import 'package:time_provider/time_provider.dart';
 
 class NoteApplication {
-  late final IsolateSqlite _sqliteDb;
+  late final IsolateSqlite _eventDb;
+  late final IsolateSqlite _notesDb;
   late final IsolateSqlite _searchDb;
 
   EventStore get eventStore => _cqrsRuntime.eventStore;
@@ -36,16 +37,17 @@ class NoteApplication {
     required this.timeProvider,
     required this.logger,
   }) {
-    _sqliteDb = IsolateSqlite();
+    _eventDb = IsolateSqlite();
 
     final cqrsDependencies = CqrsRuntimeDependencies(
       timeProvider: timeProvider,
       logger: logger,
-      eventDatabase: SqliteEventDatabase(_sqliteDb),
-      runtimeDatabase: SqliteRuntimeDatabase(_sqliteDb),
+      eventDatabase: SqliteEventDatabase(_eventDb),
+      runtimeDatabase: SqliteRuntimeDatabase(_eventDb),
     );
 
-    final noteDatabase = SqliteNoteDatabase(_sqliteDb);
+    _notesDb = IsolateSqlite();
+    final noteDatabase = SqliteNoteDatabase(_notesDb);
     resolvedNoteReadModel = noteDatabase;
 
     _searchDb = IsolateSqlite();
@@ -104,11 +106,13 @@ class NoteApplication {
   Stream<CqrsProjectionFailure> get runtimeFailures => _cqrsRuntime.failures;
 
   Future<void> initialize({
+    required String eventsDbFilepath,
     required String notesDbFilepath,
     required String searchDbFilepath,
   }) async {
-    logger.debug('main database path: $notesDbFilepath');
-    await _sqliteDb.open(notesDbFilepath);
+    logger.debug('events database path: $eventsDbFilepath');
+    await _eventDb.open(eventsDbFilepath);
+    await _notesDb.open(notesDbFilepath);
     await _searchDb.open(searchDbFilepath);
 
     await _cqrsRuntime.initialize();
@@ -119,7 +123,7 @@ class NoteApplication {
       await _cqrsRuntime.close();
     } finally {
       resolvedNoteReadModelNotifier.dispose();
-      await _searchDb.close();
+      await Future.wait([_notesDb.close(), _searchDb.close()]);
     }
   }
 
