@@ -95,6 +95,9 @@ class EventStore {
     await _mutex.protectWrite(() async {
       try {
         final state = await _database.getState();
+        if (!state.appliedVersion.contains(changes.dependency)) {
+          throw StateError('command dependency is not applied');
+        }
         final streamVersions = <String, int>{};
         for (final lock in changes.locks) {
           final current = await _database.getStreamVersion(lock.streamPath);
@@ -129,7 +132,7 @@ class EventStore {
         await _database.appendApplied(
           AppliedCommand(
             commandId: commandId,
-            dependency: state.appliedVersion,
+            dependency: changes.dependency,
             encoded: changes.encoded,
             startedAt: changes.startedAt,
             completedAt: changes.completedAt,

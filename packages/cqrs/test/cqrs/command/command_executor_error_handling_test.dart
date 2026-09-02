@@ -136,7 +136,7 @@ class _SuccessfulCommand implements Command<_Input> {
   @override
   Future<void> handle(_Input input, CommandContext ctx) async {
     final stream = ctx.stream<_Event>('test');
-    await stream.lock();
+    await stream.lockLatest();
     stream.append(const _Event());
   }
 }

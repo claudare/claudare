@@ -127,7 +127,7 @@ class SqliteEventDatabase implements EventDatabase {
     int count,
   ) async {
     final rows = await database.query(
-      '''SELECT kind, detail, occured_at, stream_version FROM event
+      '''SELECT device_id, sequence, kind, detail, occured_at, stream_version FROM event
       WHERE stream_path = ? AND stream_version > ?
       ORDER BY stream_version ASC LIMIT ?''',
       [streamPath, streamVersionCursor, count],
@@ -135,12 +135,13 @@ class SqliteEventDatabase implements EventDatabase {
     final events = [
       for (final row in rows)
         StreamEvent(
+          commandId: CommandId(row[0] as int, row[1] as int),
           encodedEvent: EncodedEvent(
-            kind: row[0] as String,
-            bytes: row[1] as Uint8List,
+            kind: row[2] as String,
+            bytes: row[3] as Uint8List,
           ),
-          occuredAt: _date(row[2]),
-          streamVersion: row[3] as int,
+          occuredAt: _date(row[4]),
+          streamVersion: row[5] as int,
         ),
     ];
     return PaginatedResult(

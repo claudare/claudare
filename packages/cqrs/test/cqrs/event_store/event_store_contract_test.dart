@@ -97,6 +97,7 @@ void main() {
         ]);
         expect(commands.map((command) => command.localSequence), [1, 2]);
         expect(commands.first.dependency, VersionVector());
+        expect(commands.last.dependency, VersionVector());
         final events = await store.getAppliedEvents(commands.first.commandId);
         expect(events.map((event) => event.eventId.index), [0, 1]);
         expect(events.map((event) => event.localSequence), [1, 2]);
@@ -213,6 +214,26 @@ void main() {
         );
         final commands = await session.readAppliedCommands();
         expect(commands.map((command) => command.commandId.sequence), [1, 2]);
+      });
+
+      test('rejects a local command with an unavailable dependency', () async {
+        await expectLater(
+          store.saveChanges(
+            _commandChanges(
+              'invalid-dependency',
+              dependency: VersionVector({7: 1}),
+              localLocks: const [
+                StreamLocalLock(
+                  streamPath: 'test/1',
+                  originatingStreamVersion: 0,
+                ),
+              ],
+              events: [_storedEvent('test/1', 'created')],
+            ),
+          ),
+          throwsStateError,
+        );
+        expect(await session.readAppliedCommands(), isEmpty);
       });
 
       test(
@@ -404,6 +425,10 @@ void main() {
           'one-a',
           'one-b',
         ]);
+        expect(streamEvents.map((event) => event.commandId), [
+          CommandId(0, 1),
+          CommandId(0, 3),
+        ]);
       });
 
       test('pages all applied events without filtering', () async {
@@ -503,9 +528,11 @@ Future<void> _stageComplete(EventStore store, ReplicatedCommand command) async {
 
 CommandChanges _commandChanges(
   String kind, {
+  VersionVector? dependency,
   required List<StreamLocalLock> localLocks,
   required List<EventAppend> events,
 }) => CommandChanges(
+  dependency: dependency ?? VersionVector(),
   encoded: _encodedCommand(kind),
   startedAt: _startedAt,
   completedAt: _completedAt,

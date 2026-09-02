@@ -140,6 +140,7 @@ void main() {
 Future<void> _append(EventStore store) => store.saveChanges(_changes());
 
 CommandChanges _changes() => CommandChanges(
+  dependency: VersionVector(),
   encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
   startedAt: _timestamp,
   completedAt: _timestamp,

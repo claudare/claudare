@@ -1,5 +1,6 @@
 import 'dart:typed_data' show Uint8List;
 
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
@@ -12,6 +13,7 @@ void main() {
   group('CommandChanges', () {
     test('empty is valid', () async {
       final changes = CommandChanges(
+        dependency: VersionVector(),
         encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
         startedAt: timestamp,
         completedAt: timestamp,
@@ -24,6 +26,7 @@ void main() {
 
     test('no lock', () async {
       final changes = CommandChanges(
+        dependency: VersionVector(),
         encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
         startedAt: timestamp,
         completedAt: timestamp,
@@ -47,6 +50,7 @@ void main() {
 
     test('no events', () async {
       final changes = CommandChanges(
+        dependency: VersionVector(),
         encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
         startedAt: timestamp,
         completedAt: timestamp,

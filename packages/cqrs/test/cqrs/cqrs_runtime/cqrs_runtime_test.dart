@@ -581,6 +581,7 @@ Future<void> _appendDirect(
 }) {
   return eventStore.saveChanges(
     CommandChanges(
+      dependency: VersionVector(),
       encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
       startedAt: _timestamp,
       completedAt: _timestamp,
@@ -695,7 +696,7 @@ final class _AppendCommand implements Command<_Input> {
   @override
   Future<void> handle(_Input input, CommandContext ctx) async {
     final stream = ctx.stream<_TestEvent>('test');
-    await stream.lock();
+    await stream.lockLatest();
     stream.append(_TestEvent(input.value));
   }
 }

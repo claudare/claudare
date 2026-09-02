@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
@@ -190,6 +191,7 @@ Future<void> _appendEvent(EventStore eventStore) async {
   const codec = _RestartEventCodec();
   await eventStore.saveChanges(
     CommandChanges(
+      dependency: VersionVector(),
       encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
       startedAt: occurredAt,
       completedAt: occurredAt,

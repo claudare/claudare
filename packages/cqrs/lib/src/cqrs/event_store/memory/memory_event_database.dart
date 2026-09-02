@@ -73,6 +73,7 @@ class MemoryEventDatabase implements EventDatabase {
         .take(count)
         .map(
           (event) => StreamEvent(
+            commandId: event.eventId.commandId,
             encodedEvent: event.encodedEvent,
             occuredAt: event.occuredAt,
             streamVersion: event.streamVersion,

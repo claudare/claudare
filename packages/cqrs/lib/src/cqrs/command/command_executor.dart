@@ -1,4 +1,5 @@
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:time_provider/time_provider.dart';
@@ -45,16 +46,23 @@ class CommandExecutor {
     await command.handle(input, context);
 
     if (executionState.events.isEmpty) return;
-    await _saveEvents<Input>(executionState, startedAt, input);
+    await _saveEvents<Input>(
+      executionState,
+      context.dependency,
+      startedAt,
+      input,
+    );
   }
 
   Future<void> _saveEvents<TInput extends CommandInput>(
     CommandExecutionState executionState,
+    VersionVector dependency,
     DateTime startedAt,
     TInput input,
   ) async {
     final encoded = _commandCodec.encode(input);
     final changes = CommandChanges(
+      dependency: dependency,
       encoded: encoded,
       startedAt: startedAt,
       completedAt: _timeProvider.now(),

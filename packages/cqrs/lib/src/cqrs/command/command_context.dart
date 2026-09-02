@@ -1,4 +1,5 @@
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_stream.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -11,8 +12,9 @@ class CommandContext {
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
   final Logger _logger;
+  final VersionVectorMutating _dependency = VersionVectorMutating();
 
-  const CommandContext({
+  CommandContext({
     required EventStore eventStore,
     required CommandExecutionState executionState,
     required EventRegistry eventRegistry,
@@ -26,6 +28,8 @@ class CommandContext {
 
   Logger get logger => _logger;
 
+  VersionVector get dependency => _dependency.toVersionVector();
+
   CommandStream<TEvent> stream<TEvent extends Object>(String streamPath) {
     return CommandStream<TEvent>(
       _eventStore,
@@ -33,6 +37,7 @@ class CommandContext {
       _eventRegistry,
       streamPath,
       _timeProvider,
+      _dependency.apply,
     );
   }
 }

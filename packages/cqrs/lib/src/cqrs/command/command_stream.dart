@@ -1,6 +1,7 @@
 import 'package:time_provider/time_provider.dart';
 
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -14,6 +15,7 @@ class CommandStream<Event extends Object> {
   final EventRegistry _eventRegistry;
   final String _streamPath;
   final TimeProvider _timeProvider;
+  final void Function(CommandId) _applyCommand;
 
   bool _locked = false;
 
@@ -23,6 +25,7 @@ class CommandStream<Event extends Object> {
     this._eventRegistry,
     this._streamPath,
     this._timeProvider,
+    this._applyCommand,
   );
 
   void _ensureLocked() {
@@ -38,6 +41,7 @@ class CommandStream<Event extends Object> {
     _locked = true;
   }
 
+  /// Replays the stream and applies each event that is yielded.
   Stream<Event> scan() async* {
     _tryLock();
 
@@ -46,12 +50,14 @@ class CommandStream<Event extends Object> {
 
     try {
       await for (final event in reader.scan()) {
+        final decoded = _eventRegistry.decode<Event>(event.encodedEvent);
         streamVersion = event.streamVersion;
-        yield _eventRegistry.decode<Event>(event.encodedEvent);
+        _applyCommand(event.commandId);
+        yield decoded;
       }
     } finally {
-      // TODO: explain why this is in the finally block
-      // instead of after the try block
+      // Keep the lock when a consumer stops or fails after a partial replay.
+      // Its version is the last event that was successfully yielded.
       _executionState.locks.add(
         StreamLocalLock(
           streamPath: _streamPath,
@@ -61,28 +67,26 @@ class CommandStream<Event extends Object> {
     }
   }
 
-  Future<void> lock() async {
+  /// Replays and applies the complete stream without yielding events.
+  Future<void> lockLatest() async {
     _tryLock();
 
-    final info = await _eventStore.getStreamInfo(_streamPath);
-
-    if (info == null) {
-      _executionState.locks.add(
-        StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: 0),
-      );
-      return;
+    var streamVersion = 0;
+    final reader = _eventStore.getStreamReader(_streamPath);
+    await for (final event in reader.scan()) {
+      streamVersion = event.streamVersion;
+      _applyCommand(event.commandId);
     }
 
     _executionState.locks.add(
       StreamLocalLock(
         streamPath: _streamPath,
-        originatingStreamVersion: info.originatingStreamVersion,
+        originatingStreamVersion: streamVersion,
       ),
     );
-
-    return;
   }
 
+  /// Ensures the stream exists and applies its first event.
   Future<void> mustExist() async {
     _tryLock();
 
@@ -91,6 +95,10 @@ class CommandStream<Event extends Object> {
       throw StreamNotFoundException(_streamPath);
     }
 
+    final firstEvent =
+        await _eventStore.getStreamReader(_streamPath).scan().first;
+    _applyCommand(firstEvent.commandId);
+
     _executionState.locks.add(
       StreamLocalLock(
         streamPath: _streamPath,
@@ -99,6 +107,7 @@ class CommandStream<Event extends Object> {
     );
   }
 
+  /// Requires the stream to be absent without applying any dependencies.
   Future<void> mustNotExist() async {
     _tryLock();
 
