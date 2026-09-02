@@ -35,9 +35,4 @@ class CommandContext {
       _timeProvider,
     );
   }
-
-  /// Avoid using this functionality
-  /// It may be removed later, but is kept around for now
-  @Deprecated('Try not to use this')
-  DateTime currentTime() => _timeProvider.now();
 }
