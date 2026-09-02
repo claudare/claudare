@@ -95,6 +95,7 @@ class CommandStream<Event extends Object> {
       throw StreamNotFoundException(_streamPath);
     }
 
+    // TODO: performance sucks
     final firstEvent =
         await _eventStore.getStreamReader(_streamPath).scan().first;
     _applyCommand(firstEvent.commandId);
