@@ -10,3 +10,5 @@ coverage/
 # IntelliJ generated files
 .idea/
 *.iml
+
+tmp/**
