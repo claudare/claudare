@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_lifecycle.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/event_pump.dart';
+import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/cqrs_projection_failure.dart';
@@ -90,6 +92,54 @@ final class CqrsRuntime {
     }
 
     return _commandExecutor.execute(command, input);
+  }
+
+  /// Replays aggregate from scratch every time.
+  Future<TState> resolve<TEvent extends Object, TParams, TState>(
+    Aggregate<TEvent, TParams, TState> aggregate,
+    TParams params,
+  ) async {
+    final state = aggregate.initialState();
+    var sequence = 0;
+    final startingSequence = sequence;
+    var applyCount = 0;
+
+    final streamPath = aggregate.streamRoute.buildPath(params);
+
+    final stream = eventStore
+        .getAppliedEventReader(sequence)
+        .scan()
+        .where((local) {
+          // removes irrelevant events as database level filtering is not
+          // implemented.
+          return aggregate.streamRoute.matches(local.streamPath);
+        })
+        .map((local) {
+          final decoded = _eventRegistry.decode<TEvent>(local.encodedEvent);
+          return EventEnvelope(
+            streamPath: local.streamPath,
+            streamParams: aggregate.streamRoute.parseParams(local.streamPath),
+            event: decoded,
+            occuredAt: local.eventMetadata.occuredAt,
+            localSequence: local.localSequence,
+            streamVersion: -999,
+          );
+        })
+        .where((envelope) {
+          return aggregate.canApply(envelope);
+        });
+
+    await for (final envelope in stream) {
+      aggregate.apply(state, envelope);
+      sequence = envelope.localSequence;
+      applyCount++;
+    }
+
+    _dependencies.logger.info(
+      'resolved $streamPath: startingSequence=$startingSequence, finalSequence=$sequence, applyCount=$applyCount',
+    );
+
+    return state;
   }
 
   Future<void> pump() {

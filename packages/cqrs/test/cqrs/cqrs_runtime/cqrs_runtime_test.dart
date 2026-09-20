@@ -545,6 +545,68 @@ void main() {
     await closing;
     expect(eventDatabase.closeCount, 1);
   });
+
+  test(
+    'resolve starts empty and replays selected account on every call',
+    () async {
+      final runtime = _runtime(
+        eventDatabase: MemoryEventDatabase(),
+        projection: _RecordingProjection(),
+      );
+      await runtime.initialize();
+      addTearDown(runtime.close);
+      final aggregate = _EnvelopeAggregate('one');
+
+      expect(await runtime.resolve(aggregate, 'one'), isEmpty);
+      await _appendAccountEvents(runtime.eventStore);
+
+      final first = await runtime.resolve(aggregate, 'one');
+      final second = await runtime.resolve(aggregate, 'one');
+
+      expect(first.map((envelope) => envelope.event.value), [
+        'opened',
+        'deposit',
+      ]);
+      expect(second.map((envelope) => envelope.event.value), [
+        'opened',
+        'deposit',
+      ]);
+      expect(identical(first, second), isFalse);
+      expect(identical(first.first, second.first), isFalse);
+    },
+  );
+
+  test(
+    'resolve passes each stored stream path, parameters, and timestamp',
+    () async {
+      final runtime = _runtime(
+        eventDatabase: MemoryEventDatabase(),
+        projection: _RecordingProjection(),
+      );
+      await runtime.initialize();
+      addTearDown(runtime.close);
+      await _appendAccountEvents(runtime.eventStore);
+
+      final events = await runtime.resolve(_EnvelopeAggregate(null), 'unused');
+
+      expect(events.map((envelope) => envelope.streamPath), [
+        'account/one',
+        'account/two',
+        'account/one',
+      ]);
+      expect(events.map((envelope) => envelope.streamParams), [
+        'one',
+        'two',
+        'one',
+      ]);
+      expect(events.map((envelope) => envelope.occuredAt), [
+      _timestamp,
+      _timestamp.add(const Duration(days: 1)),
+      _timestamp.add(const Duration(days: 3)),
+      ]);
+      expect(events.map((envelope) => envelope.localSequence), [1, 2, 4]);
+    },
+  );
 }
 
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -603,6 +665,65 @@ Future<void> _appendDirect(
       ],
     ),
   );
+}
+
+Future<void> _appendAccountEvents(
+  EventStore eventStore,
+) => eventStore.saveChanges(
+  CommandChanges(
+    dependency: VersionVector(),
+    encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
+    startedAt: _timestamp,
+    completedAt: _timestamp,
+    locks: const [
+      StreamLocalLock(streamPath: 'account/one', originatingStreamVersion: 0),
+      StreamLocalLock(streamPath: 'account/two', originatingStreamVersion: 0),
+      StreamLocalLock(streamPath: 'other/three', originatingStreamVersion: 0),
+    ],
+    events: [
+      for (final (index, path, value) in [
+        (0, 'account/one', 'opened'),
+        (1, 'account/two', 'opened'),
+        (2, 'other/three', 'ignored'),
+        (3, 'account/one', 'deposit'),
+      ])
+        EventAppend(
+          streamPath: path,
+          encodedEvent: EncodedEvent(
+            kind: 'test-event',
+            bytes: const _TestEventCodec().toBytes(_TestEvent(value)),
+          ),
+          occuredAt: _timestamp.add(Duration(days: index)),
+        ),
+    ],
+  ),
+);
+
+final class _EnvelopeAggregate
+    implements
+        Aggregate<_TestEvent, String, List<EventEnvelope<_TestEvent, String>>> {
+  final String? selectedAccount;
+
+  _EnvelopeAggregate(this.selectedAccount);
+
+  @override
+  int get version => 1;
+
+  @override
+  StreamRoute<String> get streamRoute => StreamRouteWildcard('account/*');
+
+  @override
+  List<EventEnvelope<_TestEvent, String>> initialState() => [];
+
+  @override
+  bool canApply(EventEnvelope<_TestEvent, String> envelope) =>
+      selectedAccount == null || envelope.streamParams == selectedAccount;
+
+  @override
+  void apply(
+    List<EventEnvelope<_TestEvent, String>> state,
+    EventEnvelope<_TestEvent, String> envelope,
+  ) => state.add(envelope);
 }
 
 Future<({Object error, StackTrace stackTrace})> _capture(

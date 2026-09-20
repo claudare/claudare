@@ -25,11 +25,15 @@ export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/event_metadata.dart';
 export 'src/cqrs/event/encoded_event.dart';
 export 'src/cqrs/event/event_registry.dart';
+export 'src/cqrs/event/event_envelope.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
 export 'src/cqrs/command/command_input.dart';
 export 'src/cqrs/command/command_context.dart';
+
+// aggregate
+export 'src/cqrs/aggregate.dart';
 
 // projection
 export 'src/cqrs/projection/projection.dart';
