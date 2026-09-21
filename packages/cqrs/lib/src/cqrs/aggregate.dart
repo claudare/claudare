@@ -1,8 +1,10 @@
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
+import 'package:cqrs/src/cqrs/snapshotter.dart';
 import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
 
+/// Defines event selection and mutable state for aggregate resolution.
 abstract interface class Aggregate<TEvent extends Object, TParams, TState> {
-  /// Versioning for snapshots. Currently not used.
+  /// Version used to invalidate snapshots when aggregate behavior changes.
   int get version;
 
   /// Specifies which stream this aggregate uses. When the aggregate is resolved,
@@ -11,6 +13,10 @@ abstract interface class Aggregate<TEvent extends Object, TParams, TState> {
   /// However, its still beneficial to implement a proper canApply in order to
   /// implement subAggregates.
   StreamRoute<TParams> get streamRoute;
+
+  /// Optional snapshotter used to avoid replaying the entire event stream.
+  /// It would be beneficial to make this configurable at constructor level.
+  Snapshotter<TState>? get snapshotter;
 
   /// Returns the initial state of the aggregate. Each resolution needs fresh
   /// state because apply mutates it.

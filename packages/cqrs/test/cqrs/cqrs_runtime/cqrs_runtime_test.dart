@@ -16,6 +16,154 @@ import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
 void main() {
+  group('snapshots', () {
+    late CqrsRuntime runtime;
+    late _MemorySnapshotter snapshotter;
+    late _EnvelopeAggregate aggregate;
+
+    setUp(() async {
+      runtime = _runtime(
+        eventDatabase: _PagedMemoryEventDatabase(1),
+        projection: _RecordingProjection(),
+      );
+      await runtime.initialize();
+      addTearDown(runtime.close);
+      snapshotter = _MemorySnapshotter();
+      aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
+    });
+
+    test('saves replayed state at the last accepted event sequence', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      aggregate = _EnvelopeAggregate('two', snapshotter: snapshotter);
+
+      final result = await runtime.resolve(aggregate, 'two');
+
+      expect(result.map((event) => event.streamParams), ['two']);
+      expect(snapshotter.loadedVersions, [1]);
+      expect(snapshotter.savedVersions, [1]);
+      expect(snapshotter.snapshots[1]!.sequence, 2);
+      expect(snapshotter.snapshots[1]!.state, result);
+    });
+
+    test('resumes after the snapshot across filtered pages', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      final history = await runtime.resolve(_EnvelopeAggregate('one'), 'one');
+      snapshotter.snapshots[1] = Snapshot([history.first], 1);
+
+      final result = await runtime.resolve(aggregate, 'one');
+
+      expect(result.map((event) => event.event.value), ['opened', 'deposit']);
+      expect(aggregate.appliedSequences, [4]);
+      expect(snapshotter.snapshots[1]!.sequence, 4);
+    });
+
+    test('does not save a snapshot for an empty selection', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      aggregate = _EnvelopeAggregate('missing', snapshotter: snapshotter);
+
+      expect(await runtime.resolve(aggregate, 'missing'), isEmpty);
+      expect(snapshotter.savedVersions, isEmpty);
+    });
+
+    test('does not rewrite a snapshot without new accepted events', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      aggregate = _EnvelopeAggregate('two', snapshotter: snapshotter);
+      await runtime.resolve(aggregate, 'two');
+      aggregate.appliedSequences.clear();
+      snapshotter.savedVersions.clear();
+
+      final result = await runtime.resolve(aggregate, 'two');
+
+      expect(result, hasLength(1));
+      expect(aggregate.appliedSequences, isEmpty);
+      expect(snapshotter.savedVersions, isEmpty);
+    });
+
+    test('forced replay bypasses both loading and saving', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      snapshotter.snapshots[1] = const Snapshot([], 4);
+
+      final result = await runtime.resolve(
+        aggregate,
+        'one',
+        forceResolveFromEvents: true,
+      );
+
+      expect(result.map((event) => event.event.value), ['opened', 'deposit']);
+      expect(aggregate.appliedSequences, [1, 4]);
+      expect(snapshotter.loadedVersions, isEmpty);
+      expect(snapshotter.savedVersions, isEmpty);
+    });
+
+    test('a new aggregate version replays without the old snapshot', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      snapshotter.snapshots[1] = const Snapshot([], 4);
+      aggregate = _EnvelopeAggregate(
+        'one',
+        snapshotter: snapshotter,
+        version: 2,
+      );
+
+      final result = await runtime.resolve(aggregate, 'one');
+
+      expect(result, hasLength(2));
+      expect(aggregate.appliedSequences, [1, 4]);
+      expect(snapshotter.loadedVersions, [2]);
+      expect(snapshotter.savedVersions, [2]);
+      expect(snapshotter.snapshots[1]!.state, isEmpty);
+    });
+
+    test('load exceptions fall back to replay', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      snapshotter.loadFailure = Exception('load unavailable');
+
+      final result = await runtime.resolve(aggregate, 'one');
+
+      expect(result.map((event) => event.event.value), ['opened', 'deposit']);
+      expect(snapshotter.savedVersions, [1]);
+    });
+
+    test('save exceptions still return resolved state', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      snapshotter.saveFailure = Exception('save unavailable');
+
+      final result = await runtime.resolve(aggregate, 'one');
+
+      expect(result.map((event) => event.event.value), ['opened', 'deposit']);
+      expect(snapshotter.savedVersions, [1]);
+    });
+
+    test('failed replay does not save partial state', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      final failure = StateError('apply failed');
+      aggregate = _EnvelopeAggregate(
+        'one',
+        snapshotter: snapshotter,
+        applyFailure: failure,
+      );
+
+      await expectLater(
+        runtime.resolve(aggregate, 'one'),
+        throwsA(same(failure)),
+      );
+
+      expect(snapshotter.savedVersions, isEmpty);
+    });
+
+    test('caller mutation does not change subsequent resolution', () async {
+      await _appendAccountEvents(runtime.eventStore);
+      final first = await runtime.resolve(aggregate, 'one');
+      first.clear();
+      final second = await runtime.resolve(aggregate, 'one');
+      second.clear();
+
+      final third = await runtime.resolve(aggregate, 'one');
+
+      expect(third.map((event) => event.event.value), ['opened', 'deposit']);
+      expect(aggregate.appliedSequences, [1, 4]);
+    });
+  });
+
   test('work while uninitialized throws StateError synchronously', () async {
     final runtime = CqrsRuntime(
       dependencies: CqrsRuntimeDependencies(
@@ -600,9 +748,9 @@ void main() {
         'one',
       ]);
       expect(events.map((envelope) => envelope.occuredAt), [
-      _timestamp,
-      _timestamp.add(const Duration(days: 1)),
-      _timestamp.add(const Duration(days: 3)),
+        _timestamp,
+        _timestamp.add(const Duration(days: 1)),
+        _timestamp.add(const Duration(days: 3)),
       ]);
       expect(events.map((envelope) => envelope.localSequence), [1, 2, 4]);
     },
@@ -704,10 +852,21 @@ final class _EnvelopeAggregate
         Aggregate<_TestEvent, String, List<EventEnvelope<_TestEvent, String>>> {
   final String? selectedAccount;
 
-  _EnvelopeAggregate(this.selectedAccount);
+  @override
+  final Snapshotter<List<EventEnvelope<_TestEvent, String>>>? snapshotter;
+
+  final appliedSequences = <int>[];
+  final Object? applyFailure;
+
+  _EnvelopeAggregate(
+    this.selectedAccount, {
+    this.snapshotter,
+    this.version = 1,
+    this.applyFailure,
+  });
 
   @override
-  int get version => 1;
+  final int version;
 
   @override
   StreamRoute<String> get streamRoute => StreamRouteWildcard('account/*');
@@ -723,7 +882,11 @@ final class _EnvelopeAggregate
   void apply(
     List<EventEnvelope<_TestEvent, String>> state,
     EventEnvelope<_TestEvent, String> envelope,
-  ) => state.add(envelope);
+  ) {
+    appliedSequences.add(envelope.localSequence);
+    state.add(envelope);
+    if (applyFailure != null) throw applyFailure!;
+  }
 }
 
 Future<({Object error, StackTrace stackTrace})> _capture(
@@ -975,5 +1138,39 @@ final class _ClosingEventDatabase extends MemoryEventDatabase {
   @override
   Future<void> close() async {
     closeCount++;
+  }
+}
+
+final class _MemorySnapshotter
+    implements Snapshotter<List<EventEnvelope<_TestEvent, String>>> {
+  final snapshots = <int, Snapshot<List<EventEnvelope<_TestEvent, String>>>>{};
+  final loadedVersions = <int>[];
+  final savedVersions = <int>[];
+  Exception? loadFailure;
+  Exception? saveFailure;
+
+  @override
+  Future<Snapshot<List<EventEnvelope<_TestEvent, String>>>?> load(
+    int aggregateVersion,
+  ) async {
+    loadedVersions.add(aggregateVersion);
+    if (loadFailure != null) throw loadFailure!;
+    final snapshot = snapshots[aggregateVersion];
+    return snapshot == null
+        ? null
+        : Snapshot(List.of(snapshot.state), snapshot.sequence);
+  }
+
+  @override
+  Future<void> save(
+    int aggregateVersion,
+    Snapshot<List<EventEnvelope<_TestEvent, String>>> snapshot,
+  ) async {
+    savedVersions.add(aggregateVersion);
+    if (saveFailure != null) throw saveFailure!;
+    snapshots[aggregateVersion] = Snapshot(
+      List.of(snapshot.state),
+      snapshot.sequence,
+    );
   }
 }

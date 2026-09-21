@@ -32,6 +32,9 @@ class AccountSummaryAggregate
   AccountSummaryAggregate(this.accountId);
 
   @override
+  Snapshotter<AccountSummaryState>? get snapshotter => null;
+
+  @override
   final int version = 1;
 
   @override

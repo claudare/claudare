@@ -34,6 +34,7 @@ export 'src/cqrs/command/command_context.dart';
 
 // aggregate
 export 'src/cqrs/aggregate.dart';
+export 'src/cqrs/snapshotter.dart';
 
 // projection
 export 'src/cqrs/projection/projection.dart';

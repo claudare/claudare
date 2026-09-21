@@ -1,3 +1,6 @@
+typedef LogFunction =
+    Function(String message, [Object? error, StackTrace? stackTrace]);
+
 abstract interface class Logger {
   void debug(String message, [Object? error, StackTrace? stackTrace]);
 

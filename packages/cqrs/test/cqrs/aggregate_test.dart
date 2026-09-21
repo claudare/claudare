@@ -41,6 +41,9 @@ void main() {
 final class _RecordingAggregate
     implements Aggregate<String, String, List<String>> {
   @override
+  Snapshotter<List<String>>? get snapshotter => null;
+
+  @override
   int get version => 1;
 
   @override

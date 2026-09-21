@@ -13,6 +13,8 @@ import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/cqrs_projection_failure.dart';
 import 'package:cqrs/src/cqrs/projection/projection_registry.dart';
 import 'package:cqrs/src/cqrs/runtime_store/runtime_store.dart';
+import 'package:cqrs/src/cqrs/safe_snapshotter.dart';
+import 'package:cqrs/src/cqrs/snapshotter.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
@@ -94,13 +96,40 @@ final class CqrsRuntime {
     return _commandExecutor.execute(command, input);
   }
 
-  /// Replays aggregate from scratch every time.
+  /// Resolves an aggregate, optionally resuming from its snapshot.
+  /// [forceResolveFromEvents] bypasses snapshot loading and saving.
   Future<TState> resolve<TEvent extends Object, TParams, TState>(
     Aggregate<TEvent, TParams, TState> aggregate,
-    TParams params,
-  ) async {
-    final state = aggregate.initialState();
-    var sequence = 0;
+    TParams params, {
+    bool forceResolveFromEvents = false,
+  }) async {
+    final configuredSnapshotter =
+        forceResolveFromEvents ? null : aggregate.snapshotter;
+    final snapshotter =
+        configuredSnapshotter != null
+            ? SafeSnapshotter(
+              configuredSnapshotter,
+              logger: _dependencies.logger,
+            )
+            : null;
+
+    TState state;
+    int sequence;
+
+    if (snapshotter != null) {
+      final snapshot = await snapshotter.load(aggregate.version);
+      if (snapshot != null) {
+        state = snapshot.state;
+        sequence = snapshot.sequence;
+      } else {
+        state = aggregate.initialState();
+        sequence = 0;
+      }
+    } else {
+      state = aggregate.initialState();
+      sequence = 0;
+    }
+
     final startingSequence = sequence;
     var applyCount = 0;
 
@@ -133,6 +162,10 @@ final class CqrsRuntime {
       aggregate.apply(state, envelope);
       sequence = envelope.localSequence;
       applyCount++;
+    }
+
+    if (snapshotter != null && sequence > 0 && startingSequence != sequence) {
+      await snapshotter.save(aggregate.version, Snapshot(state, sequence));
     }
 
     _dependencies.logger.info(

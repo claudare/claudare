@@ -41,6 +41,9 @@ class AccountListAggregate
   AccountListAggregate();
 
   @override
+  Snapshotter<AccountListState>? get snapshotter => null;
+
+  @override
   final int version = 1;
 
   @override
