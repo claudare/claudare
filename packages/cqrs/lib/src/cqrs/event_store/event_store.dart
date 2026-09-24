@@ -5,10 +5,9 @@ import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
@@ -227,7 +226,7 @@ class EventStore {
         }
       });
 
-  PaginatedReader<StreamEvent> getStreamReader(
+  PaginatedReader<StoredEvent> getStreamReader(
     String streamPath, {
     int fromVersion = 0,
   }) => PaginatedReader(
@@ -235,7 +234,7 @@ class EventStore {
     initialCursor: fromVersion,
   );
 
-  Future<PaginatedResult<StreamEvent>> _readStreamPage(
+  Future<PaginatedResult<StoredEvent>> _readStreamPage(
     String streamPath,
     int streamVersionCursor,
   ) => _mutex.protectRead(() async {
@@ -253,13 +252,13 @@ class EventStore {
     }
   });
 
-  PaginatedReader<LocalEvent> getAppliedEventReader(int localSequenceCursor) =>
+  PaginatedReader<StoredEvent> getAppliedEventReader(int localSequenceCursor) =>
       PaginatedReader(
         _readAppliedEventPage,
         initialCursor: localSequenceCursor,
       );
 
-  Future<PaginatedResult<LocalEvent>> _readAppliedEventPage(
+  Future<PaginatedResult<StoredEvent>> _readAppliedEventPage(
     int localSequenceCursor,
   ) => _mutex.protectRead(() async {
     try {

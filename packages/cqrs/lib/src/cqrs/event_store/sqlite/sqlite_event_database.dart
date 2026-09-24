@@ -7,9 +7,8 @@ import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
-import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -99,40 +98,48 @@ class SqliteEventDatabase implements EventDatabase {
       );
 
   @override
-  Future<PaginatedResult<StreamEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int streamVersionCursor,
     int count,
   ) async {
     final rows = await _database.query(
-      '''SELECT device_id, sequence, kind, detail, occured_at, stream_version
+      '''SELECT
+        device_id, sequence, event_index, kind, detail, occured_at, stream_version, local_sequence
       FROM event
       WHERE stream_path = ?
         AND stream_version >= ?
         AND local_sequence >= 0
-      ORDER BY stream_version ASC LIMIT ?;''',
+      ORDER BY stream_version ASC
+      LIMIT ?;''',
       [streamPath, streamVersionCursor, count],
     );
     final events = [
       for (final row in rows)
-        StreamEvent(
-          commandId: CommandId(row[0] as int, row[1] as int),
-          encodedEvent: EncodedEvent(
-            kind: row[2] as String,
-            bytes: row[3] as Uint8List,
+        StoredEvent(
+          streamPath: streamPath,
+          eventId: EventId(
+            row.field<int>('device_id'),
+            row.field<int>('sequence'),
+            row.field<int>('event_index'),
           ),
-          occuredAt: _date(row[4]),
-          streamVersion: row[5] as int,
+          encodedEvent: EncodedEvent(
+            kind: row.field<String>('kind'),
+            bytes: row.field<Uint8List>('detail'),
+          ),
+          occuredAt: _date(row.field<int>('occured_at')),
+          version: row.field<int>('stream_version'),
+          localSequence: row.field<int>('local_sequence'),
         ),
     ];
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.streamVersion + 1,
+      next: events.isEmpty ? null : events.last.version + 1,
     );
   }
 
   @override
-  Future<PaginatedResult<LocalEvent>> getLocalEvents(
+  Future<PaginatedResult<StoredEvent>> getLocalEvents(
     int localSequenceCursor,
     int count,
   ) async {
@@ -140,22 +147,30 @@ class SqliteEventDatabase implements EventDatabase {
       throw ArgumentError('localSequenceCursor must be non-negative');
     }
     final rows = await _database.query(
-      '''SELECT stream_path, kind, detail, occured_at, local_sequence
+      '''SELECT
+        device_id, sequence, event_index, stream_path, kind, detail, occured_at, stream_version, local_sequence
       FROM event
       WHERE local_sequence >= ?
-      ORDER BY local_sequence ASC LIMIT ?''',
+      ORDER BY local_sequence ASC
+      LIMIT ?''',
       [localSequenceCursor, count],
     );
     final events = [
       for (final row in rows)
-        LocalEvent(
-          streamPath: row[0] as String,
-          encodedEvent: EncodedEvent(
-            kind: row[1] as String,
-            bytes: row[2] as Uint8List,
+        StoredEvent(
+          streamPath: row.field<String>('stream_path'),
+          eventId: EventId(
+            row.field<int>('device_id'),
+            row.field<int>('sequence'),
+            row.field<int>('event_index'),
           ),
-          occuredAt: _date(row[3]),
-          localSequence: row[4] as int,
+          encodedEvent: EncodedEvent(
+            kind: row.field<String>('kind'),
+            bytes: row.field<Uint8List>('detail'),
+          ),
+          occuredAt: _date(row.field<int>('occured_at')),
+          version: row.field<int>('stream_version'),
+          localSequence: row.field<int>('local_sequence'),
         ),
     ];
     return PaginatedResult(

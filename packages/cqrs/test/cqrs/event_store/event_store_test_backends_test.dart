@@ -10,9 +10,7 @@ import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:test/test.dart';
 
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -84,8 +82,8 @@ void main() {
         expect(await database.getStreamVersion('one'), 2);
         expect(await database.getStreamVersion('two'), 1);
         final one = await database.getStreamEvents('one', 1, 10);
-        expect(one.data.map((event) => event.streamVersion), [1, 2]);
-        expect(one.data.map((event) => event.commandId), [
+        expect(one.data.map((event) => event.version), [1, 2]);
+        expect(one.data.map((event) => event.eventId.commandId), [
           CommandId(1, 1),
           CommandId(1, 2),
         ]);
@@ -98,6 +96,20 @@ void main() {
           'one',
         ]);
         expect(local.data.map((event) => event.localSequence), [0, 1, 2, 3, 4]);
+        expect(local.data.map((event) => event.version), [0, 0, 1, 1, 2]);
+        expect(local.data.map((event) => event.eventId), [
+          EventId(1, 1, 0),
+          EventId(1, 1, 1),
+          EventId(1, 1, 2),
+          EventId(1, 2, 0),
+          EventId(1, 2, 1),
+        ]);
+        expect(one.data.map((event) => event.localSequence), [2, 4]);
+        expect(one.data.map((event) => event.streamPath), ['one', 'one']);
+        expect(one.data.map((event) => event.eventId), [
+          EventId(1, 1, 2),
+          EventId(1, 2, 1),
+        ]);
         final applied = await database.getAppliedEvents(CommandId(1, 2));
         expect(
           applied.map((event) => (event.streamPath, event.streamVersion)),
@@ -107,6 +119,31 @@ void main() {
           (await database.getAppliedEvent(EventId(1, 1, 1)))?.streamPath,
           'two',
         );
+      });
+
+      test('pages an interleaved stream by version', () async {
+        for (final (sequence, paths) in [
+          (1, ['one', 'two', 'one']),
+          (2, ['two', 'one']),
+        ]) {
+          final commandId = CommandId(1, sequence);
+          await database
+              .appendApplied(_command(commandId, eventCount: paths.length), [
+                for (var index = 0; index < paths.length; index++)
+                  _event(commandId, index, paths[index]),
+              ]);
+        }
+
+        var cursor = 0;
+        final versions = <int>[];
+        do {
+          final page = await database.getStreamEvents('one', cursor, 1);
+          if (page.data.isEmpty) break;
+          versions.add(page.data.single.version);
+          cursor = page.next!;
+        } while (true);
+
+        expect(versions, [0, 1, 2]);
       });
 
       test('rejects an invalid batch without applying records', () async {
@@ -305,13 +342,13 @@ class _FaultDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<StreamEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String path,
     int cursor,
     int count,
   ) => _database.getStreamEvents(path, cursor, count);
   @override
-  Future<PaginatedResult<LocalEvent>> getLocalEvents(int cursor, int count) =>
+  Future<PaginatedResult<StoredEvent>> getLocalEvents(int cursor, int count) =>
       _database.getLocalEvents(cursor, count);
   @override
   Future<GetStatisticsResult> getStatistics() => _database.getStatistics();

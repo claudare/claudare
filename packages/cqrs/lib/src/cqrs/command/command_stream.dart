@@ -51,8 +51,8 @@ class CommandStream<Event extends Object> {
     try {
       await for (final event in reader.scan()) {
         final decoded = _eventRegistry.decode<Event>(event.encodedEvent);
-        streamVersion = event.streamVersion;
-        _applyCommand(event.commandId);
+        streamVersion = event.version;
+        _applyCommand(event.eventId.commandId);
         yield decoded;
       }
     } finally {
@@ -74,8 +74,8 @@ class CommandStream<Event extends Object> {
     int? streamVersion;
     final reader = _eventStore.getStreamReader(_streamPath);
     await for (final event in reader.scan()) {
-      streamVersion = event.streamVersion;
-      _applyCommand(event.commandId);
+      streamVersion = event.version;
+      _applyCommand(event.eventId.commandId);
     }
 
     _executionState.locks.add(
@@ -98,7 +98,7 @@ class CommandStream<Event extends Object> {
     // TODO: performance sucks
     final firstEvent =
         await _eventStore.getStreamReader(_streamPath).scan().first;
-    _applyCommand(firstEvent.commandId);
+    _applyCommand(firstEvent.eventId.commandId);
 
     _executionState.locks.add(
       StreamLocalLock(

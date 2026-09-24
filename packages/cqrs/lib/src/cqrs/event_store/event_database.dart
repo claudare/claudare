@@ -5,8 +5,7 @@ import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
-import 'package:cqrs/src/cqrs/event/stream_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 
 class EventDatabaseState {
@@ -26,12 +25,12 @@ abstract interface class EventDatabase {
 
   Future<EventDatabaseState> getState();
   Future<int?> getStreamVersion(String streamPath);
-  Future<PaginatedResult<StreamEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int streamVersionCursor,
     int count,
   );
-  Future<PaginatedResult<LocalEvent>> getLocalEvents(
+  Future<PaginatedResult<StoredEvent>> getLocalEvents(
     int localSequenceCursor,
     int count,
   );

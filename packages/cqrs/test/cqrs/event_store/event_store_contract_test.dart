@@ -13,7 +13,7 @@ import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
@@ -172,7 +172,7 @@ void main() {
       });
 
       test('reads durable history from an applied-change listener', () async {
-        final read = Completer<List<LocalEvent>>();
+        final read = Completer<List<StoredEvent>>();
         final subscription = store.appliedChanges.listen((_) async {
           try {
             read.complete(await store.getAppliedEventReader(0).scan().toList());
@@ -444,13 +444,13 @@ void main() {
           'one-a',
           'one-b',
         ]);
-        expect(streamEvents.map((event) => event.commandId), [
+        expect(streamEvents.map((event) => event.eventId.commandId), [
           CommandId(0, 1),
           CommandId(0, 3),
         ]);
         expect(
           (await store.getStreamReader('one', fromVersion: 1).scan().toList())
-              .map((event) => event.streamVersion),
+              .map((event) => event.version),
           [1],
         );
       });
@@ -484,7 +484,7 @@ void main() {
         );
         expect(
           (await store.getStreamReader('abc').scan().toList()).map(
-            (event) => event.streamVersion,
+            (event) => event.version,
           ),
           [0, 1, 2, 3, 4],
         );

@@ -5,8 +5,7 @@ import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
-import 'package:cqrs/src/cqrs/event/local_event.dart';
-import 'package:cqrs/src/cqrs/event/stream_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -106,13 +105,13 @@ class MemoryEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<StreamEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int streamVersionCursor,
     int count,
   ) async {
     final indexes = _streamVersions[streamPath] ?? const <int>[];
-    final events = <StreamEvent>[];
+    final events = <StoredEvent>[];
     for (
       var version = streamVersionCursor;
       version < indexes.length && events.length < count;
@@ -120,26 +119,28 @@ class MemoryEventDatabase implements EventDatabase {
     ) {
       final event = _events[indexes[version]];
       events.add(
-        StreamEvent(
-          commandId: event.eventId.commandId,
+        StoredEvent(
+          streamPath: streamPath,
+          eventId: event.eventId,
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
-          streamVersion: version,
+          localSequence: event.localSequence,
+          version: version,
         ),
       );
     }
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.streamVersion + 1,
+      next: events.isEmpty ? null : events.last.version + 1,
     );
   }
 
   @override
-  Future<PaginatedResult<LocalEvent>> getLocalEvents(
+  Future<PaginatedResult<StoredEvent>> getLocalEvents(
     int localSequenceCursor,
     int count,
   ) async {
-    final events = <LocalEvent>[];
+    final events = <StoredEvent>[];
     for (
       var index = 0;
       index < _events.length && events.length < count;
@@ -147,12 +148,15 @@ class MemoryEventDatabase implements EventDatabase {
     ) {
       final event = _events[index];
       if (event.localSequence < localSequenceCursor) continue;
+      final (streamPath, version) = _streamPosition(index);
       events.add(
-        LocalEvent(
-          streamPath: _streamPosition(index).$1,
+        StoredEvent(
+          eventId: event.eventId,
+          streamPath: streamPath,
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
           localSequence: event.localSequence,
+          version: version,
         ),
       );
     }
