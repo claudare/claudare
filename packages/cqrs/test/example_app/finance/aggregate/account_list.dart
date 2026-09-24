@@ -2,11 +2,12 @@ import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
+import 'account_list_snapshotter.dart';
 import 'account_summary.dart';
 
 enum SortDirection { ascending, descending }
 
-class AccountListState {
+class AccountListState implements SnapshotCloneable<AccountListState> {
   final accounts = <String, AccountSummaryState>{};
 
   AccountListState();
@@ -34,14 +35,24 @@ class AccountListState {
     }
     return list;
   }
+
+  @override
+  AccountListState clone() {
+    final copy = AccountListState();
+    for (final entry in accounts.entries) {
+      copy.accounts[entry.key] = entry.value.clone();
+    }
+    return copy;
+  }
 }
 
 class AccountListAggregate
     implements Aggregate<AccountEvent, String, AccountListState> {
-  AccountListAggregate();
+  final AccountListSnapshotter? _snapshotter;
+  AccountListAggregate([this._snapshotter]);
 
   @override
-  Snapshotter<AccountListState>? get snapshotter => null;
+  AccountListSnapshotter? get snapshotter => _snapshotter;
 
   @override
   final int version = 1;

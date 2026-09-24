@@ -1,6 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import 'aggregate/account_list.dart';
+import 'aggregate/account_list_snapshotter.dart';
 import 'aggregate/account_summary.dart';
 import 'aggregate/total_balance.dart';
 import 'command/atm_depost.dart';
@@ -12,6 +13,7 @@ import 'account_event/account.dart';
 
 class FinanceApp {
   late final CqrsRuntime _cqrsRuntime;
+  late final AccountListSnapshotter _accountListSnapshotter;
 
   late final Commands command;
   late final ReadModels readModels;
@@ -31,8 +33,10 @@ class FinanceApp {
       runtimeName: 'finance-main',
     );
 
+    _accountListSnapshotter = AccountListSnapshotter();
+
     command = Commands(_cqrsRuntime);
-    readModels = ReadModels(_cqrsRuntime);
+    readModels = ReadModels(_cqrsRuntime, _accountListSnapshotter);
   }
 
   Future<void> init() async {
@@ -67,14 +71,15 @@ class Commands {
 
 class ReadModels {
   final CqrsRuntime _runtime;
+  final AccountListSnapshotter _accountListSnapshotter;
 
-  const ReadModels(this._runtime);
+  const ReadModels(this._runtime, this._accountListSnapshotter);
 
   Future<AccountSummaryState> accountSummary(String accountId) =>
       _runtime.resolve(AccountSummaryAggregate(accountId), accountId);
 
   Future<AccountListState> accountList() =>
-      _runtime.resolve(AccountListAggregate(), '');
+      _runtime.resolve(AccountListAggregate(_accountListSnapshotter), '');
 
   Future<TotalBalanceState> totalBalance() =>
       _runtime.resolve(TotalBalanceAggregate(), '');

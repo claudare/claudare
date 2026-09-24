@@ -19,6 +19,15 @@ class AccountSummaryState {
     required this.openedAt,
   });
 
+  AccountSummaryState clone() =>
+      AccountSummaryState()
+        ..accountId = accountId
+        ..name = name
+        ..balance = balance
+        ..transactionCount = transactionCount
+        ..openedAt = openedAt
+        ..lastTransactionAt = lastTransactionAt;
+
   @override
   String toString() {
     return 'AccountSummaryState(accountId: $accountId, name: $name, balance: $balance, transactionCount: $transactionCount, openedAt: $openedAt, lastTransactionAt: $lastTransactionAt)';
