@@ -84,29 +84,24 @@ class CqrsRuntime {
     final stream = _eventStore
         .getAppliedEventReader((sequence ?? -1) + 1)
         .scan()
-        .where((local) {
+        .where((stored) {
           // removes irrelevant events as database level filtering is not
           // implemented.
-          return aggregate.streamRoute.matches(local.streamPath);
-        })
-        .map((local) {
-          final decoded = _eventRegistry.decode<TEvent>(local.encodedEvent);
-          return EventEnvelope(
-            streamPath: local.streamPath,
-            streamParams: aggregate.streamRoute.parseParams(local.streamPath),
-            event: decoded,
-            occuredAt: local.eventMetadata.occuredAt,
-            localSequence: local.localSequence,
-            streamVersion: -999,
-          );
-        })
-        .where((envelope) {
-          return aggregate.canApply(envelope);
+          return aggregate.streamRoute.matches(stored.streamPath);
         });
 
-    await for (final envelope in stream) {
+    await for (final stored in stream) {
+      final decoded = _eventRegistry.decode<TEvent>(stored.encodedEvent);
+      final envelope = EventEnvelope(
+        streamPath: stored.streamPath,
+        streamParams: aggregate.streamRoute.parseParams(stored.streamPath),
+        event: decoded,
+        occuredAt: stored.eventMetadata.occuredAt,
+      );
+      if (!aggregate.canApply(envelope)) continue;
+
       aggregate.apply(state, envelope);
-      sequence = envelope.localSequence;
+      sequence = stored.localSequence;
       applyCount++;
     }
 

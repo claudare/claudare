@@ -23,7 +23,7 @@ void main() {
                 ..withEvent('account/two', 'deposit', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['0:account/one:one:opened', '2:account/two:two:deposit']);
+      expect(state, ['account/one:one:opened', 'account/two:two:deposit']);
     });
 
     test('checks canApply before applying an event', () {
@@ -33,7 +33,7 @@ void main() {
                 ..withEvent('account/one', 'kept', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['1:account/one:one:kept']);
+      expect(state, ['account/one:one:kept']);
     });
   });
 }
@@ -59,7 +59,7 @@ final class _RecordingAggregate
   @override
   void apply(List<String> state, EventEnvelope<String, String> envelope) {
     state.add(
-      '${envelope.localSequence}:${envelope.streamPath}:${envelope.streamParams}:${envelope.event}',
+      '${envelope.streamPath}:${envelope.streamParams}:${envelope.event}',
     );
   }
 }

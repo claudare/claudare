@@ -50,8 +50,6 @@ class AggregateTester<TEvent extends Object, TParams, TState> {
         streamParams: aggregate.streamRoute.parseParams(event.streamPath),
         event: event.event,
         occuredAt: event.occuredAt,
-        localSequence: i,
-        streamVersion: i,
       );
       if (aggregate.canApply(envelope)) aggregate.apply(state, envelope);
     }

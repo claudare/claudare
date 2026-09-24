@@ -9,17 +9,11 @@ class EventEnvelope<TEvent extends Object, TParams> {
   final TEvent event;
   final DateTime occuredAt;
 
-  // local-only values
-  final int localSequence;
-  final int streamVersion;
-
   const EventEnvelope({
     // required this.eventId,
     required this.streamPath,
     required this.streamParams,
     required this.event,
     required this.occuredAt,
-    required this.localSequence,
-    required this.streamVersion,
   });
 }

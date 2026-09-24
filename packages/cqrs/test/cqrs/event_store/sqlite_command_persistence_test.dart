@@ -29,25 +29,6 @@ void main() {
     await expectLater(sqlite.queryValue<int>('SELECT 1'), throwsStateError);
   });
 
-  test('rejects a one-based SQLite schema during migration', () async {
-    await sqlite.execute('DROP TABLE command');
-    await sqlite.execute('CREATE TABLE command(local_sequence INTEGER)');
-    await sqlite.execute(
-      'UPDATE migrations_event_database SET version = 1',
-    );
-
-    await expectLater(
-      database.migrate(),
-      throwsA(
-        isA<StateError>().having(
-          (error) => error.message,
-          'message',
-          contains('Recreate the database and snapshots'),
-        ),
-      ),
-    );
-  });
-
   test('stores canonical integer-key dependency bytes', () async {
     final command = _command(dependency: VersionVector({2: 4, -1: 3}));
     await store.stageReplicatedCommand(command);

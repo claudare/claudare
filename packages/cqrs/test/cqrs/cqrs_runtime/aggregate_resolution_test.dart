@@ -73,7 +73,6 @@ void main() {
       _timestamp.add(const Duration(days: 1)),
       _timestamp.add(const Duration(days: 3)),
     ]);
-    expect(events.map((envelope) => envelope.localSequence), [0, 1, 3]);
   });
 
   group('snapshots', () {
@@ -136,7 +135,6 @@ void main() {
       final result = await runtime.resolve(aggregate, 'one');
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [3]);
       expect(snapshotter.snapshots[1]!.sequence, 3);
     });
 
@@ -156,13 +154,11 @@ void main() {
       await _appendAccountEvents(eventStore);
       final aggregate = _EnvelopeAggregate('two', snapshotter: snapshotter);
       await runtime.resolve(aggregate, 'two');
-      aggregate.appliedSequences.clear();
       snapshotter.savedVersions.clear();
 
       final result = await runtime.resolve(aggregate, 'two');
 
       expect(result, hasLength(1));
-      expect(aggregate.appliedSequences, isEmpty);
       expect(snapshotter.savedVersions, isEmpty);
     });
 
@@ -178,7 +174,6 @@ void main() {
       );
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [0, 3]);
       expect(snapshotter.loadedVersions, isEmpty);
       expect(snapshotter.savedVersions, isEmpty);
     });
@@ -195,7 +190,6 @@ void main() {
       final result = await runtime.resolve(aggregate, 'one');
 
       expect(result, hasLength(2));
-      expect(aggregate.appliedSequences, [0, 3]);
       expect(snapshotter.loadedVersions, [2]);
       expect(snapshotter.savedVersions, [2]);
       expect(snapshotter.snapshots[1]!.state, isEmpty);
@@ -255,7 +249,6 @@ void main() {
       final third = await runtime.resolve(aggregate, 'one');
 
       expect(third.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [0, 3]);
     });
   });
 }
@@ -328,7 +321,6 @@ final class _EnvelopeAggregate
   @override
   final Snapshotter<List<EventEnvelope<_TestEvent, String>>>? snapshotter;
 
-  final appliedSequences = <int>[];
   final Object? applyFailure;
 
   _EnvelopeAggregate(
@@ -356,7 +348,6 @@ final class _EnvelopeAggregate
     List<EventEnvelope<_TestEvent, String>> state,
     EventEnvelope<_TestEvent, String> envelope,
   ) {
-    appliedSequences.add(envelope.localSequence);
     state.add(envelope);
     if (applyFailure != null) throw applyFailure!;
   }
