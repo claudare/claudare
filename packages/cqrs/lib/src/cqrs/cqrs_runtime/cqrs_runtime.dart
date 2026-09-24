@@ -96,7 +96,7 @@ class CqrsRuntime {
         streamPath: stored.streamPath,
         streamParams: aggregate.streamRoute.parseParams(stored.streamPath),
         event: decoded,
-        occuredAt: stored.eventMetadata.occuredAt,
+        occuredAt: stored.occuredAt,
       );
       if (!aggregate.canApply(envelope)) continue;
 

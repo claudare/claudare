@@ -13,7 +13,6 @@ export 'src/cqrs/event_store/sqlite/sqlite_event_database.dart';
 
 // event
 export 'src/cqrs/event/event_codec.dart';
-export 'src/cqrs/event/event_metadata.dart';
 export 'src/cqrs/event/encoded_event.dart';
 export 'src/cqrs/event/event_registry.dart';
 export 'src/cqrs/event/event_envelope.dart';

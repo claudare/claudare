@@ -1,6 +1,5 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
-import 'package:cqrs/src/cqrs/event/event_metadata.dart';
 
 /// [StoredEvent] is an applied event which is used for aggregate replays.
 /// It is returned for both local and stream replays.
@@ -20,6 +19,4 @@ class StoredEvent {
     required this.localSequence,
     required this.version,
   });
-
-  EventMetadata get eventMetadata => EventMetadata(occuredAt: occuredAt);
 }
