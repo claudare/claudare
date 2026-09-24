@@ -59,25 +59,25 @@ final eventDatabaseMigrations = SqliteMigrations(
 );
 
 class SqliteEventDatabase implements EventDatabase {
-  final IsolateSqlite database;
+  final IsolateSqlite _database;
 
-  const SqliteEventDatabase(this.database);
+  const SqliteEventDatabase(IsolateSqlite database) : _database = database;
 
   @override
   int get defaultEventFetchPageSize => 50;
 
-  Future<void> close() => database.close();
+  Future<void> close() => _database.close();
 
-  Future<void> migrate() => eventDatabaseMigrations.migrate(database);
+  Future<void> migrate() => eventDatabaseMigrations.migrate(_database);
 
   @override
   Future<EventDatabaseState> getState() async {
-    final counters = await database.queryRow('''SELECT
+    final counters = await _database.queryRow('''SELECT
       (SELECT COALESCE(MAX(local_sequence), 0) FROM command
         WHERE local_sequence > 0),
       (SELECT COALESCE(MAX(local_sequence), 0) FROM event
         WHERE local_sequence > 0)''');
-    final vectors = await database.query('''SELECT device_id, MAX(sequence)
+    final vectors = await _database.query('''SELECT device_id, MAX(sequence)
       FROM command
       WHERE local_sequence > 0
       GROUP BY device_id
@@ -93,7 +93,7 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<int> getStreamVersion(String streamPath) async =>
-      await database.queryValue<int?>(
+      await _database.queryValue<int?>(
         'SELECT version FROM stream WHERE stream_path = ?',
         [streamPath],
       ) ??
@@ -105,7 +105,7 @@ class SqliteEventDatabase implements EventDatabase {
     int streamVersionCursor,
     int count,
   ) async {
-    final rows = await database.query(
+    final rows = await _database.query(
       '''SELECT device_id, sequence, kind, detail, occured_at, stream_version
       FROM event
       WHERE stream_path = ?
@@ -140,7 +140,7 @@ class SqliteEventDatabase implements EventDatabase {
     if (localSequenceCursor < 0) {
       throw ArgumentError('localSequenceCursor must be positive');
     }
-    final rows = await database.query(
+    final rows = await _database.query(
       '''SELECT stream_path, kind, detail, occured_at, local_sequence
       FROM event
       WHERE local_sequence > ?
@@ -168,7 +168,7 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<GetStatisticsResult> getStatistics() async {
-    final row = await database.queryRow(
+    final row = await _database.queryRow(
       '''SELECT COUNT(*), COALESCE(SUM(LENGTH(detail)), 0)
       FROM event
       WHERE local_sequence > 0;''',
@@ -193,7 +193,7 @@ class SqliteEventDatabase implements EventDatabase {
   }) async {
     final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
 
-    final row = await database.queryRow(
+    final row = await _database.queryRow(
       '''SELECT dependency, kind, detail, started_at, completed_at, event_count
       FROM command
       WHERE device_id = ?
@@ -230,7 +230,7 @@ class SqliteEventDatabase implements EventDatabase {
   }) async {
     final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
 
-    final row = await database.queryRow(
+    final row = await _database.queryRow(
       '''SELECT stream_path, kind, detail, occured_at
       FROM event
       WHERE device_id = ?
@@ -247,7 +247,7 @@ class SqliteEventDatabase implements EventDatabase {
     int localSequenceCursor,
     int count,
   ) async {
-    final rows = await database.query(
+    final rows = await _database.query(
       '''SELECT local_sequence, device_id, sequence, dependency, kind, detail,
       started_at, completed_at, event_count
       FROM command
@@ -275,7 +275,7 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async {
-    final rows = await database.query(
+    final rows = await _database.query(
       '''SELECT event_index, stream_path, kind, detail, occured_at,
       local_sequence, stream_version
       FROM event
@@ -309,15 +309,15 @@ class SqliteEventDatabase implements EventDatabase {
   Future<void> appendApplied(
     ReplicatedCommand command,
     List<ReplicatedEvent> events,
-  ) => database.transaction((tx) => _insertApplied(tx, command, events));
+  ) => _database.transaction((tx) => _insertApplied(tx, command, events));
 
   @override
   Future<void> stagePendingCommand(ReplicatedCommand command) =>
-      database.transaction((tx) => _insertPendingCommand(tx, command));
+      _database.transaction((tx) => _insertPendingCommand(tx, command));
 
   @override
   Future<void> stagePendingEvents(List<ReplicatedEvent> events) =>
-      database.transaction((tx) {
+      _database.transaction((tx) {
         var next = _nextStagedSequence(tx, 'event');
         for (var i = 0; i < events.length; i++) {
           final event = events[i];
@@ -341,7 +341,7 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<bool> promotePending(CommandId commandId) =>
-      database.transaction((tx) {
+      _database.transaction((tx) {
         final command = tx.queryRow(
           '''SELECT local_sequence, event_count, dependency
       FROM command
@@ -514,7 +514,7 @@ void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
     '''INSERT INTO stream(stream_path, version)
     VALUES (?, ?)
     ON CONFLICT(stream_path)
-      UPDATE SET version = excluded.version;''',
+      DO UPDATE SET version = excluded.version;''',
     [streamPath, version],
   );
 }

@@ -62,7 +62,10 @@ void main() {
       stream.append(const _Event());
     });
 
-    expect(database.testAppliedCommands.last.dependency, VersionVector());
+    expect(
+      (await database.getAppliedCommands(0, 10)).last.dependency,
+      VersionVector(),
+    );
   });
 
   test('mustExist applies only the first event command', () async {
@@ -72,7 +75,10 @@ void main() {
       stream.append(const _Event());
     });
 
-    expect(database.testAppliedCommands.last.dependency, VersionVector({1: 1}));
+    expect(
+      (await database.getAppliedCommands(0, 10)).last.dependency,
+      VersionVector({1: 1}),
+    );
   });
 
   test('lockLatest applies the greatest command sequence per device', () async {
@@ -83,7 +89,7 @@ void main() {
     });
 
     expect(
-      database.testAppliedCommands.last.dependency,
+      (await database.getAppliedCommands(0, 10)).last.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -96,7 +102,7 @@ void main() {
     });
 
     expect(
-      database.testAppliedCommands.last.dependency,
+      (await database.getAppliedCommands(0, 10)).last.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });

@@ -1,9 +1,9 @@
 import 'package:common/common.dart';
-import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/event/applied_event.dart';
+import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/local_event.dart';
 import 'package:cqrs/src/cqrs/event/stream_event.dart';
@@ -12,31 +12,74 @@ import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 
+/// [MemoryEventDatabase] is an in-memory implementation of [EventDatabase].
+///
+/// This is a reference implementation of the [EventDatabase].
+/// It is slow yet correct.
 class MemoryEventDatabase implements EventDatabase {
-  final List<AppliedCommand> _commands = [];
-  final List<AppliedEvent> _events = [];
-  final Map<CommandId, (ReplicatedCommand, int)> _pendingCommands = {};
-  final Map<EventId, (ReplicatedEvent, int)> _pendingEvents = {};
-  int _nextPendingCommandSequence = -1;
-  int _nextPendingEventSequence = -1;
-  final Map<String, int> _streamVersions = {};
-  final void Function()? _onChange;
+  final List<_MemoryCommand> _commands = [];
+  final List<_MemoryEvent> _events = [];
+  final Map<String, _MemoryPendingCommand> _pendingCommands = {};
+  final Map<String, _MemoryPendingEvent> _pendingEvents = {};
+  // Each stream links to zero-based indexes in _events, in stream order.
+  final Map<String, List<int>> _streamVersions = {};
 
-  MemoryEventDatabase({void Function()? onChange}) : _onChange = onChange;
+  MemoryEventDatabase();
 
   @override
   int get defaultEventFetchPageSize => 10;
 
-  List<AppliedCommand> get testAppliedCommands => List.unmodifiable(_commands);
-  List<AppliedEvent> get testAppliedEvents => List.unmodifiable(_events);
-  List<ReplicatedCommand> get testPendingCommands =>
-      List.unmodifiable(_pendingCommands.values.map((entry) => entry.$1));
-  List<ReplicatedEvent> get testPendingEvents =>
-      List.unmodifiable(_pendingEvents.values.map((entry) => entry.$1));
-  List<int> get testPendingCommandLocalSequences =>
-      List.unmodifiable(_pendingCommands.values.map((entry) => entry.$2));
-  List<int> get testPendingEventLocalSequences =>
-      List.unmodifiable(_pendingEvents.values.map((entry) => entry.$2));
+  AppliedCommand _appliedCommand(_MemoryCommand command) => AppliedCommand(
+    commandId: command.commandId,
+    dependency: command.dependency,
+    encoded: command.encoded,
+    startedAt: command.startedAt,
+    completedAt: command.completedAt,
+    eventCount: command.eventCount,
+    localSequence: command.localSequence,
+  );
+
+  ReplicatedCommand _replicatedCommand(_MemoryCommand command) =>
+      _appliedCommand(command).toReplicatedCommand();
+
+  ReplicatedCommand _replicatedPendingCommand(_MemoryPendingCommand command) =>
+      ReplicatedCommand(
+        commandId: command.commandId,
+        dependency: command.dependency,
+        encoded: command.encoded,
+        startedAt: command.startedAt,
+        completedAt: command.completedAt,
+        eventCount: command.eventCount,
+      );
+
+  ReplicatedEvent _replicatedPendingEvent(_MemoryPendingEvent event) =>
+      ReplicatedEvent(
+        eventId: event.eventId,
+        streamPath: event.streamPath,
+        encodedEvent: event.encodedEvent,
+        occuredAt: event.occuredAt,
+      );
+
+  (String, int) _streamPosition(int eventIndex) {
+    for (final entry in _streamVersions.entries) {
+      final position = entry.value.indexOf(eventIndex);
+      if (position >= 0) return (entry.key, position + 1);
+    }
+    throw StateError('applied event has no stream link');
+  }
+
+  AppliedEvent _appliedEvent(int eventIndex) {
+    final event = _events[eventIndex];
+    final (streamPath, streamVersion) = _streamPosition(eventIndex);
+    return AppliedEvent(
+      eventId: event.eventId,
+      streamPath: streamPath,
+      encodedEvent: event.encodedEvent,
+      occuredAt: event.occuredAt,
+      localSequence: event.localSequence,
+      streamVersion: streamVersion,
+    );
+  }
 
   VersionVector _appliedVersion() {
     final values = <int, int>{};
@@ -58,7 +101,7 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<int> getStreamVersion(String streamPath) async =>
-      _streamVersions[streamPath] ?? 0;
+      _streamVersions[streamPath]?.length ?? 0;
 
   @override
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
@@ -66,22 +109,23 @@ class MemoryEventDatabase implements EventDatabase {
     int streamVersionCursor,
     int count,
   ) async {
-    final events = _events
-        .where(
-          (event) =>
-              event.streamPath == streamPath &&
-              event.streamVersion > streamVersionCursor,
-        )
-        .take(count)
-        .map(
-          (event) => StreamEvent(
-            commandId: event.eventId.commandId,
-            encodedEvent: event.encodedEvent,
-            occuredAt: event.occuredAt,
-            streamVersion: event.streamVersion,
-          ),
-        )
-        .toList(growable: false);
+    final indexes = _streamVersions[streamPath] ?? const <int>[];
+    final events = <StreamEvent>[];
+    for (
+      var version = streamVersionCursor < 0 ? 1 : streamVersionCursor + 1;
+      version <= indexes.length && events.length < count;
+      version++
+    ) {
+      final event = _events[indexes[version - 1]];
+      events.add(
+        StreamEvent(
+          commandId: event.eventId.commandId,
+          encodedEvent: event.encodedEvent,
+          occuredAt: event.occuredAt,
+          streamVersion: version,
+        ),
+      );
+    }
     return PaginatedResult(
       data: events,
       next: events.isEmpty ? null : events.last.streamVersion,
@@ -93,18 +137,23 @@ class MemoryEventDatabase implements EventDatabase {
     int localSequenceCursor,
     int count,
   ) async {
-    final events = _events
-        .where((event) => event.localSequence > localSequenceCursor)
-        .take(count)
-        .map(
-          (event) => LocalEvent(
-            streamPath: event.streamPath,
-            encodedEvent: event.encodedEvent,
-            occuredAt: event.occuredAt,
-            localSequence: event.localSequence,
-          ),
-        )
-        .toList(growable: false);
+    final events = <LocalEvent>[];
+    for (
+      var index = 0;
+      index < _events.length && events.length < count;
+      index++
+    ) {
+      final event = _events[index];
+      if (event.localSequence <= localSequenceCursor) continue;
+      events.add(
+        LocalEvent(
+          streamPath: _streamPosition(index).$1,
+          encodedEvent: event.encodedEvent,
+          occuredAt: event.occuredAt,
+          localSequence: event.localSequence,
+        ),
+      );
+    }
     return PaginatedResult(
       data: events,
       next: events.isEmpty ? null : events.last.localSequence,
@@ -123,26 +172,32 @@ class MemoryEventDatabase implements EventDatabase {
   @override
   Future<ReplicatedCommand?> getAppliedCommand(CommandId commandId) async {
     for (final command in _commands) {
-      if (command.commandId == commandId) return command.toReplicatedCommand();
+      if (command.commandId == commandId) return _replicatedCommand(command);
     }
     return null;
   }
 
   @override
-  Future<ReplicatedCommand?> getPendingCommand(CommandId commandId) async =>
-      _pendingCommands[commandId]?.$1;
+  Future<ReplicatedCommand?> getPendingCommand(CommandId commandId) async {
+    final command = _pendingCommands[commandId.toString()];
+    return command == null ? null : _replicatedPendingCommand(command);
+  }
 
   @override
   Future<ReplicatedEvent?> getAppliedEvent(EventId eventId) async {
-    for (final event in _events) {
-      if (event.eventId == eventId) return event.toReplicatedEvent();
+    for (var index = 0; index < _events.length; index++) {
+      if (_events[index].eventId == eventId) {
+        return _appliedEvent(index).toReplicatedEvent();
+      }
     }
     return null;
   }
 
   @override
-  Future<ReplicatedEvent?> getPendingEvent(EventId eventId) async =>
-      _pendingEvents[eventId]?.$1;
+  Future<ReplicatedEvent?> getPendingEvent(EventId eventId) async {
+    final event = _pendingEvents[eventId.toString()];
+    return event == null ? null : _replicatedPendingEvent(event);
+  }
 
   @override
   Future<List<AppliedCommand>> getAppliedCommands(
@@ -151,14 +206,14 @@ class MemoryEventDatabase implements EventDatabase {
   ) async => _commands
       .where((command) => command.localSequence > localSequenceCursor)
       .take(count)
+      .map(_appliedCommand)
       .toList(growable: false);
 
   @override
-  Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async =>
-      _events
-          .where((event) => event.eventId.commandId == commandId)
-          .toList(growable: false)
-        ..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));
+  Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async => [
+    for (var index = 0; index < _events.length; index++)
+      if (_events[index].eventId.commandId == commandId) _appliedEvent(index),
+  ]..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));
 
   void _validateApplied(
     ReplicatedCommand command,
@@ -193,20 +248,27 @@ class MemoryEventDatabase implements EventDatabase {
     List<ReplicatedEvent> events,
   ) {
     _commands.add(
-      AppliedCommand.fromReplicatedCommand(
-        command,
+      _MemoryCommand(
+        commandId: command.commandId,
+        dependency: command.dependency,
+        encoded: command.encoded,
+        startedAt: command.startedAt,
+        completedAt: command.completedAt,
+        eventCount: command.eventCount,
         localSequence: _commands.length + 1,
       ),
     );
     for (final event in events) {
-      final version = (_streamVersions[event.streamPath] ?? 0) + 1;
-      final applied = AppliedEvent.fromReplicatedEvent(
-        event,
-        localSequence: _events.length + 1,
-        streamVersion: version,
+      final eventIndex = _events.length;
+      _events.add(
+        _MemoryEvent(
+          eventId: event.eventId,
+          encodedEvent: event.encodedEvent,
+          occuredAt: event.occuredAt,
+          localSequence: _events.length + 1,
+        ),
       );
-      _events.add(applied);
-      _streamVersions[event.streamPath] = version;
+      _streamVersions.putIfAbsent(event.streamPath, () => []).add(eventIndex);
     }
   }
 
@@ -217,36 +279,48 @@ class MemoryEventDatabase implements EventDatabase {
   ) async {
     _validateApplied(command, events);
     _appendValidated(command, events);
-    _onChange?.call();
   }
 
   @override
   Future<void> stagePendingCommand(ReplicatedCommand command) async {
-    if (_pendingCommands.containsKey(command.commandId)) {
+    final key = command.commandId.toString();
+    if (_pendingCommands.containsKey(key)) {
       throw StateError('command id is already pending');
     }
-    _pendingCommands[command.commandId] = (
-      command,
-      _nextPendingCommandSequence--,
+    _pendingCommands[key] = _MemoryPendingCommand(
+      commandId: command.commandId,
+      dependency: command.dependency,
+      encoded: command.encoded,
+      startedAt: command.startedAt,
+      completedAt: command.completedAt,
+      eventCount: command.eventCount,
     );
   }
 
   @override
   Future<void> stagePendingEvents(List<ReplicatedEvent> events) async {
+    final keys = <String>{};
     for (final event in events) {
-      if (_pendingEvents.containsKey(event.eventId)) {
+      final key = event.eventId.toString();
+      if (_pendingEvents.containsKey(key) || !keys.add(key)) {
         throw StateError('event id is already pending');
       }
     }
     for (final event in events) {
-      _pendingEvents[event.eventId] = (event, _nextPendingEventSequence--);
+      _pendingEvents[event.eventId.toString()] = _MemoryPendingEvent(
+        streamPath: event.streamPath,
+        eventId: event.eventId,
+        encodedEvent: event.encodedEvent,
+        occuredAt: event.occuredAt,
+      );
     }
   }
 
   @override
   Future<bool> promotePending(CommandId commandId) async {
-    final command = _pendingCommands[commandId]?.$1;
-    if (command == null) return false;
+    final pending = _pendingCommands[commandId.toString()];
+    if (pending == null) return false;
+    final command = _replicatedPendingCommand(pending);
     final frontier = _appliedVersion();
     if (!frontier.contains(command.dependency) ||
         frontier.value(commandId.deviceId) + 1 != commandId.sequence) {
@@ -254,7 +328,7 @@ class MemoryEventDatabase implements EventDatabase {
     }
     final events =
         _pendingEvents.values
-            .map((entry) => entry.$1)
+            .map(_replicatedPendingEvent)
             .where((event) => event.eventId.commandId == commandId)
             .toList()
           ..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));
@@ -264,11 +338,88 @@ class MemoryEventDatabase implements EventDatabase {
     }
     _validateApplied(command, events);
     _appendValidated(command, events);
-    _pendingCommands.remove(commandId);
+    _pendingCommands.remove(commandId.toString());
     for (final event in events) {
-      _pendingEvents.remove(event.eventId);
+      _pendingEvents.remove(event.eventId.toString());
     }
-    _onChange?.call();
     return true;
   }
+}
+
+class _MemoryCommand {
+  final CommandId commandId;
+  final VersionVector dependency;
+  final EncodedCommand encoded;
+  final DateTime startedAt;
+  final DateTime completedAt;
+  final int eventCount;
+  final int localSequence;
+
+  _MemoryCommand({
+    required this.commandId,
+    required this.dependency,
+    required this.encoded,
+    required this.startedAt,
+    required this.completedAt,
+    required this.eventCount,
+    required this.localSequence,
+  }) {
+    if (eventCount <= 0) {
+      throw const FormatException(
+        'applied commands must produce at least one event',
+      );
+    }
+  }
+}
+
+class _MemoryPendingCommand {
+  final CommandId commandId;
+  final VersionVector dependency;
+  final EncodedCommand encoded;
+  final DateTime startedAt;
+  final DateTime completedAt;
+  final int eventCount;
+
+  _MemoryPendingCommand({
+    required this.commandId,
+    required this.dependency,
+    required this.encoded,
+    required this.startedAt,
+    required this.completedAt,
+    required this.eventCount,
+  }) {
+    if (eventCount <= 0) {
+      throw const FormatException(
+        'applied commands must produce at least one event',
+      );
+    }
+  }
+}
+
+class _MemoryEvent {
+  final EventId eventId;
+  final EncodedEvent encodedEvent;
+  final DateTime occuredAt;
+  final int localSequence;
+
+  const _MemoryEvent({
+    required this.eventId,
+    required this.encodedEvent,
+    required this.occuredAt,
+    required this.localSequence,
+  });
+}
+
+class _MemoryPendingEvent {
+  final String streamPath;
+  final EventId eventId;
+  final EncodedEvent encodedEvent;
+  final DateTime occuredAt;
+
+  const _MemoryPendingEvent({
+    required this.streamPath,
+    required this.eventId,
+    required this.encodedEvent,
+    required this.occuredAt,
+  });
 }

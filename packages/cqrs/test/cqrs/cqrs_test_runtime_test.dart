@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -34,8 +35,9 @@ void main() {
 
     await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
 
-    expect(database.testAppliedEvents, hasLength(1));
-    expect(database.testAppliedEvents.single.occuredAt, seededAt);
+    final applied = await database.getAppliedEvents(CommandId(0, 1));
+    expect(applied, hasLength(1));
+    expect(applied.single.occuredAt, seededAt);
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.single.occuredAt, seededAt);
   });
@@ -83,11 +85,19 @@ void main() {
       'value/one',
     ]);
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
-    expect(database.testAppliedEvents.map((event) => event.streamVersion), [
-      1,
-      1,
-      2,
-    ]);
+    expect(
+      (await database.getLocalEvents(
+        0,
+        10,
+      )).data.map((event) => event.streamPath),
+      ['value/one', 'value/two', 'value/one'],
+    );
+    final commands = await database.getAppliedCommands(0, 10);
+    final applied = <AppliedEvent>[
+      for (final command in commands)
+        ...await database.getAppliedEvents(command.commandId),
+    ];
+    expect(applied.map((event) => event.streamVersion), [1, 1, 2]);
   });
 
   test('seeds an existing stream before the next command', () async {
@@ -104,11 +114,7 @@ void main() {
 
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
-    expect(database.testAppliedEvents.map((event) => event.streamVersion), [
-      1,
-      2,
-      3,
-    ]);
+    expect(await database.getStreamVersion('value/one'), 3);
   });
 
   test('rejects unregistered seed events before writing', () async {
@@ -125,7 +131,7 @@ void main() {
       throwsA(isA<EventCodecException>()),
     );
 
-    expect(database.testAppliedEvents, isEmpty);
+    expect((await database.getLocalEvents(0, 1)).data, isEmpty);
   });
 }
 
