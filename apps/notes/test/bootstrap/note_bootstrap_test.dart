@@ -4,7 +4,6 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
-import 'package:notes/application/reset_event_database.dart';
 import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
 
