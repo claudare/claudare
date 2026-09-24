@@ -1,106 +1,116 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
-import 'package:notes/screens/error_screen.dart';
+import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
+import 'package:notes/util/get_application_directory.dart';
+import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final application = NoteApplication(
-    idGenerator: IdGeneratorSecure(),
+  final bootstrap = NoteBootstrap(
     timeProvider: SystemTimeProvider(),
     logger: ConsoleLogger(name: 'notes', minimumLevel: LogLevel.debug),
   );
-
-  runApp(
-    NoteApplicationProvider(application: application, child: const MyApp()),
-  );
+  runApp(MyApp(bootstrap: bootstrap));
 }
 
 class MyApp extends StatefulWidget {
-  final Widget home;
+  final NoteBootstrap bootstrap;
+  final Future<String> Function() applicationDirectory;
 
-  const MyApp({super.key, this.home = const LoadingScreen()});
+  const MyApp({
+    super.key,
+    required this.bootstrap,
+    this.applicationDirectory = getApplicationDirectory,
+  });
 
   @override
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-  StreamSubscription<CqrsProjectionFailure>? _failureSubscription;
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  late Future<NoteApplication> _initialization;
   NoteApplication? _application;
-  CqrsProjectionFailure? _failure;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final application = NoteApplicationProvider.of(context);
-    if (identical(_application, application)) return;
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initialization = _initialize();
+  }
 
-    unawaited(_failureSubscription?.cancel());
-    _application = application;
-    _failure = null;
-    _failureSubscription = application.runtimeFailures.listen(
-      (failure) => _handleFailure(application, failure),
+  @override
+  void didUpdateWidget(MyApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.bootstrap, widget.bootstrap)) return;
+
+    unawaited(_closeBootstrap(oldWidget.bootstrap));
+    _application = null;
+    _initialization = _initialize();
+  }
+
+  Future<NoteApplication> _initialize() async {
+    final directory = await widget.applicationDirectory();
+    return widget.bootstrap.initialize(
+      eventsDbFilepath: path.join(directory, 'events.sqlite'),
     );
+  }
 
-    final failure = application.runtimeFailure;
-    if (failure != null) {
-      _handleFailure(application, failure, notify: false);
+  void _onReady(NoteApplication application) {
+    if (!mounted) return;
+    setState(() => _application = application);
+  }
+
+  Future<void> _closeBootstrap(NoteBootstrap bootstrap) async {
+    try {
+      await bootstrap.close();
+    } on Exception catch (error, stackTrace) {
+      bootstrap.logger.error('Failed to close Notes', error, stackTrace);
     }
   }
 
-  void _handleFailure(
-    NoteApplication application,
-    CqrsProjectionFailure failure, {
-    bool notify = true,
-  }) {
-    if (!identical(_application, application)) return;
-    if (identical(_failure, failure)) return;
-
-    for (final entry in failure.errors) {
-      application.logger.error(
-        'terminal projection failure',
-        entry.error,
-        entry.stackTrace,
-      );
-    }
-
-    if (notify) {
-      setState(() => _failure = failure);
-    } else {
-      _failure = failure;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      unawaited(_closeBootstrap(widget.bootstrap));
     }
   }
 
   @override
   void dispose() {
-    unawaited(_failureSubscription?.cancel());
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_closeBootstrap(widget.bootstrap));
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final application = _application;
+    final app = MaterialApp(
       title: 'Notes App',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      builder: (context, child) {
-        final failure = _failure;
-        if (failure != null) return ErrorScreen(errors: failure.errors);
-        return child!;
-      },
-      home: widget.home,
+      home:
+          application == null
+              ? LoadingScreen(
+                key: ValueKey(widget.bootstrap),
+                initialization: _initialization,
+                logger: widget.bootstrap.logger,
+                onReady: _onReady,
+              )
+              : HomeScreen(application: application),
     );
+    if (application == null) return app;
+    return NoteApplicationProvider(application: application, child: app);
   }
 }

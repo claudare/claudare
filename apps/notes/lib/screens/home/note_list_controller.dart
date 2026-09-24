@@ -1,33 +1,27 @@
-import 'dart:async';
-
 import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes/application/note_application.dart';
-import 'package:notes/command/trash_note.dart';
-import 'package:notes/read_model/note/resolved_note.dart';
-import 'package:notes/read_model/note/resolved_note_read_model.dart';
 
 class NoteListController extends ChangeNotifier {
   final NoteApplication application;
 
-  List<ResolvedNote> _noteData = [];
-  ResolvedNoteQueryCategory _category = ResolvedNoteQueryCategory.all;
-  ResolvedNoteQueryOrder _order = ResolvedNoteQueryOrder.createdAtDescending;
-  String _search = '';
+  List<NoteState> _noteData = [];
+  NoteCategory _category = NoteCategory.all;
+  NoteSortOrder _order = NoteSortOrder.createdAtDescending;
   bool _isLoading = false;
+  Exception? _loadError;
+  bool _disposed = false;
   late final AsyncTrailingRunner _reloadRunner;
 
   NoteListController(this.application) {
     _reloadRunner = AsyncTrailingRunner(_reloadOnce);
-    application.resolvedNoteReadModelNotifier.addListener(
-      _onResolvedNoteReadModelChanged,
-    );
   }
 
-  List<ResolvedNote> get noteData => _noteData;
+  List<NoteState> get noteData => _noteData;
   bool get isLoading => _isLoading;
+  Exception? get loadError => _loadError;
 
-  Future<void> setCategory(ResolvedNoteQueryCategory category) async {
+  Future<void> setCategory(NoteCategory category) async {
     if (_category == category) return;
 
     _category = category;
@@ -35,18 +29,10 @@ class NoteListController extends ChangeNotifier {
     await reloadNotes();
   }
 
-  Future<void> setFilter(ResolvedNoteQueryOrder filter) async {
-    if (_order == filter) return;
+  Future<void> setOrder(NoteSortOrder order) async {
+    if (_order == order) return;
 
-    _order = filter;
-
-    await reloadNotes();
-  }
-
-  Future<void> setSearch(String search) async {
-    if (_search == search) return;
-
-    _search = search;
+    _order = order;
 
     await reloadNotes();
   }
@@ -55,51 +41,38 @@ class NoteListController extends ChangeNotifier {
 
   Future<void> _reloadOnce() async {
     _isLoading = true;
-    notifyListeners();
+    _notify();
 
     try {
-      // final data = await application.resolvedNoteReadModel.query(
-      //   _category,
-      //   _order,
-      // );
-      final data = await application.compositeNoteSearch.queryComposite(
-        _search,
-        _category,
-        _order,
-      );
-      _noteData = data;
-    } on Exception catch (error, stackTrace) {
-      application.logger.error(
-        'Failed to load notes: $error',
-        error,
-        stackTrace,
-      );
+      final notes = await application.query.noteList();
+      if (_disposed) return;
+      _noteData = notes.toSortedList(category: _category, order: _order);
+      _loadError = null;
+    } on Exception catch (error) {
+      if (!_disposed) _loadError = error;
     } finally {
       _isLoading = false;
-      notifyListeners();
+      _notify();
     }
   }
 
-  void _onResolvedNoteReadModelChanged() {
-    unawaited(reloadNotes());
+  Future<void> deleteNotes(List<String> noteIds) async {
+    try {
+      for (final noteId in noteIds) {
+        await application.command.trashNote(noteId);
+      }
+    } finally {
+      await reloadNotes();
+    }
   }
 
-  Future<void> deleteNotes(List<String> noteIds) async {
-    final promises = noteIds.map(
-      (noteId) => application.commandExecute(
-        const TrashNote(),
-        TrashNoteInput(noteId: noteId),
-      ),
-    );
-
-    await Future.wait(promises);
+  void _notify() {
+    if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
-    application.resolvedNoteReadModelNotifier.removeListener(
-      _onResolvedNoteReadModelChanged,
-    );
+    _disposed = true;
     super.dispose();
   }
 }

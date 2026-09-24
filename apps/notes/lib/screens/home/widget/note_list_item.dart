@@ -1,22 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/common.dart';
-import 'package:notes/read_model/note/resolved_note.dart';
 
 class NoteListItem extends StatelessWidget {
-  final ResolvedNote note;
+  final NoteState note;
   final VoidCallback onTap;
 
   const NoteListItem({super.key, required this.note, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    // nice UI :()
-    String categories = '';
-
-    if (note.isTrashed) {
-      categories += ' Trashed';
-    }
-
     return ListTile(
       title: Text(note.title),
       subtitle: Text(
@@ -30,7 +23,7 @@ class NoteListItem extends StatelessWidget {
             formatDateTime(note.updatedAt),
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
-          Text(categories),
+          if (note.isTrashed) const Text('Trashed'),
         ],
       ),
       onTap: onTap,

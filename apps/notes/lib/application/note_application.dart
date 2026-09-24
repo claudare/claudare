@@ -1,139 +1,78 @@
-import 'dart:async';
-
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:isolate_sqlite/isolate_sqlite.dart';
+import 'package:notes/aggregate/note.dart';
+import 'package:notes/aggregate/note_list.dart';
+import 'package:notes/command/create_note.dart';
+import 'package:notes/command/restore_note.dart';
+import 'package:notes/command/trash_note.dart';
+import 'package:notes/command/update_note_content.dart';
+import 'package:notes/command/update_note_title.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/projection/note_projection.dart';
-import 'package:notes/projection/search_projection.dart';
-import 'package:notes/read_model/composite_note_search.dart';
-import 'package:notes/read_model/note/resolved_note_read_model.dart';
-import 'package:notes/read_model/read_model_notifier.dart';
-import 'package:notes/read_model/note/sqlite_note_database.dart';
-import 'package:notes/read_model/search/search_read_model.dart';
-import 'package:notes/read_model/search/sqlite_search_database.dart';
-import 'package:time_provider/time_provider.dart';
 
+export 'package:notes/aggregate/note.dart' show NoteState;
+export 'package:notes/aggregate/note_list.dart'
+    show NoteCategory, NoteListState, NoteSortOrder;
+
+/// Exposes note commands and aggregate queries over a supplied [CqrsRuntime].
 class NoteApplication {
-  late final IsolateSqlite _eventDb;
-  late final IsolateSqlite _notesDb;
-  late final IsolateSqlite _searchDb;
+  final NoteCommands command;
+  final NoteQueries query;
 
-  EventStore get eventStore => _cqrsRuntime.eventStore;
-  final Logger logger;
-  final IdGenerator idGenerator;
-  final TimeProvider timeProvider;
+  NoteApplication({required CqrsRuntime cqrsRuntime})
+    : command = NoteCommands(cqrsRuntime),
+      query = NoteQueries(cqrsRuntime) {
+    cqrsRuntime.eventRegistry
+      ..add(const NoteContentUpdatedCodec())
+      ..add(const NoteCreatedCodec())
+      ..add(const NoteRestoredCodec())
+      ..add(const NoteTitleUpdatedCodec())
+      ..add(const NoteTrashedCodec())
+      ..freeze();
+  }
+}
 
-  late final ResolvedNoteReadModel resolvedNoteReadModel;
-  late final SearchReadModel searchReadModel;
-  late final CompositeNoteSearch compositeNoteSearch;
-  final ReadModelNotifier resolvedNoteReadModelNotifier = ReadModelNotifier();
+/// Writes note events through the runtime.
+class NoteCommands {
+  final CqrsRuntime _runtime;
+  final IdGenerator _idGenerator = IdGeneratorSecure();
 
-  late final CqrsRuntime _cqrsRuntime;
+  NoteCommands(this._runtime);
 
-  NoteApplication({
-    required this.idGenerator,
-    required this.timeProvider,
-    required this.logger,
-  }) {
-    _eventDb = IsolateSqlite();
-
-    final cqrsDependencies = CqrsRuntimeDependencies(
-      timeProvider: timeProvider,
-      logger: logger,
-      eventStore: SqliteEventDatabase(_eventDb),
-      runtimeDatabase: SqliteRuntimeDatabase(_eventDb),
-    );
-
-    _notesDb = IsolateSqlite();
-    final noteDatabase = SqliteNoteDatabase(_notesDb);
-    resolvedNoteReadModel = noteDatabase;
-
-    _searchDb = IsolateSqlite();
-    final searchDatabase = SqliteSearchDatabase(_searchDb);
-    searchReadModel = searchDatabase;
-
-    final projectionRegistry =
-        ProjectionRegistry()
-          ..add(
-            NoteProjection(
-              noteDatabase,
-              resolvedNoteReadModelNotifier.notifyChanged,
-            ),
-          )
-          ..add(SearchProjection(searchDatabase, logger));
-
-    final eventRegistry =
-        EventRegistry()
-          ..add(const NoteContentUpdatedCodec())
-          ..add(const NoteCreatedCodec())
-          ..add(const NoteRestoredCodec())
-          ..add(const NoteTitleUpdatedCodec())
-          ..add(const NoteTrashedCodec());
-
-    _cqrsRuntime = CqrsRuntime(
-      dependencies: cqrsDependencies,
-      eventRegistry: eventRegistry,
-      projectionRegistry: projectionRegistry,
-      runtimeName: 'notes',
-    );
-
-    compositeNoteSearch = CompositeNoteSearch(
-      resolvedNoteReadModel,
-      searchReadModel,
-    );
+  Future<String> createNote() async {
+    final noteId = _idGenerator.generateId();
+    await _runtime.execute(const CreateNote(), CreateNoteInput(noteId: noteId));
+    return noteId;
   }
 
-  NoteApplication.test({
-    IdGenerator? idGenerator,
-    TimeProvider? timeProvider,
-    Logger? logger,
-  }) : this(
-         idGenerator: idGenerator ?? IdGeneratorSequential(),
-         timeProvider: timeProvider ?? FakeTimeProviderStatic.zero(),
-         logger: logger ?? const NoopLogger(),
-       );
+  Future<void> updateNoteTitle(String noteId, String value) => _runtime.execute(
+    const UpdateNoteTitle(),
+    UpdateNoteTitleInput(noteId: noteId, fullValue: value),
+  );
 
-  Future<void> commandExecute<Input extends CommandInput>(
-    Command<Input> command,
-    Input input,
-  ) => _cqrsRuntime.execute(command, input);
+  Future<void> updateNoteContent(String noteId, String value) =>
+      _runtime.execute(
+        const UpdateNoteContent(),
+        UpdateNoteContentInput(noteId: noteId, overrideContent: value),
+      );
 
-  Future<void> pump() => _cqrsRuntime.pump();
+  Future<void> trashNote(String noteId) =>
+      _runtime.execute(const TrashNote(), TrashNoteInput(noteId: noteId));
 
-  CqrsProjectionFailure? get runtimeFailure => _cqrsRuntime.failure;
-  Stream<CqrsProjectionFailure> get runtimeFailures => _cqrsRuntime.failures;
+  Future<void> restoreNote(String noteId) =>
+      _runtime.execute(const RestoreNote(), RestoreNoteInput(noteId: noteId));
+}
 
-  Future<void> initialize({
-    required String eventsDbFilepath,
-    required String notesDbFilepath,
-    required String searchDbFilepath,
-  }) async {
-    logger.debug('events database path: $eventsDbFilepath');
-    await _eventDb.open(eventsDbFilepath);
-    await _notesDb.open(notesDbFilepath);
-    await _searchDb.open(searchDbFilepath);
+/// Resolves current note state directly from the event history.
+class NoteQueries {
+  final CqrsRuntime _runtime;
 
-    await _cqrsRuntime.initialize();
+  const NoteQueries(this._runtime);
+
+  Future<NoteState?> note(String noteId) async {
+    final state = await _runtime.resolve(NoteAggregate(noteId), noteId);
+    return state.exists ? state : null;
   }
 
-  Future<void> close() async {
-    try {
-      await _cqrsRuntime.close();
-    } finally {
-      resolvedNoteReadModelNotifier.dispose();
-      await Future.wait([_notesDb.close(), _searchDb.close()]);
-    }
-  }
-
-  Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other);
-  }
-
-  @override
-  int get hashCode => identityHashCode(this);
+  Future<NoteListState> noteList() =>
+      _runtime.resolve(const NoteListAggregate(), '');
 }

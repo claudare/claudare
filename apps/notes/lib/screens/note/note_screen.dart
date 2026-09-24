@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/common.dart';
@@ -27,7 +29,11 @@ class _NoteScreenState extends State<NoteScreen> {
   late TextEditingController _contentController;
   late FocusNode _contentFocus;
 
-  bool _flushing = false;
+  Future<bool>? _flushInProgress;
+  bool _flushAgain = false;
+  bool _allowPop = false;
+  bool _leaving = false;
+  Exception? _loadError;
 
   @override
   void initState() {
@@ -53,11 +59,18 @@ class _NoteScreenState extends State<NoteScreen> {
 
     _controller = NoteController(widget.application);
     _controller.addListener(() => setState(() {}));
+    unawaited(_loadNote());
+  }
 
-    _controller.load(widget.noteId).then((values) {
+  Future<void> _loadNote() async {
+    try {
+      final values = await _controller.load(widget.noteId);
+      if (!mounted) return;
       _titleController.text = values.title;
       _contentController.text = values.content;
-    });
+    } on Exception catch (error) {
+      if (mounted) setState(() => _loadError = error);
+    }
   }
 
   @override
@@ -79,7 +92,7 @@ class _NoteScreenState extends State<NoteScreen> {
 
   void _onTitleFocusChange() {
     if (!_titleFocus.hasFocus) {
-      _flushChanges();
+      unawaited(_flushChanges());
     }
   }
 
@@ -89,42 +102,62 @@ class _NoteScreenState extends State<NoteScreen> {
 
   void _onContentFocusChange() {
     if (!_contentFocus.hasFocus) {
-      _flushChanges();
+      unawaited(_flushChanges());
     }
   }
 
-  Future<void> _flushChanges() async {
-    if (_flushing) return;
-    _flushing = true;
+  Future<bool> _flushChanges() async {
+    final active = _flushInProgress;
+    if (active != null) {
+      _flushAgain = true;
+      return active;
+    }
 
+    final flush = _runFlush();
+    _flushInProgress = flush;
     try {
-      final applied = await _controller.flushChanges();
-      if (!applied) return;
-
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Note saved'), duration: Duration(seconds: 1)),
-      );
-    } on Exception catch (e) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error saving note: $e'),
-          duration: Duration(seconds: 10),
-        ),
-      );
+      return await flush;
     } finally {
-      _flushing = false;
+      _flushInProgress = null;
+    }
+  }
+
+  Future<bool> _runFlush() async {
+    try {
+      var applied = false;
+      while (true) {
+        _flushAgain = false;
+        final revision = _controller.editRevision;
+        applied = await _controller.flushChanges() || applied;
+        if (!_flushAgain && _controller.editRevision == revision) break;
+      }
+      if (!applied) return true;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Note saved'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+      return true;
+    } on Exception catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving note: $e'),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+      }
+      return false;
     }
   }
 
   Future<void> _trashNote() async {
     try {
+      if (!await _flushChanges()) return;
       final trashed = await _controller.trash();
       if (!trashed) return;
 
@@ -132,6 +165,7 @@ class _NoteScreenState extends State<NoteScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
       );
+      setState(() => _allowPop = true);
       Navigator.of(context).pop();
     } on Exception catch (e) {
       if (!mounted) {
@@ -173,15 +207,24 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
-  void _onPopInvokedWithResult() async {
-    widget.application.logger.debug('invoking pop with result');
-    await _flushChanges();
+  Future<void> _onPopInvokedWithResult(bool didPop) async {
+    if (didPop || _leaving) return;
+
+    _leaving = true;
+    try {
+      if (!await _flushChanges() || !mounted) return;
+      setState(() => _allowPop = true);
+      Navigator.of(context).pop();
+    } finally {
+      _leaving = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      onPopInvokedWithResult: (didPop, _) => _onPopInvokedWithResult(),
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, _) => _onPopInvokedWithResult(didPop),
       child: Scaffold(
         appBar: AppBar(
           title: Text(
@@ -196,65 +239,76 @@ class _NoteScreenState extends State<NoteScreen> {
                 )
                 : IconButton(
                   icon: Icon(Icons.delete),
-                  onPressed: () => _trashNote(),
+                  onPressed:
+                      _controller.exists && !_controller.isLoading
+                          ? () => _trashNote()
+                          : null,
                 ),
           ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        body:
+            _loadError == null
+                ? _buildEditor()
+                : Center(child: Text('Error loading note: $_loadError')),
+      ),
+    );
+  }
+
+  Widget _buildEditor() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            decoration: InputDecoration(
+              hintText: 'Enter note title...',
+              border: OutlineInputBorder(),
+            ),
+            focusNode: _titleFocus,
+            // TODO: this breaks tab order, sometimes
+            enabled: !_controller.isLoading && !_controller.isTrashed,
+          ),
+          SizedBox(height: 8),
+          Expanded(
+            child: TextField(
+              controller: _contentController,
+              maxLines: null,
+              expands: true,
+              decoration: InputDecoration(
+                hintText: 'Enter note content...',
+                border: OutlineInputBorder(),
+              ),
+              textAlignVertical: TextAlignVertical.top,
+              focusNode: _contentFocus,
+              // TODO: this breaks tab order, sometimes
+              enabled: !_controller.isLoading && !_controller.isTrashed,
+            ),
+          ),
+          SizedBox(height: 4),
+          Wrap(
+            spacing: 8.0,
             children: [
-              SizedBox(height: 8),
-              TextField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'Enter note title...',
-                  border: OutlineInputBorder(),
+              if (_controller.createdAt != null)
+                Text(
+                  'Created at ${formatDateTime(_controller.createdAt!)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                focusNode: _titleFocus,
-                // TODO: this breaks tab order, sometimes
-                enabled: !_controller.isLoading && !_controller.isTrashed,
-              ),
-              SizedBox(height: 8),
-              Expanded(
-                child: TextField(
-                  controller: _contentController,
-                  maxLines: null,
-                  expands: true,
-                  decoration: InputDecoration(
-                    hintText: 'Enter note content...',
-                    border: OutlineInputBorder(),
-                  ),
-                  textAlignVertical: TextAlignVertical.top,
-                  focusNode: _contentFocus,
-                  // TODO: this breaks tab order, sometimes
-                  enabled: !_controller.isLoading && !_controller.isTrashed,
+              if (_controller.updatedAt != null)
+                Text(
+                  'Updated at ${formatDateTime(_controller.updatedAt!)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-              ),
-              SizedBox(height: 4),
-              Row(
-                spacing: 8.0,
-                children: [
-                  Text(
-                    'Created at ${formatDateTime(_controller.createdAt)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  Text(
-                    'Updated at ${formatDateTime(_controller.updatedAt)}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  _controller.trashedAt != null
-                      ? Text(
-                        'Deleted at ${formatDateTime(_controller.trashedAt!)}',
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      )
-                      : SizedBox.shrink(),
-                ],
-              ),
+              if (_controller.trashedAt != null)
+                Text(
+                  'Deleted at ${formatDateTime(_controller.trashedAt!)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

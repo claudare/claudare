@@ -1,10 +1,14 @@
-# notes
+# Notes
 
-## Logging
+Notes is a Flutter prototype for local event-sourced notes. It creates, edits,
+trashes, and restores notes. Note queries support active and trashed filtering
+and chronological sorting. Settings shows the active-note count.
 
-Production uses one application-scoped `ConsoleLogger` named `notes` with a
-minimum level of `debug`. The same logger is shared by the CQRS runtime and
-Notes-owned commands, projections, repositories, controllers, and screens.
+The application stores note events in `events.sqlite`. Note details and lists
+are rebuilt from that history when queried. It does not provide text search,
+replication, encryption, or backup.
 
-`NoteApplication.test()` uses `NoopLogger` by default. Tests that inspect
-diagnostics can inject a `RecordingLogger` through `logger`.
+## Run
+
+From the workspace root, resolve dependencies with `fvm flutter pub get`.
+Then run `fvm flutter run` from `apps/notes`.

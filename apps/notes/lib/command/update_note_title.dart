@@ -32,11 +32,6 @@ class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
 
     final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
 
-    // This implementation is not concurrent, as concurrency will need to use
-    // the actual device time.
-    // TODO: make this work concurrently, as title will NOT be a CRDT.
-    // ctx.currentTime() is available in the projection through metadata!
-
     await stream.mustExist();
 
     stream.append(NoteTitleUpdated(noteId: noteId, newTitle: input.fullValue));

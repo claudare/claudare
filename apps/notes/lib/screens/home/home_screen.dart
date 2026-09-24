@@ -17,9 +17,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late NoteListController _controller;
 
-  // controller for searching
-  final TextEditingController _searchController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
@@ -27,14 +24,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _controller = NoteListController(widget.application);
     _controller.addListener(() => setState(() {}));
     _controller.reloadNotes();
-    _searchController.addListener(() {
-      _onSearchTextChange(_searchController.text);
-    });
   }
 
   @override
   void dispose() {
-    _controller.dispose(); // listener list is cleared on dispose
+    _controller.dispose();
     super.dispose();
   }
 
@@ -46,27 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 NoteScreen(noteId: noteId, application: widget.application),
       ),
     );
-    // this will rerun after push is over
-    await _controller.reloadNotes();
+    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _openSettings() async {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
-    // this will rerun after push is over
-    await _controller.reloadNotes();
+    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _newNote() async {
     await _openNote(null);
-  }
-
-  // TODO: debounce me
-  void _onSearchTextChange(String text) {
-    // search is its own popup?
-
-    _controller.setSearch(text);
   }
 
   @override
@@ -81,33 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => _openSettings(),
           ),
         ],
-        // flexibleSpace: FlexibleSpaceBar(
-        //   title: TextField(controller: _searchController),
-        // ),
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Search notes...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+      body:
+          _controller.loadError == null
+              ? NoteList(noteData: _controller.noteData, openNote: _openNote)
+              : Center(
+                child: Text('Error loading notes: ${_controller.loadError}'),
               ),
-              controller: _searchController,
-            ),
-          ),
-          Expanded(
-            child: NoteList(
-              noteData: _controller.noteData,
-              openNote: _openNote,
-            ),
-          ),
-        ],
-      ),
-      // body: NoteList(noteData: _controller.noteData, openNote: _openNote),
     );
   }
 }

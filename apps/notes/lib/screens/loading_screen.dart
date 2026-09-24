@@ -1,98 +1,73 @@
-import 'package:cqrs/cqrs.dart';
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
-import 'package:notes/application/note_application_provider.dart';
-import 'package:notes/command/create_note.dart';
-import 'package:notes/command/update_note_content.dart';
-import 'package:notes/command/update_note_title.dart';
-import 'package:notes/screens/error_screen.dart';
-import 'package:notes/screens/home/home_screen.dart';
-import 'package:notes/util/get_application_directory.dart';
-import 'package:path/path.dart' as path;
+import 'package:notes/application/note_application.dart';
 
+/// Displays startup progress and any initialization error.
 class LoadingScreen extends StatefulWidget {
-  const LoadingScreen({super.key});
+  final Future<NoteApplication> initialization;
+  final Logger logger;
+  final ValueChanged<NoteApplication> onReady;
+
+  const LoadingScreen({
+    super.key,
+    required this.initialization,
+    required this.logger,
+    required this.onReady,
+  });
 
   @override
   State<LoadingScreen> createState() => _LoadingScreenState();
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
-  // progress state goes in here
+  Object? _error;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    final application = NoteApplicationProvider.of(context);
-    application.logger.debug('LoadingScreen didChangeDependencies');
-
-    _initApplication();
+  void initState() {
+    super.initState();
+    _waitForInitialization();
   }
 
-  Future<void> _initApplication() async {
-    final application = NoteApplicationProvider.of(context);
-
+  Future<void> _waitForInitialization() async {
     try {
-      final baseDir = await getApplicationDirectory();
-      await application.initialize(
-        eventsDbFilepath: path.join(baseDir, 'events.sqlite'),
-        notesDbFilepath: path.join(baseDir, 'notes.sqlite'),
-        searchDbFilepath: path.join(baseDir, 'search.sqlite'),
-      );
-
-      try {
-        await application.commandExecute(
-          const CreateNote(),
-          CreateNoteInput(noteId: 'test'),
-        );
-        await application.commandExecute(
-          const UpdateNoteTitle(),
-          UpdateNoteTitleInput(noteId: 'test', fullValue: 'first note'),
-        );
-        await application.commandExecute(
-          const UpdateNoteContent(),
-          UpdateNoteContentInput(
-            noteId: 'test',
-            overrideContent:
-                'this is an example note data inserted at the intialization. Application development on track! :)',
-          ),
-        );
-      } on Exception {
-        application.logger.debug('test data was not inserted');
-      }
-
-      if (!mounted) {
-        throw Exception('not mounted after loading');
-      }
-      await Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(application: application),
-        ),
-      );
-    } on Exception catch (error, stackTrace) {
-      if (error is CqrsProjectionFailure &&
-          identical(application.runtimeFailure, error)) {
-        return;
-      }
-      if (!mounted) return;
-      application.logger.error(
-        'error in initialization: $error',
-        error,
-        stackTrace,
-      );
-      navigateToErrorScreen(context, error, stackTrace);
+      final application = await widget.initialization;
+      if (mounted) widget.onReady(application);
+    } catch (error, stackTrace) {
+      widget.logger.error('Failed to initialize Notes', error, stackTrace);
+      if (mounted) setState(() => _error = error);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: CircularProgressIndicator());
-
-    // return Scaffold(
-    //   body: Column(
-    //     mainAxisAlignment: MainAxisAlignment.center,
-    //     children: [Center(child: CircularProgressIndicator()), Text('loading')],
-    //   ),
-    // );
+    final error = _error;
+    return Scaffold(
+      body: Center(
+        child:
+            error == null
+                ? const CircularProgressIndicator()
+                : Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 56,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Could not open Notes',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      SelectableText('$error', textAlign: TextAlign.center),
+                    ],
+                  ),
+                ),
+      ),
+    );
   }
 }
