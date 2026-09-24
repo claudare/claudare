@@ -17,14 +17,14 @@ void main() {
     sqlite = IsolateSqlite();
     await sqlite.openInMemory();
     database = SqliteEventDatabase(sqlite);
+    await database.migrate();
     store = EventStore(database);
-    await store.migrate();
   });
 
-  tearDown(() => store.close());
+  tearDown(() => database.close());
 
-  test('store closure closes the SQLite database', () async {
-    await store.close();
+  test('database closure closes the SQLite connection', () async {
+    await database.close();
 
     await expectLater(sqlite.queryValue<int>('SELECT 1'), throwsStateError);
   });

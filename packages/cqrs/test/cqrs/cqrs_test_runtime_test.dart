@@ -25,7 +25,6 @@ void main() {
   test('uses an injected store, logger, and time provider', () async {
     final database = MemoryEventDatabase();
     final store = EventStore(database);
-    addTearDown(store.close);
     final runtime = CqrsTestRuntime(
       eventStore: store,
       logger: const NoopLogger(),
@@ -43,7 +42,6 @@ void main() {
 
   test('seeds an event for aggregate resolution', () async {
     final store = EventStore(MemoryEventDatabase());
-    addTearDown(store.close);
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
 
@@ -63,7 +61,6 @@ void main() {
   test('seeds multiple streams in the supplied order', () async {
     final database = MemoryEventDatabase();
     final store = EventStore(database);
-    addTearDown(store.close);
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
     final later = seededAt.add(const Duration(days: 1));
@@ -96,7 +93,6 @@ void main() {
   test('seeds an existing stream before the next command', () async {
     final database = MemoryEventDatabase();
     final store = EventStore(database);
-    addTearDown(store.close);
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
     await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
@@ -118,7 +114,6 @@ void main() {
   test('rejects unregistered seed events before writing', () async {
     final database = MemoryEventDatabase();
     final store = EventStore(database);
-    addTearDown(store.close);
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
 

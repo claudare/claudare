@@ -29,7 +29,6 @@ class MemoryEventDatabaseTestBackend implements EventStoreTestBackend {
   Future<EventStoreTestSession> open() async {
     final database = MemoryEventDatabase();
     final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
-    await store.migrate();
     return _MemoryEventDatabaseTestSession(store, database);
   }
 }
@@ -47,8 +46,13 @@ class SqliteEventDatabaseTestBackend implements EventStoreTestBackend {
     final sqlite = IsolateSqlite();
     await sqlite.openInMemory();
     final database = SqliteEventDatabase(sqlite);
+    try {
+      await database.migrate();
+    } catch (_) {
+      await database.close();
+      rethrow;
+    }
     final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
-    await store.migrate();
     return _SqliteEventDatabaseTestSession(store, database);
   }
 }
@@ -63,7 +67,6 @@ class _MemoryEventDatabaseTestSession implements EventStoreTestSession {
   final EventStore store;
   @override
   final MemoryEventDatabase database;
-  bool _closed = false;
 
   _MemoryEventDatabaseTestSession(this.store, this.database);
 
@@ -72,11 +75,7 @@ class _MemoryEventDatabaseTestSession implements EventStoreTestSession {
       database.getAppliedCommands(0, -1 >>> 1);
 
   @override
-  Future<void> close() async {
-    if (_closed) return;
-    _closed = true;
-    await store.close();
-  }
+  Future<void> close() async {}
 }
 
 class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
@@ -84,7 +83,7 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
   final EventStore store;
   @override
   final SqliteEventDatabase database;
-  bool _closed = false;
+  Future<void>? _closeFuture;
 
   _SqliteEventDatabaseTestSession(this.store, this.database);
 
@@ -93,9 +92,5 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
       database.getAppliedCommands(0, -1 >>> 1);
 
   @override
-  Future<void> close() async {
-    if (_closed) return;
-    _closed = true;
-    await store.close();
-  }
+  Future<void> close() => _closeFuture ??= database.close();
 }

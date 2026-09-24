@@ -24,8 +24,6 @@ class EventDatabaseState {
 abstract interface class EventDatabase {
   int get defaultEventFetchPageSize;
 
-  Future<void> close();
-  Future<void> migrate();
   Future<EventDatabaseState> getState();
   Future<int> getStreamVersion(String streamPath);
   Future<PaginatedResult<StreamEvent>> getStreamEvents(

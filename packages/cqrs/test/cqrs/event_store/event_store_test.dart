@@ -20,19 +20,6 @@ import 'package:test/test.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
-  test('close is idempotent and closes its stream and database', () async {
-    final database = _ClosingDatabase();
-    final store = EventStore(database);
-    final streamClosed = expectLater(store.appliedChanges, emitsDone);
-
-    final first = store.close();
-
-    expect(store.close(), same(first));
-    await first;
-    await streamClosed;
-    expect(database.closeCount, 1);
-  });
-
   test('reuses every generated sequence after a failed write', () async {
     final database = _FailOnceDatabase();
     final store = EventStore(database);
@@ -171,15 +158,6 @@ class _FailOnceDatabase extends MemoryEventDatabase {
       throw Exception('write failed');
     }
     await super.appendApplied(command, events);
-  }
-}
-
-class _ClosingDatabase extends MemoryEventDatabase {
-  int closeCount = 0;
-
-  @override
-  Future<void> close() async {
-    closeCount++;
   }
 }
 

@@ -40,7 +40,6 @@ class EventStore {
   final ReadWriteMutex _mutex = ReadWriteMutex();
   final StreamController<void> _appliedChangesController =
       StreamController<void>.broadcast(sync: false);
-  Future<void>? _closeFuture;
 
   EventStore(EventDatabase database, {int? eventFetchPageSize})
     : _database = database,
@@ -48,27 +47,6 @@ class EventStore {
           eventFetchPageSize ?? database.defaultEventFetchPageSize;
 
   Stream<void> get appliedChanges => _appliedChangesController.stream;
-
-  Future<void> close() => _closeFuture ??= _close();
-
-  Future<void> _close() async {
-    try {
-      await _appliedChangesController.close();
-    } finally {
-      await _database.close();
-    }
-  }
-
-  Future<void> migrate() => _mutex.protectWrite(() async {
-    try {
-      await _database.migrate();
-    } on Exception catch (cause) {
-      throw EventStoreException(
-        'Failed to migrate event database',
-        cause: cause,
-      );
-    }
-  });
 
   Future<GetStreamInfoResult?> getStreamInfo(String streamPath) =>
       _mutex.protectRead(() async {

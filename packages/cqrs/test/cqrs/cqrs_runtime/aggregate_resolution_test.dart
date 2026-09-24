@@ -17,9 +17,8 @@ void main() {
   late CqrsRuntime runtime;
   late _MemorySnapshotter snapshotter;
 
-  setUp(() async {
+  setUp(() {
     eventStore = EventStore(_PagedMemoryEventDatabase(1));
-    await eventStore.migrate();
 
     runtime = CqrsRuntime(
       eventStore: eventStore,
@@ -33,8 +32,6 @@ void main() {
 
     snapshotter = _MemorySnapshotter();
   });
-
-  tearDown(() => eventStore.close());
 
   test('resolves selected events into fresh state on every call', () async {
     final aggregate = _EnvelopeAggregate('one');
