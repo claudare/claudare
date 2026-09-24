@@ -1,6 +1,6 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 
-/// [EventAppend] is sent as part of a local command append.
+/// [EventAppend] is sent as part of a log command append.
 class EventAppend {
   final String streamPath;
   final EncodedEvent encodedEvent;

@@ -1,5 +1,5 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreTestBackend {
@@ -12,7 +12,7 @@ abstract interface class EventStoreTestSession {
   EventStore get store;
   EventDatabase get database;
 
-  Future<List<AppliedCommand>> readAppliedCommands();
+  Future<List<LogCommand>> readLogCommands();
 
   Future<void> close();
 }
@@ -29,7 +29,7 @@ class MemoryEventDatabaseTestBackend implements EventStoreTestBackend {
   Future<EventStoreTestSession> open() async {
     final database = MemoryEventDatabase();
     final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
-    return _MemoryEventDatabaseTestSession(store, database);
+    return _MemoryLogEventDatabaseTestSession(store, database);
   }
 }
 
@@ -62,17 +62,17 @@ const eventStoreTestBackends = <EventStoreTestBackend>[
   SqliteEventDatabaseTestBackend(eventFetchPageSize: 2),
 ];
 
-class _MemoryEventDatabaseTestSession implements EventStoreTestSession {
+class _MemoryLogEventDatabaseTestSession implements EventStoreTestSession {
   @override
   final EventStore store;
   @override
   final MemoryEventDatabase database;
 
-  _MemoryEventDatabaseTestSession(this.store, this.database);
+  _MemoryLogEventDatabaseTestSession(this.store, this.database);
 
   @override
-  Future<List<AppliedCommand>> readAppliedCommands() =>
-      database.getAppliedCommands(0, -1 >>> 1);
+  Future<List<LogCommand>> readLogCommands() =>
+      database.getLogCommands(0, -1 >>> 1);
 
   @override
   Future<void> close() async {}
@@ -88,8 +88,8 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
   _SqliteEventDatabaseTestSession(this.store, this.database);
 
   @override
-  Future<List<AppliedCommand>> readAppliedCommands() =>
-      database.getAppliedCommands(0, -1 >>> 1);
+  Future<List<LogCommand>> readLogCommands() =>
+      database.getLogCommands(0, -1 >>> 1);
 
   @override
   Future<void> close() => _closeFuture ??= database.close();

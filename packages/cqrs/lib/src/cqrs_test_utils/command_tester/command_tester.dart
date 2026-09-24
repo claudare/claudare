@@ -22,7 +22,7 @@ class CommandTester {
   final List<EventAppend> _seedEvents = [];
   final EventRegistry _eventRegistry = EventRegistry();
 
-  int? _preRunLastLocalSequence;
+  int? _preRunLastLogPosition;
   bool _ran = false;
 
   CommandTester({
@@ -116,8 +116,8 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final reader = _eventStore.getAppliedEventReader(
-      (_preRunLastLocalSequence ?? -1) + 1,
+    final reader = _eventStore.getLogEventReader(
+      (_preRunLastLogPosition ?? -1) + 1,
     );
 
     return reader
@@ -136,7 +136,7 @@ class CommandTester {
     await _flushSeeds();
 
     final state = await _eventDatabase.getState();
-    _preRunLastLocalSequence = state.lastLocalEventSequence;
+    _preRunLastLogPosition = state.lastEventLogPosition;
     _ran = true;
 
     final executer = CommandExecutor(
@@ -164,7 +164,7 @@ class CommandTester {
           startedAt: timestamp,
           completedAt: timestamp,
           locks: [
-            StreamLocalLock(
+            StreamLock(
               streamPath: event.streamPath,
               originatingStreamVersion: info?.originatingStreamVersion,
             ),

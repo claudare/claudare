@@ -82,26 +82,26 @@ class CqrsRuntime {
     final streamPath = aggregate.streamRoute.buildPath(params);
 
     final stream = _eventStore
-        .getAppliedEventReader((sequence ?? -1) + 1)
+        .getLogEventReader((sequence ?? -1) + 1)
         .scan()
-        .where((stored) {
+        .where((logEvent) {
           // removes irrelevant events as database level filtering is not
           // implemented.
-          return aggregate.streamRoute.matches(stored.streamPath);
+          return aggregate.streamRoute.matches(logEvent.streamPath);
         });
 
-    await for (final stored in stream) {
-      final decoded = _eventRegistry.decode<TEvent>(stored.encodedEvent);
+    await for (final logEvent in stream) {
+      final decoded = _eventRegistry.decode<TEvent>(logEvent.encodedEvent);
       final envelope = EventEnvelope(
-        streamPath: stored.streamPath,
-        streamParams: aggregate.streamRoute.parseParams(stored.streamPath),
+        streamPath: logEvent.streamPath,
+        streamParams: aggregate.streamRoute.parseParams(logEvent.streamPath),
         event: decoded,
-        occuredAt: stored.occuredAt,
+        occuredAt: logEvent.occuredAt,
       );
       if (!aggregate.canApply(envelope)) continue;
 
       aggregate.apply(state, envelope);
-      sequence = stored.localSequence;
+      sequence = logEvent.logPosition;
       applyCount++;
     }
 

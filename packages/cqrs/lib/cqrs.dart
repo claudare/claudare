@@ -16,7 +16,7 @@ export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/encoded_event.dart';
 export 'src/cqrs/event/event_registry.dart';
 export 'src/cqrs/event/event_envelope.dart';
-export 'src/cqrs/event/stored_event.dart';
+export 'src/cqrs/event/log_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
@@ -41,6 +41,6 @@ export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
-export 'src/cqrs/exception/replicated_command_conflict.dart';
+export 'src/cqrs/exception/staged_command_conflict.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
 export 'src/cqrs/exception/stream_already_exists_exception.dart';

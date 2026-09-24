@@ -14,7 +14,7 @@ import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 //       streamParams: 'TODO',
 //       event: event,
 //       occuredAt: DateTime.fromMillisecondsSinceEpoch(i),
-//       localSequence: i,
+//       logPosition: i,
 //       streamVersion: i,
 //     );
 //

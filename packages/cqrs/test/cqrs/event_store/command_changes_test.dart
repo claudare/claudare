@@ -54,9 +54,7 @@ void main() {
         encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
         startedAt: timestamp,
         completedAt: timestamp,
-        locks: [
-          StreamLocalLock(streamPath: 'test', originatingStreamVersion: 42),
-        ],
+        locks: [StreamLock(streamPath: 'test', originatingStreamVersion: 42)],
         events: [],
       );
 

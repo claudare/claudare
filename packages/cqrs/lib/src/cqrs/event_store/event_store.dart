@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/replicated_event.dart';
+import 'package:cqrs/src/cqrs/command/staged_command.dart';
+import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/event/stored_event.dart';
+import 'package:cqrs/src/cqrs/event/log_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
-import 'package:cqrs/src/cqrs/exception/replicated_command_conflict.dart';
+import 'package:cqrs/src/cqrs/exception/staged_command_conflict.dart';
 import 'package:mutex/mutex.dart';
 
-enum StageReplicatedCommandResult { staged, alreadyPresent }
+enum StageCommandResult { staged, alreadyPresent }
 
 class GetStreamInfoResult {
   final int? originatingStreamVersion;
@@ -36,7 +36,7 @@ class EventStore {
   final EventDatabase _database;
   final int _eventFetchPageSize;
   final ReadWriteMutex _mutex = ReadWriteMutex();
-  final StreamController<void> _appliedChangesController =
+  final StreamController<void> _logChangesController =
       StreamController<void>.broadcast(sync: false);
 
   EventStore(EventDatabase database, {int? eventFetchPageSize})
@@ -44,7 +44,7 @@ class EventStore {
       _eventFetchPageSize =
           eventFetchPageSize ?? database.defaultEventFetchPageSize;
 
-  Stream<void> get appliedChanges => _appliedChangesController.stream;
+  Stream<void> get logChanges => _logChangesController.stream;
 
   Future<GetStreamInfoResult?> getStreamInfo(String streamPath) =>
       _mutex.protectRead(() async {
@@ -71,8 +71,8 @@ class EventStore {
     await _mutex.protectWrite(() async {
       try {
         final state = await _database.getState();
-        if (!state.appliedVersion.contains(changes.dependency)) {
-          throw StateError('command dependency is not applied');
+        if (!state.logVersion.contains(changes.dependency)) {
+          throw StateError('command dependency is not in the log');
         }
         for (final lock in changes.locks) {
           final current = await _database.getStreamVersion(lock.streamPath);
@@ -83,13 +83,13 @@ class EventStore {
 
         final commandId = CommandId(
           deviceId,
-          state.appliedVersion.value(deviceId) + 1,
+          state.logVersion.value(deviceId) + 1,
         );
-        final events = <ReplicatedEvent>[];
+        final events = <StagedEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
           final event = changes.events[i];
           events.add(
-            ReplicatedEvent(
+            StagedEvent(
               eventId: EventId(deviceId, commandId.sequence, i),
               streamPath: event.streamPath,
               encodedEvent: event.encodedEvent,
@@ -98,8 +98,8 @@ class EventStore {
           );
         }
 
-        await _database.appendApplied(
-          ReplicatedCommand(
+        await _database.appendLog(
+          StagedCommand(
             commandId: commandId,
             dependency: changes.dependency,
             encoded: changes.encoded,
@@ -118,114 +118,114 @@ class EventStore {
         );
       }
     });
-    _appliedChangesController.add(null);
+    _logChangesController.add(null);
   }
 
-  Future<StageReplicatedCommandResult> stageReplicatedCommand(
-    ReplicatedCommand command,
+  Future<StageCommandResult> stageCommand(
+    StagedCommand command,
   ) => _mutex.protectWrite(() async {
     try {
       final commandId = command.commandId;
       final existing =
-          await _database.getAppliedCommand(commandId) ??
-          await _database.getPendingCommand(commandId);
+          await _database.getLogCommand(commandId) ??
+          await _database.getStagedCommand(commandId);
       if (existing != null) {
-        if (replicatedCommandsEqual(existing, command)) {
-          return StageReplicatedCommandResult.alreadyPresent;
+        if (stagedCommandsEqual(existing, command)) {
+          return StageCommandResult.alreadyPresent;
         }
-        throw ReplicatedCommandConflict(commandId);
+        throw StagedCommandConflict(commandId);
       }
-      await _database.stagePendingCommand(command);
-      return StageReplicatedCommandResult.staged;
-    } on ReplicatedCommandConflict {
+      await _database.stageCommand(command);
+      return StageCommandResult.staged;
+    } on StagedCommandConflict {
       rethrow;
     } on Exception catch (cause) {
       throw EventStoreException(
-        'Failed to stage replicated command',
+        'Failed to stage command',
         cause: cause,
       );
     }
   });
 
-  Future<StageReplicatedCommandResult> stageReplicatedEvents(
-    List<ReplicatedEvent> events,
+  Future<StageCommandResult> stageEvents(
+    List<StagedEvent> events,
   ) => _mutex.protectWrite(() async {
     try {
-      final unique = <EventId, ReplicatedEvent>{};
+      final unique = <EventId, StagedEvent>{};
       for (final event in events) {
         final duplicate = unique[event.eventId];
         if (duplicate != null && duplicate != event) {
-          throw ReplicatedCommandConflict(event.eventId);
+          throw StagedCommandConflict(event.eventId);
         }
         unique[event.eventId] = event;
       }
-      final staged = <ReplicatedEvent>[];
+      final staged = <StagedEvent>[];
       for (final event in unique.values) {
         final existing =
-            await _database.getAppliedEvent(event.eventId) ??
-            await _database.getPendingEvent(event.eventId);
+            await _database.getLogEvent(event.eventId) ??
+            await _database.getStagedEvent(event.eventId);
         if (existing == null) {
           staged.add(event);
         } else if (existing != event) {
-          throw ReplicatedCommandConflict(event.eventId);
+          throw StagedCommandConflict(event.eventId);
         }
       }
-      if (staged.isEmpty) return StageReplicatedCommandResult.alreadyPresent;
-      await _database.stagePendingEvents(staged);
-      return StageReplicatedCommandResult.staged;
-    } on ReplicatedCommandConflict {
+      if (staged.isEmpty) return StageCommandResult.alreadyPresent;
+      await _database.stageEvents(staged);
+      return StageCommandResult.staged;
+    } on StagedCommandConflict {
       rethrow;
     } on Exception catch (cause) {
       throw EventStoreException(
-        'Failed to stage replicated events',
+        'Failed to stage events',
         cause: cause,
       );
     }
   });
 
-  Future<bool> promotePendingCommand(CommandId commandId) async {
+  Future<bool> promoteStaged(CommandId commandId) async {
     final promoted = await _mutex.protectWrite(() async {
       try {
-        return await _database.promotePending(commandId);
+        return await _database.promoteStaged(commandId);
       } on Exception catch (cause) {
         throw EventStoreException(
-          'Failed to promote pending command $commandId',
+          'Failed to promote staged command $commandId',
           cause: cause,
         );
       }
     });
-    if (promoted) _appliedChangesController.add(null);
+    if (promoted) _logChangesController.add(null);
     return promoted;
   }
 
-  Future<List<AppliedCommand>> getAppliedCommands(int localSequenceCursor) =>
+  Future<List<LogCommand>> getLogCommands(int fromPosition) =>
       _mutex.protectRead(() async {
         try {
-          return await _database.getAppliedCommands(
-            localSequenceCursor,
+          return await _database.getLogCommands(
+            fromPosition,
             _eventFetchPageSize,
           );
         } on Exception catch (cause) {
           throw EventStoreException(
-            'Failed to get applied commands',
+            'Failed to get log commands',
             cause: cause,
           );
         }
       });
 
-  Future<List<StoredEvent>> getAppliedEvents(CommandId commandId) =>
+  Future<List<LogEvent>> getLogEventsForCommand(CommandId commandId) =>
       _mutex.protectRead(() async {
         try {
-          return await _database.getAppliedEvents(commandId);
+          return await _database.getLogEventsForCommand(commandId);
         } on Exception catch (cause) {
           throw EventStoreException(
-            'Failed to get applied events for $commandId',
+            'Failed to get log events for $commandId',
             cause: cause,
           );
         }
       });
 
-  PaginatedReader<StoredEvent> getStreamReader(
+  PaginatedReader<LogEvent> getStreamReader(
     String streamPath, {
     int fromVersion = 0,
   }) => PaginatedReader(
@@ -233,14 +233,14 @@ class EventStore {
     initialCursor: fromVersion,
   );
 
-  Future<PaginatedResult<StoredEvent>> _readStreamPage(
+  Future<PaginatedResult<LogEvent>> _readStreamPage(
     String streamPath,
-    int streamVersionCursor,
+    int fromVersion,
   ) => _mutex.protectRead(() async {
     try {
       return await _database.getStreamEvents(
         streamPath,
-        streamVersionCursor,
+        fromVersion,
         _eventFetchPageSize,
       );
     } on Exception catch (cause) {
@@ -251,22 +251,22 @@ class EventStore {
     }
   });
 
-  PaginatedReader<StoredEvent> getAppliedEventReader(int localSequenceCursor) =>
+  PaginatedReader<LogEvent> getLogEventReader(int fromPosition) =>
       PaginatedReader(
-        _readAppliedEventPage,
-        initialCursor: localSequenceCursor,
+        _readLogEventPage,
+        initialCursor: fromPosition,
       );
 
-  Future<PaginatedResult<StoredEvent>> _readAppliedEventPage(
-    int localSequenceCursor,
+  Future<PaginatedResult<LogEvent>> _readLogEventPage(
+    int fromPosition,
   ) => _mutex.protectRead(() async {
     try {
-      return await _database.getLocalEvents(
-        localSequenceCursor,
+      return await _database.getLogEvents(
+        fromPosition,
         _eventFetchPageSize,
       );
     } on Exception catch (cause) {
-      throw EventStoreException('Failed to get local events', cause: cause);
+      throw EventStoreException('Failed to get log events', cause: cause);
     }
   });
 

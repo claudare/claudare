@@ -3,13 +3,13 @@ import 'dart:typed_data';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 
-class ReplicatedEvent {
+class StagedEvent {
   final EventId eventId;
   final String streamPath;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
 
-  const ReplicatedEvent({
+  const StagedEvent({
     required this.eventId,
     required this.streamPath,
     required this.encodedEvent,
@@ -20,7 +20,7 @@ class ReplicatedEvent {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other.runtimeType == runtimeType &&
-          other is ReplicatedEvent &&
+          other is StagedEvent &&
           eventId == other.eventId &&
           streamPath == other.streamPath &&
           encodedEvent.kind == other.encodedEvent.kind &&

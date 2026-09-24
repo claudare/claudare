@@ -4,7 +4,7 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 
-class ReplicatedCommand {
+class StagedCommand {
   final CommandId commandId;
   final VersionVector dependency;
   final EncodedCommand encoded;
@@ -12,7 +12,7 @@ class ReplicatedCommand {
   final DateTime completedAt;
   final int eventCount;
 
-  ReplicatedCommand({
+  StagedCommand({
     required this.commandId,
     required this.dependency,
     required this.encoded,
@@ -22,14 +22,14 @@ class ReplicatedCommand {
   }) {
     if (eventCount <= 0) {
       throw const FormatException(
-        'replicated commands must produce at least one event',
+        'staged commands must produce at least one event',
       );
     }
   }
 }
 
 // TODO: this needs cleanup and more consideration.
-bool replicatedCommandsEqual(ReplicatedCommand a, ReplicatedCommand b) =>
+bool stagedCommandsEqual(StagedCommand a, StagedCommand b) =>
     a.commandId == b.commandId &&
     a.dependency == b.dependency &&
     a.encoded.kind == b.encoded.kind &&

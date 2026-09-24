@@ -4,12 +4,12 @@ import 'dart:typed_data';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
-import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
-import 'package:cqrs/src/cqrs/event/replicated_event.dart';
+import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:test/test.dart';
 
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
@@ -18,14 +18,14 @@ void main() {
   test('memory backend is ready without initialization', () async {
     final session = await const MemoryEventDatabaseTestBackend().open();
     addTearDown(session.close);
-    expect((await session.database.getState()).lastLocalEventSequence, null);
+    expect((await session.database.getState()).lastEventLogPosition, null);
     expect((await session.store.getStatistics()).eventCount, 0);
   });
 
   test('SQLite backend migrates and closes its database', () async {
     final session = await const SqliteEventDatabaseTestBackend().open();
     final database = session.database as SqliteEventDatabase;
-    expect((await database.getState()).lastLocalEventSequence, null);
+    expect((await database.getState()).lastEventLogPosition, null);
     await session.close();
     await expectLater(database.getState(), throwsStateError);
   });
@@ -48,22 +48,19 @@ void main() {
         await session.close();
       });
 
-      test('keeps staged records outside applied sequences', () async {
+      test('keeps staged records outside log sequences', () async {
         for (final sequence in [1, 2]) {
           final command = _command(CommandId(1, sequence));
           final event = _event(command.commandId, 0, 'shared');
-          await store.stageReplicatedCommand(command);
-          await store.stageReplicatedEvents([event]);
-          expect(
-            await database.getPendingCommand(command.commandId),
-            isNotNull,
-          );
-          expect(await database.getPendingEvent(event.eventId), event);
+          await store.stageCommand(command);
+          await store.stageEvents([event]);
+          expect(await database.getStagedCommand(command.commandId), isNotNull);
+          expect(await database.getStagedEvent(event.eventId), event);
         }
         final state = await database.getState();
-        expect(state.lastLocalCommandSequence, null);
-        expect(state.lastLocalEventSequence, null);
-        expect(state.appliedVersion, VersionVector());
+        expect(state.lastCommandLogPosition, null);
+        expect(state.lastEventLogPosition, null);
+        expect(state.logVersion, VersionVector());
       });
 
       test('reconstructs interleaved stream paths and versions', () async {
@@ -73,7 +70,7 @@ void main() {
         ]) {
           final commandId = CommandId(1, sequence);
           await database
-              .appendApplied(_command(commandId, eventCount: paths.length), [
+              .appendLog(_command(commandId, eventCount: paths.length), [
                 for (var index = 0; index < paths.length; index++)
                   _event(commandId, index, paths[index]),
               ]);
@@ -86,36 +83,38 @@ void main() {
           CommandId(1, 1),
           CommandId(1, 2),
         ]);
-        final local = await database.getLocalEvents(0, 10);
-        expect(local.data.map((event) => event.streamPath), [
+        final log = await database.getLogEvents(0, 10);
+        expect(log.data.map((event) => event.streamPath), [
           'one',
           'two',
           'one',
           'two',
           'one',
         ]);
-        expect(local.data.map((event) => event.localSequence), [0, 1, 2, 3, 4]);
-        expect(local.data.map((event) => event.version), [0, 0, 1, 1, 2]);
-        expect(local.data.map((event) => event.eventId), [
+        expect(log.data.map((event) => event.logPosition), [0, 1, 2, 3, 4]);
+        expect(log.data.map((event) => event.version), [0, 0, 1, 1, 2]);
+        expect(log.data.map((event) => event.eventId), [
           EventId(1, 1, 0),
           EventId(1, 1, 1),
           EventId(1, 1, 2),
           EventId(1, 2, 0),
           EventId(1, 2, 1),
         ]);
-        expect(one.data.map((event) => event.localSequence), [2, 4]);
+        expect(one.data.map((event) => event.logPosition), [2, 4]);
         expect(one.data.map((event) => event.streamPath), ['one', 'one']);
         expect(one.data.map((event) => event.eventId), [
           EventId(1, 1, 2),
           EventId(1, 2, 1),
         ]);
-        final applied = await database.getAppliedEvents(CommandId(1, 2));
-        expect(applied.map((event) => (event.streamPath, event.version)), [
-          ('two', 1),
-          ('one', 2),
-        ]);
+        final commandEvents = await database.getLogEventsForCommand(
+          CommandId(1, 2),
+        );
         expect(
-          (await database.getAppliedEvent(EventId(1, 1, 1)))?.streamPath,
+          commandEvents.map((event) => (event.streamPath, event.version)),
+          [('two', 1), ('one', 2)],
+        );
+        expect(
+          (await database.getLogEvent(EventId(1, 1, 1)))?.streamPath,
           'two',
         );
       });
@@ -127,7 +126,7 @@ void main() {
         ]) {
           final commandId = CommandId(1, sequence);
           await database
-              .appendApplied(_command(commandId, eventCount: paths.length), [
+              .appendLog(_command(commandId, eventCount: paths.length), [
                 for (var index = 0; index < paths.length; index++)
                   _event(commandId, index, paths[index]),
               ]);
@@ -148,14 +147,14 @@ void main() {
       test('rejects an invalid batch without applying records', () async {
         final commandId = CommandId(1, 1);
         await expectLater(
-          database.appendApplied(_command(commandId, eventCount: 2), [
+          database.appendLog(_command(commandId, eventCount: 2), [
             _event(commandId, 0, 'shared'),
             _event(commandId, 2, 'shared'),
           ]),
           throwsA(anything),
         );
-        expect(await database.getAppliedCommands(0, 1), isEmpty);
-        expect((await database.getLocalEvents(0, 1)).data, isEmpty);
+        expect(await database.getLogCommands(0, 1), isEmpty);
+        expect((await database.getLogEvents(0, 1)).data, isEmpty);
         expect(await database.getStreamVersion('shared'), null);
       });
 
@@ -168,14 +167,16 @@ void main() {
           throwsA(isA<EventStoreException>()),
         );
         final state = await database.getState();
-        expect(state.lastLocalCommandSequence, null);
-        expect(state.lastLocalEventSequence, null);
+        expect(state.lastCommandLogPosition, null);
+        expect(state.lastEventLogPosition, null);
         await _append(failingStore);
-        final command = (await database.getAppliedCommands(0, 1)).single;
-        expect(command.localSequence, 0);
+        final command = (await database.getLogCommands(0, 1)).single;
+        expect(command.logPosition, 0);
         expect(command.commandId.sequence, 1);
         expect(
-          (await database.getAppliedEvents(command.commandId)).single.version,
+          (await database.getLogEventsForCommand(
+            command.commandId,
+          )).single.version,
           0,
         );
       });
@@ -184,9 +185,9 @@ void main() {
         final failingStore = EventStore(
           _FaultDatabase(database, failAppendOnce: true),
         );
-        var appliedChanges = 0;
-        final subscription = failingStore.appliedChanges.listen(
-          (_) => appliedChanges++,
+        var logChanges = 0;
+        final subscription = failingStore.logChanges.listen(
+          (_) => logChanges++,
         );
         addTearDown(subscription.cancel);
         await expectLater(
@@ -194,7 +195,7 @@ void main() {
           throwsA(isA<EventStoreException>()),
         );
         await _flushAsyncEvents();
-        expect(appliedChanges, 0);
+        expect(logChanges, 0);
       });
 
       test('does not signal a failed promotion', () async {
@@ -202,21 +203,21 @@ void main() {
           _FaultDatabase(database, failPromotion: true),
         );
         final command = _command(CommandId(1, 1));
-        await failingStore.stageReplicatedCommand(command);
-        await failingStore.stageReplicatedEvents([
+        await failingStore.stageCommand(command);
+        await failingStore.stageEvents([
           _event(command.commandId, 0, 'test/1'),
         ]);
-        var appliedChanges = 0;
-        final subscription = failingStore.appliedChanges.listen(
-          (_) => appliedChanges++,
+        var logChanges = 0;
+        final subscription = failingStore.logChanges.listen(
+          (_) => logChanges++,
         );
         addTearDown(subscription.cancel);
         await expectLater(
-          failingStore.promotePendingCommand(command.commandId),
+          failingStore.promoteStaged(command.commandId),
           throwsA(isA<EventStoreException>()),
         );
         await _flushAsyncEvents();
-        expect(appliedChanges, 0);
+        expect(logChanges, 0);
       });
 
       test('listener failures do not alter a successful save', () async {
@@ -224,7 +225,7 @@ void main() {
         final listenerFailure = Completer<Object>();
         late StreamSubscription<void> subscription;
         runZonedGuarded<void>(() {
-          subscription = store.appliedChanges.listen((_) {
+          subscription = store.logChanges.listen((_) {
             throw Exception('listener failed');
           });
           store
@@ -236,10 +237,7 @@ void main() {
         }, (error, _) => listenerFailure.complete(error));
         addTearDown(subscription.cancel);
         await saveCompleted.future;
-        expect(
-          (await database.getLocalEvents(0, 1)).data.single.localSequence,
-          0,
-        );
+        expect((await database.getLogEvents(0, 1)).data.single.logPosition, 0);
         expect(await listenerFailure.future, isA<Exception>());
       });
 
@@ -274,8 +272,8 @@ void main() {
   }
 }
 
-ReplicatedCommand _command(CommandId commandId, {int eventCount = 1}) =>
-    ReplicatedCommand(
+StagedCommand _command(CommandId commandId, {int eventCount = 1}) =>
+    StagedCommand(
       commandId: commandId,
       dependency: VersionVector(),
       encoded: EncodedCommand(kind: 'remote', bytes: Uint8List(0)),
@@ -284,8 +282,8 @@ ReplicatedCommand _command(CommandId commandId, {int eventCount = 1}) =>
       eventCount: eventCount,
     );
 
-ReplicatedEvent _event(CommandId commandId, int index, String streamPath) =>
-    ReplicatedEvent(
+StagedEvent _event(CommandId commandId, int index, String streamPath) =>
+    StagedEvent(
       eventId: EventId(commandId.deviceId, commandId.sequence, index),
       streamPath: streamPath,
       encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
@@ -300,7 +298,7 @@ CommandChanges _changes() => CommandChanges(
   startedAt: _timestamp,
   completedAt: _timestamp,
   locks: const [
-    StreamLocalLock(streamPath: 'test/1', originatingStreamVersion: null),
+    StreamLock(streamPath: 'test/1', originatingStreamVersion: null),
   ],
   events: [
     EventAppend(
@@ -339,55 +337,51 @@ class _FaultDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<StoredEvent>> getStreamEvents(
+  Future<PaginatedResult<LogEvent>> getStreamEvents(
     String path,
     int cursor,
     int count,
   ) => _database.getStreamEvents(path, cursor, count);
   @override
-  Future<PaginatedResult<StoredEvent>> getLocalEvents(int cursor, int count) =>
-      _database.getLocalEvents(cursor, count);
+  Future<PaginatedResult<LogEvent>> getLogEvents(int cursor, int count) =>
+      _database.getLogEvents(cursor, count);
   @override
   Future<GetStatisticsResult> getStatistics() => _database.getStatistics();
   @override
-  Future<ReplicatedCommand?> getAppliedCommand(CommandId id) =>
-      _database.getAppliedCommand(id);
+  Future<StagedCommand?> getLogCommand(CommandId id) =>
+      _database.getLogCommand(id);
   @override
-  Future<ReplicatedCommand?> getPendingCommand(CommandId id) =>
-      _database.getPendingCommand(id);
+  Future<StagedCommand?> getStagedCommand(CommandId id) =>
+      _database.getStagedCommand(id);
   @override
-  Future<ReplicatedEvent?> getAppliedEvent(EventId id) =>
-      _database.getAppliedEvent(id);
+  Future<StagedEvent?> getLogEvent(EventId id) => _database.getLogEvent(id);
   @override
-  Future<ReplicatedEvent?> getPendingEvent(EventId id) =>
-      _database.getPendingEvent(id);
+  Future<StagedEvent?> getStagedEvent(EventId id) =>
+      _database.getStagedEvent(id);
   @override
-  Future<List<AppliedCommand>> getAppliedCommands(int cursor, int count) =>
-      _database.getAppliedCommands(cursor, count);
+  Future<List<LogCommand>> getLogCommands(int cursor, int count) =>
+      _database.getLogCommands(cursor, count);
   @override
-  Future<List<StoredEvent>> getAppliedEvents(CommandId id) =>
-      _database.getAppliedEvents(id);
+  Future<List<LogEvent>> getLogEventsForCommand(CommandId id) =>
+      _database.getLogEventsForCommand(id);
   @override
-  Future<void> appendApplied(
-    ReplicatedCommand command,
-    List<ReplicatedEvent> events,
-  ) {
+  Future<void> appendLog(StagedCommand command, List<StagedEvent> events) {
     if (_failAppendOnce) {
       _failAppendOnce = false;
       throw Exception('write failed');
     }
-    return _database.appendApplied(command, events);
+    return _database.appendLog(command, events);
   }
 
   @override
-  Future<void> stagePendingCommand(ReplicatedCommand command) =>
-      _database.stagePendingCommand(command);
+  Future<void> stageCommand(StagedCommand command) =>
+      _database.stageCommand(command);
   @override
-  Future<void> stagePendingEvents(List<ReplicatedEvent> events) =>
-      _database.stagePendingEvents(events);
+  Future<void> stageEvents(List<StagedEvent> events) =>
+      _database.stageEvents(events);
   @override
-  Future<bool> promotePending(CommandId id) {
+  Future<bool> promoteStaged(CommandId id) {
     if (_failPromotion) throw Exception('promotion failed');
-    return _database.promotePending(id);
+    return _database.promoteStaged(id);
   }
 }

@@ -53,7 +53,7 @@ void main() {
     expect(identical(first.first, second.first), isFalse);
   });
 
-  test('uses stored paths, parameters, timestamps, and sequences', () async {
+  test('uses log paths, parameters, timestamps, and positions', () async {
     await _appendAccountEvents(eventStore);
 
     final events = await runtime.resolve(_EnvelopeAggregate(null), 'unused');
@@ -84,7 +84,7 @@ void main() {
           startedAt: _timestamp,
           completedAt: _timestamp,
           locks: const [
-            StreamLocalLock(
+            StreamLock(
               streamPath: 'account/one',
               originatingStreamVersion: null,
             ),
@@ -261,18 +261,9 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
         startedAt: _timestamp,
         completedAt: _timestamp,
         locks: const [
-          StreamLocalLock(
-            streamPath: 'account/one',
-            originatingStreamVersion: null,
-          ),
-          StreamLocalLock(
-            streamPath: 'account/two',
-            originatingStreamVersion: null,
-          ),
-          StreamLocalLock(
-            streamPath: 'other/three',
-            originatingStreamVersion: null,
-          ),
+          StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
+          StreamLock(streamPath: 'account/two', originatingStreamVersion: null),
+          StreamLock(streamPath: 'other/three', originatingStreamVersion: null),
         ],
         events: [
           for (final (index, path, value) in [

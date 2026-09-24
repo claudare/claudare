@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
@@ -10,7 +10,7 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/event/replicated_event.dart';
+import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -63,7 +63,7 @@ void main() {
     });
 
     expect(
-      (await database.getAppliedCommands(0, 10)).last.dependency,
+      (await database.getLogCommands(0, 10)).last.dependency,
       VersionVector(),
     );
   });
@@ -76,7 +76,7 @@ void main() {
     });
 
     expect(
-      (await database.getAppliedCommands(0, 10)).last.dependency,
+      (await database.getLogCommands(0, 10)).last.dependency,
       VersionVector({1: 1}),
     );
   });
@@ -89,7 +89,7 @@ void main() {
     });
 
     expect(
-      (await database.getAppliedCommands(0, 10)).last.dependency,
+      (await database.getLogCommands(0, 10)).last.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -102,7 +102,7 @@ void main() {
     });
 
     expect(
-      (await database.getAppliedCommands(0, 10)).last.dependency,
+      (await database.getLogCommands(0, 10)).last.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -149,8 +149,8 @@ Future<void> _seedCommand(
   required List<String> streamPaths,
   VersionVector? dependency,
 }) {
-  return database.appendApplied(
-    ReplicatedCommand(
+  return database.appendLog(
+    StagedCommand(
       commandId: commandId,
       dependency: dependency ?? VersionVector(),
       encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
@@ -160,7 +160,7 @@ Future<void> _seedCommand(
     ),
     [
       for (var index = 0; index < streamPaths.length; index++)
-        ReplicatedEvent(
+        StagedEvent(
           eventId: EventId(commandId.deviceId, commandId.sequence, index),
           streamPath: streamPaths[index],
           encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),

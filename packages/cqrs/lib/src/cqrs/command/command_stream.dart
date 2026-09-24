@@ -59,7 +59,7 @@ class CommandStream<Event extends Object> {
       // Keep the lock when a consumer stops or fails after a partial replay.
       // Its version is the last event that was successfully yielded.
       _executionState.locks.add(
-        StreamLocalLock(
+        StreamLock(
           streamPath: _streamPath,
           originatingStreamVersion: streamVersion,
         ),
@@ -79,7 +79,7 @@ class CommandStream<Event extends Object> {
     }
 
     _executionState.locks.add(
-      StreamLocalLock(
+      StreamLock(
         streamPath: _streamPath,
         originatingStreamVersion: streamVersion,
       ),
@@ -101,7 +101,7 @@ class CommandStream<Event extends Object> {
     _applyCommand(firstEvent.eventId.commandId);
 
     _executionState.locks.add(
-      StreamLocalLock(
+      StreamLock(
         streamPath: _streamPath,
         originatingStreamVersion: info.originatingStreamVersion,
       ),
@@ -118,7 +118,7 @@ class CommandStream<Event extends Object> {
     }
 
     _executionState.locks.add(
-      StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: null),
+      StreamLock(streamPath: _streamPath, originatingStreamVersion: null),
     );
   }
 

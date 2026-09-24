@@ -1,34 +1,34 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/command/replicated_command.dart';
+import 'package:cqrs/src/cqrs/command/staged_command.dart';
 
-class AppliedCommand {
+class LogCommand {
   final CommandId commandId;
   final VersionVector dependency;
   final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final int eventCount;
-  final int localSequence;
+  final int logPosition;
 
-  AppliedCommand({
+  LogCommand({
     required this.commandId,
     required this.dependency,
     required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.eventCount,
-    required this.localSequence,
+    required this.logPosition,
   }) {
     if (eventCount <= 0) {
       throw const FormatException(
-        'applied commands must produce at least one event',
+        'log commands must produce at least one event',
       );
     }
   }
 
-  ReplicatedCommand toReplicatedCommand() => ReplicatedCommand(
+  StagedCommand toStagedCommand() => StagedCommand(
     commandId: commandId,
     dependency: dependency,
     encoded: encoded,
@@ -37,16 +37,16 @@ class AppliedCommand {
     eventCount: eventCount,
   );
 
-  factory AppliedCommand.fromReplicatedCommand(
-    ReplicatedCommand command, {
-    required int localSequence,
-  }) => AppliedCommand(
+  factory LogCommand.fromStagedCommand(
+    StagedCommand command, {
+    required int logPosition,
+  }) => LogCommand(
     commandId: command.commandId,
     dependency: command.dependency,
     encoded: command.encoded,
     startedAt: command.startedAt,
     completedAt: command.completedAt,
     eventCount: command.eventCount,
-    localSequence: localSequence,
+    logPosition: logPosition,
   );
 }

@@ -34,9 +34,9 @@ void main() {
 
     await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
 
-    final applied = await database.getAppliedEvents(CommandId(0, 1));
-    expect(applied, hasLength(1));
-    expect(applied.single.occuredAt, seededAt);
+    final log = await database.getLogEventsForCommand(CommandId(0, 1));
+    expect(log, hasLength(1));
+    expect(log.single.occuredAt, seededAt);
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.single.occuredAt, seededAt);
   });
@@ -85,18 +85,18 @@ void main() {
     ]);
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
     expect(
-      (await database.getLocalEvents(
+      (await database.getLogEvents(
         0,
         10,
       )).data.map((event) => event.streamPath),
       ['value/one', 'value/two', 'value/one'],
     );
-    final commands = await database.getAppliedCommands(0, 10);
-    final applied = <StoredEvent>[
+    final commands = await database.getLogCommands(0, 10);
+    final log = <LogEvent>[
       for (final command in commands)
-        ...await database.getAppliedEvents(command.commandId),
+        ...await database.getLogEventsForCommand(command.commandId),
     ];
-    expect(applied.map((event) => event.version), [0, 0, 1]);
+    expect(log.map((event) => event.version), [0, 0, 1]);
   });
 
   test('seeds an existing stream before the next command', () async {
@@ -130,7 +130,7 @@ void main() {
       throwsA(isA<EventCodecException>()),
     );
 
-    expect((await database.getLocalEvents(0, 1)).data, isEmpty);
+    expect((await database.getLogEvents(0, 1)).data, isEmpty);
   });
 }
 

@@ -1,43 +1,43 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
-import 'package:cqrs/src/cqrs/event/replicated_event.dart';
+import 'package:cqrs/src/cqrs/event/staged_event.dart';
 
-/// [StoredEvent] is an applied event which is used for aggregate replays.
-/// It is returned for both local and stream replays.
-class StoredEvent {
+/// [LogEvent] is an event in the log which is used for aggregate replays.
+/// It is returned for both log and stream replays.
+class LogEvent {
   final String streamPath;
   final EventId eventId;
   final EncodedEvent encodedEvent;
   final DateTime occuredAt;
-  final int localSequence;
+  final int logPosition;
   final int version;
 
-  const StoredEvent({
+  const LogEvent({
     required this.streamPath,
     required this.eventId,
     required this.encodedEvent,
     required this.occuredAt,
-    required this.localSequence,
+    required this.logPosition,
     required this.version,
   });
 
-  ReplicatedEvent toReplicatedEvent() => ReplicatedEvent(
+  StagedEvent toStagedEvent() => StagedEvent(
     eventId: eventId,
     streamPath: streamPath,
     encodedEvent: encodedEvent,
     occuredAt: occuredAt,
   );
 
-  factory StoredEvent.fromReplicatedEvent(
-    ReplicatedEvent event, {
-    required int localSequence,
+  factory LogEvent.fromStagedEvent(
+    StagedEvent event, {
+    required int logPosition,
     required int streamVersion,
-  }) => StoredEvent(
+  }) => LogEvent(
     eventId: event.eventId,
     streamPath: event.streamPath,
     encodedEvent: event.encodedEvent,
     occuredAt: event.occuredAt,
-    localSequence: localSequence,
+    logPosition: logPosition,
     version: streamVersion,
   );
 }

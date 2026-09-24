@@ -9,7 +9,7 @@ class CommandChanges {
   final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
-  final List<StreamLocalLock> locks;
+  final List<StreamLock> locks;
   final List<EventAppend> events;
 
   const CommandChanges({
@@ -39,11 +39,11 @@ class CommandChanges {
   }
 }
 
-class StreamLocalLock {
+class StreamLock {
   final String streamPath;
   final int? originatingStreamVersion;
 
-  const StreamLocalLock({
+  const StreamLock({
     required this.streamPath,
     required this.originatingStreamVersion,
   });

@@ -23,7 +23,7 @@ void main() {
       throwsA(same(exception)),
     );
 
-    expect((await database.getAppliedCommands(0, 1)), isEmpty);
+    expect((await database.getLogCommands(0, 1)), isEmpty);
   });
 
   test('propagates command errors unchanged', () async {
@@ -35,7 +35,7 @@ void main() {
       throwsA(same(error)),
     );
 
-    expect((await database.getAppliedCommands(0, 1)), isEmpty);
+    expect((await database.getLogCommands(0, 1)), isEmpty);
   });
 
   test('wraps input encoding exceptions', () async {
@@ -68,7 +68,7 @@ void main() {
       ),
     );
 
-    expect((await database.getAppliedCommands(0, 1)), isEmpty);
+    expect((await database.getLogCommands(0, 1)), isEmpty);
   });
 
   test('wraps input encoding errors', () async {
@@ -88,7 +88,7 @@ void main() {
       ),
     );
 
-    expect((await database.getAppliedCommands(0, 1)), isEmpty);
+    expect((await database.getLogCommands(0, 1)), isEmpty);
   });
 }
 
