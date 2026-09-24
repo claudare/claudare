@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/applied_command.dart';
+import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
@@ -10,7 +10,7 @@ import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
+import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -35,34 +35,22 @@ void main() {
     await _seedCommand(
       database,
       commandId: CommandId(1, 1),
-      localSequence: 1,
-      firstLocalEventSequence: 1,
-      firstStreamVersion: 1,
       streamPaths: const ['target', 'target'],
     );
     await _seedCommand(
       database,
       commandId: CommandId(2, 1),
-      localSequence: 2,
-      firstLocalEventSequence: 3,
-      firstStreamVersion: 3,
       streamPaths: const ['target'],
     );
     await _seedCommand(
       database,
       commandId: CommandId(1, 2),
       dependency: VersionVector({1: 1}),
-      localSequence: 3,
-      firstLocalEventSequence: 4,
-      firstStreamVersion: 4,
       streamPaths: const ['target'],
     );
     await _seedCommand(
       database,
       commandId: CommandId(3, 1),
-      localSequence: 4,
-      firstLocalEventSequence: 5,
-      firstStreamVersion: 1,
       streamPaths: const ['unrelated'],
     );
   });
@@ -152,31 +140,25 @@ Future<void> _execute(
 Future<void> _seedCommand(
   MemoryEventDatabase database, {
   required CommandId commandId,
-  required int localSequence,
-  required int firstLocalEventSequence,
-  required int firstStreamVersion,
   required List<String> streamPaths,
   VersionVector? dependency,
 }) {
   return database.appendApplied(
-    AppliedCommand(
+    ReplicatedCommand(
       commandId: commandId,
       dependency: dependency ?? VersionVector(),
       encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
       startedAt: _timestamp,
       completedAt: _timestamp,
       eventCount: streamPaths.length,
-      localSequence: localSequence,
     ),
     [
       for (var index = 0; index < streamPaths.length; index++)
-        AppliedEvent(
+        ReplicatedEvent(
           eventId: EventId(commandId.deviceId, commandId.sequence, index),
           streamPath: streamPaths[index],
           encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
           occuredAt: _timestamp,
-          localSequence: firstLocalEventSequence + index,
-          streamVersion: firstStreamVersion + index,
         ),
     ],
   );

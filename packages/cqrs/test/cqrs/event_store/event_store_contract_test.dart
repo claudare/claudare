@@ -325,6 +325,19 @@ void main() {
         expect((await store.getStatistics()).eventCount, 2);
       });
 
+      test('does not promote a staged batch with an event index gap', () async {
+        final command = _commandRecord(device: 13, sequence: 1, eventCount: 2);
+        await store.stageReplicatedCommand(command);
+        await store.stageReplicatedEvents([
+          _replicatedEvent(command.commandId, 0),
+          _replicatedEvent(command.commandId, 2),
+        ]);
+
+        expect(await store.promotePendingCommand(command.commandId), isFalse);
+        expect(await session.readAppliedCommands(), isEmpty);
+        expect((await store.getStatistics()).eventCount, 0);
+      });
+
       test(
         'is idempotent and rejects conflicting command or event bytes',
         () async {

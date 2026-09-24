@@ -40,17 +40,16 @@ abstract interface class EventDatabase {
   Future<ReplicatedCommand?> getPendingCommand(CommandId commandId);
   Future<ReplicatedEvent?> getAppliedEvent(EventId eventId);
   Future<ReplicatedEvent?> getPendingEvent(EventId eventId);
-  Future<List<ReplicatedEvent>> getPendingEvents(CommandId commandId);
   Future<List<AppliedCommand>> getAppliedCommands(
     int localSequenceCursor,
     int count,
   );
   Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId);
-  Future<void> appendApplied(AppliedCommand command, List<AppliedEvent> events);
+  Future<void> appendApplied(
+    ReplicatedCommand command,
+    List<ReplicatedEvent> events,
+  );
   Future<void> stagePendingCommand(ReplicatedCommand command);
   Future<void> stagePendingEvents(List<ReplicatedEvent> events);
-  Future<void> promotePending(
-    AppliedCommand command,
-    List<AppliedEvent> events,
-  );
+  Future<bool> promotePending(CommandId commandId);
 }

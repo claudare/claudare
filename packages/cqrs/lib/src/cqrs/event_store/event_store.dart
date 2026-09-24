@@ -76,48 +76,40 @@ class EventStore {
         if (!state.appliedVersion.contains(changes.dependency)) {
           throw StateError('command dependency is not applied');
         }
-        final streamVersions = <String, int>{};
         for (final lock in changes.locks) {
           final current = await _database.getStreamVersion(lock.streamPath);
           if (current != lock.originatingStreamVersion) {
             throw ConcurrencyProblem();
           }
-          streamVersions[lock.streamPath] = current;
         }
 
         final commandId = CommandId(
           deviceId,
           state.appliedVersion.value(deviceId) + 1,
         );
-        var localEventSequence = state.lastLocalEventSequence;
-        final appliedEvents = <AppliedEvent>[];
+        final events = <ReplicatedEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
           final event = changes.events[i];
-          final streamVersion = (streamVersions[event.streamPath] ?? 0) + 1;
-          streamVersions[event.streamPath] = streamVersion;
-          appliedEvents.add(
-            AppliedEvent(
+          events.add(
+            ReplicatedEvent(
               eventId: EventId(deviceId, commandId.sequence, i),
               streamPath: event.streamPath,
               encodedEvent: event.encodedEvent,
               occuredAt: event.occuredAt,
-              localSequence: ++localEventSequence,
-              streamVersion: streamVersion,
             ),
           );
         }
 
         await _database.appendApplied(
-          AppliedCommand(
+          ReplicatedCommand(
             commandId: commandId,
             dependency: changes.dependency,
             encoded: changes.encoded,
             startedAt: changes.startedAt,
             completedAt: changes.completedAt,
-            eventCount: appliedEvents.length,
-            localSequence: state.lastLocalCommandSequence + 1,
+            eventCount: events.length,
           ),
-          appliedEvents,
+          events,
         );
       } on ConcurrencyProblem {
         rethrow;
@@ -196,51 +188,7 @@ class EventStore {
   Future<bool> promotePendingCommand(CommandId commandId) async {
     final promoted = await _mutex.protectWrite(() async {
       try {
-        final command = await _database.getPendingCommand(commandId);
-        if (command == null) return false;
-        final state = await _database.getState();
-        if (!state.appliedVersion.contains(command.dependency)) {
-          return false;
-        }
-        if (state.appliedVersion.value(commandId.deviceId) + 1 !=
-            commandId.sequence) {
-          return false;
-        }
-
-        final pendingEvents = await _database.getPendingEvents(commandId);
-        if (pendingEvents.length != command.eventCount) return false;
-        for (var i = 0; i < pendingEvents.length; i++) {
-          if (pendingEvents[i].eventId.index != i) return false;
-        }
-
-        final streamVersions = <String, int>{};
-        var localEventSequence = state.lastLocalEventSequence;
-        final events = <AppliedEvent>[];
-        for (final event in pendingEvents) {
-          final current =
-              streamVersions[event.streamPath] ??
-              await _database.getStreamVersion(event.streamPath);
-          final next = current + 1;
-          streamVersions[event.streamPath] = next;
-          events.add(
-            AppliedEvent(
-              eventId: event.eventId,
-              streamPath: event.streamPath,
-              encodedEvent: event.encodedEvent,
-              occuredAt: event.occuredAt,
-              localSequence: ++localEventSequence,
-              streamVersion: next,
-            ),
-          );
-        }
-        await _database.promotePending(
-          AppliedCommand.fromReplicatedCommand(
-            command,
-            localSequence: state.lastLocalCommandSequence + 1,
-          ),
-          events,
-        );
-        return true;
+        return await _database.promotePending(commandId);
       } on Exception catch (cause) {
         throw EventStoreException(
           'Failed to promote pending command $commandId',

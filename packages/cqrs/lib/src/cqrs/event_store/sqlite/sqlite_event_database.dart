@@ -19,7 +19,7 @@ final eventDatabaseMigrations = SqliteMigrations(
   migrationTable: 'migrations_event_database',
 )..add(
   SqliteMigration(1, (tx) {
-    tx.execute('''CREATE TABLE applied_command(
+    tx.execute('''CREATE TABLE command(
             local_sequence INTEGER PRIMARY KEY NOT NULL,
             device_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
@@ -31,9 +31,7 @@ final eventDatabaseMigrations = SqliteMigrations(
             event_count INTEGER NOT NULL CHECK(event_count > 0),
             UNIQUE(device_id, sequence)
           );''');
-    tx.execute(
-      'CREATE INDEX idx_applied_command_id ON applied_command(device_id, sequence);',
-    );
+    tx.execute('CREATE INDEX idx_command_id ON command(device_id, sequence);');
     tx.execute('''CREATE TABLE stream(
             stream_path TEXT PRIMARY KEY NOT NULL,
             version INTEGER NOT NULL
@@ -49,34 +47,14 @@ final eventDatabaseMigrations = SqliteMigrations(
             detail BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
             UNIQUE(device_id, sequence, event_index),
-            UNIQUE(stream_path, stream_version),
-            FOREIGN KEY(device_id, sequence)
-              REFERENCES applied_command(device_id, sequence)
+            CHECK((local_sequence < 0 AND stream_version = -1) OR
+                  (local_sequence > 0 AND stream_version > 0))
           );''');
     tx.execute(
       'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
     );
-    tx.execute('''CREATE TABLE pending_command(
-            device_id INTEGER NOT NULL,
-            sequence INTEGER NOT NULL,
-            dependency BLOB NOT NULL,
-            kind TEXT NOT NULL,
-            detail BLOB NOT NULL,
-            started_at INTEGER NOT NULL,
-            completed_at INTEGER NOT NULL,
-            event_count INTEGER NOT NULL CHECK(event_count > 0),
-            PRIMARY KEY(device_id, sequence)
-          );''');
-    tx.execute('''CREATE TABLE pending_event(
-            device_id INTEGER NOT NULL,
-            sequence INTEGER NOT NULL,
-            event_index INTEGER NOT NULL CHECK(event_index >= 0),
-            stream_path TEXT NOT NULL,
-            kind TEXT NOT NULL,
-            detail BLOB NOT NULL,
-            occured_at INTEGER NOT NULL,
-            PRIMARY KEY(device_id, sequence, event_index)
-          );''');
+    tx.execute('''CREATE UNIQUE INDEX idx_applied_event_stream_version
+      ON event(stream_path, stream_version) WHERE local_sequence > 0;''');
   }),
 );
 
@@ -95,12 +73,15 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<EventDatabaseState> getState() async {
     final counters = await database.queryRow('''SELECT
-      (SELECT COALESCE(MAX(local_sequence), 0) FROM applied_command),
-      (SELECT COALESCE(MAX(local_sequence), 0) FROM event)''');
-    final vectors = await database.query(
-      '''SELECT device_id, MAX(sequence) FROM applied_command
-      GROUP BY device_id ORDER BY device_id''',
-    );
+      (SELECT COALESCE(MAX(local_sequence), 0) FROM command
+        WHERE local_sequence > 0),
+      (SELECT COALESCE(MAX(local_sequence), 0) FROM event
+        WHERE local_sequence > 0)''');
+    final vectors = await database.query('''SELECT device_id, MAX(sequence)
+      FROM command
+      WHERE local_sequence > 0
+      GROUP BY device_id
+      ORDER BY device_id''');
     return EventDatabaseState(
       lastLocalCommandSequence: counters![0] as int,
       lastLocalEventSequence: counters[1] as int,
@@ -125,9 +106,12 @@ class SqliteEventDatabase implements EventDatabase {
     int count,
   ) async {
     final rows = await database.query(
-      '''SELECT device_id, sequence, kind, detail, occured_at, stream_version FROM event
-      WHERE stream_path = ? AND stream_version > ?
-      ORDER BY stream_version ASC LIMIT ?''',
+      '''SELECT device_id, sequence, kind, detail, occured_at, stream_version
+      FROM event
+      WHERE stream_path = ?
+        AND stream_version > ?
+        AND local_sequence > 0
+      ORDER BY stream_version ASC LIMIT ?;''',
       [streamPath, streamVersionCursor, count],
     );
     final events = [
@@ -153,9 +137,14 @@ class SqliteEventDatabase implements EventDatabase {
     int localSequenceCursor,
     int count,
   ) async {
+    if (localSequenceCursor < 0) {
+      throw ArgumentError('localSequenceCursor must be positive');
+    }
     final rows = await database.query(
-      '''SELECT stream_path, kind, detail, occured_at, local_sequence FROM event
+      '''SELECT stream_path, kind, detail, occured_at, local_sequence
+      FROM event
       WHERE local_sequence > ?
+        AND local_sequence > 0
       ORDER BY local_sequence ASC LIMIT ?''',
       [localSequenceCursor, count],
     );
@@ -180,7 +169,9 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<GetStatisticsResult> getStatistics() async {
     final row = await database.queryRow(
-      'SELECT COUNT(*), COALESCE(SUM(LENGTH(detail)), 0) FROM event',
+      '''SELECT COUNT(*), COALESCE(SUM(LENGTH(detail)), 0)
+      FROM event
+      WHERE local_sequence > 0;''',
     );
     return GetStatisticsResult(
       eventCount: row![0] as int,
@@ -190,22 +181,28 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<ReplicatedCommand?> getAppliedCommand(CommandId commandId) async =>
-      _getCommand('applied_command', commandId);
+      _getCommand(commandId, isApplied: true);
 
   @override
   Future<ReplicatedCommand?> getPendingCommand(CommandId commandId) async =>
-      _getCommand('pending_command', commandId);
+      _getCommand(commandId, isApplied: false);
 
   Future<ReplicatedCommand?> _getCommand(
-    String table,
-    CommandId commandId,
-  ) async {
+    CommandId commandId, {
+    required bool isApplied,
+  }) async {
+    final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
+
     final row = await database.queryRow(
       '''SELECT dependency, kind, detail, started_at, completed_at, event_count
-      FROM $table WHERE device_id = ? AND sequence = ?''',
+      FROM command
+      WHERE device_id = ?
+        AND sequence = ?
+        AND $adhocFilter;''',
       [commandId.deviceId, commandId.sequence],
     );
     if (row == null) return null;
+
     return ReplicatedCommand(
       commandId: commandId,
       dependency: _decodeVector(row[0] as Uint8List),
@@ -221,45 +218,28 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<ReplicatedEvent?> getAppliedEvent(EventId eventId) async =>
-      _getEvent('event', eventId);
+      _getEvent(eventId, isApplied: true);
 
   @override
   Future<ReplicatedEvent?> getPendingEvent(EventId eventId) async =>
-      _getEvent('pending_event', eventId);
+      _getEvent(eventId, isApplied: false);
 
-  Future<ReplicatedEvent?> _getEvent(String table, EventId eventId) async {
+  Future<ReplicatedEvent?> _getEvent(
+    EventId eventId, {
+    required bool isApplied,
+  }) async {
+    final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
+
     final row = await database.queryRow(
-      '''SELECT stream_path, kind, detail, occured_at FROM $table
-      WHERE device_id = ? AND sequence = ? AND event_index = ?''',
+      '''SELECT stream_path, kind, detail, occured_at
+      FROM event
+      WHERE device_id = ?
+        AND sequence = ?
+        AND event_index = ?
+        AND $adhocFilter;''',
       [eventId.deviceId, eventId.sequence, eventId.index],
     );
     return row == null ? null : _readReplicatedEvent(eventId, row);
-  }
-
-  @override
-  Future<List<ReplicatedEvent>> getPendingEvents(CommandId commandId) async {
-    final rows = await database.query(
-      '''SELECT event_index, stream_path, kind, detail, occured_at
-      FROM pending_event WHERE device_id = ? AND sequence = ?
-      ORDER BY event_index ASC''',
-      [commandId.deviceId, commandId.sequence],
-    );
-    return [
-      for (final row in rows)
-        ReplicatedEvent(
-          eventId: EventId(
-            commandId.deviceId,
-            commandId.sequence,
-            row[0] as int,
-          ),
-          streamPath: row[1] as String,
-          encodedEvent: EncodedEvent(
-            kind: row[2] as String,
-            bytes: row[3] as Uint8List,
-          ),
-          occuredAt: _date(row[4]),
-        ),
-    ];
   }
 
   @override
@@ -269,8 +249,11 @@ class SqliteEventDatabase implements EventDatabase {
   ) async {
     final rows = await database.query(
       '''SELECT local_sequence, device_id, sequence, dependency, kind, detail,
-      started_at, completed_at, event_count FROM applied_command
-      WHERE local_sequence > ? ORDER BY local_sequence ASC LIMIT ?''',
+      started_at, completed_at, event_count
+      FROM command
+      WHERE local_sequence > ? AND local_sequence > 0
+      ORDER BY local_sequence ASC
+      LIMIT ?;''',
       [localSequenceCursor, count],
     );
     return [
@@ -294,8 +277,12 @@ class SqliteEventDatabase implements EventDatabase {
   Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async {
     final rows = await database.query(
       '''SELECT event_index, stream_path, kind, detail, occured_at,
-      local_sequence, stream_version FROM event
-      WHERE device_id = ? AND sequence = ? ORDER BY event_index ASC''',
+      local_sequence, stream_version
+      FROM event
+      WHERE device_id = ?
+        AND sequence = ?
+        AND local_sequence > 0
+      ORDER BY event_index ASC;''',
       [commandId.deviceId, commandId.sequence],
     );
     return [
@@ -320,8 +307,8 @@ class SqliteEventDatabase implements EventDatabase {
 
   @override
   Future<void> appendApplied(
-    AppliedCommand command,
-    List<AppliedEvent> events,
+    ReplicatedCommand command,
+    List<ReplicatedEvent> events,
   ) => database.transaction((tx) => _insertApplied(tx, command, events));
 
   @override
@@ -331,10 +318,13 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<void> stagePendingEvents(List<ReplicatedEvent> events) =>
       database.transaction((tx) {
-        for (final event in events) {
+        var next = _nextStagedSequence(tx, 'event');
+        for (var i = 0; i < events.length; i++) {
+          final event = events[i];
           tx.execute(
-            '''INSERT INTO pending_event(device_id, sequence, event_index,
-            stream_path, kind, detail, occured_at) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+            '''INSERT INTO event(device_id, sequence, event_index,
+            stream_path, kind, detail, occured_at, local_sequence, stream_version)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, -1)''',
             [
               event.eventId.deviceId,
               event.eventId.sequence,
@@ -343,39 +333,96 @@ class SqliteEventDatabase implements EventDatabase {
               event.encodedEvent.kind,
               event.encodedEvent.bytes,
               event.occuredAt.millisecondsSinceEpoch,
+              next--,
             ],
           );
         }
       });
 
   @override
-  Future<void> promotePending(
-    AppliedCommand command,
-    List<AppliedEvent> events,
-  ) => database.transaction((tx) {
-    _insertApplied(tx, command, events);
-    final id = command.commandId;
-    tx.execute(
-      'DELETE FROM pending_event WHERE device_id = ? AND sequence = ?',
-      [id.deviceId, id.sequence],
-    );
-    final result = tx.execute(
-      'DELETE FROM pending_command WHERE device_id = ? AND sequence = ?',
-      [id.deviceId, id.sequence],
-    );
-    if (result.modified != 1) {
-      throw StateError('matching pending command does not exist');
-    }
-  });
+  Future<bool> promotePending(CommandId commandId) =>
+      database.transaction((tx) {
+        final command = tx.queryRow(
+          '''SELECT local_sequence, event_count, dependency
+      FROM command
+      WHERE device_id = ?
+        AND sequence = ?
+        AND local_sequence < 0''',
+          [commandId.deviceId, commandId.sequence],
+        );
+        if (command == null) return false;
+        final appliedRows = tx.query('''SELECT device_id, MAX(sequence)
+      FROM command
+      WHERE local_sequence > 0
+      GROUP BY device_id''');
+        final frontier = VersionVector({
+          for (final row in appliedRows) row[0] as int: row[1] as int,
+        });
+        if (!frontier.contains(_decodeVector(command[2] as Uint8List)) ||
+            frontier.value(commandId.deviceId) + 1 != commandId.sequence) {
+          return false;
+        }
+        final events = tx.query(
+          '''SELECT local_sequence, event_index, stream_path
+          FROM event
+          WHERE device_id = ?
+            AND sequence = ?
+            AND local_sequence < 0
+          ORDER BY event_index ASC;''',
+          [commandId.deviceId, commandId.sequence],
+        );
+        if (events.length != command[1] as int) return false;
+        for (var i = 0; i < events.length; i++) {
+          if (events[i][1] != i) return false;
+        }
+
+        final commandSequence = _nextAppliedSequence(tx, 'command');
+        final result = tx.execute(
+          '''UPDATE command SET local_sequence = ?
+          WHERE local_sequence = ?
+            AND local_sequence < 0;''',
+          [commandSequence, command[0]],
+        );
+        if (result.modified != 1) {
+          throw StateError('matching pending command does not exist');
+        }
+        var localSequence = _nextAppliedSequence(tx, 'event');
+        final versions = <String, int>{};
+        for (final event in events) {
+          final streamPath = event[2] as String;
+          final version =
+              (versions[streamPath] ??
+                  tx.queryValue<int?>(
+                    'SELECT version FROM stream WHERE stream_path = ?',
+                    [streamPath],
+                  ) ??
+                  0) +
+              1;
+          versions[streamPath] = version;
+          final updated = tx.execute(
+            '''UPDATE event
+            SET local_sequence = ?, stream_version = ?
+            WHERE local_sequence = ?
+              AND local_sequence < 0''',
+            [localSequence++, version, event[0]],
+          );
+          if (updated.modified != 1) {
+            throw StateError('matching pending event does not exist');
+          }
+          _updateStreamVersion(tx, streamPath, version);
+        }
+        return true;
+      });
 }
 
 void _insertPendingCommand(SyncContext tx, ReplicatedCommand command) {
   final id = command.commandId;
   tx.execute(
-    '''INSERT INTO pending_command(device_id, sequence, dependency, kind,
-    detail, started_at, completed_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+    '''INSERT INTO command(local_sequence, device_id, sequence, dependency,
+    kind, detail, started_at, completed_at, event_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
     [
+      _nextStagedSequence(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
@@ -390,16 +437,19 @@ void _insertPendingCommand(SyncContext tx, ReplicatedCommand command) {
 
 void _insertApplied(
   SyncContext tx,
-  AppliedCommand command,
-  List<AppliedEvent> events,
+  ReplicatedCommand command,
+  List<ReplicatedEvent> events,
 ) {
+  if (events.length != command.eventCount) {
+    throw StateError('applied event count does not match command');
+  }
   final id = command.commandId;
   tx.execute(
-    '''INSERT INTO applied_command(local_sequence, device_id, sequence,
+    '''INSERT INTO command(local_sequence, device_id, sequence,
     dependency, kind, detail, started_at, completed_at, event_count)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
     [
-      command.localSequence,
+      _nextAppliedSequence(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
@@ -410,29 +460,63 @@ void _insertApplied(
       command.eventCount,
     ],
   );
-  for (final event in events) {
+  _insertAppliedEvents(tx, events);
+}
+
+int _nextStagedSequence(SyncContext tx, String table) {
+  final lowest = tx.queryValue<int?>('SELECT MIN(local_sequence) FROM $table');
+  return lowest == null || lowest > 0 ? -1 : lowest - 1;
+}
+
+int _nextAppliedSequence(SyncContext tx, String table) {
+  final highest = tx.queryValue<int?>('SELECT MAX(local_sequence) FROM $table');
+  return highest == null || highest < 0 ? 1 : highest + 1;
+}
+
+void _insertAppliedEvents(SyncContext tx, List<ReplicatedEvent> events) {
+  var localSequence = _nextAppliedSequence(tx, 'event');
+  final versions = <String, int>{};
+  for (final (index, event) in events.indexed) {
+    if (event.eventId.index != index) {
+      throw StateError('event index is invalid');
+    }
+    final version =
+        (versions[event.streamPath] ??
+            tx.queryValue<int?>(
+              'SELECT version FROM stream WHERE stream_path = ?',
+              [event.streamPath],
+            ) ??
+            0) +
+        1;
+    versions[event.streamPath] = version;
     tx.execute(
-      '''INSERT INTO event(local_sequence, device_id, sequence, event_index,
-      stream_path, stream_version, kind, detail, occured_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+      '''INSERT INTO event(local_sequence, device_id, sequence,
+        event_index, stream_path, stream_version, kind, detail, occured_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
       [
-        event.localSequence,
+        localSequence++,
         event.eventId.deviceId,
         event.eventId.sequence,
         event.eventId.index,
         event.streamPath,
-        event.streamVersion,
+        version,
         event.encodedEvent.kind,
         event.encodedEvent.bytes,
         event.occuredAt.millisecondsSinceEpoch,
       ],
     );
-    tx.execute(
-      '''INSERT INTO stream(stream_path, version) VALUES (?, ?)
-      ON CONFLICT(stream_path) DO UPDATE SET version = excluded.version''',
-      [event.streamPath, event.streamVersion],
-    );
+    _updateStreamVersion(tx, event.streamPath, version);
   }
+}
+
+void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
+  tx.execute(
+    '''INSERT INTO stream(stream_path, version)
+    VALUES (?, ?)
+    ON CONFLICT(stream_path)
+      UPDATE SET version = excluded.version;''',
+    [streamPath, version],
+  );
 }
 
 ReplicatedEvent _readReplicatedEvent(EventId eventId, Row row) =>

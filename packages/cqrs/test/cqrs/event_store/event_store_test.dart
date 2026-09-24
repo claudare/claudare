@@ -2,12 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -20,6 +18,33 @@ import 'package:test/test.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
+  test('memory allocates decreasing staged sequences', () async {
+    final database = MemoryEventDatabase();
+    final store = EventStore(database);
+    for (final sequence in [1, 2]) {
+      final command = ReplicatedCommand(
+        commandId: CommandId(1, sequence),
+        dependency: VersionVector(),
+        encoded: EncodedCommand(kind: 'remote', bytes: Uint8List(0)),
+        startedAt: _timestamp,
+        completedAt: _timestamp,
+        eventCount: 1,
+      );
+      await store.stageReplicatedCommand(command);
+      await store.stageReplicatedEvents([
+        ReplicatedEvent(
+          eventId: EventId(1, sequence, 0),
+          streamPath: 'shared',
+          encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
+          occuredAt: _timestamp,
+        ),
+      ]);
+    }
+    expect(database.testPendingCommandLocalSequences, [-1, -2]);
+    expect(database.testPendingEventLocalSequences, [-1, -2]);
+    expect((await database.getState()).appliedVersion, VersionVector());
+  });
+
   test('reuses every generated sequence after a failed write', () async {
     final database = _FailOnceDatabase();
     final store = EventStore(database);
@@ -150,8 +175,8 @@ class _FailOnceDatabase extends MemoryEventDatabase {
 
   @override
   Future<void> appendApplied(
-    AppliedCommand command,
-    List<AppliedEvent> events,
+    ReplicatedCommand command,
+    List<ReplicatedEvent> events,
   ) async {
     if (_shouldFail) {
       _shouldFail = false;
@@ -174,10 +199,7 @@ class _ReadFailingDatabase extends MemoryEventDatabase {
 
 class _PromotionFailingDatabase extends MemoryEventDatabase {
   @override
-  Future<void> promotePending(
-    AppliedCommand command,
-    List<AppliedEvent> events,
-  ) async {
+  Future<bool> promotePending(CommandId commandId) async {
     throw Exception('promotion failed');
   }
 }
