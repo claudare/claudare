@@ -18,15 +18,6 @@ class NoteApplicationProvider extends InheritedWidget {
         .application;
   }
 
-  // https://www.wafrat.com/dependency-injection-in-flutter/
-  // why is this needed idk...
-  static NoteApplicationProvider ofInitStateContext(BuildContext context) {
-    return context
-            .getElementForInheritedWidgetOfExactType<NoteApplicationProvider>()!
-            .widget
-        as NoteApplicationProvider;
-  }
-
   @override
   bool updateShouldNotify(NoteApplicationProvider oldWidget) {
     return application != oldWidget.application;
