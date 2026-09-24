@@ -1,4 +1,5 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 
 // prototype: please do not delete
 // TState testAggregate<TEvent extends Object, TState>(
@@ -25,7 +26,7 @@ import 'package:cqrs/cqrs.dart';
 /// Replays supplied events against a fresh [Aggregate] state.
 class AggregateTester<TEvent extends Object, TParams, TState> {
   final Aggregate<TEvent, TParams, TState> aggregate;
-  final List<_TestEvent<TEvent>> _testEvents = [];
+  final List<TestEvent<TEvent>> _testEvents = [];
 
   AggregateTester(this.aggregate);
 
@@ -34,7 +35,7 @@ class AggregateTester<TEvent extends Object, TParams, TState> {
     TEvent event, {
     required DateTime occuredAt,
   }) {
-    _testEvents.add(_TestEvent(streamPath, event, occuredAt));
+    _testEvents.add(TestEvent(streamPath, event, occuredAt));
     return this;
   }
 
@@ -56,12 +57,4 @@ class AggregateTester<TEvent extends Object, TParams, TState> {
     }
     return state;
   }
-}
-
-final class _TestEvent<TEvent extends Object> {
-  final String streamPath;
-  final TEvent event;
-  final DateTime occuredAt;
-
-  const _TestEvent(this.streamPath, this.event, this.occuredAt);
 }

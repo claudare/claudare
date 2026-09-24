@@ -1,6 +1,10 @@
 library;
 
+export 'src/cqrs_test_utils/cqrs_test_runtime.dart';
+
 export 'src/cqrs_test_utils/event_store_test_backends.dart';
 
 export 'src/cqrs_test_utils/command_tester/command_tester.dart';
 export 'src/cqrs_test_utils/aggregate_tester.dart';
+
+export 'src/cqrs_test_utils/test_event.dart';

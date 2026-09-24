@@ -13,7 +13,7 @@ import 'package:cqrs/src/cqrs/snapshotter.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
-final class CqrsRuntime {
+class CqrsRuntime {
   final EventStore _eventStore;
   final Logger _logger;
   final TimeProvider _timeProvider;

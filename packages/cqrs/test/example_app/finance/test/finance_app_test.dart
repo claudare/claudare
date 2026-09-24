@@ -1,7 +1,6 @@
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
-import 'package:time_provider/time_provider.dart';
 
 import '../command/atm_depost.dart';
 import '../command/atm_withdrawal.dart';
@@ -16,21 +15,10 @@ void main() {
   final occurredAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
   late FinanceApp app;
-  late EventStore eventStore;
 
-  setUp(() async {
-    eventStore = EventStore(MemoryEventDatabase());
-    await eventStore.migrate();
-
-    final runtime = CqrsRuntime(
-      eventStore: eventStore,
-      logger: const NoopLogger(),
-      timeProvider: FakeTimeProviderStatic.zero(),
-    );
-    app = FinanceApp(cqrsRuntime: runtime);
+  setUp(() {
+    app = FinanceApp(cqrsRuntime: CqrsTestRuntime());
   });
-
-  tearDown(() => eventStore.close());
 
   Future<void> openFirstAccount() => app.command.openAccount(
     const OpenAccountInput(accountId: firstAccountId, name: 'first'),
