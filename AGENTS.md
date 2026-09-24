@@ -2,6 +2,13 @@
 
 These instructions apply to the entire repository.
 
+## Communication style
+
+- Never use em dashes when communicating, writing code, or documenting.
+- Do not use strong and expressive language that has no meaning.
+- Be concise in your communications.
+- When unsure about something, do not guess and ask user instead.
+
 ## Workspace
 
 - `apps/*` contains Flutter applications. Use short package names and
@@ -31,6 +38,22 @@ These instructions apply to the entire repository.
 - Do not add external dependencies unless requested or approved. Local workspace
   references are allowed.
 
+## Editing files
+
+- Use `apply_patch` for file edits instead of ad hoc Python, shell, or other
+  scripts that rewrite files.
+- Format Markdown with lines no wider than 80 characters.
+- Do not apply unrelated changes or bug fixes unless asked. Leave unexpected
+  issues unedited and report them to the user. During planning, you may ask
+  whether those issues should be fixed.
+
+## Code reviews
+
+- When asked to review code, inspect only the given scope and do not edit files.
+- Return three concise lists: bugs, improvements, and feedback. Number items
+  within each list using the prefixes `B`, `I`, and `F`, and include locations
+  for each finding.
+
 ## Code
 
 - Follow [CONVENTIONS.md](CONVENTIONS.md) for new and modified code. Do not
@@ -53,10 +76,10 @@ These instructions apply to the entire repository.
   behavior, significant limitations, setup, security posture, and only
   validation evidence that was actually collected in the relevant documentation.
 - During implementation work, update maintained documentation only when one of
-  those overview-level facts changes. Do not add internal algorithms, lifecycle
-  transitions, coordination details, or similar implementation specifics unless
-  documentation was explicitly requested. When unsure, ask before editing
-  documentation.
+  those overview-level facts changes. Do not add internal details such as
+  algorithms, lifecycle transitions, coordination details, or similar
+  implementation specifics unless documentation was explicitly requested. When
+  unsure, ask before editing documentation.
 - Verify source before changing implementation status, and fix links when
   documents move.
 - Keep normative coding conventions in `CONVENTIONS.md` rather than duplicating
@@ -87,10 +110,3 @@ Use the full Melos command for cross-workspace code changes. Flutter tests use
 For documentation-only changes analysis and tests are unnecessary. Report only
 checks actually run, categorized as static checks, tests, builds, or runtime
 verification.
-
-## Communication style
-
-Avoid em dashes and unnecessary comments in code and user-facing text. Do not
-use meaningless expressive language. Be concise when responding.
-
-When unsure about something, do not guess and ask user instead.
