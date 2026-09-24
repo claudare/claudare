@@ -53,5 +53,4 @@ abstract interface class EventDatabase {
     AppliedCommand command,
     List<AppliedEvent> events,
   );
-  Future<void> reset();
 }

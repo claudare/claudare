@@ -367,15 +367,6 @@ class SqliteEventDatabase implements EventDatabase {
       throw StateError('matching pending command does not exist');
     }
   });
-
-  @override
-  Future<void> reset() => database.transaction((tx) {
-    tx.execute('DELETE FROM pending_event');
-    tx.execute('DELETE FROM pending_command');
-    tx.execute('DELETE FROM event');
-    tx.execute('DELETE FROM applied_command');
-    tx.execute('DELETE FROM stream');
-  });
 }
 
 void _insertPendingCommand(SyncContext tx, ReplicatedCommand command) {

@@ -254,13 +254,4 @@ class MemoryEventDatabase implements EventDatabase {
     }
     _onChange?.call();
   }
-
-  @override
-  Future<void> reset() async {
-    _commands.clear();
-    _events.clear();
-    _pendingCommands.clear();
-    _pendingEvents.clear();
-    _streamVersions.clear();
-  }
 }

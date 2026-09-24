@@ -329,12 +329,4 @@ class EventStore {
       throw EventStoreException('Failed to get statistics', cause: cause);
     }
   });
-
-  Future<void> reset() => _mutex.protectWrite(() async {
-    try {
-      await _database.reset();
-    } on Exception catch (cause) {
-      throw EventStoreException('Failed to reset event database', cause: cause);
-    }
-  });
 }

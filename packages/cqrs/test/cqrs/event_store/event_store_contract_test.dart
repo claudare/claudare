@@ -483,17 +483,6 @@ void main() {
           'one',
         ]);
       });
-
-      test('resets applied and orphan pending state', () async {
-        await _appendOne(store, streamPath: 'one', kind: 'one');
-        final orphan = CommandId(10, 1);
-        await store.stageReplicatedEvents([_replicatedEvent(orphan, 0)]);
-        await store.reset();
-        final state = await session.database.getState();
-        expect(state.lastLocalCommandSequence, 0);
-        expect(state.lastLocalEventSequence, 0);
-        expect(state.appliedVersion, VersionVector());
-      });
     });
   }
 }
