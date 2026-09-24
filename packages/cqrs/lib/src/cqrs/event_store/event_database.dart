@@ -10,8 +10,8 @@ import 'package:cqrs/src/cqrs/event/stream_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 
 class EventDatabaseState {
-  final int lastLocalCommandSequence;
-  final int lastLocalEventSequence;
+  final int? lastLocalCommandSequence;
+  final int? lastLocalEventSequence;
   final VersionVector appliedVersion;
 
   const EventDatabaseState({
@@ -25,7 +25,7 @@ abstract interface class EventDatabase {
   int get defaultEventFetchPageSize;
 
   Future<EventDatabaseState> getState();
-  Future<int> getStreamVersion(String streamPath);
+  Future<int?> getStreamVersion(String streamPath);
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
     String streamPath,
     int streamVersionCursor,

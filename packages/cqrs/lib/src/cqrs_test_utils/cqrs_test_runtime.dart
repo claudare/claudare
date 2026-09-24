@@ -55,7 +55,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
           locks: [
             StreamLocalLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info?.originatingStreamVersion ?? 0,
+              originatingStreamVersion: info?.originatingStreamVersion,
             ),
           ],
           events: [event],

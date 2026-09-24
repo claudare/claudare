@@ -125,7 +125,7 @@ void main() {
 
     expect(context.dependency, VersionVector({1: 1}));
     expect(executionState.locks, hasLength(1));
-    expect(executionState.locks.single.originatingStreamVersion, 2);
+    expect(executionState.locks.single.originatingStreamVersion, 1);
   });
 }
 

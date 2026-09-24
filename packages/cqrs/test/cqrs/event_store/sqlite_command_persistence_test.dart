@@ -29,6 +29,25 @@ void main() {
     await expectLater(sqlite.queryValue<int>('SELECT 1'), throwsStateError);
   });
 
+  test('rejects a one-based SQLite schema during migration', () async {
+    await sqlite.execute('DROP TABLE command');
+    await sqlite.execute('CREATE TABLE command(local_sequence INTEGER)');
+    await sqlite.execute(
+      'UPDATE migrations_event_database SET version = 1',
+    );
+
+    await expectLater(
+      database.migrate(),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('Recreate the database and snapshots'),
+        ),
+      ),
+    );
+  });
+
   test('stores canonical integer-key dependency bytes', () async {
     final command = _command(dependency: VersionVector({2: 4, -1: 3}));
     await store.stageReplicatedCommand(command);
@@ -81,13 +100,13 @@ void main() {
     );
     expect(
       await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM event WHERE local_sequence > 0',
+        'SELECT COUNT(*) FROM event WHERE local_sequence >= 0',
       ),
       0,
     );
     expect(
       await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM command WHERE local_sequence > 0',
+        'SELECT COUNT(*) FROM command WHERE local_sequence >= 0',
       ),
       0,
     );
@@ -108,9 +127,9 @@ void main() {
     expect(await store.promotePendingCommand(command.commandId), isTrue);
     final applied = (await database.getAppliedCommands(0, 10)).single;
     final event = (await database.getAppliedEvents(command.commandId)).single;
-    expect(applied.localSequence, 1);
-    expect(event.localSequence, 1);
-    expect(event.streamVersion, 1);
+    expect(applied.localSequence, 0);
+    expect(event.localSequence, 0);
+    expect(event.streamVersion, 0);
   });
 }
 

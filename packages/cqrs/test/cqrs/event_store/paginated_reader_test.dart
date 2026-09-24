@@ -55,7 +55,10 @@ Future<void> _appendCount(EventStore store, int count) async {
         startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         locks: [
-          StreamLocalLock(streamPath: 'test', originatingStreamVersion: i),
+          StreamLocalLock(
+            streamPath: 'test',
+            originatingStreamVersion: i == 0 ? null : i - 1,
+          ),
         ],
         events: [
           EventAppend(

@@ -97,7 +97,7 @@ void main() {
       for (final command in commands)
         ...await database.getAppliedEvents(command.commandId),
     ];
-    expect(applied.map((event) => event.streamVersion), [1, 1, 2]);
+    expect(applied.map((event) => event.streamVersion), [0, 0, 1]);
   });
 
   test('seeds an existing stream before the next command', () async {
@@ -114,7 +114,7 @@ void main() {
 
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
-    expect(await database.getStreamVersion('value/one'), 3);
+    expect(await database.getStreamVersion('value/one'), 2);
   });
 
   test('rejects unregistered seed events before writing', () async {

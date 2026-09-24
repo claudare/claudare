@@ -21,14 +21,14 @@ void main() {
   test('memory backend is ready without initialization', () async {
     final session = await const MemoryEventDatabaseTestBackend().open();
     addTearDown(session.close);
-    expect((await session.database.getState()).lastLocalEventSequence, 0);
+    expect((await session.database.getState()).lastLocalEventSequence, null);
     expect((await session.store.getStatistics()).eventCount, 0);
   });
 
   test('SQLite backend migrates and closes its database', () async {
     final session = await const SqliteEventDatabaseTestBackend().open();
     final database = session.database as SqliteEventDatabase;
-    expect((await database.getState()).lastLocalEventSequence, 0);
+    expect((await database.getState()).lastLocalEventSequence, null);
     await session.close();
     await expectLater(database.getState(), throwsStateError);
   });
@@ -64,8 +64,8 @@ void main() {
           expect(await database.getPendingEvent(event.eventId), event);
         }
         final state = await database.getState();
-        expect(state.lastLocalCommandSequence, 0);
-        expect(state.lastLocalEventSequence, 0);
+        expect(state.lastLocalCommandSequence, null);
+        expect(state.lastLocalEventSequence, null);
         expect(state.appliedVersion, VersionVector());
       });
 
@@ -81,10 +81,10 @@ void main() {
                   _event(commandId, index, paths[index]),
               ]);
         }
-        expect(await database.getStreamVersion('one'), 3);
-        expect(await database.getStreamVersion('two'), 2);
+        expect(await database.getStreamVersion('one'), 2);
+        expect(await database.getStreamVersion('two'), 1);
         final one = await database.getStreamEvents('one', 1, 10);
-        expect(one.data.map((event) => event.streamVersion), [2, 3]);
+        expect(one.data.map((event) => event.streamVersion), [1, 2]);
         expect(one.data.map((event) => event.commandId), [
           CommandId(1, 1),
           CommandId(1, 2),
@@ -97,11 +97,11 @@ void main() {
           'two',
           'one',
         ]);
-        expect(local.data.map((event) => event.localSequence), [1, 2, 3, 4, 5]);
+        expect(local.data.map((event) => event.localSequence), [0, 1, 2, 3, 4]);
         final applied = await database.getAppliedEvents(CommandId(1, 2));
         expect(
           applied.map((event) => (event.streamPath, event.streamVersion)),
-          [('two', 2), ('one', 3)],
+          [('two', 1), ('one', 2)],
         );
         expect(
           (await database.getAppliedEvent(EventId(1, 1, 1)))?.streamPath,
@@ -120,7 +120,7 @@ void main() {
         );
         expect(await database.getAppliedCommands(0, 1), isEmpty);
         expect((await database.getLocalEvents(0, 1)).data, isEmpty);
-        expect(await database.getStreamVersion('shared'), 0);
+        expect(await database.getStreamVersion('shared'), null);
       });
 
       test('reuses generated sequences after a failed write', () async {
@@ -132,17 +132,17 @@ void main() {
           throwsA(isA<EventStoreException>()),
         );
         final state = await database.getState();
-        expect(state.lastLocalCommandSequence, 0);
-        expect(state.lastLocalEventSequence, 0);
+        expect(state.lastLocalCommandSequence, null);
+        expect(state.lastLocalEventSequence, null);
         await _append(failingStore);
         final command = (await database.getAppliedCommands(0, 1)).single;
-        expect(command.localSequence, 1);
+        expect(command.localSequence, 0);
         expect(command.commandId.sequence, 1);
         expect(
           (await database.getAppliedEvents(
             command.commandId,
           )).single.streamVersion,
-          1,
+          0,
         );
       });
 
@@ -204,7 +204,7 @@ void main() {
         await saveCompleted.future;
         expect(
           (await database.getLocalEvents(0, 1)).data.single.localSequence,
-          1,
+          0,
         );
         expect(await listenerFailure.future, isA<Exception>());
       });
@@ -266,7 +266,7 @@ CommandChanges _changes() => CommandChanges(
   startedAt: _timestamp,
   completedAt: _timestamp,
   locks: const [
-    StreamLocalLock(streamPath: 'test/1', originatingStreamVersion: 0),
+    StreamLocalLock(streamPath: 'test/1', originatingStreamVersion: null),
   ],
   events: [
     EventAppend(
@@ -299,7 +299,7 @@ class _FaultDatabase implements EventDatabase {
   @override
   Future<EventDatabaseState> getState() => _database.getState();
   @override
-  Future<int> getStreamVersion(String streamPath) {
+  Future<int?> getStreamVersion(String streamPath) {
     if (_readFailure case final failure?) throw failure;
     return _database.getStreamVersion(streamPath);
   }

@@ -2,6 +2,12 @@
 
 CQRS implementation for the Claudare workspace.
 
+## Positions
+
+Command, local event, and stream reads are inclusive of the requested position.
+`null` means an empty command or event history when returned as its last local
+sequence, or an absent stream when used as its version.
+
 ## Validation
 
 Run the package tests from this directory with:

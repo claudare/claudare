@@ -41,7 +41,7 @@ class CommandChanges {
 
 class StreamLocalLock {
   final String streamPath;
-  final int originatingStreamVersion;
+  final int? originatingStreamVersion;
 
   const StreamLocalLock({
     required this.streamPath,

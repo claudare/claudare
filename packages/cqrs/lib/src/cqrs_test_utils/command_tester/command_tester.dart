@@ -23,6 +23,7 @@ class CommandTester {
   final EventRegistry _eventRegistry = EventRegistry();
 
   int? _preRunLastLocalSequence;
+  bool _ran = false;
 
   CommandTester({
     required TimeProvider timeProvider,
@@ -43,13 +44,13 @@ class CommandTester {
        );
 
   void _ensureRan() {
-    if (_preRunLastLocalSequence == null) {
+    if (!_ran) {
       throw StateError('tester did not ran, but it should have been');
     }
   }
 
   void _ensureNotRan() {
-    if (_preRunLastLocalSequence != null) {
+    if (_ran) {
       throw StateError('tester already ran, but it should not have been');
     }
   }
@@ -115,7 +116,9 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final reader = _eventStore.getAppliedEventReader(_preRunLastLocalSequence!);
+    final reader = _eventStore.getAppliedEventReader(
+      (_preRunLastLocalSequence ?? -1) + 1,
+    );
 
     return reader
         .scan()
@@ -134,6 +137,7 @@ class CommandTester {
 
     final state = await _eventDatabase.getState();
     _preRunLastLocalSequence = state.lastLocalEventSequence;
+    _ran = true;
 
     final executer = CommandExecutor(
       eventStore: _eventStore,
@@ -162,7 +166,7 @@ class CommandTester {
           locks: [
             StreamLocalLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info?.originatingStreamVersion ?? 0,
+              originatingStreamVersion: info?.originatingStreamVersion,
             ),
           ],
           events: [event],

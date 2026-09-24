@@ -79,7 +79,7 @@ void main() {
             localLocks: const [
               StreamLocalLock(
                 streamPath: 'test/1',
-                originatingStreamVersion: 0,
+                originatingStreamVersion: null,
               ),
             ],
             events: [
@@ -95,13 +95,13 @@ void main() {
           CommandId(0, 1),
           CommandId(0, 2),
         ]);
-        expect(commands.map((command) => command.localSequence), [1, 2]);
+        expect(commands.map((command) => command.localSequence), [0, 1]);
         expect(commands.first.dependency, VersionVector());
         expect(commands.last.dependency, VersionVector());
         final events = await store.getAppliedEvents(commands.first.commandId);
         expect(events.map((event) => event.eventId.index), [0, 1]);
-        expect(events.map((event) => event.localSequence), [1, 2]);
-        expect(events.map((event) => event.streamVersion), [1, 2]);
+        expect(events.map((event) => event.localSequence), [0, 1]);
+        expect(events.map((event) => event.streamVersion), [0, 1]);
       });
 
       test('signals after a successful non-empty local append', () async {
@@ -115,7 +115,7 @@ void main() {
             localLocks: const [
               StreamLocalLock(
                 streamPath: 'test/1',
-                originatingStreamVersion: 0,
+                originatingStreamVersion: null,
               ),
             ],
             events: [
@@ -186,7 +186,7 @@ void main() {
 
         final events = await read.future;
         expect(events.map((event) => event.encodedEvent.kind), ['created']);
-        expect(events.single.localSequence, 1);
+        expect(events.single.localSequence, 0);
       });
 
       test('rolls back stale locks without allocator holes', () async {
@@ -198,7 +198,7 @@ void main() {
               localLocks: const [
                 StreamLocalLock(
                   streamPath: 'test/1',
-                  originatingStreamVersion: 0,
+                  originatingStreamVersion: null,
                 ),
               ],
               events: [_storedEvent('test/1', 'stale')],
@@ -210,7 +210,7 @@ void main() {
           store,
           streamPath: 'test/1',
           kind: 'second',
-          originatingVersion: 1,
+          originatingVersion: 0,
         );
         final commands = await session.readAppliedCommands();
         expect(commands.map((command) => command.commandId.sequence), [1, 2]);
@@ -225,7 +225,7 @@ void main() {
               localLocks: const [
                 StreamLocalLock(
                   streamPath: 'test/1',
-                  originatingStreamVersion: 0,
+                  originatingStreamVersion: null,
                 ),
               ],
               events: [_storedEvent('test/1', 'created')],
@@ -387,8 +387,14 @@ void main() {
             _commandChanges(
               'command',
               localLocks: const [
-                StreamLocalLock(streamPath: 'one', originatingStreamVersion: 0),
-                StreamLocalLock(streamPath: 'two', originatingStreamVersion: 0),
+                StreamLocalLock(
+                  streamPath: 'one',
+                  originatingStreamVersion: null,
+                ),
+                StreamLocalLock(
+                  streamPath: 'two',
+                  originatingStreamVersion: null,
+                ),
               ],
               events: [
                 _storedEvent('one', 'first'),
@@ -413,13 +419,13 @@ void main() {
           (await store.getAppliedCommands(
             0,
           )).map((value) => value.localSequence),
-          [1, 2],
+          [0, 1],
         );
         expect(
           (await store.getAppliedCommands(
             2,
           )).map((value) => value.localSequence),
-          [3],
+          [2],
         );
       });
 
@@ -430,7 +436,7 @@ void main() {
           store,
           streamPath: 'one',
           kind: 'one-b',
-          originatingVersion: 1,
+          originatingVersion: 0,
         );
 
         final streamEvents = await store.getStreamReader('one').scan().toList();
@@ -442,6 +448,46 @@ void main() {
           CommandId(0, 1),
           CommandId(0, 3),
         ]);
+        expect(
+          (await store.getStreamReader('one', fromVersion: 1).scan().toList())
+              .map((event) => event.streamVersion),
+          [1],
+        );
+      });
+
+      test('appends only at the latest stream version', () async {
+        for (var version = 0; version < 4; version++) {
+          await _appendOne(
+            store,
+            streamPath: 'abc',
+            kind: 'event-$version',
+            originatingVersion: version == 0 ? null : version - 1,
+          );
+        }
+        expect((await store.getStreamInfo('abc'))?.originatingStreamVersion, 3);
+        for (final stale in [2, 4]) {
+          await expectLater(
+            _appendOne(
+              store,
+              streamPath: 'abc',
+              kind: 'rejected',
+              originatingVersion: stale,
+            ),
+            throwsA(isA<ConcurrencyProblem>()),
+          );
+        }
+        await _appendOne(
+          store,
+          streamPath: 'abc',
+          kind: 'accepted',
+          originatingVersion: 3,
+        );
+        expect(
+          (await store.getStreamReader('abc').scan().toList()).map(
+            (event) => event.streamVersion,
+          ),
+          [0, 1, 2, 3, 4],
+        );
       });
 
       test('pages all applied events without filtering', () async {
@@ -451,18 +497,18 @@ void main() {
 
         final reader = store.getAppliedEventReader(0);
         expect(await reader.loadMore(), isTrue);
-        expect(reader.currentPage.map((event) => event.localSequence), [1, 2]);
+        expect(reader.currentPage.map((event) => event.localSequence), [0, 1]);
         expect(reader.currentPage.map((event) => event.streamPath), [
           'one',
           'two',
         ]);
         expect(await reader.loadMore(), isTrue);
-        expect(reader.currentPage.map((event) => event.localSequence), [3]);
+        expect(reader.currentPage.map((event) => event.localSequence), [2]);
         expect(reader.currentPage.map((event) => event.streamPath), ['three']);
         expect(await reader.loadMore(), isFalse);
       });
 
-      test('uses an exclusive applied-event cursor', () async {
+      test('uses an inclusive applied-event cursor', () async {
         await _appendOne(store, streamPath: 'one', kind: 'one');
         await _appendOne(store, streamPath: 'two', kind: 'two');
         await _appendOne(store, streamPath: 'three', kind: 'three');
@@ -470,7 +516,7 @@ void main() {
         final events = await store.getAppliedEventReader(2).scan().toList();
 
         expect(events.map((event) => event.encodedEvent.kind), ['three']);
-        expect(events.single.localSequence, 3);
+        expect(events.single.localSequence, 2);
       });
 
       test('keeps applied-event sequences contiguous across local append and '
@@ -483,12 +529,12 @@ void main() {
           store,
           streamPath: 'one',
           kind: 'one-b',
-          originatingVersion: 1,
+          originatingVersion: 0,
         );
 
         final events = await store.getAppliedEventReader(0).scan().toList();
 
-        expect(events.map((event) => event.localSequence), [1, 2, 3, 4]);
+        expect(events.map((event) => event.localSequence), [0, 1, 2, 3]);
         expect(events.map((event) => event.streamPath), [
           'one',
           'test/6',
@@ -506,7 +552,7 @@ Future<void> _appendOne(
   EventStore store, {
   required String streamPath,
   required String kind,
-  int originatingVersion = 0,
+  int? originatingVersion,
 }) => store.saveChanges(
   _commandChanges(
     kind,

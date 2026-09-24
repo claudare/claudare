@@ -19,7 +19,7 @@ import 'package:mutex/mutex.dart';
 enum StageReplicatedCommandResult { staged, alreadyPresent }
 
 class GetStreamInfoResult {
-  final int originatingStreamVersion;
+  final int? originatingStreamVersion;
 
   const GetStreamInfoResult({required this.originatingStreamVersion});
 }
@@ -52,7 +52,7 @@ class EventStore {
       _mutex.protectRead(() async {
         try {
           final version = await _database.getStreamVersion(streamPath);
-          return version == 0
+          return version == null
               ? null
               : GetStreamInfoResult(originatingStreamVersion: version);
         } on Exception catch (cause) {
@@ -227,11 +227,13 @@ class EventStore {
         }
       });
 
-  PaginatedReader<StreamEvent> getStreamReader(String streamPath) =>
-      PaginatedReader(
-        (cursor) => _readStreamPage(streamPath, cursor),
-        initialCursor: 0,
-      );
+  PaginatedReader<StreamEvent> getStreamReader(
+    String streamPath, {
+    int fromVersion = 0,
+  }) => PaginatedReader(
+    (cursor) => _readStreamPage(streamPath, cursor),
+    initialCursor: fromVersion,
+  );
 
   Future<PaginatedResult<StreamEvent>> _readStreamPage(
     String streamPath,

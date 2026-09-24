@@ -48,13 +48,13 @@ final eventDatabaseMigrations = SqliteMigrations(
             occured_at INTEGER NOT NULL,
             UNIQUE(device_id, sequence, event_index),
             CHECK((local_sequence < 0 AND stream_version = -1) OR
-                  (local_sequence > 0 AND stream_version > 0))
+                  (local_sequence >= 0 AND stream_version >= 0))
           );''');
     tx.execute(
       'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
     );
     tx.execute('''CREATE UNIQUE INDEX idx_applied_event_stream_version
-      ON event(stream_path, stream_version) WHERE local_sequence > 0;''');
+      ON event(stream_path, stream_version) WHERE local_sequence >= 0;''');
   }),
 );
 
@@ -73,18 +73,18 @@ class SqliteEventDatabase implements EventDatabase {
   @override
   Future<EventDatabaseState> getState() async {
     final counters = await _database.queryRow('''SELECT
-      (SELECT COALESCE(MAX(local_sequence), 0) FROM command
-        WHERE local_sequence > 0),
-      (SELECT COALESCE(MAX(local_sequence), 0) FROM event
-        WHERE local_sequence > 0)''');
+      (SELECT MAX(local_sequence) FROM command
+        WHERE local_sequence >= 0),
+      (SELECT MAX(local_sequence) FROM event
+        WHERE local_sequence >= 0)''');
     final vectors = await _database.query('''SELECT device_id, MAX(sequence)
       FROM command
-      WHERE local_sequence > 0
+      WHERE local_sequence >= 0
       GROUP BY device_id
       ORDER BY device_id''');
     return EventDatabaseState(
-      lastLocalCommandSequence: counters![0] as int,
-      lastLocalEventSequence: counters[1] as int,
+      lastLocalCommandSequence: counters![0] as int?,
+      lastLocalEventSequence: counters[1] as int?,
       appliedVersion: VersionVector({
         for (final row in vectors) row[0] as int: row[1] as int,
       }),
@@ -92,12 +92,11 @@ class SqliteEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<int> getStreamVersion(String streamPath) async =>
-      await _database.queryValue<int?>(
+  Future<int?> getStreamVersion(String streamPath) async =>
+      _database.queryValue<int?>(
         'SELECT version FROM stream WHERE stream_path = ?',
         [streamPath],
-      ) ??
-      0;
+      );
 
   @override
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
@@ -109,8 +108,8 @@ class SqliteEventDatabase implements EventDatabase {
       '''SELECT device_id, sequence, kind, detail, occured_at, stream_version
       FROM event
       WHERE stream_path = ?
-        AND stream_version > ?
-        AND local_sequence > 0
+        AND stream_version >= ?
+        AND local_sequence >= 0
       ORDER BY stream_version ASC LIMIT ?;''',
       [streamPath, streamVersionCursor, count],
     );
@@ -128,7 +127,7 @@ class SqliteEventDatabase implements EventDatabase {
     ];
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.streamVersion,
+      next: events.isEmpty ? null : events.last.streamVersion + 1,
     );
   }
 
@@ -138,13 +137,12 @@ class SqliteEventDatabase implements EventDatabase {
     int count,
   ) async {
     if (localSequenceCursor < 0) {
-      throw ArgumentError('localSequenceCursor must be positive');
+      throw ArgumentError('localSequenceCursor must be non-negative');
     }
     final rows = await _database.query(
       '''SELECT stream_path, kind, detail, occured_at, local_sequence
       FROM event
-      WHERE local_sequence > ?
-        AND local_sequence > 0
+      WHERE local_sequence >= ?
       ORDER BY local_sequence ASC LIMIT ?''',
       [localSequenceCursor, count],
     );
@@ -162,7 +160,7 @@ class SqliteEventDatabase implements EventDatabase {
     ];
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.localSequence,
+      next: events.isEmpty ? null : events.last.localSequence + 1,
     );
   }
 
@@ -171,7 +169,7 @@ class SqliteEventDatabase implements EventDatabase {
     final row = await _database.queryRow(
       '''SELECT COUNT(*), COALESCE(SUM(LENGTH(detail)), 0)
       FROM event
-      WHERE local_sequence > 0;''',
+      WHERE local_sequence >= 0;''',
     );
     return GetStatisticsResult(
       eventCount: row![0] as int,
@@ -191,7 +189,8 @@ class SqliteEventDatabase implements EventDatabase {
     CommandId commandId, {
     required bool isApplied,
   }) async {
-    final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
+    final adhocFilter =
+        isApplied ? 'local_sequence >= 0' : 'local_sequence < 0';
 
     final row = await _database.queryRow(
       '''SELECT dependency, kind, detail, started_at, completed_at, event_count
@@ -228,7 +227,8 @@ class SqliteEventDatabase implements EventDatabase {
     EventId eventId, {
     required bool isApplied,
   }) async {
-    final adhocFilter = isApplied ? 'local_sequence > 0' : 'local_sequence < 0';
+    final adhocFilter =
+        isApplied ? 'local_sequence >= 0' : 'local_sequence < 0';
 
     final row = await _database.queryRow(
       '''SELECT stream_path, kind, detail, occured_at
@@ -251,7 +251,7 @@ class SqliteEventDatabase implements EventDatabase {
       '''SELECT local_sequence, device_id, sequence, dependency, kind, detail,
       started_at, completed_at, event_count
       FROM command
-      WHERE local_sequence > ? AND local_sequence > 0
+      WHERE local_sequence >= ?
       ORDER BY local_sequence ASC
       LIMIT ?;''',
       [localSequenceCursor, count],
@@ -281,7 +281,7 @@ class SqliteEventDatabase implements EventDatabase {
       FROM event
       WHERE device_id = ?
         AND sequence = ?
-        AND local_sequence > 0
+        AND local_sequence >= 0
       ORDER BY event_index ASC;''',
       [commandId.deviceId, commandId.sequence],
     );
@@ -353,7 +353,7 @@ class SqliteEventDatabase implements EventDatabase {
         if (command == null) return false;
         final appliedRows = tx.query('''SELECT device_id, MAX(sequence)
       FROM command
-      WHERE local_sequence > 0
+      WHERE local_sequence >= 0
       GROUP BY device_id''');
         final frontier = VersionVector({
           for (final row in appliedRows) row[0] as int: row[1] as int,
@@ -396,7 +396,7 @@ class SqliteEventDatabase implements EventDatabase {
                     'SELECT version FROM stream WHERE stream_path = ?',
                     [streamPath],
                   ) ??
-                  0) +
+                  -1) +
               1;
           versions[streamPath] = version;
           final updated = tx.execute(
@@ -465,12 +465,12 @@ void _insertApplied(
 
 int _nextStagedSequence(SyncContext tx, String table) {
   final lowest = tx.queryValue<int?>('SELECT MIN(local_sequence) FROM $table');
-  return lowest == null || lowest > 0 ? -1 : lowest - 1;
+  return lowest == null || lowest >= 0 ? -1 : lowest - 1;
 }
 
 int _nextAppliedSequence(SyncContext tx, String table) {
   final highest = tx.queryValue<int?>('SELECT MAX(local_sequence) FROM $table');
-  return highest == null || highest < 0 ? 1 : highest + 1;
+  return highest == null || highest < 0 ? 0 : highest + 1;
 }
 
 void _insertAppliedEvents(SyncContext tx, List<ReplicatedEvent> events) {
@@ -486,7 +486,7 @@ void _insertAppliedEvents(SyncContext tx, List<ReplicatedEvent> events) {
               'SELECT version FROM stream WHERE stream_path = ?',
               [event.streamPath],
             ) ??
-            0) +
+            -1) +
         1;
     versions[event.streamPath] = version;
     tx.execute(

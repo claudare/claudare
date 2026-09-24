@@ -46,7 +46,7 @@ class CommandStream<Event extends Object> {
     _tryLock();
 
     final reader = _eventStore.getStreamReader(_streamPath);
-    var streamVersion = 0;
+    int? streamVersion;
 
     try {
       await for (final event in reader.scan()) {
@@ -71,7 +71,7 @@ class CommandStream<Event extends Object> {
   Future<void> lockLatest() async {
     _tryLock();
 
-    var streamVersion = 0;
+    int? streamVersion;
     final reader = _eventStore.getStreamReader(_streamPath);
     await for (final event in reader.scan()) {
       streamVersion = event.streamVersion;
@@ -118,7 +118,7 @@ class CommandStream<Event extends Object> {
     }
 
     _executionState.locks.add(
-      StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: 0),
+      StreamLocalLock(streamPath: _streamPath, originatingStreamVersion: null),
     );
   }
 

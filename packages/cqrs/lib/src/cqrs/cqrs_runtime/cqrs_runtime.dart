@@ -60,7 +60,7 @@ class CqrsRuntime {
             : null;
 
     TState state;
-    int sequence;
+    int? sequence;
 
     if (snapshotter != null) {
       final snapshot = await snapshotter.load(aggregate.version);
@@ -69,11 +69,11 @@ class CqrsRuntime {
         sequence = snapshot.sequence;
       } else {
         state = aggregate.initialState();
-        sequence = 0;
+        sequence = null;
       }
     } else {
       state = aggregate.initialState();
-      sequence = 0;
+      sequence = null;
     }
 
     final startingSequence = sequence;
@@ -82,7 +82,7 @@ class CqrsRuntime {
     final streamPath = aggregate.streamRoute.buildPath(params);
 
     final stream = _eventStore
-        .getAppliedEventReader(sequence)
+        .getAppliedEventReader((sequence ?? -1) + 1)
         .scan()
         .where((local) {
           // removes irrelevant events as database level filtering is not
@@ -110,7 +110,9 @@ class CqrsRuntime {
       applyCount++;
     }
 
-    if (snapshotter != null && sequence > 0 && startingSequence != sequence) {
+    if (snapshotter != null &&
+        sequence != null &&
+        startingSequence != sequence) {
       await snapshotter.save(aggregate.version, Snapshot(state, sequence));
     }
 

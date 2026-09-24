@@ -63,7 +63,7 @@ class MemoryEventDatabase implements EventDatabase {
   (String, int) _streamPosition(int eventIndex) {
     for (final entry in _streamVersions.entries) {
       final position = entry.value.indexOf(eventIndex);
-      if (position >= 0) return (entry.key, position + 1);
+      if (position >= 0) return (entry.key, position);
     }
     throw StateError('applied event has no stream link');
   }
@@ -94,14 +94,16 @@ class MemoryEventDatabase implements EventDatabase {
   @override
   Future<EventDatabaseState> getState() async => EventDatabaseState(
     lastLocalCommandSequence:
-        _commands.isEmpty ? 0 : _commands.last.localSequence,
-    lastLocalEventSequence: _events.isEmpty ? 0 : _events.last.localSequence,
+        _commands.isEmpty ? null : _commands.last.localSequence,
+    lastLocalEventSequence: _events.isEmpty ? null : _events.last.localSequence,
     appliedVersion: _appliedVersion(),
   );
 
   @override
-  Future<int> getStreamVersion(String streamPath) async =>
-      _streamVersions[streamPath]?.length ?? 0;
+  Future<int?> getStreamVersion(String streamPath) async {
+    final indexes = _streamVersions[streamPath];
+    return indexes == null || indexes.isEmpty ? null : indexes.length - 1;
+  }
 
   @override
   Future<PaginatedResult<StreamEvent>> getStreamEvents(
@@ -112,11 +114,11 @@ class MemoryEventDatabase implements EventDatabase {
     final indexes = _streamVersions[streamPath] ?? const <int>[];
     final events = <StreamEvent>[];
     for (
-      var version = streamVersionCursor < 0 ? 1 : streamVersionCursor + 1;
-      version <= indexes.length && events.length < count;
+      var version = streamVersionCursor;
+      version < indexes.length && events.length < count;
       version++
     ) {
-      final event = _events[indexes[version - 1]];
+      final event = _events[indexes[version]];
       events.add(
         StreamEvent(
           commandId: event.eventId.commandId,
@@ -128,7 +130,7 @@ class MemoryEventDatabase implements EventDatabase {
     }
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.streamVersion,
+      next: events.isEmpty ? null : events.last.streamVersion + 1,
     );
   }
 
@@ -144,7 +146,7 @@ class MemoryEventDatabase implements EventDatabase {
       index++
     ) {
       final event = _events[index];
-      if (event.localSequence <= localSequenceCursor) continue;
+      if (event.localSequence < localSequenceCursor) continue;
       events.add(
         LocalEvent(
           streamPath: _streamPosition(index).$1,
@@ -156,7 +158,7 @@ class MemoryEventDatabase implements EventDatabase {
     }
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.localSequence,
+      next: events.isEmpty ? null : events.last.localSequence + 1,
     );
   }
 
@@ -204,7 +206,7 @@ class MemoryEventDatabase implements EventDatabase {
     int localSequenceCursor,
     int count,
   ) async => _commands
-      .where((command) => command.localSequence > localSequenceCursor)
+      .where((command) => command.localSequence >= localSequenceCursor)
       .take(count)
       .map(_appliedCommand)
       .toList(growable: false);
@@ -255,7 +257,7 @@ class MemoryEventDatabase implements EventDatabase {
         startedAt: command.startedAt,
         completedAt: command.completedAt,
         eventCount: command.eventCount,
-        localSequence: _commands.length + 1,
+        localSequence: _commands.length,
       ),
     );
     for (final event in events) {
@@ -265,7 +267,7 @@ class MemoryEventDatabase implements EventDatabase {
           eventId: event.eventId,
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
-          localSequence: _events.length + 1,
+          localSequence: _events.length,
         ),
       );
       _streamVersions.putIfAbsent(event.streamPath, () => []).add(eventIndex);

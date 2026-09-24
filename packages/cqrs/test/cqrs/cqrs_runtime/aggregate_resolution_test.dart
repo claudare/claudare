@@ -73,10 +73,45 @@ void main() {
       _timestamp.add(const Duration(days: 1)),
       _timestamp.add(const Duration(days: 3)),
     ]);
-    expect(events.map((envelope) => envelope.localSequence), [1, 2, 4]);
+    expect(events.map((envelope) => envelope.localSequence), [0, 1, 3]);
   });
 
   group('snapshots', () {
+    test('saves a snapshot after the first event', () async {
+      await eventStore.saveChanges(
+        CommandChanges(
+          dependency: VersionVector(),
+          encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
+          startedAt: _timestamp,
+          completedAt: _timestamp,
+          locks: const [
+            StreamLocalLock(
+              streamPath: 'account/one',
+              originatingStreamVersion: null,
+            ),
+          ],
+          events: [
+            EventAppend(
+              streamPath: 'account/one',
+              encodedEvent: EncodedEvent(
+                kind: 'test-event',
+                bytes: const _TestEventCodec().toBytes(_TestEvent('opened')),
+              ),
+              occuredAt: _timestamp,
+            ),
+          ],
+        ),
+      );
+
+      final result = await runtime.resolve(
+        _EnvelopeAggregate('one', snapshotter: snapshotter),
+        'one',
+      );
+
+      expect(result, hasLength(1));
+      expect(snapshotter.snapshots[1]!.sequence, 0);
+    });
+
     test('saves at the last accepted event sequence', () async {
       await _appendAccountEvents(eventStore);
 
@@ -88,21 +123,21 @@ void main() {
       expect(result.map((event) => event.streamParams), ['two']);
       expect(snapshotter.loadedVersions, [1]);
       expect(snapshotter.savedVersions, [1]);
-      expect(snapshotter.snapshots[1]!.sequence, 2);
+      expect(snapshotter.snapshots[1]!.sequence, 1);
       expect(snapshotter.snapshots[1]!.state, result);
     });
 
     test('resumes after a snapshot across filtered pages', () async {
       await _appendAccountEvents(eventStore);
       final history = await runtime.resolve(_EnvelopeAggregate('one'), 'one');
-      snapshotter.snapshots[1] = Snapshot([history.first], 1);
+      snapshotter.snapshots[1] = Snapshot([history.first], 0);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
 
       final result = await runtime.resolve(aggregate, 'one');
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [4]);
-      expect(snapshotter.snapshots[1]!.sequence, 4);
+      expect(aggregate.appliedSequences, [3]);
+      expect(snapshotter.snapshots[1]!.sequence, 3);
     });
 
     test('does not save an empty selection', () async {
@@ -143,7 +178,7 @@ void main() {
       );
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [1, 4]);
+      expect(aggregate.appliedSequences, [0, 3]);
       expect(snapshotter.loadedVersions, isEmpty);
       expect(snapshotter.savedVersions, isEmpty);
     });
@@ -160,7 +195,7 @@ void main() {
       final result = await runtime.resolve(aggregate, 'one');
 
       expect(result, hasLength(2));
-      expect(aggregate.appliedSequences, [1, 4]);
+      expect(aggregate.appliedSequences, [0, 3]);
       expect(snapshotter.loadedVersions, [2]);
       expect(snapshotter.savedVersions, [2]);
       expect(snapshotter.snapshots[1]!.state, isEmpty);
@@ -220,42 +255,50 @@ void main() {
       final third = await runtime.resolve(aggregate, 'one');
 
       expect(third.map((event) => event.event.value), ['opened', 'deposit']);
-      expect(aggregate.appliedSequences, [1, 4]);
+      expect(aggregate.appliedSequences, [0, 3]);
     });
   });
 }
 
-Future<void> _appendAccountEvents(
-  EventStore eventStore,
-) => eventStore.saveChanges(
-  CommandChanges(
-    dependency: VersionVector(),
-    encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
-    startedAt: _timestamp,
-    completedAt: _timestamp,
-    locks: const [
-      StreamLocalLock(streamPath: 'account/one', originatingStreamVersion: 0),
-      StreamLocalLock(streamPath: 'account/two', originatingStreamVersion: 0),
-      StreamLocalLock(streamPath: 'other/three', originatingStreamVersion: 0),
-    ],
-    events: [
-      for (final (index, path, value) in [
-        (0, 'account/one', 'opened'),
-        (1, 'account/two', 'opened'),
-        (2, 'other/three', 'ignored'),
-        (3, 'account/one', 'deposit'),
-      ])
-        EventAppend(
-          streamPath: path,
-          encodedEvent: EncodedEvent(
-            kind: 'test-event',
-            bytes: const _TestEventCodec().toBytes(_TestEvent(value)),
+Future<void> _appendAccountEvents(EventStore eventStore) =>
+    eventStore.saveChanges(
+      CommandChanges(
+        dependency: VersionVector(),
+        encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
+        startedAt: _timestamp,
+        completedAt: _timestamp,
+        locks: const [
+          StreamLocalLock(
+            streamPath: 'account/one',
+            originatingStreamVersion: null,
           ),
-          occuredAt: _timestamp.add(Duration(days: index)),
-        ),
-    ],
-  ),
-);
+          StreamLocalLock(
+            streamPath: 'account/two',
+            originatingStreamVersion: null,
+          ),
+          StreamLocalLock(
+            streamPath: 'other/three',
+            originatingStreamVersion: null,
+          ),
+        ],
+        events: [
+          for (final (index, path, value) in [
+            (0, 'account/one', 'opened'),
+            (1, 'account/two', 'opened'),
+            (2, 'other/three', 'ignored'),
+            (3, 'account/one', 'deposit'),
+          ])
+            EventAppend(
+              streamPath: path,
+              encodedEvent: EncodedEvent(
+                kind: 'test-event',
+                bytes: const _TestEventCodec().toBytes(_TestEvent(value)),
+              ),
+              occuredAt: _timestamp.add(Duration(days: index)),
+            ),
+        ],
+      ),
+    );
 
 final class _TestEvent {
   final String value;
