@@ -27,6 +27,7 @@ export 'src/cqrs/command/command_context.dart';
 // aggregate
 export 'src/cqrs/aggregate.dart';
 export 'src/cqrs/snapshotter.dart';
+export 'src/cqrs/memory_snapshotter.dart';
 
 // stream route
 export 'src/cqrs/stream_route/stream_route.dart';
