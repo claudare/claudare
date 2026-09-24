@@ -1,41 +1,22 @@
 import 'package:cqrs/cqrs.dart';
 
+import 'aggregate/account_list.dart';
+import 'aggregate/account_summary.dart';
+import 'aggregate/total_balance.dart';
 import 'command/atm_depost.dart';
 import 'command/atm_withdrawal.dart';
 import 'command/open_account.dart';
 import 'command/rename_account.dart';
 import 'command/transfer_funds_between_accounts.dart';
 import 'account_event/account.dart';
-import 'projection/account_summary.dart';
-import 'projection/total_balance.dart';
-import 'read_model/accounts_summary_read_model.dart';
-import 'read_model/total_balance_read_model.dart';
 
 class FinanceApp {
   late final CqrsRuntime _cqrsRuntime;
 
-  late final ReadModels readModel;
   late final Commands command;
+  late final ReadModels readModels;
 
-  FinanceApp({
-    required CqrsRuntimeDependencies dependencies,
-    required AccountsSummaryReadModel accountSummaryRepo,
-    required TotalBalanceReadModel totalBalanceRepo,
-  }) {
-    final accountSummaryProjection = AccountSummaryProjection(
-      accountSummaryRepo,
-    );
-    final totalBalanceProjection = TotalBalanceProjection(totalBalanceRepo);
-    final projectionRegistry =
-        ProjectionRegistry()
-          ..add(accountSummaryProjection)
-          ..add(totalBalanceProjection);
-
-    readModel = ReadModels(
-      accountsSummary: accountSummaryRepo,
-      totalBalance: totalBalanceRepo,
-    );
-
+  FinanceApp({required CqrsRuntimeDependencies dependencies}) {
     final eventRegistry =
         EventRegistry()
           ..add(const AccountAtmDepositedCodec())
@@ -47,11 +28,11 @@ class FinanceApp {
     _cqrsRuntime = CqrsRuntime(
       dependencies: dependencies,
       eventRegistry: eventRegistry,
-      projectionRegistry: projectionRegistry,
       runtimeName: 'finance-main',
     );
 
     command = Commands(_cqrsRuntime);
+    readModels = ReadModels(_cqrsRuntime);
   }
 
   Future<void> init() async {
@@ -59,10 +40,7 @@ class FinanceApp {
     await _cqrsRuntime.initialize();
   }
 
-  Future<void> pump() => _cqrsRuntime.pump();
-  Future<void> recreateProjections() => _cqrsRuntime.recreateProjections();
   Future<void> close() => _cqrsRuntime.close();
-  EventStore get eventStore => _cqrsRuntime.eventStore;
 }
 
 class Commands {
@@ -88,8 +66,16 @@ class Commands {
 }
 
 class ReadModels {
-  final AccountsSummaryReadModel accountsSummary;
-  final TotalBalanceReadModel totalBalance;
+  final CqrsRuntime _runtime;
 
-  const ReadModels({required this.accountsSummary, required this.totalBalance});
+  const ReadModels(this._runtime);
+
+  Future<AccountSummaryState> accountSummary(String accountId) =>
+      _runtime.resolve(AccountSummaryAggregate(accountId), accountId);
+
+  Future<AccountListState> accountList() =>
+      _runtime.resolve(AccountListAggregate(), '');
+
+  Future<TotalBalanceState> totalBalance() =>
+      _runtime.resolve(TotalBalanceAggregate(), '');
 }
