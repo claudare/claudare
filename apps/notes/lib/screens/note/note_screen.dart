@@ -2,19 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/common.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
 class NoteScreen extends StatefulWidget {
-  final NoteApplication application;
-
   final String? noteId;
 
-  const NoteScreen({
-    super.key,
-    required this.noteId,
-    required this.application,
-  });
+  const NoteScreen({super.key, required this.noteId});
 
   @override
   State<NoteScreen> createState() => _NoteScreenState();
@@ -22,6 +17,7 @@ class NoteScreen extends StatefulWidget {
 
 class _NoteScreenState extends State<NoteScreen> {
   late NoteController _controller;
+  NoteApplication? _application;
 
   late TextEditingController _titleController;
   late FocusNode _titleFocus;
@@ -56,20 +52,45 @@ class _NoteScreenState extends State<NoteScreen> {
     _contentFocus.onKeyEvent = (node, event) {
       return KeyEventResult.ignored;
     };
-
-    _controller = NoteController(widget.application);
-    _controller.addListener(() => setState(() {}));
-    unawaited(_loadNote());
   }
 
-  Future<void> _loadNote() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final application = NoteApplicationProvider.of(context);
+    if (identical(_application, application)) return;
+
+    if (_application != null) {
+      _controller.removeListener(_onControllerChanged);
+      _controller.dispose();
+    }
+    _application = application;
+    _controller = NoteController(application);
+    _controller.addListener(_onControllerChanged);
+    _flushInProgress = null;
+    _flushAgain = false;
+    _allowPop = false;
+    _leaving = false;
+    _loadError = null;
+    _titleController.clear();
+    _contentController.clear();
+    unawaited(_loadNote(_controller));
+  }
+
+  void _onControllerChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadNote(NoteController controller) async {
     try {
-      final values = await _controller.load(widget.noteId);
-      if (!mounted) return;
+      final values = await controller.load(widget.noteId);
+      if (!mounted || !identical(controller, _controller)) return;
       _titleController.text = values.title;
       _contentController.text = values.content;
     } on Exception catch (error) {
-      if (mounted) setState(() => _loadError = error);
+      if (mounted && identical(controller, _controller)) {
+        setState(() => _loadError = error);
+      }
     }
   }
 
@@ -81,6 +102,7 @@ class _NoteScreenState extends State<NoteScreen> {
     _contentController.dispose();
     _contentFocus.dispose();
 
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
 
     super.dispose();
@@ -113,27 +135,29 @@ class _NoteScreenState extends State<NoteScreen> {
       return active;
     }
 
-    final flush = _runFlush();
+    final flush = _runFlush(_controller);
     _flushInProgress = flush;
     try {
       return await flush;
     } finally {
-      _flushInProgress = null;
+      if (identical(_flushInProgress, flush)) _flushInProgress = null;
     }
   }
 
-  Future<bool> _runFlush() async {
+  Future<bool> _runFlush(NoteController controller) async {
     try {
       var applied = false;
       while (true) {
+        if (!identical(controller, _controller)) return false;
         _flushAgain = false;
-        final revision = _controller.editRevision;
-        applied = await _controller.flushChanges() || applied;
-        if (!_flushAgain && _controller.editRevision == revision) break;
+        final revision = controller.editRevision;
+        applied = await controller.flushChanges() || applied;
+        if (!identical(controller, _controller)) return false;
+        if (!_flushAgain && controller.editRevision == revision) break;
       }
       if (!applied) return true;
 
-      if (mounted) {
+      if (mounted && identical(controller, _controller)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Note saved'),
@@ -143,7 +167,7 @@ class _NoteScreenState extends State<NoteScreen> {
       }
       return true;
     } on Exception catch (e) {
-      if (mounted) {
+      if (mounted && identical(controller, _controller)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error saving note: $e'),
@@ -156,19 +180,21 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _trashNote() async {
+    final controller = _controller;
     try {
       if (!await _flushChanges()) return;
-      final trashed = await _controller.trash();
+      if (!identical(controller, _controller)) return;
+      final trashed = await controller.trash();
       if (!trashed) return;
 
-      if (!mounted) return;
+      if (!mounted || !identical(controller, _controller)) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
       );
       setState(() => _allowPop = true);
       Navigator.of(context).pop();
     } on Exception catch (e) {
-      if (!mounted) {
+      if (!mounted || !identical(controller, _controller)) {
         return;
       }
 
@@ -182,11 +208,12 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _restoreNote() async {
+    final controller = _controller;
     try {
-      final restored = await _controller.restore();
+      final restored = await controller.restore();
       if (!restored) return;
 
-      if (!mounted) return;
+      if (!mounted || !identical(controller, _controller)) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Note restored'),
@@ -194,7 +221,7 @@ class _NoteScreenState extends State<NoteScreen> {
         ),
       );
     } on Exception catch (e) {
-      if (!mounted) {
+      if (!mounted || !identical(controller, _controller)) {
         return;
       }
 
@@ -210,13 +237,15 @@ class _NoteScreenState extends State<NoteScreen> {
   Future<void> _onPopInvokedWithResult(bool didPop) async {
     if (didPop || _leaving) return;
 
+    final controller = _controller;
     _leaving = true;
     try {
       if (!await _flushChanges() || !mounted) return;
+      if (!identical(controller, _controller)) return;
       setState(() => _allowPop = true);
       Navigator.of(context).pop();
     } finally {
-      _leaving = false;
+      if (identical(controller, _controller)) _leaving = false;
     }
   }
 

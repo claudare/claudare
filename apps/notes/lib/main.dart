@@ -112,7 +112,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 onReady: _onReady,
                 onReset: reset,
               )
-              : HomeScreen(application: ready.application),
+              : const HomeScreen(),
     );
     if (ready == null) return app;
     return NoteApplicationProvider(

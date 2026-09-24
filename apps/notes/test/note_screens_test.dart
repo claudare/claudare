@@ -15,7 +15,10 @@ void main() {
   ) async {
     final application = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(
-      MaterialApp(home: HomeScreen(application: application)),
+      NoteApplicationProvider(
+        application: application,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -33,7 +36,10 @@ void main() {
   ) async {
     final application = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(
-      MaterialApp(home: NoteScreen(application: application, noteId: null)),
+      NoteApplicationProvider(
+        application: application,
+        child: const MaterialApp(home: NoteScreen(noteId: null)),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -46,6 +52,66 @@ void main() {
 
     expect(find.textContaining('Created at'), findsOneWidget);
     expect(find.textContaining('Updated at'), findsOneWidget);
+  });
+
+  testWidgets('home reloads notes when its application provider changes', (
+    tester,
+  ) async {
+    final first = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+    final firstId = await first.command.createNote();
+    await first.command.updateNoteTitle(firstId, 'First application');
+    final second = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+    final secondId = await second.command.createNote();
+    await second.command.updateNoteTitle(secondId, 'Second application');
+
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: first,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('First application'), findsOneWidget);
+
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: second,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Second application'), findsOneWidget);
+    expect(find.text('First application'), findsNothing);
+  });
+
+  testWidgets('note editor uses a replacement application provider', (
+    tester,
+  ) async {
+    final first = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+    final second = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: first,
+        child: const MaterialApp(home: NoteScreen(noteId: null)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, 'Old draft');
+
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: second,
+        child: const MaterialApp(home: NoteScreen(noteId: null)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Old draft'), findsNothing);
+
+    await tester.enterText(find.byType(TextField).first, 'New draft');
+    await tester.tap(find.byType(TextField).last);
+    await tester.pumpAndSettle();
+    expect((await first.query.noteList()).activeCount, 0);
+    expect((await second.query.noteList()).activeCount, 1);
   });
 
   testWidgets('settings displays active notes and event count', (tester) async {

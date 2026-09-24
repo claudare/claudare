@@ -28,5 +28,9 @@ closes the SQLite connection on shutdown or failed initialization.
 `NoteApplication` registers the note event codecs and exposes `command` and
 `query` methods. Controllers depend on that application API.
 
+Prefer an `InheritedWidget` provider for dependencies shared by screens, read
+with `of(context)`. Constructor injection is also fine when it is simpler,
+especially for plain Dart controllers.
+
 See [Implementation Details](IMPLEMENTATION_DETAILS.md) for package ownership
 and [Security](SECURITY.md) for the current security posture.
