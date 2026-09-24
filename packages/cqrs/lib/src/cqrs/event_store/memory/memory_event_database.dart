@@ -2,7 +2,6 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
@@ -67,16 +66,16 @@ class MemoryEventDatabase implements EventDatabase {
     throw StateError('applied event has no stream link');
   }
 
-  AppliedEvent _appliedEvent(int eventIndex) {
+  StoredEvent _appliedEvent(int eventIndex) {
     final event = _events[eventIndex];
     final (streamPath, streamVersion) = _streamPosition(eventIndex);
-    return AppliedEvent(
+    return StoredEvent(
       eventId: event.eventId,
       streamPath: streamPath,
       encodedEvent: event.encodedEvent,
       occuredAt: event.occuredAt,
       localSequence: event.localSequence,
-      streamVersion: streamVersion,
+      version: streamVersion,
     );
   }
 
@@ -216,7 +215,7 @@ class MemoryEventDatabase implements EventDatabase {
       .toList(growable: false);
 
   @override
-  Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async => [
+  Future<List<StoredEvent>> getAppliedEvents(CommandId commandId) async => [
     for (var index = 0; index < _events.length; index++)
       if (_events[index].eventId.commandId == commandId) _appliedEvent(index),
   ]..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));

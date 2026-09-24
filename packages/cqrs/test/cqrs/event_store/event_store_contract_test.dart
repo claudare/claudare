@@ -7,7 +7,6 @@ import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -51,7 +50,7 @@ void main() {
       );
 
       final event = _replicatedEvent(command.commandId, 1, kind: 'second');
-      final appliedEvent = AppliedEvent.fromReplicatedEvent(
+      final appliedEvent = StoredEvent.fromReplicatedEvent(
         event,
         localSequence: 12,
         streamVersion: 4,
@@ -101,7 +100,7 @@ void main() {
         final events = await store.getAppliedEvents(commands.first.commandId);
         expect(events.map((event) => event.eventId.index), [0, 1]);
         expect(events.map((event) => event.localSequence), [0, 1]);
-        expect(events.map((event) => event.streamVersion), [0, 1]);
+        expect(events.map((event) => event.version), [0, 1]);
       });
 
       test('signals after a successful non-empty local append', () async {

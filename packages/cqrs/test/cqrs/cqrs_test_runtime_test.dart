@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -93,11 +92,11 @@ void main() {
       ['value/one', 'value/two', 'value/one'],
     );
     final commands = await database.getAppliedCommands(0, 10);
-    final applied = <AppliedEvent>[
+    final applied = <StoredEvent>[
       for (final command in commands)
         ...await database.getAppliedEvents(command.commandId),
     ];
-    expect(applied.map((event) => event.streamVersion), [0, 0, 1]);
+    expect(applied.map((event) => event.version), [0, 0, 1]);
   });
 
   test('seeds an existing stream before the next command', () async {

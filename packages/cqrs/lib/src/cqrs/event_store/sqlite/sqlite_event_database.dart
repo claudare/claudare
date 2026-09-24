@@ -4,7 +4,6 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
@@ -289,7 +288,7 @@ class SqliteEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId) async {
+  Future<List<StoredEvent>> getAppliedEvents(CommandId commandId) async {
     final rows = await _database.query(
       '''SELECT event_index, stream_path, kind, detail, occured_at,
       local_sequence, stream_version
@@ -302,7 +301,7 @@ class SqliteEventDatabase implements EventDatabase {
     );
     return [
       for (final row in rows)
-        AppliedEvent(
+        StoredEvent(
           eventId: EventId(
             commandId.deviceId,
             commandId.sequence,
@@ -315,7 +314,7 @@ class SqliteEventDatabase implements EventDatabase {
           ),
           occuredAt: _date(row[4]),
           localSequence: row[5] as int,
-          streamVersion: row[6] as int,
+          version: row[6] as int,
         ),
     ];
   }

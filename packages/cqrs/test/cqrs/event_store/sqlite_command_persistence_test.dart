@@ -110,7 +110,7 @@ void main() {
     final event = (await database.getAppliedEvents(command.commandId)).single;
     expect(applied.localSequence, 0);
     expect(event.localSequence, 0);
-    expect(event.streamVersion, 0);
+    expect(event.version, 0);
   });
 }
 

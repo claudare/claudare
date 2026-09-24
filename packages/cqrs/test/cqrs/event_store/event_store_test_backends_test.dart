@@ -8,7 +8,6 @@ import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:test/test.dart';
@@ -111,10 +110,10 @@ void main() {
           EventId(1, 2, 1),
         ]);
         final applied = await database.getAppliedEvents(CommandId(1, 2));
-        expect(
-          applied.map((event) => (event.streamPath, event.streamVersion)),
-          [('two', 1), ('one', 2)],
-        );
+        expect(applied.map((event) => (event.streamPath, event.version)), [
+          ('two', 1),
+          ('one', 2),
+        ]);
         expect(
           (await database.getAppliedEvent(EventId(1, 1, 1)))?.streamPath,
           'two',
@@ -176,9 +175,7 @@ void main() {
         expect(command.localSequence, 0);
         expect(command.commandId.sequence, 1);
         expect(
-          (await database.getAppliedEvents(
-            command.commandId,
-          )).single.streamVersion,
+          (await database.getAppliedEvents(command.commandId)).single.version,
           0,
         );
       });
@@ -368,7 +365,7 @@ class _FaultDatabase implements EventDatabase {
   Future<List<AppliedCommand>> getAppliedCommands(int cursor, int count) =>
       _database.getAppliedCommands(cursor, count);
   @override
-  Future<List<AppliedEvent>> getAppliedEvents(CommandId id) =>
+  Future<List<StoredEvent>> getAppliedEvents(CommandId id) =>
       _database.getAppliedEvents(id);
   @override
   Future<void> appendApplied(

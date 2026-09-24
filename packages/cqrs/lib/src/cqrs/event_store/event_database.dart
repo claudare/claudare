@@ -2,7 +2,6 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/applied_command.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/replicated_command.dart';
-import 'package:cqrs/src/cqrs/event/applied_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/replicated_event.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
@@ -43,7 +42,7 @@ abstract interface class EventDatabase {
     int localSequenceCursor,
     int count,
   );
-  Future<List<AppliedEvent>> getAppliedEvents(CommandId commandId);
+  Future<List<StoredEvent>> getAppliedEvents(CommandId commandId);
   Future<void> appendApplied(
     ReplicatedCommand command,
     List<ReplicatedEvent> events,
