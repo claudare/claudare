@@ -1,8 +1,10 @@
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
+import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
@@ -46,24 +48,49 @@ void main() {
     expect(find.textContaining('Updated at'), findsOneWidget);
   });
 
-  testWidgets('settings displays only the active note count', (tester) async {
-    final application = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+  testWidgets('settings displays active notes and event count', (tester) async {
+    final eventStore = EventStore(MemoryEventDatabase());
+    final application = NoteApplication(
+      cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
+    );
     await application.command.createNote();
     final trashedId = await application.command.createNote();
     await application.command.trashNote(trashedId);
+    var resets = 0;
 
     await tester.pumpWidget(
       NoteApplicationProvider(
         application: application,
-        child: const MaterialApp(home: SettingsScreen()),
+        child: EventStoreProvider(
+          eventStore: eventStore,
+          reset: () async => resets++,
+          child: MaterialApp(
+            theme: ThemeData(platform: TargetPlatform.iOS),
+            home: const SettingsScreen(),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.text('Active Note Count'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
-    expect(find.text('Event Count'), findsNothing);
+    expect(find.text('Event Count'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
     expect(find.text('Rerun projections'), findsNothing);
-    expect(find.text('Reset database'), findsNothing);
+    expect(find.text('Reset database'), findsOneWidget);
+
+    await tester.tap(find.text('Reset database'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Close and reopen Notes'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(resets, 0);
+
+    await tester.tap(find.text('Reset database'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reset'));
+    await tester.pumpAndSettle();
+    expect(resets, 1);
   });
 }

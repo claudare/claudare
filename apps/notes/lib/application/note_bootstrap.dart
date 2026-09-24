@@ -10,7 +10,7 @@ class NoteBootstrap {
   final TimeProvider timeProvider;
   final IsolateSqlite _sqlite;
 
-  Future<NoteApplication>? _initialization;
+  Future<NoteBootstrapResult>? _initialization;
   Future<void>? _closing;
 
   NoteBootstrap({
@@ -20,26 +20,30 @@ class NoteBootstrap {
   }) : _sqlite = sqlite ?? IsolateSqlite();
 
   /// Opens and migrates [eventsDbFilepath] once.
-  Future<NoteApplication> initialize({required String eventsDbFilepath}) {
+  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
     if (_closing != null) {
       throw StateError('Notes bootstrap is closed');
     }
     return _initialization ??= _open(eventsDbFilepath);
   }
 
-  Future<NoteApplication> _open(String eventsDbFilepath) async {
+  Future<NoteBootstrapResult> _open(String eventsDbFilepath) async {
     var opened = false;
     try {
       await _sqlite.open(eventsDbFilepath);
       opened = true;
       final database = SqliteEventDatabase(_sqlite);
       await database.migrate();
+      final eventStore = EventStore(database);
       final runtime = CqrsRuntime(
-        eventStore: EventStore(database),
+        eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
       );
-      return NoteApplication(cqrsRuntime: runtime);
+      return NoteBootstrapResult(
+        application: NoteApplication(cqrsRuntime: runtime),
+        eventStore: eventStore,
+      );
     } catch (error, stackTrace) {
       if (opened) {
         try {
@@ -71,4 +75,15 @@ class NoteBootstrap {
     }
     await _sqlite.close();
   }
+}
+
+/// The application and event store opened by one [NoteBootstrap].
+class NoteBootstrapResult {
+  final NoteApplication application;
+  final EventStore eventStore;
+
+  const NoteBootstrapResult({
+    required this.application,
+    required this.eventStore,
+  });
 }

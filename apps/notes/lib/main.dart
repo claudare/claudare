@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
-import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/reset_event_database.dart';
+import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
 import 'package:notes/util/get_application_directory.dart';
@@ -36,8 +37,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  late Future<NoteApplication> _initialization;
-  NoteApplication? _application;
+  late Future<NoteBootstrapResult> _initialization;
+  NoteBootstrapResult? _ready;
 
   @override
   void initState() {
@@ -52,26 +53,26 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (identical(oldWidget.bootstrap, widget.bootstrap)) return;
 
     unawaited(_closeBootstrap(oldWidget.bootstrap));
-    _application = null;
+    _ready = null;
     _initialization = _initialize();
   }
 
-  Future<NoteApplication> _initialize() async {
+  Future<NoteBootstrapResult> _initialize() async {
     final directory = await widget.applicationDirectory();
     return widget.bootstrap.initialize(
       eventsDbFilepath: path.join(directory, 'events.sqlite'),
     );
   }
 
-  void _onReady(NoteApplication application) {
+  void _onReady(NoteBootstrapResult ready) {
     if (!mounted) return;
-    setState(() => _application = application);
+    setState(() => _ready = ready);
   }
 
   Future<void> _closeBootstrap(NoteBootstrap bootstrap) async {
     try {
       await bootstrap.close();
-    } on Exception catch (error, stackTrace) {
+    } catch (error, stackTrace) {
       bootstrap.logger.error('Failed to close Notes', error, stackTrace);
     }
   }
@@ -92,7 +93,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final application = _application;
+    final ready = _ready;
+    Future<void> reset() =>
+        resetAndRestartNotes(widget.bootstrap, widget.applicationDirectory);
     final app = MaterialApp(
       title: 'Notes App',
       theme: ThemeData(
@@ -101,16 +104,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       ),
       debugShowCheckedModeBanner: false,
       home:
-          application == null
+          ready == null
               ? LoadingScreen(
                 key: ValueKey(widget.bootstrap),
                 initialization: _initialization,
                 logger: widget.bootstrap.logger,
                 onReady: _onReady,
+                onReset: reset,
               )
-              : HomeScreen(application: application),
+              : HomeScreen(application: ready.application),
     );
-    if (application == null) return app;
-    return NoteApplicationProvider(application: application, child: app);
+    if (ready == null) return app;
+    return NoteApplicationProvider(
+      application: ready.application,
+      child: EventStoreProvider(
+        eventStore: ready.eventStore,
+        reset: reset,
+        child: app,
+      ),
+    );
   }
 }

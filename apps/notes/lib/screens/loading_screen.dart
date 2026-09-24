@@ -1,18 +1,21 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
-import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/screens/confirm_database_reset.dart';
 
 /// Displays startup progress and any initialization error.
 class LoadingScreen extends StatefulWidget {
-  final Future<NoteApplication> initialization;
+  final Future<NoteBootstrapResult> initialization;
   final Logger logger;
-  final ValueChanged<NoteApplication> onReady;
+  final ValueChanged<NoteBootstrapResult> onReady;
+  final Future<void> Function() onReset;
 
   const LoadingScreen({
     super.key,
     required this.initialization,
     required this.logger,
     required this.onReady,
+    required this.onReset,
   });
 
   @override
@@ -64,6 +67,15 @@ class _LoadingScreenState extends State<LoadingScreen> {
                       ),
                       const SizedBox(height: 12),
                       SelectableText('$error', textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: () async {
+                          if (await confirmDatabaseReset(context)) {
+                            await widget.onReset();
+                          }
+                        },
+                        child: const Text('Reset database'),
+                      ),
                     ],
                   ),
                 ),

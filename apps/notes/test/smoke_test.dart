@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,10 +58,23 @@ void main() {
     expect(bootstrap.initializeCount, 1);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
+
+  testWidgets('startup error offers reset confirmation', (tester) async {
+    final bootstrap = _FailingBootstrap(const NoopLogger());
+    await tester.pumpWidget(
+      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reset database'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not open Notes'), findsOneWidget);
+  });
 }
 
 class _ControlledBootstrap extends NoteBootstrap {
-  final Completer<NoteApplication> _application = Completer();
+  final Completer<NoteBootstrapResult> _application = Completer();
   int initializeCount = 0;
 
   _ControlledBootstrap()
@@ -70,13 +84,21 @@ class _ControlledBootstrap extends NoteBootstrap {
       );
 
   @override
-  Future<NoteApplication> initialize({required String eventsDbFilepath}) {
+  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
     initializeCount++;
     return _application.future;
   }
 
   void complete() {
-    _application.complete(NoteApplication(cqrsRuntime: CqrsTestRuntime()));
+    final eventStore = EventStore(MemoryEventDatabase());
+    _application.complete(
+      NoteBootstrapResult(
+        application: NoteApplication(
+          cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
+        ),
+        eventStore: eventStore,
+      ),
+    );
   }
 }
 
@@ -87,7 +109,7 @@ class _FailingBootstrap extends NoteBootstrap {
     : super(logger: logger, timeProvider: FakeTimeProviderStatic.zero());
 
   @override
-  Future<NoteApplication> initialize({required String eventsDbFilepath}) {
+  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
     initializeCount++;
     return Future.error(StateError('startup failed'));
   }

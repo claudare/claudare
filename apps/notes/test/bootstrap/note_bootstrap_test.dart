@@ -4,6 +4,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/reset_event_database.dart';
 import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
 
@@ -24,8 +25,11 @@ void main() {
       same(application),
     );
 
-    final noteId = await application.command.createNote();
-    await application.command.updateNoteTitle(noteId, 'Persisted title');
+    final noteId = await application.application.command.createNote();
+    await application.application.command.updateNoteTitle(
+      noteId,
+      'Persisted title',
+    );
     await first.close();
 
     final second = NoteBootstrap(
@@ -35,8 +39,12 @@ void main() {
     addTearDown(second.close);
     final reopened = await second.initialize(eventsDbFilepath: filepath);
 
-    expect((await reopened.query.note(noteId))?.title, 'Persisted title');
-    expect((await reopened.query.noteList()).activeCount, 1);
+    expect(
+      (await reopened.application.query.note(noteId))?.title,
+      'Persisted title',
+    );
+    expect((await reopened.application.query.noteList()).activeCount, 1);
+    expect((await reopened.eventStore.getStatistics()).eventCount, 2);
   });
 
   test('closes SQLite when event database migration fails', () async {

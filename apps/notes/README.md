@@ -2,7 +2,8 @@
 
 Notes is a Flutter prototype for local event-sourced notes. It creates, edits,
 trashes, and restores notes. Note queries support active and trashed filtering
-and chronological sorting. Settings shows the active-note count.
+and chronological sorting. Settings shows active-note and event counts and can
+reset local event history after confirmation. Reset requires a fresh launch.
 
 The application stores note events in `events.sqlite`. Note details and lists
 are rebuilt from that history when queried. It does not provide text search,
