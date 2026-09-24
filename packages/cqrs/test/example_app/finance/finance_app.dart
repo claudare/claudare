@@ -18,33 +18,22 @@ class FinanceApp {
   late final Commands command;
   late final ReadModels readModels;
 
-  FinanceApp({required CqrsRuntimeDependencies dependencies}) {
-    final eventRegistry =
-        EventRegistry()
-          ..add(const AccountAtmDepositedCodec())
-          ..add(const AccountAtmWithdrawnCodec())
-          ..add(const AccountInnerTransferCodec())
-          ..add(const AccountOpenedCodec())
-          ..add(const AccountRenamedCodec());
+  FinanceApp({required CqrsRuntime cqrsRuntime}) {
+    _cqrsRuntime = cqrsRuntime;
 
-    _cqrsRuntime = CqrsRuntime(
-      dependencies: dependencies,
-      eventRegistry: eventRegistry,
-      runtimeName: 'finance-main',
-    );
+    _cqrsRuntime.eventRegistry
+      ..add(const AccountAtmDepositedCodec())
+      ..add(const AccountAtmWithdrawnCodec())
+      ..add(const AccountInnerTransferCodec())
+      ..add(const AccountOpenedCodec())
+      ..add(const AccountRenamedCodec())
+      ..freeze();
 
     _accountListSnapshotter = AccountListSnapshotter();
 
     command = Commands(_cqrsRuntime);
     readModels = ReadModels(_cqrsRuntime, _accountListSnapshotter);
   }
-
-  Future<void> init() async {
-    // TODO: how to show progress? This could take a while.
-    await _cqrsRuntime.initialize();
-  }
-
-  Future<void> close() => _cqrsRuntime.close();
 }
 
 class Commands {

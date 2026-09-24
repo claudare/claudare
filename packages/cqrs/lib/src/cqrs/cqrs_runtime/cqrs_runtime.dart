@@ -1,10 +1,10 @@
 import 'dart:async';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_input.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -14,42 +14,29 @@ import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
 final class CqrsRuntime {
-  final String runtimeName;
-  final EventStore eventStore;
-  final CqrsRuntimeDependencies _dependencies;
-  final EventRegistry _eventRegistry;
+  final EventStore _eventStore;
+  final Logger _logger;
+  final TimeProvider _timeProvider;
+  final EventRegistry _eventRegistry = EventRegistry();
 
   late final CommandExecutor _commandExecutor;
 
   CqrsRuntime({
-    required CqrsRuntimeDependencies dependencies,
-    required EventRegistry eventRegistry,
-    required this.runtimeName,
-  }) : eventStore = EventStore(dependencies.eventDatabase),
-       _dependencies = dependencies,
-       _eventRegistry = eventRegistry {
+    required EventStore eventStore,
+    required Logger logger,
+    required TimeProvider timeProvider,
+  }) : _timeProvider = timeProvider,
+       _logger = logger,
+       _eventStore = eventStore {
     _commandExecutor = CommandExecutor(
-      eventStore: eventStore,
-      timeProvider: dependencies.timeProvider,
+      eventStore: _eventStore,
+      timeProvider: _timeProvider,
       eventRegistry: _eventRegistry,
-      logger: dependencies.logger,
+      logger: _logger,
     );
   }
 
-  TimeProvider get timeProvider => _dependencies.timeProvider;
-
-  Future<void> initialize() {
-    _eventRegistry.freeze();
-    return _initialize();
-  }
-
-  Future<void> _initialize() async {
-    try {
-      await eventStore.migrate();
-    } catch (error, stackTrace) {
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-  }
+  EventRegistry get eventRegistry => _eventRegistry;
 
   Future<void> execute<Input extends CommandInput>(
     Command<Input> command,
@@ -69,10 +56,7 @@ final class CqrsRuntime {
         forceResolveFromEvents ? null : aggregate.snapshotter;
     final snapshotter =
         configuredSnapshotter != null
-            ? SafeSnapshotter(
-              configuredSnapshotter,
-              logger: _dependencies.logger,
-            )
+            ? SafeSnapshotter(configuredSnapshotter, logger: _logger)
             : null;
 
     TState state;
@@ -97,7 +81,7 @@ final class CqrsRuntime {
 
     final streamPath = aggregate.streamRoute.buildPath(params);
 
-    final stream = eventStore
+    final stream = _eventStore
         .getAppliedEventReader(sequence)
         .scan()
         .where((local) {
@@ -130,18 +114,10 @@ final class CqrsRuntime {
       await snapshotter.save(aggregate.version, Snapshot(state, sequence));
     }
 
-    _dependencies.logger.info(
+    _logger.info(
       'resolved $streamPath: startingSequence=$startingSequence, finalSequence=$sequence, applyCount=$applyCount',
     );
 
     return state;
-  }
-
-  Future<void> close() async {
-    try {
-      await eventStore.close();
-    } catch (_) {
-      // swallow errors
-    }
   }
 }

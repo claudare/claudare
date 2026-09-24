@@ -16,19 +16,21 @@ void main() {
   final occurredAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
   late FinanceApp app;
+  late EventStore eventStore;
 
   setUp(() async {
-    app = FinanceApp(
-      dependencies: CqrsRuntimeDependencies(
-        eventDatabase: MemoryEventDatabase(),
-        logger: const NoopLogger(),
-        timeProvider: FakeTimeProviderStatic.zero(),
-      ),
+    eventStore = EventStore(MemoryEventDatabase());
+    await eventStore.migrate();
+
+    final runtime = CqrsRuntime(
+      eventStore: eventStore,
+      logger: const NoopLogger(),
+      timeProvider: FakeTimeProviderStatic.zero(),
     );
-    await app.init();
+    app = FinanceApp(cqrsRuntime: runtime);
   });
 
-  tearDown(() => app.close());
+  tearDown(() => eventStore.close());
 
   Future<void> openFirstAccount() => app.command.openAccount(
     const OpenAccountInput(accountId: firstAccountId, name: 'first'),

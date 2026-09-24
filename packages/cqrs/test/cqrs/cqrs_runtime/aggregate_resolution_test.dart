@@ -13,29 +13,33 @@ import 'package:time_provider/time_provider.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
+  late EventStore eventStore;
   late CqrsRuntime runtime;
   late _MemorySnapshotter snapshotter;
 
   setUp(() async {
+    eventStore = EventStore(_PagedMemoryEventDatabase(1));
+    await eventStore.migrate();
+
     runtime = CqrsRuntime(
-      dependencies: CqrsRuntimeDependencies(
-        eventDatabase: _PagedMemoryEventDatabase(1),
-        logger: const NoopLogger(),
-        timeProvider: FakeTimeProviderStatic.zero(),
-      ),
-      eventRegistry: EventRegistry()..add(const _TestEventCodec()),
-      runtimeName: 'aggregate-resolution-test',
+      eventStore: eventStore,
+      logger: const NoopLogger(),
+      timeProvider: FakeTimeProviderStatic.zero(),
     );
-    await runtime.initialize();
+
+    runtime.eventRegistry
+      ..add(const _TestEventCodec())
+      ..freeze();
+
     snapshotter = _MemorySnapshotter();
   });
 
-  tearDown(() => runtime.close());
+  tearDown(() => eventStore.close());
 
   test('resolves selected events into fresh state on every call', () async {
     final aggregate = _EnvelopeAggregate('one');
     expect(await runtime.resolve(aggregate, 'one'), isEmpty);
-    await _appendAccountEvents(runtime.eventStore);
+    await _appendAccountEvents(eventStore);
 
     final first = await runtime.resolve(aggregate, 'one');
     final second = await runtime.resolve(aggregate, 'one');
@@ -53,7 +57,7 @@ void main() {
   });
 
   test('uses stored paths, parameters, timestamps, and sequences', () async {
-    await _appendAccountEvents(runtime.eventStore);
+    await _appendAccountEvents(eventStore);
 
     final events = await runtime.resolve(_EnvelopeAggregate(null), 'unused');
 
@@ -77,7 +81,7 @@ void main() {
 
   group('snapshots', () {
     test('saves at the last accepted event sequence', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('two', snapshotter: snapshotter),
@@ -92,7 +96,7 @@ void main() {
     });
 
     test('resumes after a snapshot across filtered pages', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       final history = await runtime.resolve(_EnvelopeAggregate('one'), 'one');
       snapshotter.snapshots[1] = Snapshot([history.first], 1);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
@@ -105,7 +109,7 @@ void main() {
     });
 
     test('does not save an empty selection', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('missing', snapshotter: snapshotter),
@@ -117,7 +121,7 @@ void main() {
     });
 
     test('does not rewrite a snapshot without new accepted events', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       final aggregate = _EnvelopeAggregate('two', snapshotter: snapshotter);
       await runtime.resolve(aggregate, 'two');
       aggregate.appliedSequences.clear();
@@ -131,7 +135,7 @@ void main() {
     });
 
     test('forced replay bypasses snapshot loading and saving', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       snapshotter.snapshots[1] = const Snapshot([], 4);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
 
@@ -148,7 +152,7 @@ void main() {
     });
 
     test('replays when the aggregate version changes', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       snapshotter.snapshots[1] = const Snapshot([], 4);
       final aggregate = _EnvelopeAggregate(
         'one',
@@ -166,7 +170,7 @@ void main() {
     });
 
     test('replays when snapshot loading throws an Exception', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       snapshotter.loadFailure = Exception('load unavailable');
 
       final result = await runtime.resolve(
@@ -179,7 +183,7 @@ void main() {
     });
 
     test('returns resolved state when saving throws an Exception', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       snapshotter.saveFailure = Exception('save unavailable');
 
       final result = await runtime.resolve(
@@ -192,7 +196,7 @@ void main() {
     });
 
     test('does not save partial state after replay fails', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       final failure = StateError('apply failed');
       final aggregate = _EnvelopeAggregate(
         'one',
@@ -209,7 +213,7 @@ void main() {
     });
 
     test('caller mutation does not alter a saved snapshot', () async {
-      await _appendAccountEvents(runtime.eventStore);
+      await _appendAccountEvents(eventStore);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
       final first = await runtime.resolve(aggregate, 'one');
       first.clear();

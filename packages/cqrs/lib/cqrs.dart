@@ -2,7 +2,6 @@ library;
 
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
-export 'src/cqrs/cqrs_runtime/cqrs_runtime_dependencies.dart';
 
 // event store
 export 'src/cqrs/event_store/event_store.dart';
