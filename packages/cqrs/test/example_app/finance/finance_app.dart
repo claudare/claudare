@@ -16,7 +16,7 @@ class FinanceApp {
   late final AccountListSnapshotter _accountListSnapshotter;
 
   late final Commands command;
-  late final ReadModels readModels;
+  late final Queries query;
 
   FinanceApp({required CqrsRuntime cqrsRuntime}) {
     _cqrsRuntime = cqrsRuntime;
@@ -32,7 +32,7 @@ class FinanceApp {
     _accountListSnapshotter = AccountListSnapshotter();
 
     command = Commands(_cqrsRuntime);
-    readModels = ReadModels(_cqrsRuntime, _accountListSnapshotter);
+    query = Queries(_cqrsRuntime, _accountListSnapshotter);
   }
 }
 
@@ -58,11 +58,11 @@ class Commands {
   ) => _runtime.execute(TransferFundsBetweenAccounts(), input);
 }
 
-class ReadModels {
+class Queries {
   final CqrsRuntime _runtime;
   final AccountListSnapshotter _accountListSnapshotter;
 
-  const ReadModels(this._runtime, this._accountListSnapshotter);
+  const Queries(this._runtime, this._accountListSnapshotter);
 
   Future<AccountSummaryState> accountSummary(String accountId) =>
       _runtime.resolve(AccountSummaryAggregate(accountId), accountId);

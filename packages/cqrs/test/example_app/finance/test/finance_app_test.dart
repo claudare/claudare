@@ -54,13 +54,13 @@ void main() {
   }
 
   test('account list starts empty', () async {
-    final list = await app.readModels.accountList();
+    final list = await app.query.accountList();
 
     expect(list.accounts, isEmpty);
   });
 
   test('total balance starts at zero', () async {
-    final total = await app.readModels.totalBalance();
+    final total = await app.query.totalBalance();
 
     expect(total.balance, 0);
   });
@@ -68,7 +68,7 @@ void main() {
   test('opening an account makes its summary available', () async {
     await openFirstAccount();
 
-    final summary = await app.readModels.accountSummary(firstAccountId);
+    final summary = await app.query.accountSummary(firstAccountId);
 
     expect(summary.accountId, firstAccountId);
     expect(summary.name, 'first');
@@ -91,7 +91,7 @@ void main() {
         const RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
       );
 
-      final summary = await app.readModels.accountSummary(firstAccountId);
+      final summary = await app.query.accountSummary(firstAccountId);
 
       expect(summary.name, 'renamed');
       expect(summary.balance, 90);
@@ -102,7 +102,7 @@ void main() {
 
   test('account list reflects commands after an earlier read', () async {
     await openFirstAccount();
-    final before = await app.readModels.accountList();
+    final before = await app.query.accountList();
 
     await app.command.atmDeposit(
       const AtmDepositInput(accountId: firstAccountId, amount: 40),
@@ -111,7 +111,7 @@ void main() {
       const RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
     );
 
-    final after = await app.readModels.accountList();
+    final after = await app.query.accountList();
 
     expect(before.accounts[firstAccountId]!.balance, 0);
     expect(before.accounts[firstAccountId]!.name, 'first');
@@ -122,8 +122,8 @@ void main() {
   test('transfer updates both account summaries', () async {
     await transferToSecondAccount();
 
-    final first = await app.readModels.accountSummary(firstAccountId);
-    final second = await app.readModels.accountSummary(secondAccountId);
+    final first = await app.query.accountSummary(firstAccountId);
+    final second = await app.query.accountSummary(secondAccountId);
 
     expect(first.balance, 80);
     expect(second.balance, 20);
@@ -132,7 +132,7 @@ void main() {
   test('account list includes both sides of a transfer', () async {
     await transferToSecondAccount();
 
-    final list = await app.readModels.accountList();
+    final list = await app.query.accountList();
 
     expect(list.toSortedByName().map((account) => account.accountId), [
       firstAccountId,
@@ -145,7 +145,7 @@ void main() {
   test('transfer preserves the total balance', () async {
     await transferToSecondAccount();
 
-    final total = await app.readModels.totalBalance();
+    final total = await app.query.totalBalance();
 
     expect(total.balance, 100);
   });
@@ -166,7 +166,7 @@ void main() {
       ),
     );
 
-    final summary = await app.readModels.accountSummary(firstAccountId);
+    final summary = await app.query.accountSummary(firstAccountId);
     expect(summary.balance, 0);
     expect(summary.transactionCount, 0);
   });
@@ -190,7 +190,7 @@ void main() {
 
     expect(results.where((result) => result == null), hasLength(1));
     expect(results.whereType<Exception>(), hasLength(1));
-    final summary = await app.readModels.accountSummary(firstAccountId);
+    final summary = await app.query.accountSummary(firstAccountId);
     expect(summary.balance, 20);
   });
 }
