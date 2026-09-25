@@ -39,4 +39,6 @@ class EventId extends Dot {
   @override
   String toString() =>
       'EventId(deviceId: $deviceId, sequence: $sequence, index: $index)';
+
+  String toStringCompact() => 'EventId($deviceId.$sequence.$index)';
 }

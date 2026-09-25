@@ -179,7 +179,7 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<StagedCommand?> getStagedCommand(CommandId commandId) async {
-    final command = _stagedCommands[commandId.toString()];
+    final command = _stagedCommands[commandId.toStringCompact()];
     return command == null ? null : _stagedCommand(command);
   }
 
@@ -195,7 +195,7 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<StagedEvent?> getStagedEvent(EventId eventId) async {
-    final event = _stagedEvents[eventId.toString()];
+    final event = _stagedEvents[eventId.toStringCompact()];
     return event == null ? null : _stagedEvent(event);
   }
 
@@ -275,7 +275,7 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<void> stageCommand(StagedCommand command) async {
-    final key = command.commandId.toString();
+    final key = command.commandId.toStringCompact();
     if (_stagedCommands.containsKey(key)) {
       throw StateError('command id is already staged');
     }
@@ -291,13 +291,13 @@ class MemoryEventDatabase implements EventDatabase {
   Future<void> stageEvents(List<StagedEvent> events) async {
     final keys = <String>{};
     for (final event in events) {
-      final key = event.eventId.toString();
+      final key = event.eventId.toStringCompact();
       if (_stagedEvents.containsKey(key) || !keys.add(key)) {
         throw StateError('event id is already staged');
       }
     }
     for (final event in events) {
-      _stagedEvents[event.eventId.toString()] = _MemoryStagedEvent(
+      _stagedEvents[event.eventId.toStringCompact()] = _MemoryStagedEvent(
         streamPath: event.streamPath,
         eventId: event.eventId,
         encodedEvent: event.encodedEvent,
@@ -308,7 +308,7 @@ class MemoryEventDatabase implements EventDatabase {
 
   @override
   Future<bool> promoteStaged(CommandId commandId) async {
-    final staged = _stagedCommands[commandId.toString()];
+    final staged = _stagedCommands[commandId.toStringCompact()];
     if (staged == null) return false;
     final command = _stagedCommand(staged);
     final frontier = _logVersion();
@@ -328,9 +328,9 @@ class MemoryEventDatabase implements EventDatabase {
     }
     _validateLog(command, events);
     _appendValidated(command, events);
-    _stagedCommands.remove(commandId.toString());
+    _stagedCommands.remove(commandId.toStringCompact());
     for (final event in events) {
-      _stagedEvents.remove(event.eventId.toString());
+      _stagedEvents.remove(event.eventId.toStringCompact());
     }
     return true;
   }

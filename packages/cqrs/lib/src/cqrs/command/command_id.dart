@@ -10,4 +10,6 @@ class CommandId extends Dot {
 
   @override
   String toString() => 'CommandId(deviceId: $deviceId, sequence: $sequence)';
+
+  String toStringCompact() => 'CommandId($deviceId.$sequence)';
 }
