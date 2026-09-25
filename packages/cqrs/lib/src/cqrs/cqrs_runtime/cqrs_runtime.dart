@@ -59,9 +59,8 @@ class CqrsRuntime {
 
   /// Resolves an aggregate, optionally resuming from its snapshot.
   /// [forceResolveFromEvents] bypasses snapshot loading and saving.
-  Future<TState> resolve<TEvent extends Object, TParams, TState>(
-    Aggregate<TEvent, TParams, TState> aggregate,
-    TParams params, {
+  Future<TState> resolve<TEvent extends Object, TState>(
+    Aggregate<TEvent, TState> aggregate, {
     bool forceResolveFromEvents = false,
   }) async {
     final configuredSnapshotter =
@@ -91,8 +90,6 @@ class CqrsRuntime {
     final startingSequence = sequence;
     var applyCount = 0;
 
-    final streamPath = aggregate.streamRoute.buildPath(params);
-
     final stream = logReader((sequence ?? -1) + 1).scan().where((logEvent) {
       // removes irrelevant events as database level filtering is not
       // implemented.
@@ -103,7 +100,6 @@ class CqrsRuntime {
       final decoded = _eventRegistry.decode<TEvent>(logEvent.encodedEvent);
       final envelope = EventEnvelope(
         streamPath: logEvent.streamPath,
-        streamParams: aggregate.streamRoute.parseParams(logEvent.streamPath),
         event: decoded,
         occuredAt: logEvent.occuredAt,
       );
@@ -121,7 +117,7 @@ class CqrsRuntime {
     }
 
     _logger.info(
-      'resolved $streamPath: startingSequence=$startingSequence, finalSequence=$sequence, applyCount=$applyCount',
+      'resolved ${aggregate.streamRoute.pattern}: startingSequence=$startingSequence, finalSequence=$sequence, applyCount=$applyCount',
     );
 
     return state;

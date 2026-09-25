@@ -22,17 +22,17 @@ void main() {
           AggregateTester(TotalBalanceAggregate())
               .withEvent(
                 'account/one',
-                const AccountAtmDeposited(amount: 100),
+                const AccountAtmDeposited(accountId: 'one', amount: 100),
                 occuredAt: depositedAt,
               )
               .withEvent(
                 'account/two',
-                const AccountAtmDeposited(amount: 50),
+                const AccountAtmDeposited(accountId: 'two', amount: 50),
                 occuredAt: depositedAt,
               )
               .withEvent(
                 'account/one',
-                const AccountAtmWithdrawn(amount: 10),
+                const AccountAtmWithdrawn(accountId: 'one', amount: 10),
                 occuredAt: withdrawnAt,
               )
               .run();
@@ -45,27 +45,35 @@ void main() {
           AggregateTester(TotalBalanceAggregate())
               .withEvent(
                 'account/one',
-                const AccountAtmDeposited(amount: 25),
+                const AccountAtmDeposited(accountId: 'one', amount: 25),
                 occuredAt: depositedAt,
               )
               .withEvent(
                 'account/two',
-                const AccountOpened(name: 'Two'),
+                const AccountOpened(accountId: 'two', name: 'Two'),
                 occuredAt: openedAt,
               )
               .withEvent(
                 'account/one',
-                const AccountInnerTransfer(fromAccountId: 'two', amount: -5),
+                const AccountInnerTransfer(
+                  accountId: 'one',
+                  fromAccountId: 'two',
+                  amount: -5,
+                ),
                 occuredAt: transferredAt,
               )
               .withEvent(
                 'account/two',
-                const AccountInnerTransfer(fromAccountId: 'one', amount: 5),
+                const AccountInnerTransfer(
+                  accountId: 'two',
+                  fromAccountId: 'one',
+                  amount: 5,
+                ),
                 occuredAt: transferredAt,
               )
               .withEvent(
                 'account/one',
-                const AccountRenamed(newName: 'Renamed'),
+                const AccountRenamed(accountId: 'one', newName: 'Renamed'),
                 occuredAt: transferredAt,
               )
               .run();

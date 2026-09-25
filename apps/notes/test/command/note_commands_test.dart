@@ -24,7 +24,7 @@ void main() {
 
     await tester.run(const CreateNote(noteId: 'one'));
 
-    final events = await tester.getWrittenEvents<NoteEvent, String>(
+    final events = await tester.getWrittenEvents<NoteEvent>(
       noteStreamRoute,
       'one',
     );
@@ -34,7 +34,8 @@ void main() {
 
   test('create rejects an existing note', () async {
     final tester =
-        newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
+        newTester()
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await expectLater(
       tester.run(const CreateNote(noteId: 'one')),
@@ -44,11 +45,12 @@ void main() {
 
   test('title update writes the supplied value', () async {
     final tester =
-        newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
+        newTester()
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
 
-    final events = await tester.getWrittenEvents<NoteEvent, String>(
+    final events = await tester.getWrittenEvents<NoteEvent>(
       noteStreamRoute,
       'one',
     );
@@ -59,13 +61,14 @@ void main() {
 
   test('content update writes the supplied value', () async {
     final tester =
-        newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
+        newTester()
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(
       const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
     );
 
-    final events = await tester.getWrittenEvents<NoteEvent, String>(
+    final events = await tester.getWrittenEvents<NoteEvent>(
       noteStreamRoute,
       'one',
     );
@@ -92,11 +95,12 @@ void main() {
 
   test('trash writes an event for an active note', () async {
     final tester =
-        newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
+        newTester()
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(const TrashNote(noteId: 'one'));
 
-    final events = await tester.getWrittenEvents<NoteEvent, String>(
+    final events = await tester.getWrittenEvents<NoteEvent>(
       noteStreamRoute,
       'one',
     );
@@ -107,8 +111,8 @@ void main() {
   test('trash rejects a note that is already trashed', () async {
     final tester =
         newTester()
-          ..withEvent(noteStreamRoute, 'one', const NoteCreated())
-          ..withEvent(noteStreamRoute, 'one', const NoteTrashed());
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'))
+          ..withEvent(noteStreamRoute, 'one', const NoteTrashed(noteId: 'one'));
 
     await expectLater(
       tester.run(const TrashNote(noteId: 'one')),
@@ -126,12 +130,12 @@ void main() {
   test('restore writes an event for a trashed note', () async {
     final tester =
         newTester()
-          ..withEvent(noteStreamRoute, 'one', const NoteCreated())
-          ..withEvent(noteStreamRoute, 'one', const NoteTrashed());
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'))
+          ..withEvent(noteStreamRoute, 'one', const NoteTrashed(noteId: 'one'));
 
     await tester.run(const RestoreNote(noteId: 'one'));
 
-    final events = await tester.getWrittenEvents<NoteEvent, String>(
+    final events = await tester.getWrittenEvents<NoteEvent>(
       noteStreamRoute,
       'one',
     );
@@ -141,7 +145,8 @@ void main() {
 
   test('restore rejects a note that is not trashed', () async {
     final tester =
-        newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
+        newTester()
+          ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await expectLater(
       tester.run(const RestoreNote(noteId: 'one')),

@@ -20,7 +20,7 @@ void main() {
           tester
               .withEvent(
                 'account/one',
-                const AccountOpened(name: 'Checking'),
+                const AccountOpened(accountId: 'one', name: 'Checking'),
                 occuredAt: openedAt,
               )
               .run();
@@ -37,27 +37,31 @@ void main() {
           AggregateTester(AccountSummaryAggregate('one'))
               .withEvent(
                 'account/one',
-                const AccountOpened(name: 'Checking'),
+                const AccountOpened(accountId: 'one', name: 'Checking'),
                 occuredAt: openedAt,
               )
               .withEvent(
                 'account/one',
-                const AccountAtmDeposited(amount: 100),
+                const AccountAtmDeposited(accountId: 'one', amount: 100),
                 occuredAt: depositedAt,
               )
               .withEvent(
                 'account/one',
-                const AccountAtmWithdrawn(amount: 20),
+                const AccountAtmWithdrawn(accountId: 'one', amount: 20),
                 occuredAt: withdrawnAt,
               )
               .withEvent(
                 'account/one',
-                const AccountInnerTransfer(fromAccountId: 'two', amount: 15),
+                const AccountInnerTransfer(
+                  accountId: 'one',
+                  fromAccountId: 'two',
+                  amount: 15,
+                ),
                 occuredAt: transferredAt,
               )
               .withEvent(
                 'account/one',
-                const AccountRenamed(newName: 'Savings'),
+                const AccountRenamed(accountId: 'one', newName: 'Savings'),
                 occuredAt: transferredAt,
               )
               .run();
@@ -73,17 +77,17 @@ void main() {
           AggregateTester(AccountSummaryAggregate('one'))
               .withEvent(
                 'account/one',
-                const AccountOpened(name: 'One'),
+                const AccountOpened(accountId: 'one', name: 'One'),
                 occuredAt: openedAt,
               )
               .withEvent(
                 'account/two',
-                const AccountOpened(name: 'Two'),
+                const AccountOpened(accountId: 'two', name: 'Two'),
                 occuredAt: openedAt,
               )
               .withEvent(
                 'account/two',
-                const AccountAtmDeposited(amount: 500),
+                const AccountAtmDeposited(accountId: 'two', amount: 500),
                 occuredAt: depositedAt,
               )
               .run();

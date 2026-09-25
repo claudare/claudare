@@ -1,7 +1,7 @@
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
 
-class StreamRouteWildcard extends StreamRoute<String> {
+class StreamRouteWildcard extends StreamRoute {
   final String _prefix;
 
   @override
@@ -20,19 +20,6 @@ class StreamRouteWildcard extends StreamRoute<String> {
       filter = PatternFilter.startsWith(
         pattern.substring(0, pattern.length - 1),
       );
-
-  @override
-  String parseParams(String streamPath) {
-    if (!streamPath.startsWith(_prefix)) {
-      throw ArgumentError.value(
-        streamPath,
-        'streamPath',
-        'Path does not match wildcard pattern',
-      );
-    }
-
-    return streamPath.substring(_prefix.length);
-  }
 
   @override
   String buildPath(String streamParams) => '$_prefix$streamParams';

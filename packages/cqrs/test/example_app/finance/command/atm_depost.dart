@@ -21,6 +21,6 @@ class AtmDeposit implements Command {
 
     await stream.mustExist();
 
-    stream.append(AccountAtmDeposited(amount: amount));
+    stream.append(AccountAtmDeposited(accountId: accountId, amount: amount));
   }
 }

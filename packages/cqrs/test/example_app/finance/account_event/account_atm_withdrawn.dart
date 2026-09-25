@@ -3,15 +3,20 @@ part of 'account.dart';
 class AccountAtmWithdrawn extends AccountEvent {
   static const String kind = 'accountAtmWithdrawn';
 
+  @override
+  final String accountId;
   final int amount;
 
-  const AccountAtmWithdrawn({required this.amount});
+  const AccountAtmWithdrawn({required this.accountId, required this.amount});
 
   @override
-  toJson() => {'amount': amount};
+  toJson() => {'accountId': accountId, 'amount': amount};
 
   factory AccountAtmWithdrawn.fromJson(Map<String, dynamic> json) =>
-      AccountAtmWithdrawn(amount: json['amount'] as int);
+      AccountAtmWithdrawn(
+        accountId: json['accountId'] as String,
+        amount: json['amount'] as int,
+      );
 }
 
 final class AccountAtmWithdrawnCodec

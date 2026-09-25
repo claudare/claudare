@@ -11,7 +11,11 @@ void main() {
   test('starts absent and ignores another note stream', () {
     final state =
         AggregateTester(NoteAggregate('one'))
-            .withEvent('note/two', const NoteCreated(), occuredAt: createdAt)
+            .withEvent(
+              'note/two',
+              const NoteCreated(noteId: 'two'),
+              occuredAt: createdAt,
+            )
             .run();
 
     expect(state.exists, isFalse);
@@ -21,7 +25,11 @@ void main() {
   test('replays creation, title, and content with timestamps', () {
     final state =
         AggregateTester(NoteAggregate('one'))
-            .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
+            .withEvent(
+              'note/one',
+              const NoteCreated(noteId: 'one'),
+              occuredAt: createdAt,
+            )
             .withEvent(
               'note/one',
               const NoteTitleUpdated(noteId: 'one', newTitle: 'Title'),
@@ -45,7 +53,11 @@ void main() {
   test('keeps the title with the latest timestamp', () {
     final state =
         AggregateTester(NoteAggregate('one'))
-            .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
+            .withEvent(
+              'note/one',
+              const NoteCreated(noteId: 'one'),
+              occuredAt: createdAt,
+            )
             .withEvent(
               'note/one',
               const NoteTitleUpdated(noteId: 'one', newTitle: 'Newer'),
@@ -65,7 +77,11 @@ void main() {
   test('uses the later event when title timestamps tie', () {
     final state =
         AggregateTester(NoteAggregate('one'))
-            .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
+            .withEvent(
+              'note/one',
+              const NoteCreated(noteId: 'one'),
+              occuredAt: createdAt,
+            )
             .withEvent(
               'note/one',
               const NoteTitleUpdated(noteId: 'one', newTitle: 'First'),
@@ -83,8 +99,16 @@ void main() {
 
   test('trash and restore change only trash state', () {
     final tester = AggregateTester(NoteAggregate('one'))
-        .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
-        .withEvent('note/one', const NoteTrashed(), occuredAt: editedAt);
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'one'),
+          occuredAt: createdAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTrashed(noteId: 'one'),
+          occuredAt: editedAt,
+        );
 
     final trashed = tester.run();
     expect(trashed.isTrashed, isTrue);
@@ -93,7 +117,11 @@ void main() {
 
     final restored =
         tester
-            .withEvent('note/one', const NoteRestored(), occuredAt: laterAt)
+            .withEvent(
+              'note/one',
+              const NoteRestored(noteId: 'one'),
+              occuredAt: laterAt,
+            )
             .run();
     expect(restored.isTrashed, isFalse);
     expect(restored.trashedAt, isNull);

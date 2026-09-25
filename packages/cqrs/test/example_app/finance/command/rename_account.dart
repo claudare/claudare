@@ -17,6 +17,6 @@ class RenameAccount implements Command {
 
     await stream.mustExist();
 
-    stream.append(AccountRenamed(newName: newName));
+    stream.append(AccountRenamed(accountId: accountId, newName: newName));
   }
 }

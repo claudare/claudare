@@ -18,5 +18,7 @@ part 'account_renamed.dart';
 sealed class AccountEvent {
   const AccountEvent();
 
+  String get accountId;
+
   Map<String, dynamic> toJson();
 }

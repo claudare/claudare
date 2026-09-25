@@ -48,7 +48,11 @@ class TransferFundsBetweenAccounts implements Command {
     }
 
     fromStream.append(
-      AccountInnerTransfer(fromAccountId: toAccountId, amount: -amount),
+      AccountInnerTransfer(
+        accountId: fromAccountId,
+        fromAccountId: toAccountId,
+        amount: -amount,
+      ),
     );
 
     final toStream = ctx.stream<AccountEvent>(
@@ -58,7 +62,11 @@ class TransferFundsBetweenAccounts implements Command {
     await toStream.mustExist();
 
     toStream.append(
-      AccountInnerTransfer(fromAccountId: fromAccountId, amount: amount),
+      AccountInnerTransfer(
+        accountId: toAccountId,
+        fromAccountId: fromAccountId,
+        amount: amount,
+      ),
     );
   }
 }

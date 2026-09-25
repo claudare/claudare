@@ -46,6 +46,6 @@ class AtmWithdrawal implements Command {
       throw const CommandException('insufficient funds');
     }
 
-    stream.append(AccountAtmWithdrawn(amount: amount));
+    stream.append(AccountAtmWithdrawn(accountId: accountId, amount: amount));
   }
 }

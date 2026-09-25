@@ -47,7 +47,7 @@ class AccountListState implements SnapshotCloneable<AccountListState> {
 }
 
 class AccountListAggregate
-    implements Aggregate<AccountEvent, String, AccountListState> {
+    implements Aggregate<AccountEvent, AccountListState> {
   final AccountListSnapshotter? _snapshotter;
   AccountListAggregate([this._snapshotter]);
 
@@ -58,7 +58,7 @@ class AccountListAggregate
   final int version = 1;
 
   @override
-  StreamRoute<String> get streamRoute => accountStreamRoute;
+  StreamRoute get streamRoute => accountStreamRoute;
 
   @override
   AccountListState initialState() {
@@ -71,11 +71,8 @@ class AccountListAggregate
   }
 
   @override
-  void apply(
-    AccountListState state,
-    EventEnvelope<AccountEvent, String> envelope,
-  ) {
-    final accountId = envelope.streamParams;
+  void apply(AccountListState state, EventEnvelope<AccountEvent> envelope) {
+    final accountId = envelope.event.accountId;
 
     final thisAggregate = AccountSummaryAggregate(accountId);
     final thisState = state.accounts[accountId] ?? thisAggregate.initialState();

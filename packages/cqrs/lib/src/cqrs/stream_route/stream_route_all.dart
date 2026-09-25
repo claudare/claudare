@@ -1,7 +1,7 @@
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
 
-class StreamRouteAll extends StreamRoute<String> {
+class StreamRouteAll extends StreamRoute {
   @override
   final String pattern = '*';
 
@@ -9,9 +9,6 @@ class StreamRouteAll extends StreamRoute<String> {
   final PatternFilter filter = const PatternFilter.any();
 
   const StreamRouteAll();
-
-  @override
-  String parseParams(String streamPath) => streamPath;
 
   @override
   String buildPath(String streamParams) => streamParams;

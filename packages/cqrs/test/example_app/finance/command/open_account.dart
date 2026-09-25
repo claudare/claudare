@@ -19,6 +19,6 @@ class OpenAccount implements Command {
 
     await stream.mustNotExist();
 
-    stream.append(AccountOpened(name: name));
+    stream.append(AccountOpened(accountId: accountId, name: name));
   }
 }

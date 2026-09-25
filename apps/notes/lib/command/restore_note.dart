@@ -35,6 +35,6 @@ class RestoreNote implements Command {
       throw StateError('note was trashed multiple times');
     }
 
-    stream.append(NoteRestored());
+    stream.append(NoteRestored(noteId: noteId));
   }
 }

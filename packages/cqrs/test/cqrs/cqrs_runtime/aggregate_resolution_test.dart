@@ -34,11 +34,11 @@ void main() {
 
   test('resolves selected events into fresh state on every call', () async {
     final aggregate = _EnvelopeAggregate('one');
-    expect(await runtime.resolve(aggregate, 'one'), isEmpty);
+    expect(await runtime.resolve(aggregate), isEmpty);
     await _appendAccountEvents(eventStore);
 
-    final first = await runtime.resolve(aggregate, 'one');
-    final second = await runtime.resolve(aggregate, 'one');
+    final first = await runtime.resolve(aggregate);
+    final second = await runtime.resolve(aggregate);
 
     expect(first.map((envelope) => envelope.event.value), [
       'opened',
@@ -52,17 +52,17 @@ void main() {
     expect(identical(first.first, second.first), isFalse);
   });
 
-  test('uses log paths, parameters, timestamps, and positions', () async {
+  test('uses log paths, event identifiers, and timestamps', () async {
     await _appendAccountEvents(eventStore);
 
-    final events = await runtime.resolve(_EnvelopeAggregate(null), 'unused');
+    final events = await runtime.resolve(_EnvelopeAggregate(null));
 
     expect(events.map((envelope) => envelope.streamPath), [
       'account/one',
       'account/two',
       'account/one',
     ]);
-    expect(events.map((envelope) => envelope.streamParams), [
+    expect(events.map((envelope) => envelope.event.accountId), [
       'one',
       'two',
       'one',
@@ -72,6 +72,35 @@ void main() {
       _timestamp.add(const Duration(days: 1)),
       _timestamp.add(const Duration(days: 3)),
     ]);
+  });
+
+  test('selects an aggregate by the identifier in the event', () async {
+    await eventStore.saveChanges(
+      CommandChanges(
+        dependency: VersionVector(),
+        occuredAt: _timestamp,
+        locks: const [
+          StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
+        ],
+        events: [
+          EventAppend(
+            streamPath: 'account/one',
+            encodedEvent: EncodedEvent(
+              kind: 'test-event',
+              bytes: const _TestEventCodec().toBytes(
+                const _TestEvent('opened', 'two'),
+              ),
+            ),
+            occuredAt: _timestamp,
+          ),
+        ],
+      ),
+    );
+
+    expect(await runtime.resolve(_EnvelopeAggregate('one')), isEmpty);
+    final selected = await runtime.resolve(_EnvelopeAggregate('two'));
+    expect(selected.single.event.accountId, 'two');
+    expect(selected.single.streamPath, 'account/one');
   });
 
   group('snapshots', () {
@@ -91,7 +120,9 @@ void main() {
               streamPath: 'account/one',
               encodedEvent: EncodedEvent(
                 kind: 'test-event',
-                bytes: const _TestEventCodec().toBytes(_TestEvent('opened')),
+                bytes: const _TestEventCodec().toBytes(
+                  _TestEvent('opened', 'one'),
+                ),
               ),
               occuredAt: _timestamp,
             ),
@@ -101,7 +132,6 @@ void main() {
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('one', snapshotter: snapshotter),
-        'one',
       );
 
       expect(result, hasLength(1));
@@ -113,10 +143,9 @@ void main() {
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('two', snapshotter: snapshotter),
-        'two',
       );
 
-      expect(result.map((event) => event.streamParams), ['two']);
+      expect(result.map((event) => event.event.accountId), ['two']);
       expect(snapshotter.loadedVersions, [1]);
       expect(snapshotter.savedVersions, [1]);
       expect(snapshotter.snapshots[1]!.sequence, 1);
@@ -125,11 +154,11 @@ void main() {
 
     test('resumes after a snapshot across filtered pages', () async {
       await _appendAccountEvents(eventStore);
-      final history = await runtime.resolve(_EnvelopeAggregate('one'), 'one');
+      final history = await runtime.resolve(_EnvelopeAggregate('one'));
       snapshotter.snapshots[1] = Snapshot([history.first], 0);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
 
-      final result = await runtime.resolve(aggregate, 'one');
+      final result = await runtime.resolve(aggregate);
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
       expect(snapshotter.snapshots[1]!.sequence, 3);
@@ -140,7 +169,6 @@ void main() {
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('missing', snapshotter: snapshotter),
-        'missing',
       );
 
       expect(result, isEmpty);
@@ -150,10 +178,10 @@ void main() {
     test('does not rewrite a snapshot without new accepted events', () async {
       await _appendAccountEvents(eventStore);
       final aggregate = _EnvelopeAggregate('two', snapshotter: snapshotter);
-      await runtime.resolve(aggregate, 'two');
+      await runtime.resolve(aggregate);
       snapshotter.savedVersions.clear();
 
-      final result = await runtime.resolve(aggregate, 'two');
+      final result = await runtime.resolve(aggregate);
 
       expect(result, hasLength(1));
       expect(snapshotter.savedVersions, isEmpty);
@@ -166,7 +194,6 @@ void main() {
 
       final result = await runtime.resolve(
         aggregate,
-        'one',
         forceResolveFromEvents: true,
       );
 
@@ -184,7 +211,7 @@ void main() {
         version: 2,
       );
 
-      final result = await runtime.resolve(aggregate, 'one');
+      final result = await runtime.resolve(aggregate);
 
       expect(result, hasLength(2));
       expect(snapshotter.loadedVersions, [2]);
@@ -198,7 +225,6 @@ void main() {
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('one', snapshotter: snapshotter),
-        'one',
       );
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
@@ -211,7 +237,6 @@ void main() {
 
       final result = await runtime.resolve(
         _EnvelopeAggregate('one', snapshotter: snapshotter),
-        'one',
       );
 
       expect(result.map((event) => event.event.value), ['opened', 'deposit']);
@@ -227,10 +252,7 @@ void main() {
         applyFailure: failure,
       );
 
-      await expectLater(
-        runtime.resolve(aggregate, 'one'),
-        throwsA(same(failure)),
-      );
+      await expectLater(runtime.resolve(aggregate), throwsA(same(failure)));
 
       expect(snapshotter.savedVersions, isEmpty);
     });
@@ -238,12 +260,12 @@ void main() {
     test('caller mutation does not alter a saved snapshot', () async {
       await _appendAccountEvents(eventStore);
       final aggregate = _EnvelopeAggregate('one', snapshotter: snapshotter);
-      final first = await runtime.resolve(aggregate, 'one');
+      final first = await runtime.resolve(aggregate);
       first.clear();
-      final second = await runtime.resolve(aggregate, 'one');
+      final second = await runtime.resolve(aggregate);
       second.clear();
 
-      final third = await runtime.resolve(aggregate, 'one');
+      final third = await runtime.resolve(aggregate);
 
       expect(third.map((event) => event.event.value), ['opened', 'deposit']);
     });
@@ -271,7 +293,9 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
               streamPath: path,
               encodedEvent: EncodedEvent(
                 kind: 'test-event',
-                bytes: const _TestEventCodec().toBytes(_TestEvent(value)),
+                bytes: const _TestEventCodec().toBytes(
+                  _TestEvent(value, path.split('/').last),
+                ),
               ),
               occuredAt: _timestamp.add(Duration(days: index)),
             ),
@@ -281,8 +305,9 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
 
 final class _TestEvent {
   final String value;
+  final String accountId;
 
-  const _TestEvent(this.value);
+  const _TestEvent(this.value, this.accountId);
 }
 
 final class _TestEventCodec implements EventCodec<_TestEvent> {
@@ -292,20 +317,25 @@ final class _TestEventCodec implements EventCodec<_TestEvent> {
   String get kind => 'test-event';
 
   @override
-  _TestEvent fromBytes(Uint8List bytes) => _TestEvent(utf8.decode(bytes));
+  _TestEvent fromBytes(Uint8List bytes) {
+    final json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+    return _TestEvent(json['value'] as String, json['accountId'] as String);
+  }
 
   @override
-  Uint8List toBytes(_TestEvent event) =>
-      Uint8List.fromList(utf8.encode(event.value));
+  Uint8List toBytes(_TestEvent event) => Uint8List.fromList(
+    utf8.encode(
+      jsonEncode({'value': event.value, 'accountId': event.accountId}),
+    ),
+  );
 }
 
 final class _EnvelopeAggregate
-    implements
-        Aggregate<_TestEvent, String, List<EventEnvelope<_TestEvent, String>>> {
+    implements Aggregate<_TestEvent, List<EventEnvelope<_TestEvent>>> {
   final String? selectedAccount;
 
   @override
-  final Snapshotter<List<EventEnvelope<_TestEvent, String>>>? snapshotter;
+  final Snapshotter<List<EventEnvelope<_TestEvent>>>? snapshotter;
 
   final Object? applyFailure;
 
@@ -320,19 +350,19 @@ final class _EnvelopeAggregate
   final int version;
 
   @override
-  StreamRoute<String> get streamRoute => StreamRouteWildcard('account/*');
+  StreamRoute get streamRoute => StreamRouteWildcard('account/*');
 
   @override
-  List<EventEnvelope<_TestEvent, String>> initialState() => [];
+  List<EventEnvelope<_TestEvent>> initialState() => [];
 
   @override
-  bool canApply(EventEnvelope<_TestEvent, String> envelope) =>
-      selectedAccount == null || envelope.streamParams == selectedAccount;
+  bool canApply(EventEnvelope<_TestEvent> envelope) =>
+      selectedAccount == null || envelope.event.accountId == selectedAccount;
 
   @override
   void apply(
-    List<EventEnvelope<_TestEvent, String>> state,
-    EventEnvelope<_TestEvent, String> envelope,
+    List<EventEnvelope<_TestEvent>> state,
+    EventEnvelope<_TestEvent> envelope,
   ) {
     state.add(envelope);
     if (applyFailure != null) throw applyFailure!;
@@ -340,15 +370,15 @@ final class _EnvelopeAggregate
 }
 
 final class _MemorySnapshotter
-    implements Snapshotter<List<EventEnvelope<_TestEvent, String>>> {
-  final snapshots = <int, Snapshot<List<EventEnvelope<_TestEvent, String>>>>{};
+    implements Snapshotter<List<EventEnvelope<_TestEvent>>> {
+  final snapshots = <int, Snapshot<List<EventEnvelope<_TestEvent>>>>{};
   final loadedVersions = <int>[];
   final savedVersions = <int>[];
   Exception? loadFailure;
   Exception? saveFailure;
 
   @override
-  Future<Snapshot<List<EventEnvelope<_TestEvent, String>>>?> load(
+  Future<Snapshot<List<EventEnvelope<_TestEvent>>>?> load(
     int aggregateVersion,
   ) async {
     loadedVersions.add(aggregateVersion);
@@ -362,7 +392,7 @@ final class _MemorySnapshotter
   @override
   Future<void> save(
     int aggregateVersion,
-    Snapshot<List<EventEnvelope<_TestEvent, String>>> snapshot,
+    Snapshot<List<EventEnvelope<_TestEvent>>> snapshot,
   ) async {
     savedVersions.add(aggregateVersion);
     if (saveFailure != null) throw saveFailure!;

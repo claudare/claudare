@@ -29,12 +29,12 @@ void main() {
       commandTester.withEvent(
         accountStreamRoute,
         '123',
-        AccountOpened(name: 'test'),
+        AccountOpened(accountId: '123', name: 'test'),
       );
 
       await commandTester.run(AtmDeposit(accountId: '123', amount: 42));
 
-      final events = await commandTester.getWrittenEvents<AccountEvent, String>(
+      final events = await commandTester.getWrittenEvents<AccountEvent>(
         accountStreamRoute,
         '123',
       );
@@ -52,7 +52,10 @@ void main() {
     });
 
     test('propagates application validation exception', () async {
-      commandTester.withEvent2('account/123', AccountOpened(name: 'test'));
+      commandTester.withEvent2(
+        'account/123',
+        AccountOpened(accountId: '123', name: 'test'),
+      );
 
       await expectLater(
         commandTester.run(AtmDeposit(accountId: '123', amount: -999)),

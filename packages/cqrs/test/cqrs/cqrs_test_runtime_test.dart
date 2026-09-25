@@ -16,7 +16,7 @@ void main() {
 
     await runtime.execute(const _AppendValue('one'));
 
-    final events = await runtime.resolve(_ValueAggregate(), 'one');
+    final events = await runtime.resolve(_ValueAggregate());
     expect(events, hasLength(1));
     expect(events.single.event.value, 'one');
     expect(events.single.occuredAt, DateTime.utc(1970));
@@ -37,7 +37,7 @@ void main() {
     final bundle = await database.getBundle(CommandId(0, 1));
     expect(bundle!.events, hasLength(1));
     expect(bundle.events.single.occuredAt, seededAt);
-    final events = await runtime.resolve(_ValueAggregate(), 'one');
+    final events = await runtime.resolve(_ValueAggregate());
     expect(events.single.occuredAt, seededAt);
   });
 
@@ -53,7 +53,7 @@ void main() {
       same(runtime),
     );
 
-    final events = await runtime.resolve(_ValueAggregate(), 'one');
+    final events = await runtime.resolve(_ValueAggregate());
     expect(events, hasLength(1));
     expect(events.single.event.value, 'seeded');
     expect(events.single.occuredAt, seededAt);
@@ -72,7 +72,7 @@ void main() {
       TestEvent('value/one', const _ValueEvent('third'), later),
     ]);
 
-    final events = await runtime.resolve(_ValueAggregate(), 'one');
+    final events = await runtime.resolve(_ValueAggregate());
     expect(events.map((event) => event.event.value), [
       'first',
       'second',
@@ -104,7 +104,7 @@ void main() {
     ]);
     await runtime.execute(const _AppendValue('one'));
 
-    final events = await runtime.resolve(_ValueAggregate(), 'one');
+    final events = await runtime.resolve(_ValueAggregate());
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
     expect(await database.getStreamVersion('value/one'), 2);
   });
@@ -161,31 +161,25 @@ final class _AppendValue implements Command {
 }
 
 final class _ValueAggregate
-    implements
-        Aggregate<
-          _ValueEvent,
-          String,
-          List<EventEnvelope<_ValueEvent, String>>
-        > {
+    implements Aggregate<_ValueEvent, List<EventEnvelope<_ValueEvent>>> {
   @override
   int get version => 1;
 
   @override
-  StreamRoute<String> get streamRoute => StreamRouteWildcard('value/*');
+  StreamRoute get streamRoute => StreamRouteWildcard('value/*');
 
   @override
-  Snapshotter<List<EventEnvelope<_ValueEvent, String>>>? get snapshotter =>
-      null;
+  Snapshotter<List<EventEnvelope<_ValueEvent>>>? get snapshotter => null;
 
   @override
-  List<EventEnvelope<_ValueEvent, String>> initialState() => [];
+  List<EventEnvelope<_ValueEvent>> initialState() => [];
 
   @override
-  bool canApply(EventEnvelope<_ValueEvent, String> envelope) => true;
+  bool canApply(EventEnvelope<_ValueEvent> envelope) => true;
 
   @override
   void apply(
-    List<EventEnvelope<_ValueEvent, String>> state,
-    EventEnvelope<_ValueEvent, String> envelope,
+    List<EventEnvelope<_ValueEvent>> state,
+    EventEnvelope<_ValueEvent> envelope,
   ) => state.add(envelope);
 }

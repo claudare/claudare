@@ -1,13 +1,12 @@
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
-abstract class StreamRoute<TParams> {
+abstract class StreamRoute {
   const StreamRoute();
 
   String get pattern;
   PatternFilter get filter;
 
-  String buildPath(TParams streamParams);
-  TParams parseParams(String streamPath);
+  String buildPath(String streamParams);
   bool matches(String streamPath) => filter.doesMatchPath(streamPath);
 
   @override

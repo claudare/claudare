@@ -35,7 +35,7 @@ class AccountSummaryState {
 }
 
 class AccountSummaryAggregate
-    implements Aggregate<AccountEvent, String, AccountSummaryState> {
+    implements Aggregate<AccountEvent, AccountSummaryState> {
   final String accountId;
 
   AccountSummaryAggregate(this.accountId);
@@ -47,7 +47,7 @@ class AccountSummaryAggregate
   final int version = 1;
 
   @override
-  StreamRoute<String> get streamRoute => accountStreamRoute;
+  StreamRoute get streamRoute => accountStreamRoute;
 
   @override
   AccountSummaryState initialState() {
@@ -55,19 +55,16 @@ class AccountSummaryAggregate
   }
 
   @override
-  bool canApply(EventEnvelope<AccountEvent, String> envelope) {
-    return envelope.streamParams == accountId;
+  bool canApply(EventEnvelope<AccountEvent> envelope) {
+    return envelope.event.accountId == accountId;
   }
 
   @override
-  void apply(
-    AccountSummaryState state,
-    EventEnvelope<AccountEvent, String> envelope,
-  ) {
+  void apply(AccountSummaryState state, EventEnvelope<AccountEvent> envelope) {
     final event = envelope.event;
     final occuredAt = envelope.occuredAt;
     switch (event) {
-      case AccountOpened(:final name):
+      case AccountOpened(:final name, :final accountId):
         state.accountId = accountId;
         state.name = name;
         state.balance = 0;

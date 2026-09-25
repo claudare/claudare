@@ -24,13 +24,13 @@ import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 // }
 
 /// Replays supplied events against a fresh [Aggregate] state.
-class AggregateTester<TEvent extends Object, TParams, TState> {
-  final Aggregate<TEvent, TParams, TState> aggregate;
+class AggregateTester<TEvent extends Object, TState> {
+  final Aggregate<TEvent, TState> aggregate;
   final List<TestEvent<TEvent>> _testEvents = [];
 
   AggregateTester(this.aggregate);
 
-  AggregateTester<TEvent, TParams, TState> withEvent(
+  AggregateTester<TEvent, TState> withEvent(
     String streamPath,
     TEvent event, {
     required DateTime occuredAt,
@@ -45,9 +45,8 @@ class AggregateTester<TEvent extends Object, TParams, TState> {
       final event = _testEvents[i];
       if (!aggregate.streamRoute.matches(event.streamPath)) continue;
 
-      final envelope = EventEnvelope<TEvent, TParams>(
+      final envelope = EventEnvelope<TEvent>(
         streamPath: event.streamPath,
-        streamParams: aggregate.streamRoute.parseParams(event.streamPath),
         event: event.event,
         occuredAt: event.occuredAt,
       );

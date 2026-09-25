@@ -64,10 +64,10 @@ class NoteQueries {
   const NoteQueries(this._runtime);
 
   Future<NoteState?> note(String noteId) async {
-    final state = await _runtime.resolve(NoteAggregate(noteId), noteId);
+    final state = await _runtime.resolve(NoteAggregate(noteId));
     return state.exists ? state : null;
   }
 
   Future<NoteListState> noteList() =>
-      _runtime.resolve(const NoteListAggregate(), '');
+      _runtime.resolve(const NoteListAggregate());
 }

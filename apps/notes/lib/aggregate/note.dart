@@ -53,7 +53,7 @@ class NoteState {
 }
 
 /// Replays events for one note without retaining a snapshot.
-class NoteAggregate implements Aggregate<NoteEvent, String, NoteState> {
+class NoteAggregate implements Aggregate<NoteEvent, NoteState> {
   final String noteId;
 
   const NoteAggregate(this.noteId);
@@ -65,17 +65,17 @@ class NoteAggregate implements Aggregate<NoteEvent, String, NoteState> {
   int get version => 1;
 
   @override
-  StreamRoute<String> get streamRoute => noteStreamRoute;
+  StreamRoute get streamRoute => noteStreamRoute;
 
   @override
   NoteState initialState() => NoteState(noteId);
 
   @override
-  bool canApply(EventEnvelope<NoteEvent, String> envelope) =>
-      envelope.streamParams == noteId;
+  bool canApply(EventEnvelope<NoteEvent> envelope) =>
+      envelope.event.noteId == noteId;
 
   @override
-  void apply(NoteState state, EventEnvelope<NoteEvent, String> envelope) {
+  void apply(NoteState state, EventEnvelope<NoteEvent> envelope) {
     state.apply(envelope.event, envelope.occuredAt);
   }
 }

@@ -15,12 +15,12 @@ class TotalBalanceState {
 }
 
 class TotalBalanceAggregate
-    implements Aggregate<AccountEvent, String, TotalBalanceState> {
+    implements Aggregate<AccountEvent, TotalBalanceState> {
   @override
   final int version = 1;
 
   @override
-  StreamRoute<String> get streamRoute => accountStreamRoute;
+  StreamRoute get streamRoute => accountStreamRoute;
 
   @override
   get snapshotter => null;
@@ -31,15 +31,12 @@ class TotalBalanceAggregate
   }
 
   @override
-  bool canApply(EventEnvelope<AccountEvent, String> envelope) {
+  bool canApply(EventEnvelope<AccountEvent> envelope) {
     return true;
   }
 
   @override
-  void apply(
-    TotalBalanceState state,
-    EventEnvelope<AccountEvent, String> envelope,
-  ) {
+  void apply(TotalBalanceState state, EventEnvelope<AccountEvent> envelope) {
     final event = envelope.event;
 
     switch (event) {

@@ -23,23 +23,22 @@ void main() {
                 ..withEvent('account/two', 'deposit', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['account/one:one:opened', 'account/two:two:deposit']);
+      expect(state, ['account/one:opened', 'account/two:deposit']);
     });
 
     test('checks canApply before applying an event', () {
       final state =
           (AggregateTester(_RecordingAggregate())
-                ..withEvent('account/skip', 'ignored', occuredAt: occurredAt)
-                ..withEvent('account/one', 'kept', occuredAt: occurredAt))
+                ..withEvent('account/one', 'skip', occuredAt: occurredAt)
+                ..withEvent('account/skip', 'kept', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['account/one:one:kept']);
+      expect(state, ['account/skip:kept']);
     });
   });
 }
 
-final class _RecordingAggregate
-    implements Aggregate<String, String, List<String>> {
+final class _RecordingAggregate implements Aggregate<String, List<String>> {
   @override
   Snapshotter<List<String>>? get snapshotter => null;
 
@@ -47,19 +46,16 @@ final class _RecordingAggregate
   int get version => 1;
 
   @override
-  StreamRoute<String> get streamRoute => StreamRouteWildcard('account/*');
+  StreamRoute get streamRoute => StreamRouteWildcard('account/*');
 
   @override
   List<String> initialState() => [];
 
   @override
-  bool canApply(EventEnvelope<String, String> envelope) =>
-      envelope.streamParams != 'skip';
+  bool canApply(EventEnvelope<String> envelope) => envelope.event != 'skip';
 
   @override
-  void apply(List<String> state, EventEnvelope<String, String> envelope) {
-    state.add(
-      '${envelope.streamPath}:${envelope.streamParams}:${envelope.event}',
-    );
+  void apply(List<String> state, EventEnvelope<String> envelope) {
+    state.add('${envelope.streamPath}:${envelope.event}');
   }
 }

@@ -3,15 +3,19 @@ part of 'account.dart';
 class AccountRenamed extends AccountEvent {
   static const String kind = 'accountRenamed';
 
+  @override
+  final String accountId;
   final String newName;
 
-  const AccountRenamed({required this.newName});
+  const AccountRenamed({required this.accountId, required this.newName});
 
   @override
-  toJson() => {'newName': newName};
+  toJson() => {'accountId': accountId, 'newName': newName};
 
-  factory AccountRenamed.fromJson(Map<String, dynamic> json) =>
-      AccountRenamed(newName: json['newName'] as String);
+  factory AccountRenamed.fromJson(Map<String, dynamic> json) => AccountRenamed(
+    accountId: json['accountId'] as String,
+    newName: json['newName'] as String,
+  );
 }
 
 final class AccountRenamedCodec implements EventCodec<AccountRenamed> {

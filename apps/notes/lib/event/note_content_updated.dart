@@ -3,6 +3,7 @@ part of 'note.dart';
 class NoteContentUpdated extends NoteEvent {
   static const String kind = 'note.content.updated';
 
+  @override
   final String noteId;
   final String newContent;
 

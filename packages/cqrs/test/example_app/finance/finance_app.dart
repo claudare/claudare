@@ -77,11 +77,11 @@ class Queries {
   const Queries(this._runtime, this._accountListSnapshotter);
 
   Future<AccountSummaryState> accountSummary(String accountId) =>
-      _runtime.resolve(AccountSummaryAggregate(accountId), accountId);
+      _runtime.resolve(AccountSummaryAggregate(accountId));
 
   Future<AccountListState> accountList() =>
-      _runtime.resolve(AccountListAggregate(_accountListSnapshotter), '');
+      _runtime.resolve(AccountListAggregate(_accountListSnapshotter));
 
   Future<TotalBalanceState> totalBalance() =>
-      _runtime.resolve(TotalBalanceAggregate(), '');
+      _runtime.resolve(TotalBalanceAggregate());
 }

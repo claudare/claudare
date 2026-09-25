@@ -41,6 +41,6 @@ class TrashNote implements Command {
       throw const CommandException('note already trashed');
     }
 
-    stream.append(NoteTrashed());
+    stream.append(NoteTrashed(noteId: noteId));
   }
 }
