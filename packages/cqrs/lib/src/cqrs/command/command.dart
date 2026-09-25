@@ -1,7 +1,7 @@
-import 'command_context.dart';
+import 'command_context_api.dart';
 
 abstract interface class Command {
   Command();
 
-  Future<void> handle(CommandContext ctx);
+  Future<void> handle(CommandContextApi ctx);
 }

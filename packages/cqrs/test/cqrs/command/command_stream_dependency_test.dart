@@ -4,6 +4,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
@@ -169,7 +170,7 @@ void main() {
 Future<void> _execute(
   EventStore eventStore,
   EventRegistry eventRegistry,
-  Future<void> Function(CommandContext context) handle,
+  Future<void> Function(CommandContextApi context) handle,
 ) async {
   final executor = CommandExecutor(
     eventStore: eventStore,
@@ -206,12 +207,12 @@ Future<void> _seedCommand(
 }
 
 final class _Command implements Command {
-  final Future<void> Function(CommandContext context) _handle;
+  final Future<void> Function(CommandContextApi context) _handle;
 
   const _Command(this._handle);
 
   @override
-  Future<void> handle(CommandContext context) => _handle(context);
+  Future<void> handle(CommandContextApi context) => _handle(context);
 }
 
 final class _Event {

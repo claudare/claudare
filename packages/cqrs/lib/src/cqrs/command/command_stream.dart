@@ -1,6 +1,6 @@
 part of 'command_context.dart';
 
-/// A typed handle to a stream's state within a [CommandContext].
+/// A typed handle to a stream accessed through [CommandContextApi].
 class CommandStream<Event extends Object> {
   final CommandContext _context;
   final String _streamPath;

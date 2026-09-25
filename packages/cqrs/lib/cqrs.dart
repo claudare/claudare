@@ -20,7 +20,8 @@ export 'src/cqrs/event/log_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
-export 'src/cqrs/command/command_context.dart';
+export 'src/cqrs/command/command_context_api.dart';
+export 'src/cqrs/command/command_context.dart' show CommandStream;
 
 // aggregate
 export 'src/cqrs/aggregate.dart';

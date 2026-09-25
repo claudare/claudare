@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -160,7 +161,7 @@ final class _AppendValue implements Command {
   const _AppendValue(this.value);
 
   @override
-  Future<void> handle(CommandContext ctx) async {
+  Future<void> handle(CommandContextApi ctx) async {
     final stream = ctx.stream<_ValueEvent>('value/$value');
     await stream.lockLatest();
     stream.append(_ValueEvent(value));

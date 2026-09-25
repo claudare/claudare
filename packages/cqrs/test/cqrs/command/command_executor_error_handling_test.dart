@@ -2,8 +2,8 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -56,7 +56,7 @@ void main() {
 
   test('seals the context when an empty command completes', () async {
     final database = MemoryEventDatabase();
-    late CommandContext context;
+    late CommandContextApi context;
 
     await _executor(
       database,
@@ -110,7 +110,7 @@ class _ThrowingCommand implements Command {
   const _ThrowingCommand(this.failure);
 
   @override
-  Future<void> handle(CommandContext ctx) async {
+  Future<void> handle(CommandContextApi ctx) async {
     final stream = ctx.stream<_Event>('new');
     await stream.mustNotExist();
     stream.append(const _Event());
@@ -119,12 +119,12 @@ class _ThrowingCommand implements Command {
 }
 
 final class _CallbackCommand implements Command {
-  final Future<void> Function(CommandContext) _handle;
+  final Future<void> Function(CommandContextApi) _handle;
 
   const _CallbackCommand(this._handle);
 
   @override
-  Future<void> handle(CommandContext ctx) => _handle(ctx);
+  Future<void> handle(CommandContextApi ctx) => _handle(ctx);
 }
 
 final class _RecordingEventStore extends EventStore {

@@ -1,5 +1,6 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -12,7 +13,7 @@ import 'package:time_provider/time_provider.dart';
 part 'command_stream.dart';
 
 /// Collects a command's ordered events, stream locks, and dependencies.
-class CommandContext {
+class CommandContext implements CommandContextApi {
   final EventStore _eventStore;
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
@@ -34,10 +35,12 @@ class CommandContext {
        _logger = logger,
        _occuredAt = timeProvider.now();
 
+  @override
   Logger get logger => _logger;
 
   VersionVector get dependency => _dependency.toVersionVector();
 
+  @override
   CommandStream<TEvent> stream<TEvent extends Object>(String streamPath) {
     _ensureOpen();
     return CommandStream<TEvent>._(this, streamPath);
