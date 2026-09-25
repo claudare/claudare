@@ -11,7 +11,7 @@ their APIs or ownership.
 | ------------------ | ------------------------------------------------------------------------------------------------- |
 | `cqrs`             | Commands, event codecs and storage, projections, runtime progress, and `CqrsRuntime` coordination |
 | `common`           | Async coordination, causal dots and version vectors, paginated readers, and JSON byte conversion  |
-| `crdt`             | Timestamp-based latest-write-wins value helpers                                                   |
+| `crdt`             | Text CRDT, editor binding, and timestamp-based value helpers                                      |
 | `id_generator`     | 128-bit ID generator contract plus secure and deterministic implementations                       |
 | `time_provider`    | Clock contract plus system and deterministic implementations                                      |
 | `isolate_sqlite`   | A SQLite connection owned by a dedicated isolate, migrations, and transaction helpers             |
@@ -101,10 +101,16 @@ conversion supplies a simple byte boundary. `AsyncTrailingRunner` serializes
 asynchronous work and coalesces overlapping requests into a final trailing run,
 which is useful for read-model refreshes.
 
-`crdt` currently exports only a timestamp-based latest-write-wins value and its
-value/timestamp pair. An equal or later incoming timestamp wins. There is no
-actor tie-breaker, text CRDT, causal delivery mechanism, conflict UI, or
-convergence proof, so the helper is not a complete replicated-data system.
+`crdt` provides mutable plain text with deterministic merging, JSON event
+batches and snapshots, and a Flutter-independent editor binding. Callers supply
+distinct writer identities, causal event delivery, and persistence. Its pure
+Dart tests cover convergence, save recovery, and editor behavior; Flutter IME
+behavior has not been verified at runtime. See the
+[package guide](../packages/crdt/README.md) for supported behavior and
+limitations. These primitives are not a complete synchronization system.
+
+The timestamp-based latest-write-wins value helper also remains available. An
+equal or later incoming timestamp wins, without an actor tie-breaker.
 
 `id_generator` separates ID allocation from domain code and provides secure,
 seeded, sequential, and static implementations. `time_provider` similarly
