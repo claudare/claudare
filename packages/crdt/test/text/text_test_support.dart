@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:crdt/crdt.dart';
+import 'package:crdt/crdt_text.dart';
 
 CrdtTextChange save(CrdtText text) {
   final change = text.prepareChange()!;

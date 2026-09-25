@@ -1,6 +1,6 @@
 import 'dart:math';
 
-import 'package:crdt/crdt.dart';
+import 'package:crdt/crdt_text.dart';
 import 'package:test/test.dart';
 
 import 'text_test_support.dart';

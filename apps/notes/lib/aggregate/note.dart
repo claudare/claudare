@@ -1,5 +1,5 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:crdt/crdt.dart';
+import 'package:crdt/crdt_lww.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -7,8 +7,7 @@ import 'package:notes/stream_route/note_stream_route.dart';
 class NoteState {
   final String noteId;
   bool exists = false;
-  CrdtValueLatestWriteWins<String> _title =
-      CrdtValueLatestWriteWins<String>.zero('');
+  CrdtLwwValue<String> _title = CrdtLwwValue<String>.zero('');
   String content = '';
   late DateTime createdAt;
   late DateTime updatedAt;
@@ -23,14 +22,13 @@ class NoteState {
     switch (event) {
       case NoteCreated():
         exists = true;
-        _title = CrdtValueLatestWriteWins('', occuredAt);
         content = '';
         createdAt = occuredAt;
         updatedAt = occuredAt;
         trashedAt = null;
       case NoteTitleUpdated(:final newTitle):
         _requireCreated();
-        _title = _title.merge(newTitle, occuredAt);
+        _title.applyChange(CrdtLwwChange(newTitle, occuredAt));
         updatedAt = occuredAt;
       case NoteContentUpdated(:final newContent):
         _requireCreated();
