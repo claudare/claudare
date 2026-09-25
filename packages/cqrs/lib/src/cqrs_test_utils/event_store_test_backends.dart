@@ -19,11 +19,13 @@ class MemoryEventStoreTestBackend implements EventStoreTestBackend {
   String get name => 'memory';
 
   @override
-  Future<EventStoreTestSession> open() async => _MemoryEventStoreTestSession(
-    eventFetchPageSize == null
-        ? MemoryEventStore()
-        : MemoryEventStore(eventFetchPageSize: eventFetchPageSize!),
-  );
+  Future<EventStoreTestSession> open() async {
+    final store =
+        eventFetchPageSize == null
+            ? MemoryEventStore()
+            : MemoryEventStore(eventFetchPageSize: eventFetchPageSize!);
+    return _MemoryEventStoreTestSession(store);
+  }
 }
 
 class SqliteEventStoreTestBackend implements EventStoreTestBackend {

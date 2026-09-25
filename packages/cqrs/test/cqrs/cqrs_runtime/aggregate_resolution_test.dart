@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -20,6 +19,7 @@ void main() {
     eventStore = MemoryEventStore(eventFetchPageSize: 1);
 
     runtime = CqrsRuntime(
+      actor: 'test-actor',
       eventStore: eventStore,
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
@@ -77,7 +77,8 @@ void main() {
   test('selects an aggregate by the identifier in the event', () async {
     await eventStore.saveChanges(
       CommandChanges(
-        dependency: VersionVector(),
+        actor: 'test-actor',
+        dependency: CommandDependency(),
         occuredAt: _timestamp,
         locks: const [
           StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
@@ -107,7 +108,8 @@ void main() {
     test('saves a snapshot after the first event', () async {
       await eventStore.saveChanges(
         CommandChanges(
-          dependency: VersionVector(),
+          actor: 'test-actor',
+          dependency: CommandDependency(),
           occuredAt: _timestamp,
           locks: const [
             StreamLock(
@@ -275,7 +277,8 @@ void main() {
 Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
-        dependency: VersionVector(),
+        actor: 'test-actor',
+        dependency: CommandDependency(),
         occuredAt: _timestamp,
         locks: const [
           StreamLock(streamPath: 'account/one', originatingStreamVersion: null),

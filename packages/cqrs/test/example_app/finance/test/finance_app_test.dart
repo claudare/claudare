@@ -11,7 +11,7 @@ void main() {
 
   late FinanceApp app;
 
-  setUp(() {
+  setUp(() async {
     app = FinanceApp(cqrsRuntime: CqrsTestRuntime());
   });
 

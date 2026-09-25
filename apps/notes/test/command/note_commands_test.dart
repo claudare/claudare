@@ -11,16 +11,19 @@ import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
 void main() {
-  CommandTester newTester() =>
-      CommandTester(timeProvider: FakeTimeProviderStatic.zero())
-        ..registerEvent(const NoteContentUpdatedCodec())
-        ..registerEvent(const NoteCreatedCodec())
-        ..registerEvent(const NoteRestoredCodec())
-        ..registerEvent(const NoteTitleUpdatedCodec())
-        ..registerEvent(const NoteTrashedCodec());
+  CommandTester createTester() {
+    final tester =
+        CommandTester(timeProvider: FakeTimeProviderStatic.zero())
+          ..registerEvent(const NoteContentUpdatedCodec())
+          ..registerEvent(const NoteCreatedCodec())
+          ..registerEvent(const NoteRestoredCodec())
+          ..registerEvent(const NoteTitleUpdatedCodec())
+          ..registerEvent(const NoteTrashedCodec());
+    return tester;
+  }
 
   test('create writes a note creation event', () async {
-    final tester = newTester();
+    final tester = createTester();
 
     await tester.run(const CreateNote(noteId: 'one'));
 
@@ -34,7 +37,7 @@ void main() {
 
   test('create rejects an existing note', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await expectLater(
@@ -45,7 +48,7 @@ void main() {
 
   test('title update writes the supplied value', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
@@ -61,7 +64,7 @@ void main() {
 
   test('content update writes the supplied value', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(
@@ -79,14 +82,16 @@ void main() {
 
   test('title update rejects a missing note', () async {
     await expectLater(
-      newTester().run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title')),
+      createTester().run(
+        const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'),
+      ),
       throwsA(isA<StreamNotFoundException>()),
     );
   });
 
   test('content update rejects a missing note', () async {
     await expectLater(
-      newTester().run(
+      createTester().run(
         const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
       ),
       throwsA(isA<StreamNotFoundException>()),
@@ -95,7 +100,7 @@ void main() {
 
   test('trash writes an event for an active note', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(const TrashNote(noteId: 'one'));
@@ -110,7 +115,7 @@ void main() {
 
   test('trash rejects a note that is already trashed', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'))
           ..withEvent(noteStreamRoute, 'one', const NoteTrashed(noteId: 'one'));
 
@@ -122,14 +127,14 @@ void main() {
 
   test('trash rejects a missing note', () async {
     await expectLater(
-      newTester().run(const TrashNote(noteId: 'one')),
+      createTester().run(const TrashNote(noteId: 'one')),
       throwsA(isA<CommandException>()),
     );
   });
 
   test('restore writes an event for a trashed note', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'))
           ..withEvent(noteStreamRoute, 'one', const NoteTrashed(noteId: 'one'));
 
@@ -145,7 +150,7 @@ void main() {
 
   test('restore rejects a note that is not trashed', () async {
     final tester =
-        newTester()
+        createTester()
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await expectLater(

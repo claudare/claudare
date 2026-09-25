@@ -1,5 +1,4 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -11,6 +10,8 @@ import 'package:time_provider/time_provider.dart';
 /// By default uses a memory event store, noop logger, and static time provider
 /// with 0 timestamps.
 final class CqrsTestRuntime extends CqrsRuntime {
+  static const _testActor = 'test-actor';
+
   final EventStore _eventStore;
 
   factory CqrsTestRuntime({
@@ -28,7 +29,12 @@ final class CqrsTestRuntime extends CqrsRuntime {
     Logger logger,
     TimeProvider timeProvider,
   ) : _eventStore = eventStore,
-      super(eventStore: eventStore, logger: logger, timeProvider: timeProvider);
+      super(
+        actor: _testActor,
+        eventStore: eventStore,
+        logger: logger,
+        timeProvider: timeProvider,
+      );
 
   /// Saves [events] in order using codecs in [eventRegistry].
   Future<CqrsTestRuntime> seedEvents(List<TestEvent> events) async {
@@ -45,7 +51,8 @@ final class CqrsTestRuntime extends CqrsRuntime {
       final info = await _eventStore.getStreamVersion(event.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
-          dependency: VersionVector(),
+          actor: _testActor,
+          dependency: CommandDependency(),
           occuredAt: event.occuredAt,
           locks: [
             StreamLock(

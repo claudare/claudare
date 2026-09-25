@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -22,65 +21,90 @@ void main() {
       tearDown(() => session.close());
 
       test('saves and reads a complete bundle', () async {
-        final bundle = _bundle(CommandId(3, 1), paths: ['one', 'two', 'one']);
-        expect(await store.getBundle(bundle.commandId), isNull);
-        expect(await store.saveBundle(bundle), isTrue);
+        final bundle = _bundle(
+          CommandId('actor-1', 1),
+          paths: ['one', 'two', 'one'],
+        );
+        expect(
+          await store.getStoredCommand(
+            CommandId('actor-1', bundle.commandId.sequence),
+          ),
+          isNull,
+        );
+        expect(await store.addStoredCommand(bundle), isTrue);
 
-        final restored = await store.getBundle(bundle.commandId);
+        final restored = await store.getStoredCommand(
+          CommandId('actor-1', bundle.commandId.sequence),
+        );
         expect(restored, isNotNull);
-        expect(restored, bundle);
-        expect(restored!.isValid, isTrue);
+        expect(restored!.toJson(), bundle.toJson());
+        expect(restored.events, isNotEmpty);
         final logged = await runtime.logReader(0).scan().toList();
         expect(logged.map((event) => event.eventId), [
-          EventId(3, 1, 0),
-          EventId(3, 1, 1),
-          EventId(3, 1, 2),
+          EventId('actor-1', 1, 0),
+          EventId('actor-1', 1, 1),
+          EventId('actor-1', 1, 2),
         ]);
         expect(await store.getStreamVersion('one'), isNotNull);
         expect(
           (await session.store.getState()).logVersion,
-          VersionVector({3: 1}),
+          CommandDependency({'actor-1': 1}),
         );
       });
 
       test('returns false for missing dependencies or sequence gaps', () async {
-        final gap = _bundle(CommandId(3, 2));
+        final gap = _bundle(CommandId('actor-1', 2));
         final dependency = _bundle(
-          CommandId(4, 1),
-          dependency: VersionVector({3: 1}),
+          CommandId('actor-2', 1),
+          dependency: CommandDependency({'actor-1': 1}),
         );
-        expect(await store.saveBundle(gap), isFalse);
-        expect(await store.saveBundle(dependency), isFalse);
-        expect(await store.getBundle(gap.commandId), isNull);
+        expect(await store.addStoredCommand(gap), isFalse);
+        expect(await store.addStoredCommand(dependency), isFalse);
+        expect(
+          await store.getStoredCommand(
+            CommandId('actor-1', gap.commandId.sequence),
+          ),
+          isNull,
+        );
         expect((await session.store.getStatistics()).eventCount, 0);
 
-        expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
-        expect(await store.saveBundle(gap), isTrue);
-        expect(await store.saveBundle(dependency), isTrue);
+        expect(
+          await store.addStoredCommand(_bundle(CommandId('actor-1', 1))),
+          isTrue,
+        );
+        expect(await store.addStoredCommand(gap), isTrue);
+        expect(await store.addStoredCommand(dependency), isTrue);
         expect(
           (await session.store.getState()).logVersion,
-          VersionVector({3: 2, 4: 1}),
+          CommandDependency({'actor-1': 2, 'actor-2': 1}),
         );
       });
 
-      test('rejects incomplete bundles without writing', () async {
-        final valid = _bundle(CommandId(2, 1));
-        final invalid = CommandBundle(
+      test('rejects commands without events without writing', () async {
+        final valid = _bundle(CommandId('actor-2', 1));
+        final invalid = StoredCommand(
           commandId: valid.commandId,
           dependency: valid.dependency,
           occuredAt: valid.occuredAt,
           events: const [],
         );
         await expectLater(
-          Future.sync(() => store.saveBundle(invalid)),
+          Future.sync(() => store.addStoredCommand(invalid)),
           throwsArgumentError,
         );
-        expect(await store.getBundle(valid.commandId), isNull);
+        expect(
+          await store.getStoredCommand(valid.commandId),
+          isNull,
+        );
       });
 
       test('keeps log positions and stream versions contiguous', () async {
-        await store.saveBundle(_bundle(CommandId(2, 1), paths: ['one', 'two']));
-        await store.saveBundle(_bundle(CommandId(4, 1), paths: ['one']));
+        await store.addStoredCommand(
+          _bundle(CommandId('actor-1', 1), paths: ['one', 'two']),
+        );
+        await store.addStoredCommand(
+          _bundle(CommandId('actor-2', 1), paths: ['one']),
+        );
         final events = await runtime.logReader(0).scan().toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
         expect(events.map((event) => event.version), [0, 0, 1]);
@@ -96,21 +120,24 @@ void main() {
           );
           await store.saveChanges(_changes('one', 0));
           expect(
-            (await store.getBundle(CommandId(0, 1)))!.events,
+            (await store.getStoredCommand(CommandId('test-actor', 1)))!.events,
             hasLength(1),
           );
           expect(
-            (await store.getBundle(CommandId(0, 2)))!.events,
+            (await store.getStoredCommand(CommandId('test-actor', 2)))!.events,
             hasLength(1),
           );
-          expect((await store.getBundle(CommandId(0, 3))), isNull);
+          expect(
+            (await store.getStoredCommand(CommandId('test-actor', 3))),
+            isNull,
+          );
           expect(await store.getStreamVersion('one'), 1);
         },
       );
 
       test('reads paged log history with an inclusive cursor', () async {
-        for (final actor in [1, 2, 3]) {
-          await store.saveBundle(_bundle(CommandId(actor, 1)));
+        for (final actor in ['actor-1', 'actor-2', 'actor-3']) {
+          await store.addStoredCommand(_bundle(CommandId(actor, 1)));
         }
         final reader = runtime.logReader(0);
         expect(await reader.loadMore(), isTrue);
@@ -123,19 +150,24 @@ void main() {
       });
 
       test('reads one stream from an inclusive version', () async {
-        await store.saveBundle(_bundle(CommandId(1, 1), paths: ['one', 'two']));
-        await store.saveBundle(_bundle(CommandId(1, 2), paths: ['one']));
+        await store.addStoredCommand(
+          _bundle(CommandId('actor-1', 1), paths: ['one', 'two']),
+        );
+        await store.addStoredCommand(
+          _bundle(CommandId('actor-1', 2), paths: ['one']),
+        );
         final events =
             await runtime.streamReader('one', fromVersion: 1).scan().toList();
         expect(events.single.version, 1);
-        expect(events.single.eventId.commandId, CommandId(1, 2));
+        expect(events.single.eventId.commandId, CommandId('actor-1', 2));
       });
     });
   }
 }
 
 CommandChanges _changes(String path, int? version) => CommandChanges(
-  dependency: VersionVector(),
+  actor: 'test-actor',
+  dependency: CommandDependency(),
   occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
   locks: [StreamLock(streamPath: path, originatingStreamVersion: version)],
   events: [
@@ -147,19 +179,19 @@ CommandChanges _changes(String path, int? version) => CommandChanges(
   ],
 );
 
-CommandBundle _bundle(
+StoredCommand _bundle(
   CommandId id, {
   List<String> paths = const ['one'],
-  VersionVector? dependency,
+  CommandDependency? dependency,
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(300, isUtc: true);
-  return CommandBundle(
+  return StoredCommand(
     commandId: id,
-    dependency: dependency ?? VersionVector(),
+    dependency: dependency ?? CommandDependency(),
     occuredAt: time,
     events: [
       for (final (index, path) in paths.indexed)
-        BundledEvent(
+        StoredCommandEvent(
           streamPath: path,
           encodedEvent: EncodedEvent(
             kind: 'event-$index',

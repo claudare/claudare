@@ -1,6 +1,5 @@
 import 'dart:typed_data' show Uint8List;
 
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -76,7 +75,8 @@ CommandChanges _changes({
 }) {
   final timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return CommandChanges(
-    dependency: VersionVector(),
+    actor: 'test-actor',
+    dependency: CommandDependency(),
     occuredAt: timestamp,
     locks: [
       for (final path in lockPaths)

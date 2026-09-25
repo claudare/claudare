@@ -9,9 +9,9 @@ not make confidentiality, integrity, multi-device, or recovery claims for core.
 
 ## Data at rest
 
-`core` stores encoded command and event payloads through an application-selected
-event store. Encoding is neither confidentiality nor authentication. Its local,
-stream versions, dots, and version-vector fields are not signed identities,
+`cqrs` stores encoded command and event payloads through an application-selected
+event store. Encoding is neither confidentiality nor authentication. Its actor
+strings, stream versions, command IDs, and dependencies are not signed identities,
 deduplication guarantees, or replay defenses.
 
 ## Identity and multi-device boundary

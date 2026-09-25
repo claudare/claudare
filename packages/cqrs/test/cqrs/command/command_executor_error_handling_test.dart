@@ -95,6 +95,7 @@ void main() {
 CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
   final registry = EventRegistry()..add(const _EventCodec());
   return CommandExecutor(
+    actor: 'test-actor',
     eventStore: eventStore ?? database,
     streamReader:
         CqrsTestRuntime(eventStore: eventStore ?? database).streamReader,

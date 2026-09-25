@@ -1,8 +1,10 @@
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/command_bundle.dart';
+import 'package:cqrs/src/cqrs/command/stored_command.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -57,14 +59,14 @@ class MemoryEventStore implements EventStore {
     throw StateError('log event has no stream link');
   }
 
-  VersionVector _logVersion() {
-    final values = <int, int>{};
+  CommandDependency _logVersion() {
+    final values = <String, int>{};
     for (final command in _commands) {
       final id = command.commandId;
-      final current = values[id.actorId] ?? 0;
-      if (id.sequence > current) values[id.actorId] = id.sequence;
+      final current = values[id.actor] ?? 0;
+      if (id.sequence > current) values[id.actor] = id.sequence;
     }
-    return VersionVector(values);
+    return CommandDependency(values);
   }
 
   @override
@@ -167,18 +169,18 @@ class MemoryEventStore implements EventStore {
   );
 
   @override
-  Future<CommandBundle?> getBundle(CommandId commandId) =>
-      _read('Failed to get command bundle $commandId', () {
+  Future<StoredCommand?> getStoredCommand(CommandId commandId) =>
+      _read('Failed to get stored command $commandId', () {
         for (final command in _commands) {
           if (command.commandId == commandId) {
-            return CommandBundle(
-              commandId: command.commandId,
+            return StoredCommand(
+              commandId: commandId,
               dependency: command.dependency,
               occuredAt: command.occuredAt,
               events: [
                 for (var index = 0; index < _events.length; index++)
                   if (_events[index].eventId.commandId == commandId)
-                    BundledEvent(
+                    StoredCommandEvent(
                       streamPath: _streamPosition(index).$1,
                       encodedEvent: _events[index].encodedEvent,
                       occuredAt: _events[index].occuredAt,
@@ -190,48 +192,73 @@ class MemoryEventStore implements EventStore {
         return null;
       });
 
-  bool _isReady(CommandBundle bundle) {
-    final frontier = _logVersion();
-    return frontier.contains(bundle.dependency) &&
-        frontier.value(bundle.commandId.actorId) + 1 ==
-            bundle.commandId.sequence;
-  }
-
-  void _appendValidated(CommandBundle bundle) {
-    _commands.add(
-      _MemoryLogCommand(
-        commandId: bundle.commandId,
-        dependency: bundle.dependency,
-        occuredAt: bundle.occuredAt,
-        logPosition: _commands.length,
-      ),
+  void _append({
+    required CommandId commandId,
+    required CommandDependency dependency,
+    required DateTime occuredAt,
+    required List<EventAppend> events,
+  }) {
+    final command = _MemoryLogCommand(
+      commandId: commandId,
+      dependency: dependency,
+      occuredAt: occuredAt,
+      logPosition: _commands.length,
     );
-    for (final (index, event) in bundle.events.indexed) {
-      final eventIndex = _events.length;
-      _events.add(
+    final appended = <_MemoryLogEvent>[];
+    final streamVersions = <String, List<int>>{};
+    for (final (index, event) in events.indexed) {
+      final eventIndex = _events.length + index;
+      appended.add(
         _MemoryLogEvent(
-          eventId: EventId(
-            bundle.commandId.actorId,
-            bundle.commandId.sequence,
-            index,
-          ),
+          eventId: EventId(commandId.actor, commandId.sequence, index),
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
-          logPosition: _events.length,
+          logPosition: eventIndex,
         ),
       );
-      _streamVersions.putIfAbsent(event.streamPath, () => []).add(eventIndex);
+      streamVersions
+          .putIfAbsent(
+            event.streamPath,
+            () => [...?_streamVersions[event.streamPath]],
+          )
+          .add(eventIndex);
     }
+    _commands.add(command);
+    _events.addAll(appended);
+    _streamVersions.addAll(streamVersions);
   }
 
   @override
-  Future<bool> saveBundle(CommandBundle bundle) =>
-      _write('Failed to save command bundle', () => _saveBundle(bundle));
+  Future<bool> addStoredCommand(StoredCommand command) =>
+      _write('Failed to add stored command', () {
+        if (command.events.isEmpty) {
+          throw ArgumentError('stored command must contain events');
+        }
+        final frontier = _logVersion();
+        if (!frontier.contains(command.dependency) ||
+            frontier.value(command.commandId.actor) + 1 !=
+                command.commandId.sequence) {
+          return false;
+        }
+        _append(
+          commandId: command.commandId,
+          dependency: command.dependency,
+          occuredAt: command.occuredAt,
+          events: [
+            for (final event in command.events)
+              EventAppend(
+                streamPath: event.streamPath,
+                encodedEvent: event.encodedEvent,
+                occuredAt: event.occuredAt,
+              ),
+          ],
+        );
+        return true;
+      });
 
   @override
   Future<void> saveChanges(CommandChanges changes) =>
       _write('Failed to append command batch', () {
-        const actorId = 0;
         if (changes.events.isEmpty) return;
         if (!changes.isValid()) {
           throw ArgumentError('every appended event must have one stream lock');
@@ -247,44 +274,19 @@ class MemoryEventStore implements EventStore {
           }
         }
 
-        final commandId = CommandId(
-          actorId,
-          state.logVersion.value(actorId) + 1,
+        final sequence = state.logVersion.value(changes.actor) + 1;
+        _append(
+          commandId: CommandId(changes.actor, sequence),
+          dependency: changes.dependency,
+          occuredAt: changes.occuredAt,
+          events: changes.events,
         );
-        final events = <BundledEvent>[];
-        for (var i = 0; i < changes.events.length; i++) {
-          final event = changes.events[i];
-          events.add(
-            BundledEvent(
-              streamPath: event.streamPath,
-              encodedEvent: event.encodedEvent,
-              occuredAt: event.occuredAt,
-            ),
-          );
-        }
-
-        final saved = _saveBundle(
-          CommandBundle(
-            commandId: commandId,
-            dependency: changes.dependency,
-            occuredAt: changes.occuredAt,
-            events: events,
-          ),
-        );
-        if (!saved) throw StateError('local command is out of order');
       });
-
-  bool _saveBundle(CommandBundle bundle) {
-    if (!bundle.isValid) throw ArgumentError('invalid command bundle');
-    if (!_isReady(bundle)) return false;
-    _appendValidated(bundle);
-    return true;
-  }
 }
 
 class _MemoryLogCommand {
   final CommandId commandId;
-  final VersionVector dependency;
+  final CommandDependency dependency;
   final DateTime occuredAt;
   final int logPosition;
 

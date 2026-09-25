@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/command_bundle.dart';
+import 'package:cqrs/src/cqrs/command/stored_command.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -18,7 +20,7 @@ final eventDatabaseMigrations = SqliteMigrations(
   SqliteMigration(1, (tx) {
     tx.execute('''CREATE TABLE command(
             log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            id_actor INTEGER NOT NULL,
+            id_actor TEXT NOT NULL,
             id_sequence INTEGER NOT NULL,
             dependency BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
@@ -34,7 +36,7 @@ final eventDatabaseMigrations = SqliteMigrations(
           );''');
     tx.execute('''CREATE TABLE event(
             log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            id_actor INTEGER NOT NULL,
+            id_actor TEXT NOT NULL,
             id_sequence INTEGER NOT NULL,
             id_index INTEGER NOT NULL CHECK(id_index >= 0),
             stream_path TEXT NOT NULL,
@@ -66,6 +68,7 @@ class SqliteEventStore implements EventStore {
     }
   }
 
+  // FIXME: this swallows the errors
   Future<T> _transaction<T>(
     String message,
     T Function(SyncContext) action,
@@ -84,6 +87,7 @@ class SqliteEventStore implements EventStore {
 
   Future<void> close() => _database.close();
 
+  /// Creates or migrates the event schema before use.
   Future<void> migrate() => eventDatabaseMigrations.migrate(_database);
 
   @override
@@ -119,7 +123,7 @@ class SqliteEventStore implements EventStore {
         StoredEvent(
           streamPath: streamPath,
           eventId: EventId(
-            row.field<int>('id_actor'),
+            row.field<String>('id_actor'),
             row.field<int>('id_sequence'),
             row.field<int>('id_index'),
           ),
@@ -158,7 +162,7 @@ class SqliteEventStore implements EventStore {
             StoredEvent(
               streamPath: row.field<String>('stream_path'),
               eventId: EventId(
-                row.field<int>('id_actor'),
+                row.field<String>('id_actor'),
                 row.field<int>('id_sequence'),
                 row.field<int>('id_index'),
               ),
@@ -190,31 +194,33 @@ class SqliteEventStore implements EventStore {
   });
 
   @override
-  Future<CommandBundle?> getBundle(CommandId commandId) =>
-      _transaction('Failed to get command bundle $commandId', (tx) {
+  Future<StoredCommand?> getStoredCommand(CommandId commandId) =>
+      _transaction('Failed to get stored command $commandId', (tx) {
         final row = tx.queryRow(
           '''SELECT dependency, occured_at
           FROM command
           WHERE id_actor = ?
             AND id_sequence = ?;''',
-          [commandId.actorId, commandId.sequence],
+          [commandId.actor, commandId.sequence],
         );
         if (row == null) return null;
+
         final rows = tx.query(
           '''SELECT stream_path, kind, detail, occured_at
           FROM event
           WHERE id_actor = ?
             AND id_sequence = ?
           ORDER BY id_index ASC;''',
-          [commandId.actorId, commandId.sequence],
+          [commandId.actor, commandId.sequence],
         );
-        return CommandBundle(
+
+        return StoredCommand(
           commandId: commandId,
-          dependency: _decodeVector(row.field<Uint8List>('dependency')),
+          dependency: _decodeDependency(row.field<Uint8List>('dependency')),
           occuredAt: _date(row.field<int>('occured_at')),
           events: [
             for (final row in rows)
-              BundledEvent(
+              StoredCommandEvent(
                 streamPath: row.field<String>('stream_path'),
                 encodedEvent: EncodedEvent(
                   kind: row.field<String>('kind'),
@@ -227,10 +233,8 @@ class SqliteEventStore implements EventStore {
       });
 
   @override
-  Future<void> saveChanges(CommandChanges changes) => _transaction(
-    'Failed to append command batch',
-    (tx) {
-      const actorId = 0;
+  Future<void> saveChanges(CommandChanges changes) {
+    return _transaction('Failed to append command batch', (tx) {
       if (changes.events.isEmpty) return;
       if (!changes.isValid()) {
         throw ArgumentError('every appended event must have one stream lock');
@@ -239,6 +243,7 @@ class SqliteEventStore implements EventStore {
       if (!state.logVersion.contains(changes.dependency)) {
         throw StateError('command dependency is not in the log');
       }
+
       for (final lock in changes.locks) {
         final current = _getStreamVersion(tx, lock.streamPath);
         if (current != lock.originatingStreamVersion) {
@@ -246,142 +251,148 @@ class SqliteEventStore implements EventStore {
         }
       }
 
-      final commandId = CommandId(actorId, state.logVersion.value(actorId) + 1);
-      final events = <BundledEvent>[];
-      for (var i = 0; i < changes.events.length; i++) {
-        final event = changes.events[i];
-        events.add(
-          BundledEvent(
-            streamPath: event.streamPath,
-            encodedEvent: event.encodedEvent,
-            occuredAt: event.occuredAt,
-          ),
-        );
-      }
-
-      final saved = _saveBundle(
+      final sequence = state.logVersion.value(changes.actor) + 1;
+      _append(
         tx,
-        CommandBundle(
-          commandId: commandId,
-          dependency: changes.dependency,
-          occuredAt: changes.occuredAt,
-          events: events,
-        ),
+        commandId: CommandId(changes.actor, sequence),
+        dependency: changes.dependency,
+        occuredAt: changes.occuredAt,
+        events: changes.events,
       );
-      if (!saved) throw StateError('local command is out of order');
-    },
-  );
+    });
+  }
 
   @override
-  Future<bool> saveBundle(CommandBundle bundle) => _transaction(
-    'Failed to save command bundle',
-    (tx) => _saveBundle(tx, bundle),
-  );
-}
+  Future<bool> addStoredCommand(StoredCommand command) =>
+      _transaction('Failed to add stored command', (tx) {
+        if (command.events.isEmpty) {
+          throw ArgumentError('stored command must contain events');
+        }
+        final frontier = _getState(tx).logVersion;
+        if (!frontier.contains(command.dependency) ||
+            frontier.value(command.commandId.actor) + 1 !=
+                command.commandId.sequence) {
+          return false;
+        }
+        _append(
+          tx,
+          commandId: command.commandId,
+          dependency: command.dependency,
+          occuredAt: command.occuredAt,
+          events: [
+            for (final event in command.events)
+              EventAppend(
+                streamPath: event.streamPath,
+                encodedEvent: event.encodedEvent,
+                occuredAt: event.occuredAt,
+              ),
+          ],
+        );
+        return true;
+      });
 
-EventDatabaseState _getState(SyncContext tx) {
-  final counters =
-      tx.queryRow('''SELECT
-    (SELECT MAX(log_position) FROM command) AS command_position,
-    (SELECT MAX(log_position) FROM event) AS event_position''')!;
-  final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence
-    FROM command GROUP BY id_actor ORDER BY id_actor''');
-  return EventDatabaseState(
-    lastCommandLogPosition: counters.field<int?>('command_position'),
-    lastEventLogPosition: counters.field<int?>('event_position'),
-    logVersion: VersionVector({
-      for (final row in vectors)
-        row.field<int>('id_actor'): row.field<int>('id_sequence'),
-    }),
-  );
-}
-
-int? _getStreamVersion(SyncContext tx, String streamPath) => tx
-    .queryRow('SELECT version FROM stream WHERE stream_path = ?', [streamPath])
-    ?.field<int>('version');
-
-bool _saveBundle(SyncContext tx, CommandBundle bundle) {
-  if (!bundle.isValid) throw ArgumentError('invalid command bundle');
-  final frontier = _getState(tx).logVersion;
-  if (!frontier.contains(bundle.dependency) ||
-      frontier.value(bundle.commandId.actorId) + 1 !=
-          bundle.commandId.sequence) {
-    return false;
+  EventDatabaseState _getState(SyncContext tx) {
+    final counters =
+        tx.queryRow('''SELECT
+      (SELECT MAX(log_position) FROM command) AS command_position,
+      (SELECT MAX(log_position) FROM event) AS event_position''')!;
+    final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence
+      FROM command
+      GROUP BY id_actor
+      ORDER BY id_actor;''');
+    return EventDatabaseState(
+      lastCommandLogPosition: counters.field<int?>('command_position'),
+      lastEventLogPosition: counters.field<int?>('event_position'),
+      logVersion: CommandDependency({
+        for (final row in vectors)
+          row.field<String>('id_actor'): row.field<int>('id_sequence'),
+      }),
+    );
   }
-  _insertLog(tx, bundle);
-  return true;
-}
 
-void _insertLog(SyncContext tx, CommandBundle bundle) {
-  final id = bundle.commandId;
-  tx.execute(
-    '''INSERT INTO command(log_position, id_actor, id_sequence,
-    dependency, occured_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?);''',
-    [
-      _nextLogPosition(tx, 'command'),
-      id.actorId,
-      id.sequence,
-      _encodeVector(bundle.dependency),
-      bundle.occuredAt.millisecondsSinceEpoch,
-      bundle.events.length,
-    ],
-  );
-  _insertLogEvents(tx, bundle);
-}
+  int? _getStreamVersion(SyncContext tx, String streamPath) => tx
+      .queryRow('SELECT version FROM stream WHERE stream_path = ?', [
+        streamPath,
+      ])
+      ?.field<int>('version');
 
-int _nextLogPosition(SyncContext tx, String table) {
-  final highest = tx
-      .queryRow('SELECT MAX(log_position) AS position FROM $table')!
-      .field<int?>('position');
-  return highest == null ? 0 : highest + 1;
-}
-
-void _insertLogEvents(SyncContext tx, CommandBundle bundle) {
-  var logPosition = _nextLogPosition(tx, 'event');
-  final versions = <String, int>{};
-  for (final (index, event) in bundle.events.indexed) {
-    final version =
-        (versions[event.streamPath] ??
-            _getStreamVersion(tx, event.streamPath) ??
-            -1) +
-        1;
-    versions[event.streamPath] = version;
+  void _append(
+    SyncContext tx, {
+    required CommandId commandId,
+    required CommandDependency dependency,
+    required DateTime occuredAt,
+    required List<EventAppend> events,
+  }) {
     tx.execute(
-      '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
-      stream_path, stream_version, kind, detail, occured_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
+      '''INSERT INTO command(log_position, id_actor, id_sequence,
+      dependency, occured_at, event_count)
+      VALUES (?, ?, ?, ?, ?, ?);''',
       [
-        logPosition++,
-        bundle.commandId.actorId,
-        bundle.commandId.sequence,
-        index,
-        event.streamPath,
-        version,
-        event.encodedEvent.kind,
-        event.encodedEvent.bytes,
-        event.occuredAt.millisecondsSinceEpoch,
+        _nextLogPosition(tx, 'command'),
+        commandId.actor,
+        commandId.sequence,
+        _encodeDependency(dependency),
+        occuredAt.millisecondsSinceEpoch,
+        events.length,
       ],
     );
-    _updateStreamVersion(tx, event.streamPath, version);
+    _insertLogEvents(tx, commandId, events);
   }
-}
 
-void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
-  tx.execute(
-    '''INSERT INTO stream(stream_path, version)
-    VALUES (?, ?)
-    ON CONFLICT(stream_path)
-      DO UPDATE SET version = excluded.version;''',
-    [streamPath, version],
-  );
+  int _nextLogPosition(SyncContext tx, String table) {
+    final highest = tx
+        .queryRow('SELECT MAX(log_position) AS position FROM $table')!
+        .field<int?>('position');
+    return highest == null ? 0 : highest + 1;
+  }
+
+  void _insertLogEvents(
+    SyncContext tx,
+    CommandId commandId,
+    List<EventAppend> events,
+  ) {
+    var logPosition = _nextLogPosition(tx, 'event');
+
+    for (final (index, event) in events.indexed) {
+      final version = (_getStreamVersion(tx, event.streamPath) ?? -1) + 1;
+      tx.execute(
+        '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
+        stream_path, stream_version, kind, detail, occured_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
+        [
+          logPosition++,
+          commandId.actor,
+          commandId.sequence,
+          index,
+          event.streamPath,
+          version,
+          event.encodedEvent.kind,
+          event.encodedEvent.bytes,
+          event.occuredAt.millisecondsSinceEpoch,
+        ],
+      );
+      _updateStreamVersion(tx, event.streamPath, version);
+    }
+  }
+
+  void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
+    tx.execute(
+      '''INSERT INTO stream(stream_path, version)
+      VALUES (?, ?)
+      ON CONFLICT(stream_path)
+        DO UPDATE SET version = excluded.version;''',
+      [streamPath, version],
+    );
+  }
 }
 
 DateTime _date(int value) =>
     DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
 
-Uint8List _encodeVector(VersionVector vector) =>
+Uint8List _encodeDependency(CommandDependency vector) =>
     JsonConverter.encode(vector.toJson());
 
-VersionVector _decodeVector(Uint8List value) =>
-    VersionVector.fromJson(JsonConverter.decode<List<dynamic>>(value));
+CommandDependency _decodeDependency(Uint8List value) =>
+    CommandDependency.fromJson(
+      JsonConverter.decode<Map<String, dynamic>>(value),
+    );

@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
-import 'package:cqrs/src/cqrs/command/command_bundle.dart';
+import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -32,23 +32,23 @@ void main() {
 
     await _seedCommand(
       database,
-      commandId: CommandId(1, 1),
+      commandId: CommandId('actor-1', 1),
       streamPaths: const ['target', 'target'],
     );
     await _seedCommand(
       database,
-      commandId: CommandId(2, 1),
+      commandId: CommandId('actor-2', 1),
       streamPaths: const ['target'],
     );
     await _seedCommand(
       database,
-      commandId: CommandId(1, 2),
-      dependency: VersionVector({1: 1}),
+      commandId: CommandId('actor-1', 2),
+      dependency: CommandDependency({'actor-1': 1}),
       streamPaths: const ['target'],
     );
     await _seedCommand(
       database,
-      commandId: CommandId(3, 1),
+      commandId: CommandId('actor-3', 1),
       streamPaths: const ['unrelated'],
     );
   });
@@ -61,8 +61,8 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.dependency,
-      VersionVector(),
+      (await database.getStoredCommand(CommandId('test-actor', 1)))!.dependency,
+      CommandDependency(),
     );
   });
 
@@ -74,8 +74,8 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.dependency,
-      VersionVector({1: 1}),
+      (await database.getStoredCommand(CommandId('test-actor', 1)))!.dependency,
+      CommandDependency({'actor-1': 1}),
     );
   });
 
@@ -87,8 +87,8 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.dependency,
-      VersionVector({1: 2, 2: 1}),
+      (await database.getStoredCommand(CommandId('test-actor', 1)))!.dependency,
+      CommandDependency({'actor-1': 2, 'actor-2': 1}),
     );
   });
 
@@ -100,8 +100,8 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.dependency,
-      VersionVector({1: 2, 2: 1}),
+      (await database.getStoredCommand(CommandId('test-actor', 1)))!.dependency,
+      CommandDependency({'actor-1': 2, 'actor-2': 1}),
     );
   });
 
@@ -114,8 +114,8 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.dependency,
-      VersionVector({1: 2, 2: 1, 3: 1}),
+      (await database.getStoredCommand(CommandId('test-actor', 1)))!.dependency,
+      CommandDependency({'actor-1': 2, 'actor-2': 1, 'actor-3': 1}),
     );
   });
 
@@ -149,6 +149,7 @@ void main() {
 
   test('stopping scan applies and locks only the yielded', () async {
     final context = CommandContext(
+      actor: 'test-actor',
       eventStore: eventStore,
       streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
       eventRegistry: eventRegistry,
@@ -163,7 +164,7 @@ void main() {
     }
 
     final changes = context.finish();
-    expect(changes.dependency, VersionVector({1: 1}));
+    expect(changes.dependency, CommandDependency({'actor-1': 1}));
     expect(changes.locks, hasLength(1));
     expect(changes.locks.single.originatingStreamVersion, 1);
   });
@@ -175,6 +176,7 @@ Future<void> _execute(
   Future<void> Function(CommandContextApi context) handle,
 ) async {
   final executor = CommandExecutor(
+    actor: 'test-actor',
     eventStore: eventStore,
     streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
     timeProvider: FakeTimeProviderStatic.zero(),
@@ -188,16 +190,16 @@ Future<bool> _seedCommand(
   MemoryEventStore database, {
   required CommandId commandId,
   required List<String> streamPaths,
-  VersionVector? dependency,
+  CommandDependency? dependency,
 }) {
-  return database.saveBundle(
-    CommandBundle(
+  return database.addStoredCommand(
+    StoredCommand(
       commandId: commandId,
-      dependency: dependency ?? VersionVector(),
+      dependency: dependency ?? CommandDependency(),
       occuredAt: _timestamp,
       events: [
         for (var index = 0; index < streamPaths.length; index++)
-          BundledEvent(
+          StoredCommandEvent(
             streamPath: streamPaths[index],
             encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
             occuredAt: _timestamp,

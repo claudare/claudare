@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
@@ -69,7 +69,8 @@ Future<void> _appendCount(EventStore store, int count) async {
   for (var i = 0; i < count; i++) {
     await store.saveChanges(
       CommandChanges(
-        dependency: VersionVector(),
+        actor: 'test-actor',
+        dependency: CommandDependency(),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         locks: [
           StreamLock(

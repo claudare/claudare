@@ -1,5 +1,6 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency_builder.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
@@ -16,6 +17,7 @@ part 'command_stream.dart';
 /// Collects a command's ordered events, stream locks, and dependencies.
 class CommandContext implements CommandContextApi {
   final EventStore _eventStore;
+  final String _actor;
   final StreamReader _streamReader;
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
@@ -23,16 +25,18 @@ class CommandContext implements CommandContextApi {
   final DateTime _occuredAt;
   final List<EventAppend> _events = [];
   final Map<String, _CommandStreamState> _streams = {};
-  final VersionVectorMutating _dependency = VersionVectorMutating();
+  final CommandDependencyBuilder _dependency = CommandDependencyBuilder();
   bool _finished = false;
 
   CommandContext({
     required EventStore eventStore,
+    required String actor,
     required StreamReader streamReader,
     required EventRegistry eventRegistry,
     required TimeProvider timeProvider,
     required Logger logger,
   }) : _eventStore = eventStore,
+       _actor = actor,
        _streamReader = streamReader,
        _eventRegistry = eventRegistry,
        _timeProvider = timeProvider,
@@ -42,7 +46,7 @@ class CommandContext implements CommandContextApi {
   @override
   Logger get logger => _logger;
 
-  VersionVector get dependency => _dependency.toVersionVector();
+  CommandDependency get dependency => _dependency.finish();
 
   @override
   CommandStream<TEvent> stream<TEvent extends Object>(String streamPath) {
@@ -60,6 +64,7 @@ class CommandContext implements CommandContextApi {
     }
 
     return CommandChanges(
+      actor: _actor,
       dependency: dependency,
       occuredAt: _occuredAt,
       locks: List.unmodifiable(

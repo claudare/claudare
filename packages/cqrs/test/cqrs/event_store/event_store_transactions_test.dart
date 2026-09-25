@@ -21,7 +21,7 @@ void main() {
         final state = await store.getState();
         expect(state.lastCommandLogPosition, isNull);
         expect(state.lastEventLogPosition, isNull);
-        expect(state.logVersion, VersionVector());
+        expect(state.logVersion, CommandDependency());
         expect(await store.getStreamVersion('missing'), isNull);
       });
 
@@ -36,7 +36,10 @@ void main() {
         await store.saveChanges(_changes('one', count: 0));
         expect((await store.getState()).lastCommandLogPosition, isNull);
         await store.saveChanges(_changes('one'));
-        expect(await store.getBundle(CommandId(0, 1)), isNotNull);
+        expect(
+          await store.getStoredCommand(CommandId('test-actor', 1)),
+          isNotNull,
+        );
       });
 
       test(
@@ -44,7 +47,7 @@ void main() {
         () async {
           await expectLater(
             store.saveChanges(
-              _changes('one', dependency: VersionVector({7: 1})),
+              _changes('one', dependency: CommandDependency({'actor-7': 1})),
             ),
             throwsStateError,
           );
@@ -58,6 +61,7 @@ void main() {
         await expectLater(
           store.saveChanges(
             CommandChanges(
+              actor: 'test-actor',
               dependency: changes.dependency,
               occuredAt: changes.occuredAt,
               locks: [],
@@ -87,7 +91,7 @@ void main() {
         final state = await store.getState();
         expect(state.lastCommandLogPosition, 1);
         expect(state.lastEventLogPosition, 3);
-        expect(state.logVersion, VersionVector({0: 2}));
+        expect(state.logVersion, CommandDependency({'test-actor': 2}));
       });
 
       test(
@@ -98,21 +102,28 @@ void main() {
               store.saveChanges(_changes('stream/$i')),
           ]);
           final state = await store.getState();
-          expect(state.logVersion, VersionVector({0: 12}));
+          expect(state.logVersion, CommandDependency({'test-actor': 12}));
           expect(state.lastCommandLogPosition, 11);
           expect(state.lastEventLogPosition, 11);
           for (var sequence = 1; sequence <= 12; sequence++) {
-            expect(await store.getBundle(CommandId(0, sequence)), isNotNull);
+            expect(
+              await store.getStoredCommand(CommandId('test-actor', sequence)),
+              isNotNull,
+            );
           }
         },
       );
 
       test('duplicate bundles leave the log unchanged', () async {
         await store.saveChanges(_changes('one'));
-        final bundle = (await store.getBundle(CommandId(0, 1)))!;
-        expect(await store.saveBundle(bundle), isFalse);
+        final bundle =
+            (await store.getStoredCommand(CommandId('test-actor', 1)))!;
+        expect(await store.addStoredCommand(bundle), isFalse);
         expect((await store.getStatistics()).eventCount, 1);
-        expect((await store.getState()).logVersion, VersionVector({0: 1}));
+        expect(
+          (await store.getState()).logVersion,
+          CommandDependency({'test-actor': 1}),
+        );
       });
     });
   }
@@ -173,11 +184,12 @@ CommandChanges _changes(
   String path, {
   int count = 1,
   int? version,
-  VersionVector? dependency,
+  CommandDependency? dependency,
 }) {
   final timestamp = DateTime.utc(2026);
   return CommandChanges(
-    dependency: dependency ?? VersionVector(),
+    actor: 'test-actor',
+    dependency: dependency ?? CommandDependency(),
     occuredAt: timestamp,
     locks: [StreamLock(streamPath: path, originatingStreamVersion: version)],
     events: [

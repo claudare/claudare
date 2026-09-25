@@ -4,6 +4,8 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:time_provider/time_provider.dart';
 
+const devActor = 'notes-dev';
+
 /// Opens the event database and owns its lifetime.
 class NoteBootstrap {
   final Logger logger;
@@ -36,6 +38,7 @@ class NoteBootstrap {
       final eventStore = SqliteEventStore(_sqlite);
       final runtime = CqrsRuntime(
         eventStore: eventStore,
+        actor: devActor,
         logger: logger,
         timeProvider: timeProvider,
       );

@@ -43,6 +43,26 @@ void main() {
       expect((events.first as AccountAtmDeposited).amount, 42);
     });
 
+    test('writes to an injected store without actor setup', () async {
+      final store = MemoryEventStore();
+      final tester =
+          CommandTester(timeProvider: timeProvider, eventStore: store)
+            ..registerEvent(const AccountOpenedCodec())
+            ..registerEvent(const AccountAtmDepositedCodec());
+      tester.withEvent(
+        accountStreamRoute,
+        '123',
+        AccountOpened(accountId: '123', name: 'test'),
+      );
+      await tester.run(AtmDeposit(accountId: '123', amount: 42));
+      expect(
+        (await store.getStoredCommand(
+          CommandId('test-actor', 2),
+        ))!.events.length,
+        1,
+      );
+    });
+
     // try to append to event that does not exist
     test('propagates exception', () async {
       await expectLater(

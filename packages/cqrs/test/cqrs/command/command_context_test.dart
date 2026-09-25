@@ -22,6 +22,7 @@ void main() {
 
   CommandContext createContext({EventRegistry? eventRegistry}) =>
       CommandContext(
+        actor: 'test-actor',
         eventStore: store,
         streamReader: CqrsTestRuntime(eventStore: store).streamReader,
         eventRegistry: eventRegistry ?? registry,
@@ -37,7 +38,8 @@ void main() {
     for (var index = 0; index < 2; index++) {
       await store.saveChanges(
         CommandChanges(
-          dependency: VersionVector(),
+          actor: 'test-actor',
+          dependency: CommandDependency(),
           occuredAt: _timestamp,
           locks: [
             StreamLock(
@@ -157,7 +159,7 @@ void main() {
         pause.resume();
         await pendingFailure;
 
-        expect(context.dependency, VersionVector());
+        expect(context.dependency, CommandDependency());
         expect(context.finish, throwsStateError);
       });
     });
@@ -202,7 +204,7 @@ void main() {
     );
 
     final changes = failingContext.finish();
-    expect(changes.dependency, VersionVector({0: 1}));
+    expect(changes.dependency, CommandDependency({'test-actor': 1}));
     expect(changes.locks.single.originatingStreamVersion, 0);
   });
 
@@ -213,7 +215,10 @@ void main() {
 
     await failingContext.stream<_Event>('existing').lockLatest();
 
-    expect(failingContext.finish().dependency, VersionVector({0: 2}));
+    expect(
+      failingContext.finish().dependency,
+      CommandDependency({'test-actor': 2}),
+    );
   });
 
   final failedAcquisitions = [

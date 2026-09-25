@@ -1,12 +1,11 @@
 import 'dart:typed_data';
 
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('memory backend is ready without initialization', () async {
+  test('memory backend returns a ready store', () async {
     final session = await const MemoryEventStoreTestBackend().open();
     addTearDown(session.close);
     expect((await session.store.getState()).lastEventLogPosition, null);
@@ -33,13 +32,15 @@ void main() {
 
       test('reconstructs interleaved stream paths', () async {
         expect(
-          await database.saveBundle(
-            _bundle(CommandId(1, 1), ['one', 'two', 'one']),
+          await database.addStoredCommand(
+            _bundle(CommandId('actor-1', 1), ['one', 'two', 'one']),
           ),
           isTrue,
         );
         expect(
-          await database.saveBundle(_bundle(CommandId(1, 2), ['two', 'one'])),
+          await database.addStoredCommand(
+            _bundle(CommandId('actor-1', 2), ['two', 'one']),
+          ),
           isTrue,
         );
 
@@ -59,23 +60,31 @@ void main() {
           'one',
         ]);
         expect(all.map((event) => event.position), [0, 1, 2, 3, 4]);
-        expect((await database.getBundle(CommandId(1, 2)))!.events.length, 2);
+        expect(
+          (await database.getStoredCommand(
+            CommandId('actor-1', 2),
+          ))!.events.length,
+          2,
+        );
       });
 
       test('bundle event order defines stored indexes', () async {
-        final bundle = _bundle(CommandId(1, 1), ['one', 'two']);
-        final reordered = CommandBundle(
+        final bundle = _bundle(CommandId('actor-1', 1), ['one', 'two']);
+        final reordered = StoredCommand(
           commandId: bundle.commandId,
           dependency: bundle.dependency,
           occuredAt: bundle.occuredAt,
           events: [bundle.events.last, bundle.events.first],
         );
-        expect(await database.saveBundle(reordered), isTrue);
-        expect(await database.getBundle(CommandId(1, 1)), reordered);
+        expect(await database.addStoredCommand(reordered), isTrue);
+        expect(
+          (await database.getStoredCommand(CommandId('actor-1', 1)))!.toJson(),
+          reordered.toJson(),
+        );
         final logged = (await database.getLogEvents(0)).data;
         expect(logged.map((event) => event.eventId), [
-          EventId(1, 1, 0),
-          EventId(1, 1, 1),
+          EventId('actor-1', 1, 0),
+          EventId('actor-1', 1, 1),
         ]);
         expect(logged.map((event) => event.streamPath), ['two', 'one']);
       });
@@ -83,15 +92,15 @@ void main() {
   }
 }
 
-CommandBundle _bundle(CommandId id, List<String> paths) {
+StoredCommand _bundle(CommandId id, List<String> paths) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-  return CommandBundle(
+  return StoredCommand(
     commandId: id,
-    dependency: VersionVector(),
+    dependency: CommandDependency(),
     occuredAt: time,
     events: [
       for (final (index, path) in paths.indexed)
-        BundledEvent(
+        StoredCommandEvent(
           streamPath: path,
           encodedEvent: EncodedEvent(
             kind: 'test',

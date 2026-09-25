@@ -1,27 +1,26 @@
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 
-class EventId extends Dot {
+class EventId extends CommandId {
   final int index;
 
-  EventId(super.actorId, super.sequence, this.index) {
+  EventId(super.actor, super.sequence, this.index) {
     if (index < 0) {
       throw FormatException('event index must be non-negative: $index');
     }
   }
 
-  CommandId get commandId => CommandId(actorId, sequence);
+  CommandId get commandId => CommandId(actor, sequence);
 
   @override
-  List<int> toJson() => [actorId, sequence, index];
+  List<dynamic> toJson() => [actor, sequence, index];
 
   factory EventId.fromJson(List<dynamic> json) {
     if (json.length != 3) {
       throw const FormatException(
-        'event id must contain actor id, sequence, and index',
+        'event id must contain actor, sequence, and index',
       );
     }
-    return EventId(json[0] as int, json[1] as int, json[2] as int);
+    return EventId(json[0] as String, json[1] as int, json[2] as int);
   }
 
   @override
@@ -29,16 +28,13 @@ class EventId extends Dot {
       identical(this, other) ||
       other.runtimeType == runtimeType &&
           other is EventId &&
-          actorId == other.actorId &&
+          actor == other.actor &&
           sequence == other.sequence &&
           index == other.index;
 
   @override
-  int get hashCode => Object.hash(actorId, sequence, index);
+  int get hashCode => Object.hash(actor, sequence, index);
 
   @override
-  String toString() =>
-      'EventId(actorId: $actorId, sequence: $sequence, index: $index)';
-
-  String toStringCompact() => 'EventId($actorId.$sequence.$index)';
+  String toString() => 'EventId($actor,$sequence,$index)';
 }

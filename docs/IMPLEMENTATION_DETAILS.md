@@ -8,7 +8,7 @@ them as a Flutter prototype and does not define their shared APIs.
 | Package | Ownership |
 | --- | --- |
 | `cqrs` | Commands, event codecs and storage, aggregates, and the runtime |
-| `common` | Async, causal, pagination, and serialization primitives |
+| `common` | Async, pagination, and serialization primitives |
 | `crdt` | Timestamp-based latest-write-wins helpers |
 | `id_generator` | ID generation |
 | `time_provider` | System and deterministic clocks |
@@ -31,9 +31,10 @@ events by route and rebuilds state for a query. The CQRS package supports
 optional snapshots, while Notes replays its note events without snapshots.
 Notes persists events in one SQLite database and keeps no derived database.
 
-The event store can store and retrieve complete command bundles. This does not
-provide network transport, device enrollment, multi-device convergence,
-encryption, blob storage, or backup.
+CQRS owns command identities and causal dependencies keyed by plain actor
+strings. The event store can store and retrieve complete `StoredCommand` values.
+This does not provide network transport, device enrollment, multi-device
+convergence, encryption, blob storage, or backup.
 
 See [App Development Guide](APP_DEVELOPMENT_GUIDE.md) for application
 composition and [Security](SECURITY.md) for the current security posture.

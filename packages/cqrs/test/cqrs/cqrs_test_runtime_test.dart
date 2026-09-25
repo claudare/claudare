@@ -34,7 +34,7 @@ void main() {
 
     await runtime.execute(const _AppendValue('one'));
 
-    final bundle = await database.getBundle(CommandId(0, 1));
+    final bundle = await database.getStoredCommand(CommandId('test-actor', 1));
     expect(bundle!.events, hasLength(1));
     expect(bundle.events.single.occuredAt, seededAt);
     final events = await runtime.resolve(_ValueAggregate());

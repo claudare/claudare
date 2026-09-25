@@ -1,5 +1,4 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -8,6 +7,8 @@ import 'package:time_provider/time_provider.dart';
 /// Executes a command and inspects its emitted events.
 class CommandTester {
   final TimeProvider _timeProvider;
+  static const _testActor = 'test-actor';
+
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
   late final CqrsRuntime _runtime;
@@ -21,6 +22,7 @@ class CommandTester {
     : _timeProvider = timeProvider,
       _eventStore = eventStore ?? MemoryEventStore() {
     _runtime = CqrsRuntime(
+      actor: _testActor,
       eventStore: _eventStore,
       timeProvider: timeProvider,
       logger: const NoopLogger(),
@@ -128,7 +130,8 @@ class CommandTester {
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
         CommandChanges(
-          dependency: VersionVector(),
+          actor: _testActor,
+          dependency: CommandDependency(),
           occuredAt: timestamp,
           locks: [
             StreamLock(

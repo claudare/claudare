@@ -16,6 +16,7 @@ import 'package:time_provider/time_provider.dart';
 /// Coordinates durable command execution and projection delivery.
 class CqrsRuntime {
   final EventStore _eventStore;
+  final String _actor;
   final Logger _logger;
   final TimeProvider _timeProvider;
   final EventRegistry _eventRegistry = EventRegistry();
@@ -24,13 +25,16 @@ class CqrsRuntime {
 
   CqrsRuntime({
     required EventStore eventStore,
+    required String actor,
     required Logger logger,
     required TimeProvider timeProvider,
   }) : _timeProvider = timeProvider,
+       _actor = actor,
        _logger = logger,
        _eventStore = eventStore {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
+      actor: _actor,
       streamReader: streamReader,
       timeProvider: _timeProvider,
       eventRegistry: _eventRegistry,

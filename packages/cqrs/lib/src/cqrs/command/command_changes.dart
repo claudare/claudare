@@ -1,15 +1,17 @@
-import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 
 /// Sent to save a command and its events atomically while respecting
 /// concurrency.
 class CommandChanges {
-  final VersionVector dependency;
+  final String actor;
+  final CommandDependency dependency;
   final DateTime occuredAt;
   final List<StreamLock> locks;
   final List<EventAppend> events;
 
   const CommandChanges({
+    required this.actor,
     required this.dependency,
     required this.occuredAt,
     required this.locks,

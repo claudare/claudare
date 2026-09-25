@@ -1,7 +1,8 @@
+import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
+import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 
 class GetStatisticsResult {
@@ -14,7 +15,7 @@ class GetStatisticsResult {
 class EventDatabaseState {
   final int? lastCommandLogPosition;
   final int? lastEventLogPosition;
-  final VersionVector logVersion;
+  final CommandDependency logVersion;
 
   const EventDatabaseState({
     required this.lastCommandLogPosition,
@@ -47,12 +48,13 @@ abstract interface class EventStore {
   /// Saves results of command execution into the event store.
   Future<void> saveChanges(CommandChanges changes);
 
-  /// Saves a complete bundle when its dependencies and command ID are ready.
-  /// Returns false when the bundle is out of order.
-  /// This is used for saving synced commands.
-  Future<bool> saveBundle(CommandBundle bundle);
+  /// Adds (appends) a command with events. Returns true on successful save.
+  /// Returns false when the command's dependencies are not satisfied or the
+  /// command is out of order.
+  /// This accepts commands received from other actors.
+  Future<bool> addStoredCommand(StoredCommand command);
 
-  /// Returns a logged bundle by command ID, or null when absent.
+  /// Returns a stored command by command ID, or null when absent.
   /// This is used for retrieving commands for syncing.
-  Future<CommandBundle?> getBundle(CommandId commandId);
+  Future<StoredCommand?> getStoredCommand(CommandId commandId);
 }

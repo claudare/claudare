@@ -19,7 +19,9 @@ export 'src/cqrs/event/stored_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
-export 'src/cqrs/command/command_bundle.dart';
+export 'src/cqrs/command/stored_command.dart';
+export 'src/cqrs/command/command_dependency.dart';
+export 'src/cqrs/command/command_dependency_builder.dart';
 export 'src/cqrs/command/command_context_api.dart';
 export 'src/cqrs/command/command_context.dart' show CommandStream;
 

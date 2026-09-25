@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
@@ -21,45 +22,48 @@ void main() {
   });
   tearDown(() => database.close());
 
-  test('stores canonical integer-key dependency bytes', () async {
+  test('stores canonical string-key dependency bytes', () async {
     expect(
-      await store.saveBundle(
-        _bundle(CommandId(3, 1), dependency: VersionVector({2: 4, -1: 3})),
+      await store.addStoredCommand(
+        _bundle(
+          CommandId('actor-3', 1),
+          dependency: CommandDependency({'actor-2': 4, 'actor-1': 3}),
+        ),
       ),
       isFalse,
     );
-    expect(await store.saveBundle(_bundle(CommandId(-1, 1))), isTrue);
+    expect(
+      await store.addStoredCommand(_bundle(CommandId('actor-1', 1))),
+      isTrue,
+    );
     for (var i = 2; i <= 3; i++) {
-      expect(await store.saveBundle(_bundle(CommandId(-1, i))), isTrue);
+      expect(
+        await store.addStoredCommand(_bundle(CommandId('actor-1', i))),
+        isTrue,
+      );
     }
     for (var i = 1; i <= 4; i++) {
-      expect(await store.saveBundle(_bundle(CommandId(2, i))), isTrue);
+      expect(
+        await store.addStoredCommand(_bundle(CommandId('actor-2', i))),
+        isTrue,
+      );
     }
     expect(
-      await store.saveBundle(
-        _bundle(CommandId(3, 1), dependency: VersionVector({2: 4, -1: 3})),
+      await store.addStoredCommand(
+        _bundle(
+          CommandId('actor-3', 1),
+          dependency: CommandDependency({'actor-2': 4, 'actor-1': 3}),
+        ),
       ),
       isTrue,
     );
     final bytes = await sqlite.queryValue<Uint8List>(
-      'SELECT dependency FROM command WHERE id_actor = 3',
+      "SELECT dependency FROM command WHERE id_actor = 'actor-3'",
     );
-    expect(JsonConverter.decode<List<dynamic>>(bytes), [
-      [-1, 3],
-      [2, 4],
-    ]);
-  });
-
-  test('schema rejects negative command and event log positions', () async {
-    for (final statement in [
-      '''INSERT INTO command(log_position, id_actor, id_sequence,
-        dependency, occured_at, event_count) VALUES (-1, 1, 1, X'5B5D', 0, 1)''',
-      '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
-        stream_path, stream_version, kind, detail, occured_at)
-        VALUES (-1, 1, 1, 0, 'one', 0, 'test', X'', 0)''',
-    ]) {
-      await expectLater(sqlite.execute(statement), throwsA(isA<Exception>()));
-    }
+    expect(JsonConverter.decode<Map<String, dynamic>>(bytes), {
+      'actor-1': 3,
+      'actor-2': 4,
+    });
   });
 
   test('rolls back a failed bundle without id_sequence holes', () async {
@@ -67,14 +71,23 @@ void main() {
       WHEN NEW.kind = 'fail'
       BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
     await expectLater(
-      store.saveBundle(_bundle(CommandId(3, 1), kind: 'fail', count: 2)),
+      store.addStoredCommand(
+        _bundle(CommandId('actor-3', 1), kind: 'fail', count: 2),
+      ),
       throwsA(isA<EventStoreException>()),
     );
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM command'), 0);
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM event'), 0);
     expect(await store.getStreamVersion('one'), isNull);
     await sqlite.execute('DROP TRIGGER fail_event');
-    expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
+    expect(
+      await store.addStoredCommand(_bundle(CommandId('actor-3', 1))),
+      isTrue,
+    );
+    expect(
+      (await store.getStoredCommand(CommandId('actor-3', 1)))!.toJson(),
+      _bundle(CommandId('actor-3', 1)).toJson(),
+    );
     expect((await database.getLogEvents(0)).data.single.position, 0);
   });
 
@@ -91,19 +104,23 @@ void main() {
       final failedState = await store.getState();
       expect(failedState.lastCommandLogPosition, isNull);
       expect(failedState.lastEventLogPosition, isNull);
-      expect(failedState.logVersion, VersionVector());
+      expect(failedState.logVersion, CommandDependency());
       expect(await store.getStreamVersion('one'), isNull);
       await sqlite.execute('DROP TRIGGER fail_event');
       await store.saveChanges(_changes('one', count: 2));
       final events = (await store.getLogEvents(0)).data;
       expect(events.map((event) => event.position), [0, 1]);
       expect(events.map((event) => event.version), [0, 1]);
-      expect(await store.getBundle(CommandId(0, 1)), isNotNull);
+      expect(
+        await store.getStoredCommand(CommandId('test-actor', 1)),
+        isNotNull,
+      );
     },
   );
 
   test('separate stores sharing SQLite serialize stream lock checks', () async {
     final otherStore = SqliteEventStore(sqlite);
+    await otherStore.migrate();
     Future<bool> save(EventStore target) async {
       try {
         await target.saveChanges(_changes('one'));
@@ -116,13 +133,107 @@ void main() {
     final results = await Future.wait([save(store), save(otherStore)]);
     expect(results.where((saved) => saved), hasLength(1));
     expect((await store.getStatistics()).eventCount, 1);
-    expect((await otherStore.getState()).logVersion, VersionVector({0: 1}));
+    expect(
+      (await otherStore.getState()).logVersion,
+      CommandDependency({'test-actor': 1}),
+    );
+  });
+
+  test('separate stores share commands for the same actor', () async {
+    final otherStore = SqliteEventStore(sqlite);
+    await otherStore.migrate();
+    final first = _bundle(CommandId('actor-160', 1));
+    final second = _bundle(CommandId('actor-160', 2));
+    expect(await store.addStoredCommand(first), isTrue);
+    expect(
+      (await otherStore.getStoredCommand(first.commandId))!.toJson(),
+      first.toJson(),
+    );
+    expect(await otherStore.addStoredCommand(second), isTrue);
+    expect(
+      (await store.getStoredCommand(second.commandId))!.toJson(),
+      second.toJson(),
+    );
+  });
+
+  test('separate stores append a concurrent command only once', () async {
+    final otherStore = SqliteEventStore(sqlite);
+    await otherStore.migrate();
+    final bundle = _bundle(CommandId('actor-160', 1));
+    final results = await Future.wait([
+      store.addStoredCommand(bundle),
+      otherStore.addStoredCommand(bundle),
+    ]);
+    expect(results.where((accepted) => accepted), hasLength(1));
+    expect(
+      (await otherStore.getStoredCommand(bundle.commandId))!.toJson(),
+      bundle.toJson(),
+    );
+  });
+
+  test('reopening preserves actors and their next sequences', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'event-store-keys-',
+    );
+    addTearDown(() => directory.delete(recursive: true));
+    final filepath = '${directory.path}/events.sqlite';
+    final firstDatabase = IsolateSqlite();
+    await firstDatabase.open(filepath);
+    addTearDown(firstDatabase.close);
+    final first = SqliteEventStore(firstDatabase);
+    await first.migrate();
+    await first.saveChanges(_changes('local'));
+    final imported = _bundle(CommandId('actor-160', 1));
+    expect(await first.addStoredCommand(imported), isTrue);
+    await first.close();
+
+    final secondDatabase = IsolateSqlite();
+    await secondDatabase.open(filepath);
+    addTearDown(secondDatabase.close);
+    final second = SqliteEventStore(secondDatabase);
+    await second.migrate();
+    expect(
+      (await second.getStoredCommand(imported.commandId))!.toJson(),
+      imported.toJson(),
+    );
+    expect(
+      (await second.getStoredCommand(
+        CommandId('test-actor', 1),
+      ))!.commandId.actor,
+      'test-actor',
+    );
+    expect(
+      await second.addStoredCommand(_bundle(CommandId('actor-160', 2))),
+      isTrue,
+    );
+    expect(
+      await second.addStoredCommand(_bundle(CommandId('actor-42', 1))),
+      isTrue,
+    );
+    await second.saveChanges(_changes('local-next'));
+    expect(
+      (await second.getState()).logVersion,
+      CommandDependency({'test-actor': 2, 'actor-160': 2, 'actor-42': 1}),
+    );
+    expect(
+      (await second.getStoredCommand(
+        CommandId('actor-160', 2),
+      ))!.commandId.actor,
+      imported.commandId.actor,
+    );
+    expect(
+      (await second.getStoredCommand(
+        CommandId('actor-42', 1),
+      ))!.commandId.actor,
+      'actor-42',
+    );
   });
 
   test(
     'separate stores sharing SQLite allocate distinct command IDs',
     () async {
       final otherStore = SqliteEventStore(sqlite);
+      await otherStore.migrate();
       await Future.wait([
         store.saveChanges(_changes('one')),
         otherStore.saveChanges(_changes('two')),
@@ -130,7 +241,7 @@ void main() {
       final state = await store.getState();
       expect(state.lastCommandLogPosition, 1);
       expect(state.lastEventLogPosition, 1);
-      expect(state.logVersion, VersionVector({0: 2}));
+      expect(state.logVersion, CommandDependency({'test-actor': 2}));
       expect(await store.getStreamVersion('one'), 0);
       expect(await otherStore.getStreamVersion('two'), 0);
     },
@@ -140,7 +251,8 @@ void main() {
 CommandChanges _changes(String path, {int count = 1}) {
   final timestamp = DateTime.utc(2026);
   return CommandChanges(
-    dependency: VersionVector(),
+    actor: 'test-actor',
+    dependency: CommandDependency(),
     occuredAt: timestamp,
     locks: [StreamLock(streamPath: path, originatingStreamVersion: null)],
     events: [
@@ -154,20 +266,20 @@ CommandChanges _changes(String path, {int count = 1}) {
   );
 }
 
-CommandBundle _bundle(
+StoredCommand _bundle(
   CommandId id, {
-  VersionVector? dependency,
+  CommandDependency? dependency,
   String kind = 'test',
   int count = 1,
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-  return CommandBundle(
+  return StoredCommand(
     commandId: id,
-    dependency: dependency ?? VersionVector(),
+    dependency: dependency ?? CommandDependency(),
     occuredAt: time,
     events: [
       for (var i = 0; i < count; i++)
-        BundledEvent(
+        StoredCommandEvent(
           streamPath: 'one',
           encodedEvent: EncodedEvent(
             kind: i == count - 1 ? kind : 'test',
