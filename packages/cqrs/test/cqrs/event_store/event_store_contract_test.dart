@@ -80,7 +80,7 @@ void main() {
         await store.saveBundle(_bundle(CommandId(2, 1), paths: ['one', 'two']));
         await store.saveBundle(_bundle(CommandId(4, 1), paths: ['one']));
         final events = await store.getLogEventReader(0).scan().toList();
-        expect(events.map((event) => event.logPosition), [0, 1, 2]);
+        expect(events.map((event) => event.position), [0, 1, 2]);
         expect(events.map((event) => event.version), [0, 0, 1]);
       });
 
@@ -127,12 +127,12 @@ void main() {
         }
         final reader = store.getLogEventReader(0);
         expect(await reader.loadMore(), isTrue);
-        expect(reader.currentPage.map((event) => event.logPosition), [0, 1]);
+        expect(reader.currentPage.map((event) => event.position), [0, 1]);
         expect(await reader.loadMore(), isTrue);
-        expect(reader.currentPage.map((event) => event.logPosition), [2]);
+        expect(reader.currentPage.map((event) => event.position), [2]);
         expect(await reader.loadMore(), isFalse);
         final fromTwo = await store.getLogEventReader(2).scan().toList();
-        expect(fromTwo.single.logPosition, 2);
+        expect(fromTwo.single.position, 2);
       });
 
       test('reads one stream from an inclusive version', () async {

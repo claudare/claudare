@@ -1,7 +1,7 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
-import 'package:cqrs/src/cqrs/event/log_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
@@ -55,13 +55,13 @@ class MemoryEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<LogEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
     int count,
   ) async {
     final indexes = _streamVersions[streamPath] ?? const <int>[];
-    final events = <LogEvent>[];
+    final events = <StoredEvent>[];
     for (
       var version = fromVersion;
       version < indexes.length && events.length < count;
@@ -69,12 +69,12 @@ class MemoryEventDatabase implements EventDatabase {
     ) {
       final event = _events[indexes[version]];
       events.add(
-        LogEvent(
+        StoredEvent(
           streamPath: streamPath,
           eventId: event.eventId,
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
-          logPosition: event.logPosition,
+          position: event.logPosition,
           version: version,
         ),
       );
@@ -86,11 +86,11 @@ class MemoryEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<LogEvent>> getLogEvents(
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
     int fromPosition,
     int count,
   ) async {
-    final events = <LogEvent>[];
+    final events = <StoredEvent>[];
     for (
       var index = 0;
       index < _events.length && events.length < count;
@@ -100,19 +100,19 @@ class MemoryEventDatabase implements EventDatabase {
       if (event.logPosition < fromPosition) continue;
       final (streamPath, version) = _streamPosition(index);
       events.add(
-        LogEvent(
+        StoredEvent(
           eventId: event.eventId,
           streamPath: streamPath,
           encodedEvent: event.encodedEvent,
           occuredAt: event.occuredAt,
-          logPosition: event.logPosition,
+          position: event.logPosition,
           version: version,
         ),
       );
     }
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.logPosition + 1,
+      next: events.isEmpty ? null : events.last.position + 1,
     );
   }
 

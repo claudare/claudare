@@ -395,7 +395,7 @@ final class _ControlledDatabase extends MemoryEventDatabase {
   }
 
   @override
-  Future<PaginatedResult<LogEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
     int count,

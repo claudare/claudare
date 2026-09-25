@@ -4,7 +4,7 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/event/log_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
@@ -139,7 +139,7 @@ class EventStore {
         }
       });
 
-  PaginatedReader<LogEvent> getStreamReader(
+  PaginatedReader<StoredEvent> getStreamReader(
     String streamPath, {
     int fromVersion = 0,
   }) => PaginatedReader(
@@ -147,7 +147,7 @@ class EventStore {
     initialCursor: fromVersion,
   );
 
-  Future<PaginatedResult<LogEvent>> _readStreamPage(
+  Future<PaginatedResult<StoredEvent>> _readStreamPage(
     String streamPath,
     int fromVersion,
   ) => _mutex.protectRead(() async {
@@ -165,10 +165,10 @@ class EventStore {
     }
   });
 
-  PaginatedReader<LogEvent> getLogEventReader(int fromPosition) =>
+  PaginatedReader<StoredEvent> getLogEventReader(int fromPosition) =>
       PaginatedReader(_readLogEventPage, initialCursor: fromPosition);
 
-  Future<PaginatedResult<LogEvent>> _readLogEventPage(int fromPosition) =>
+  Future<PaginatedResult<StoredEvent>> _readLogEventPage(int fromPosition) =>
       _mutex.protectRead(() async {
         try {
           return await _database.getLogEvents(

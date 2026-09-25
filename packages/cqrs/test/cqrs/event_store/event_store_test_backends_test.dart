@@ -55,7 +55,7 @@ void main() {
           'two',
           'one',
         ]);
-        expect(all.data.map((event) => event.logPosition), [0, 1, 2, 3, 4]);
+        expect(all.data.map((event) => event.position), [0, 1, 2, 3, 4]);
         expect((await database.getBundle(CommandId(1, 2)))!.events.length, 2);
       });
 

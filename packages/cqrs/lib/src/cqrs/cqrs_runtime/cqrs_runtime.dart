@@ -97,7 +97,7 @@ class CqrsRuntime {
       if (!aggregate.canApply(envelope)) continue;
 
       aggregate.apply(state, envelope);
-      sequence = logEvent.logPosition;
+      sequence = logEvent.position;
       applyCount++;
     }
 

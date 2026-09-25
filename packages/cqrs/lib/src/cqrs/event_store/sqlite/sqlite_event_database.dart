@@ -4,7 +4,7 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/event/log_event.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -86,7 +86,7 @@ class SqliteEventDatabase implements EventDatabase {
       );
 
   @override
-  Future<PaginatedResult<LogEvent>> getStreamEvents(
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
     int count,
@@ -103,7 +103,7 @@ class SqliteEventDatabase implements EventDatabase {
     );
     final events = [
       for (final row in rows)
-        LogEvent(
+        StoredEvent(
           streamPath: streamPath,
           eventId: EventId(
             row.field<int>('device_id'),
@@ -116,7 +116,7 @@ class SqliteEventDatabase implements EventDatabase {
           ),
           occuredAt: _date(row.field<int>('occured_at')),
           version: row.field<int>('stream_version'),
-          logPosition: row.field<int>('log_position'),
+          position: row.field<int>('log_position'),
         ),
     ];
     return PaginatedResult(
@@ -126,7 +126,7 @@ class SqliteEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<PaginatedResult<LogEvent>> getLogEvents(
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
     int fromPosition,
     int count,
   ) async {
@@ -144,7 +144,7 @@ class SqliteEventDatabase implements EventDatabase {
     );
     final events = [
       for (final row in rows)
-        LogEvent(
+        StoredEvent(
           streamPath: row.field<String>('stream_path'),
           eventId: EventId(
             row.field<int>('device_id'),
@@ -157,12 +157,12 @@ class SqliteEventDatabase implements EventDatabase {
           ),
           occuredAt: _date(row.field<int>('occured_at')),
           version: row.field<int>('stream_version'),
-          logPosition: row.field<int>('log_position'),
+          position: row.field<int>('log_position'),
         ),
     ];
     return PaginatedResult(
       data: events,
-      next: events.isEmpty ? null : events.last.logPosition + 1,
+      next: events.isEmpty ? null : events.last.position + 1,
     );
   }
 

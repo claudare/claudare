@@ -16,7 +16,7 @@ export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/encoded_event.dart';
 export 'src/cqrs/event/event_registry.dart';
 export 'src/cqrs/event/event_envelope.dart';
-export 'src/cqrs/event/log_event.dart';
+export 'src/cqrs/event/stored_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';

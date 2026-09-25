@@ -72,7 +72,7 @@ void main() {
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM event'), 0);
     await sqlite.execute('DROP TRIGGER fail_event');
     expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
-    expect((await database.getLogEvents(0, 10)).data.single.logPosition, 0);
+    expect((await database.getLogEvents(0, 10)).data.single.position, 0);
   });
 }
 
