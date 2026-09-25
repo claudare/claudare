@@ -68,7 +68,6 @@ class SqliteEventStore implements EventStore {
     }
   }
 
-  // FIXME: this swallows the errors
   Future<T> _transaction<T>(
     String message,
     T Function(SyncContext) action,

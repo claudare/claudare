@@ -7,6 +7,19 @@ import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('EventStoreException includes its cause in the description', () {
+    const error = EventStoreException(
+      'Failed to append command batch',
+      cause: FormatException('invalid stored bundle'),
+    );
+
+    expect(
+      error.toString(),
+      'EventStoreException: Failed to append command batch. '
+      'Cause: FormatException: invalid stored bundle',
+    );
+  });
+
   for (final backend in eventStoreTestBackends) {
     test('${backend.name} failed append leaves no partial history', () async {
       final session = await backend.open();
