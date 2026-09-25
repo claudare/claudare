@@ -42,7 +42,7 @@ void main() {
       isTrue,
     );
     final bytes = await sqlite.queryValue<Uint8List>(
-      'SELECT dependency FROM command WHERE actor_id = 3',
+      'SELECT dependency FROM command WHERE id_actor = 3',
     );
     expect(JsonConverter.decode<List<dynamic>>(bytes), [
       [-1, 3],
@@ -52,9 +52,9 @@ void main() {
 
   test('schema rejects negative command and event log positions', () async {
     for (final statement in [
-      '''INSERT INTO command(log_position, actor_id, sequence,
+      '''INSERT INTO command(log_position, id_actor, id_sequence,
         dependency, occured_at, event_count) VALUES (-1, 1, 1, X'5B5D', 0, 1)''',
-      '''INSERT INTO event(log_position, actor_id, sequence, event_index,
+      '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
         stream_path, stream_version, kind, detail, occured_at)
         VALUES (-1, 1, 1, 0, 'one', 0, 'test', X'', 0)''',
     ]) {
@@ -62,7 +62,7 @@ void main() {
     }
   });
 
-  test('rolls back a failed bundle without sequence holes', () async {
+  test('rolls back a failed bundle without id_sequence holes', () async {
     await sqlite.execute('''CREATE TRIGGER fail_event BEFORE INSERT ON event
       WHEN NEW.kind = 'fail'
       BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
@@ -82,7 +82,7 @@ void main() {
     'rolls back all local events and command allocation on failure',
     () async {
       await sqlite.execute('''CREATE TRIGGER fail_event BEFORE INSERT ON event
-      WHEN NEW.event_index = 1
+      WHEN NEW.id_index = 1
       BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
       await expectLater(
         store.saveChanges(_changes('one', count: 2)),
