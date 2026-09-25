@@ -83,15 +83,11 @@ CommandBundle _bundle(
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return CommandBundle(
-    command: StagedCommand(
-      commandId: id,
-      dependency: dependency ?? VersionVector(),
-      occuredAt: time,
-      eventCount: 1,
-    ),
+    commandId: id,
+    dependency: dependency ?? VersionVector(),
+    occuredAt: time,
     events: [
-      StagedEvent(
-        eventId: EventId(id.deviceId, id.sequence, 0),
+      BundledEvent(
         streamPath: 'one',
         encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
         occuredAt: time,

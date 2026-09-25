@@ -59,18 +59,22 @@ void main() {
         expect((await database.getBundle(CommandId(1, 2)))!.events.length, 2);
       });
 
-      test('invalid event identity is rejected atomically', () async {
+      test('bundle event order defines stored indexes', () async {
         final bundle = _bundle(CommandId(1, 1), ['one', 'two']);
-        final invalid = CommandBundle(
-          command: bundle.command,
+        final reordered = CommandBundle(
+          commandId: bundle.commandId,
+          dependency: bundle.dependency,
+          occuredAt: bundle.occuredAt,
           events: [bundle.events.last, bundle.events.first],
         );
-        await expectLater(
-          Future.sync(() => database.saveBundle(invalid)),
-          throwsArgumentError,
-        );
-        expect(await database.getBundle(CommandId(1, 1)), isNull);
-        expect((await database.getState()).lastEventLogPosition, isNull);
+        expect(await database.saveBundle(reordered), isTrue);
+        expect(await database.getBundle(CommandId(1, 1)), reordered);
+        final logged = (await database.getLogEvents(0, 10)).data;
+        expect(logged.map((event) => event.eventId), [
+          EventId(1, 1, 0),
+          EventId(1, 1, 1),
+        ]);
+        expect(logged.map((event) => event.streamPath), ['two', 'one']);
       });
     });
   }
@@ -79,16 +83,12 @@ void main() {
 CommandBundle _bundle(CommandId id, List<String> paths) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return CommandBundle(
-    command: StagedCommand(
-      commandId: id,
-      dependency: VersionVector(),
-      occuredAt: time,
-      eventCount: paths.length,
-    ),
+    commandId: id,
+    dependency: VersionVector(),
+    occuredAt: time,
     events: [
       for (final (index, path) in paths.indexed)
-        StagedEvent(
-          eventId: EventId(id.deviceId, id.sequence, index),
+        BundledEvent(
           streamPath: path,
           encodedEvent: EncodedEvent(
             kind: 'test',

@@ -21,17 +21,19 @@ void main() {
 
       test('saves and reads a complete bundle', () async {
         final bundle = _bundle(CommandId(3, 1), paths: ['one', 'two', 'one']);
-        expect(await store.getBundle(bundle.command.commandId), isNull);
+        expect(await store.getBundle(bundle.commandId), isNull);
         expect(await store.saveBundle(bundle), isTrue);
 
-        final restored = await store.getBundle(bundle.command.commandId);
+        final restored = await store.getBundle(bundle.commandId);
         expect(restored, isNotNull);
-        expect(restored!.command.commandId, bundle.command.commandId);
-        expect(restored.command.dependency, bundle.command.dependency);
-        expect(restored.command.occuredAt, bundle.command.occuredAt);
-        expect(restored.events, bundle.events);
-        expect(restored.isValid, isTrue);
-        expect((await store.getLogEventReader(0).scan().toList()).length, 3);
+        expect(restored, bundle);
+        expect(restored!.isValid, isTrue);
+        final logged = await store.getLogEventReader(0).scan().toList();
+        expect(logged.map((event) => event.eventId), [
+          EventId(3, 1, 0),
+          EventId(3, 1, 1),
+          EventId(3, 1, 2),
+        ]);
         expect(await store.getStreamInfo('one'), isNotNull);
         expect(
           (await session.database.getState()).logVersion,
@@ -47,7 +49,7 @@ void main() {
         );
         expect(await store.saveBundle(gap), isFalse);
         expect(await store.saveBundle(dependency), isFalse);
-        expect(await store.getBundle(gap.command.commandId), isNull);
+        expect(await store.getBundle(gap.commandId), isNull);
         expect((await session.database.getStatistics()).eventCount, 0);
 
         expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
@@ -61,12 +63,17 @@ void main() {
 
       test('rejects incomplete bundles without writing', () async {
         final valid = _bundle(CommandId(2, 1));
-        final invalid = CommandBundle(command: valid.command, events: const []);
+        final invalid = CommandBundle(
+          commandId: valid.commandId,
+          dependency: valid.dependency,
+          occuredAt: valid.occuredAt,
+          events: const [],
+        );
         await expectLater(
           Future.sync(() => store.saveBundle(invalid)),
           throwsArgumentError,
         );
-        expect(await store.getBundle(valid.command.commandId), isNull);
+        expect(await store.getBundle(valid.commandId), isNull);
       });
 
       test('keeps log positions and stream versions contiguous', () async {
@@ -160,16 +167,12 @@ CommandBundle _bundle(
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(300, isUtc: true);
   return CommandBundle(
-    command: StagedCommand(
-      commandId: id,
-      dependency: dependency ?? VersionVector(),
-      occuredAt: time,
-      eventCount: paths.length,
-    ),
+    commandId: id,
+    dependency: dependency ?? VersionVector(),
+    occuredAt: time,
     events: [
       for (final (index, path) in paths.indexed)
-        StagedEvent(
-          eventId: EventId(id.deviceId, id.sequence, index),
+        BundledEvent(
           streamPath: path,
           encodedEvent: EncodedEvent(
             kind: 'event-$index',

@@ -2,9 +2,7 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
-import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
-import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/log_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
@@ -183,21 +181,15 @@ class SqliteEventDatabase implements EventDatabase {
   Future<CommandBundle?> getBundle(CommandId commandId) =>
       _database.transaction((tx) {
         final row = tx.queryRow(
-          '''SELECT dependency, occured_at, event_count
+          '''SELECT dependency, occured_at
           FROM command
           WHERE device_id = ?
             AND sequence = ?;''',
           [commandId.deviceId, commandId.sequence],
         );
         if (row == null) return null;
-        final command = StagedCommand(
-          commandId: commandId,
-          dependency: _decodeVector(row.field<Uint8List>('dependency')),
-          occuredAt: _date(row.field<int>('occured_at')),
-          eventCount: row.field<int>('event_count'),
-        );
         final rows = tx.query(
-          '''SELECT event_index, stream_path, kind, detail, occured_at
+          '''SELECT stream_path, kind, detail, occured_at
           FROM event
           WHERE device_id = ?
             AND sequence = ?
@@ -205,15 +197,12 @@ class SqliteEventDatabase implements EventDatabase {
           [commandId.deviceId, commandId.sequence],
         );
         return CommandBundle(
-          command: command,
+          commandId: commandId,
+          dependency: _decodeVector(row.field<Uint8List>('dependency')),
+          occuredAt: _date(row.field<int>('occured_at')),
           events: [
             for (final row in rows)
-              StagedEvent(
-                eventId: EventId(
-                  commandId.deviceId,
-                  commandId.sequence,
-                  row.field<int>('event_index'),
-                ),
+              BundledEvent(
                 streamPath: row.field<String>('stream_path'),
                 encodedEvent: EncodedEvent(
                   kind: row.field<String>('kind'),
@@ -229,33 +218,25 @@ class SqliteEventDatabase implements EventDatabase {
   Future<bool> saveBundle(CommandBundle bundle) {
     if (!bundle.isValid) throw ArgumentError('invalid command bundle');
     return _database.transaction((tx) {
-      final command = bundle.command;
-      final commandId = command.commandId;
+      final commandId = bundle.commandId;
       final logRows = tx.query('''SELECT device_id, MAX(sequence)
       FROM command
       GROUP BY device_id''');
       final frontier = VersionVector({
         for (final row in logRows) row[0] as int: row[1] as int,
       });
-      if (!frontier.contains(command.dependency) ||
+      if (!frontier.contains(bundle.dependency) ||
           frontier.value(commandId.deviceId) + 1 != commandId.sequence) {
         return false;
       }
-      _insertLog(tx, command, bundle.events);
+      _insertLog(tx, bundle);
       return true;
     });
   }
 }
 
-void _insertLog(
-  SyncContext tx,
-  StagedCommand command,
-  List<StagedEvent> events,
-) {
-  if (events.length != command.eventCount) {
-    throw StateError('log event count does not match command');
-  }
-  final id = command.commandId;
+void _insertLog(SyncContext tx, CommandBundle bundle) {
+  final id = bundle.commandId;
   tx.execute(
     '''INSERT INTO command(log_position, device_id, sequence,
     dependency, occured_at, event_count)
@@ -264,12 +245,12 @@ void _insertLog(
       _nextLogPosition(tx, 'command'),
       id.deviceId,
       id.sequence,
-      _encodeVector(command.dependency),
-      command.occuredAt.millisecondsSinceEpoch,
-      command.eventCount,
+      _encodeVector(bundle.dependency),
+      bundle.occuredAt.millisecondsSinceEpoch,
+      bundle.events.length,
     ],
   );
-  _insertLogEvents(tx, events);
+  _insertLogEvents(tx, bundle);
 }
 
 int _nextLogPosition(SyncContext tx, String table) {
@@ -277,13 +258,10 @@ int _nextLogPosition(SyncContext tx, String table) {
   return highest == null ? 0 : highest + 1;
 }
 
-void _insertLogEvents(SyncContext tx, List<StagedEvent> events) {
+void _insertLogEvents(SyncContext tx, CommandBundle bundle) {
   var logPosition = _nextLogPosition(tx, 'event');
   final versions = <String, int>{};
-  for (final (index, event) in events.indexed) {
-    if (event.eventId.index != index) {
-      throw StateError('event index is invalid');
-    }
+  for (final (index, event) in bundle.events.indexed) {
     final version =
         (versions[event.streamPath] ??
             tx.queryValue<int?>(
@@ -299,9 +277,9 @@ void _insertLogEvents(SyncContext tx, List<StagedEvent> events) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
       [
         logPosition++,
-        event.eventId.deviceId,
-        event.eventId.sequence,
-        event.eventId.index,
+        bundle.commandId.deviceId,
+        bundle.commandId.sequence,
+        index,
         event.streamPath,
         version,
         event.encodedEvent.kind,

@@ -2,17 +2,14 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
-import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
@@ -63,7 +60,7 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.dependency,
       VersionVector(),
     );
   });
@@ -76,7 +73,7 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.dependency,
       VersionVector({1: 1}),
     );
   });
@@ -89,7 +86,7 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -102,7 +99,7 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -116,7 +113,7 @@ void main() {
     });
 
     expect(
-      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.dependency,
       VersionVector({1: 2, 2: 1, 3: 1}),
     );
   });
@@ -190,16 +187,12 @@ Future<bool> _seedCommand(
 }) {
   return database.saveBundle(
     CommandBundle(
-      command: StagedCommand(
-        commandId: commandId,
-        dependency: dependency ?? VersionVector(),
-        occuredAt: _timestamp,
-        eventCount: streamPaths.length,
-      ),
+      commandId: commandId,
+      dependency: dependency ?? VersionVector(),
+      occuredAt: _timestamp,
       events: [
         for (var index = 0; index < streamPaths.length; index++)
-          StagedEvent(
-            eventId: EventId(commandId.deviceId, commandId.sequence, index),
+          BundledEvent(
             streamPath: streamPaths[index],
             encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
             occuredAt: _timestamp,

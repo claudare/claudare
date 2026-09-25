@@ -3,12 +3,9 @@ import 'dart:async';
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/staged_command.dart';
-import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/log_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_database.dart';
-import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
 import 'package:mutex/mutex.dart';
@@ -82,12 +79,11 @@ class EventStore {
           deviceId,
           state.logVersion.value(deviceId) + 1,
         );
-        final events = <StagedEvent>[];
+        final events = <BundledEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
           final event = changes.events[i];
           events.add(
-            StagedEvent(
-              eventId: EventId(deviceId, commandId.sequence, i),
+            BundledEvent(
               streamPath: event.streamPath,
               encodedEvent: event.encodedEvent,
               occuredAt: event.occuredAt,
@@ -97,12 +93,9 @@ class EventStore {
 
         final saved = await _database.saveBundle(
           CommandBundle(
-            command: StagedCommand(
-              commandId: commandId,
-              dependency: changes.dependency,
-              occuredAt: changes.occuredAt,
-              eventCount: events.length,
-            ),
+            commandId: commandId,
+            dependency: changes.dependency,
+            occuredAt: changes.occuredAt,
             events: events,
           ),
         );
