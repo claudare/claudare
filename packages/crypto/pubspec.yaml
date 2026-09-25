@@ -1,0 +1,14 @@
+name: claudare_crypto
+description: all cryptographic utilities in one place
+version: 1.0.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies: { base58: ^1.0.0 }
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
