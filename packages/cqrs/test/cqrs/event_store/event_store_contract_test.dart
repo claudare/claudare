@@ -109,8 +109,8 @@ void main() {
       );
 
       test('reads paged log history with an inclusive cursor', () async {
-        for (final device in [1, 2, 3]) {
-          await store.saveBundle(_bundle(CommandId(device, 1)));
+        for (final actor in [1, 2, 3]) {
+          await store.saveBundle(_bundle(CommandId(actor, 1)));
         }
         final reader = runtime.logReader(0);
         expect(await reader.loadMore(), isTrue);

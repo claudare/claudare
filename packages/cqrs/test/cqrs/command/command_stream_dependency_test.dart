@@ -79,7 +79,7 @@ void main() {
     );
   });
 
-  test('lockLatest applies the greatest command sequence per device', () async {
+  test('lockLatest applies the greatest command sequence per actor', () async {
     await _execute(eventStore, eventRegistry, (context) async {
       final stream = context.stream<_Event>('target');
       await stream.lockLatest();

@@ -3,9 +3,9 @@ import 'package:test/test.dart';
 
 void main() {
   group('Dot', () {
-    test('accepts unrestricted integer device ids and positive sequences', () {
-      expect(Dot(-100, 1).deviceId, -100);
-      expect(Dot(1 << 80, 2).deviceId, 1 << 80);
+    test('accepts unrestricted integer actor ids and positive sequences', () {
+      expect(Dot(-100, 1).actorId, -100);
+      expect(Dot(1 << 80, 2).actorId, 1 << 80);
       expect(() => Dot(0, 0), throwsFormatException);
       expect(() => Dot(0, -1), throwsFormatException);
     });
@@ -13,6 +13,20 @@ void main() {
     test('round trips JSON', () {
       final dot = Dot(-3, 8);
       expect(Dot.fromJson(dot.toJson()), dot);
+      expect(dot.toString(), 'Dot(actorId: -3, sequence: 8)');
+    });
+
+    test('uses actor terminology for malformed JSON', () {
+      expect(
+        () => Dot.fromJson([1]),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            'dot must contain actor id and sequence',
+          ),
+        ),
+      );
     });
   });
 

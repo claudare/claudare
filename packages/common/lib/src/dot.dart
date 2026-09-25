@@ -1,19 +1,19 @@
-/// Identifies one command in a device's contiguous command history.
+/// Identifies one command in an actor's contiguous command history.
 class Dot {
-  final int deviceId;
+  final int actorId;
   final int sequence;
 
-  Dot(this.deviceId, this.sequence) {
+  Dot(this.actorId, this.sequence) {
     if (sequence <= 0) {
       throw FormatException('dot sequence must be positive: $sequence');
     }
   }
 
-  List<int> toJson() => [deviceId, sequence];
+  List<int> toJson() => [actorId, sequence];
 
   factory Dot.fromJson(List<dynamic> json) {
     if (json.length != 2) {
-      throw const FormatException('dot must contain device id and sequence');
+      throw const FormatException('dot must contain actor id and sequence');
     }
     return Dot(json[0] as int, json[1] as int);
   }
@@ -23,12 +23,12 @@ class Dot {
       identical(this, other) ||
       other.runtimeType == runtimeType &&
           other is Dot &&
-          deviceId == other.deviceId &&
+          actorId == other.actorId &&
           sequence == other.sequence;
 
   @override
-  int get hashCode => Object.hash(deviceId, sequence);
+  int get hashCode => Object.hash(actorId, sequence);
 
   @override
-  String toString() => 'Dot(deviceId: $deviceId, sequence: $sequence)';
+  String toString() => 'Dot(actorId: $actorId, sequence: $sequence)';
 }

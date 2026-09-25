@@ -1,6 +1,6 @@
 import 'dot.dart';
 
-/// A compact contiguous causal history indexed by device.
+/// A compact contiguous causal history indexed by actor.
 class VersionVector {
   final Map<int, int> _values;
 
@@ -18,7 +18,7 @@ class VersionVector {
     return Map.of(values)..removeWhere((_, value) => value == 0);
   }
 
-  int value(int deviceId) => _values[deviceId] ?? 0;
+  int value(int actorId) => _values[actorId] ?? 0;
 
   Map<int, int> get values => _values;
 
@@ -30,13 +30,13 @@ class VersionVector {
   }
 
   VersionVector advance(Dot dot) {
-    final expected = value(dot.deviceId) + 1;
+    final expected = value(dot.actorId) + 1;
     if (dot.sequence != expected) {
       throw StateError(
-        'out-of-order dot ${dot.sequence}, expected $expected for ${dot.deviceId}',
+        'out-of-order dot ${dot.sequence}, expected $expected for ${dot.actorId}',
       );
     }
-    return VersionVector({..._values, dot.deviceId: dot.sequence});
+    return VersionVector({..._values, dot.actorId: dot.sequence});
   }
 
   List<List<int>> toJson() {
@@ -53,14 +53,14 @@ class VersionVector {
       final pair = value as List<dynamic>;
       if (pair.length != 2) {
         throw const FormatException(
-          'version-vector entry must contain device id and sequence',
+          'version-vector entry must contain actor id and sequence',
         );
       }
-      final deviceId = pair[0] as int;
-      if (values.containsKey(deviceId)) {
-        throw FormatException('duplicate version-vector device: $deviceId');
+      final actorId = pair[0] as int;
+      if (values.containsKey(actorId)) {
+        throw FormatException('duplicate version-vector actor: $actorId');
       }
-      values[deviceId] = pair[1] as int;
+      values[actorId] = pair[1] as int;
     }
     return VersionVector(values);
   }

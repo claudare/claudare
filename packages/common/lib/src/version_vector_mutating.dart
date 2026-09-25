@@ -7,10 +7,10 @@ class VersionVectorMutating {
 
   VersionVectorMutating();
 
-  /// Applies [dot] when it advances the recorded sequence for its device.
+  /// Applies [dot] when it advances the recorded sequence for its actor.
   void apply(Dot dot) {
-    if ((_values[dot.deviceId] ?? 0) >= dot.sequence) return;
-    _values[dot.deviceId] = dot.sequence;
+    if ((_values[dot.actorId] ?? 0) >= dot.sequence) return;
+    _values[dot.actorId] = dot.sequence;
   }
 
   /// Returns an immutable snapshot of the current version vector.

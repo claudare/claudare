@@ -42,7 +42,7 @@ void main() {
       isTrue,
     );
     final bytes = await sqlite.queryValue<Uint8List>(
-      'SELECT dependency FROM command WHERE device_id = 3',
+      'SELECT dependency FROM command WHERE actor_id = 3',
     );
     expect(JsonConverter.decode<List<dynamic>>(bytes), [
       [-1, 3],
@@ -52,9 +52,9 @@ void main() {
 
   test('schema rejects negative command and event log positions', () async {
     for (final statement in [
-      '''INSERT INTO command(log_position, device_id, sequence,
+      '''INSERT INTO command(log_position, actor_id, sequence,
         dependency, occured_at, event_count) VALUES (-1, 1, 1, X'5B5D', 0, 1)''',
-      '''INSERT INTO event(log_position, device_id, sequence, event_index,
+      '''INSERT INTO event(log_position, actor_id, sequence, event_index,
         stream_path, stream_version, kind, detail, occured_at)
         VALUES (-1, 1, 1, 0, 'one', 0, 'test', X'', 0)''',
     ]) {

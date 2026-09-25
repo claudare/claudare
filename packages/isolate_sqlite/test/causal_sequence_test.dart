@@ -8,8 +8,8 @@ class CausalDb {
   Future<void> setup() async {
     await db.execute('''
       CREATE TABLE event (
-        device_id INTEGER NOT NULL,
-        device_sequence INTEGER NOT NULL,
+        actor_id INTEGER NOT NULL,
+        actor_sequence INTEGER NOT NULL,
         causal_sequence INTEGER NOT NULL,
         local_sequence INTEGER NOT NULL,
         PRIMARY KEY (local_sequence)
@@ -17,24 +17,24 @@ class CausalDb {
     ''');
 
     await db.execute(
-      'CREATE INDEX idx_device_sequence ON event(device_id, device_sequence);',
+      'CREATE INDEX idx_actor_sequence ON event(actor_id, actor_sequence);',
     );
     await db.execute(
-      'CREATE INDEX idx_causal_sequence ON event(device_id, causal_sequence);',
+      'CREATE INDEX idx_causal_sequence ON event(actor_id, causal_sequence);',
     );
 
     await db.execute('''
-      CREATE VIEW next_device_sequence AS
-      SELECT device_id, COALESCE(MAX(device_sequence), 0) + 1 AS next_seq
+      CREATE VIEW next_actor_sequence AS
+      SELECT actor_id, COALESCE(MAX(actor_sequence), 0) + 1 AS next_seq
       FROM event
-      GROUP BY device_id;
+      GROUP BY actor_id;
     ''');
 
     await db.execute('''
       CREATE VIEW next_causal_sequence AS
-      SELECT device_id, COALESCE(MAX(causal_sequence), 0) + 1 AS next_seq
+      SELECT actor_id, COALESCE(MAX(causal_sequence), 0) + 1 AS next_seq
       FROM event
-      GROUP BY device_id;
+      GROUP BY actor_id;
     ''');
 
     await db.execute('''
@@ -44,31 +44,31 @@ class CausalDb {
     ''');
   }
 
-  Future<void> insertEvent(int deviceId) => db.execute(
+  Future<void> insertEvent(int actorId) => db.execute(
     '''
-    INSERT INTO event (device_id, device_sequence, causal_sequence, local_sequence)
+    INSERT INTO event (actor_id, actor_sequence, causal_sequence, local_sequence)
     VALUES (
       ?,
-      COALESCE((SELECT next_seq FROM next_device_sequence WHERE device_id = ?), 1),
-      COALESCE((SELECT next_seq FROM next_causal_sequence WHERE device_id = ?), 1),
+      COALESCE((SELECT next_seq FROM next_actor_sequence WHERE actor_id = ?), 1),
+      COALESCE((SELECT next_seq FROM next_causal_sequence WHERE actor_id = ?), 1),
       (SELECT next_seq FROM next_local_sequence)
     );
   ''',
-    [deviceId, deviceId, deviceId],
+    [actorId, actorId, actorId],
   );
 
-  Future<List<int>> deviceSequences(int deviceId) async {
+  Future<List<int>> actorSequences(int actorId) async {
     final rows = await db.query(
-      'SELECT device_sequence FROM event WHERE device_id = ? ORDER BY device_sequence',
-      [deviceId],
+      'SELECT actor_sequence FROM event WHERE actor_id = ? ORDER BY actor_sequence',
+      [actorId],
     );
     return [for (final r in rows) r[0] as int];
   }
 
-  Future<List<int>> causalSequences(int deviceId) async {
+  Future<List<int>> causalSequences(int actorId) async {
     final rows = await db.query(
-      'SELECT causal_sequence FROM event WHERE device_id = ? ORDER BY causal_sequence',
-      [deviceId],
+      'SELECT causal_sequence FROM event WHERE actor_id = ? ORDER BY causal_sequence',
+      [actorId],
     );
     return [for (final r in rows) r[0] as int];
   }
@@ -94,16 +94,16 @@ void main() {
     await causal.db.close();
   });
 
-  test('device_sequence increments per device', () async {
+  test('actor_sequence increments per actor', () async {
     await causal.insertEvent(1); // 1
     await causal.insertEvent(1); // 2
     await causal.insertEvent(2); // 1
 
-    expect(await causal.deviceSequences(1), [1, 2]);
-    expect(await causal.deviceSequences(2), [1]);
+    expect(await causal.actorSequences(1), [1, 2]);
+    expect(await causal.actorSequences(2), [1]);
   });
 
-  test('causal_sequence increments per device', () async {
+  test('causal_sequence increments per actor', () async {
     await causal.insertEvent(1); // 1
     await causal.insertEvent(1); // 2
     await causal.insertEvent(2); // 1
@@ -121,18 +121,18 @@ void main() {
   });
 
   test('failed insert does not consume sequences', () async {
-    await causal.insertEvent(1); // local 1, device 1, causal 1
-    await causal.insertEvent(1); // local 2, device 2, causal 2
+    await causal.insertEvent(1); // local 1, actor 1, causal 1
+    await causal.insertEvent(1); // local 2, actor 2, causal 2
 
     expect(
       () => causal.db.execute(
-        'INSERT INTO event (device_id, device_sequence, causal_sequence, local_sequence) VALUES (NULL, 1, 1, 99)',
+        'INSERT INTO event (actor_id, actor_sequence, causal_sequence, local_sequence) VALUES (NULL, 1, 1, 99)',
       ),
       throwsException,
     );
 
-    await causal.insertEvent(1); // local 3, device 3, causal 3
-    expect(await causal.deviceSequences(1), [1, 2, 3]);
+    await causal.insertEvent(1); // local 3, actor 3, causal 3
+    expect(await causal.actorSequences(1), [1, 2, 3]);
     expect(await causal.causalSequences(1), [1, 2, 3]);
     expect(await causal.localSequences(), [1, 2, 3]);
   });
@@ -142,7 +142,7 @@ void main() {
 
     expect(
       () => causal.db.execute(
-        'INSERT INTO event (device_id, device_sequence, causal_sequence, local_sequence) VALUES (?, ?, ?, ?)',
+        'INSERT INTO event (actor_id, actor_sequence, causal_sequence, local_sequence) VALUES (?, ?, ?, ?)',
         [1, 99, 99, 1],
       ),
       throwsException,

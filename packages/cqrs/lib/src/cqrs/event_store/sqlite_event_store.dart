@@ -18,21 +18,21 @@ final eventDatabaseMigrations = SqliteMigrations(
   SqliteMigration(1, (tx) {
     tx.execute('''CREATE TABLE command(
             log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            device_id INTEGER NOT NULL,
+            actor_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             dependency BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
             event_count INTEGER NOT NULL CHECK(event_count > 0),
-            UNIQUE(device_id, sequence)
+            UNIQUE(actor_id, sequence)
           );''');
-    tx.execute('CREATE INDEX idx_command_id ON command(device_id, sequence);');
+    tx.execute('CREATE INDEX idx_command_id ON command(actor_id, sequence);');
     tx.execute('''CREATE TABLE stream(
             stream_path TEXT PRIMARY KEY NOT NULL,
             version INTEGER NOT NULL
           );''');
     tx.execute('''CREATE TABLE event(
             log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            device_id INTEGER NOT NULL,
+            actor_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             event_index INTEGER NOT NULL CHECK(event_index >= 0),
             stream_path TEXT NOT NULL,
@@ -40,7 +40,7 @@ final eventDatabaseMigrations = SqliteMigrations(
             kind TEXT NOT NULL,
             detail BLOB NOT NULL,
             occured_at INTEGER NOT NULL,
-            UNIQUE(device_id, sequence, event_index)
+            UNIQUE(actor_id, sequence, event_index)
           );''');
     tx.execute(
       'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
@@ -104,7 +104,7 @@ class SqliteEventStore implements EventStore {
     }
     final rows = tx.query(
       '''SELECT
-        device_id, sequence, event_index, kind, detail, occured_at, stream_version, log_position
+        actor_id, sequence, event_index, kind, detail, occured_at, stream_version, log_position
       FROM event
       WHERE stream_path = ?
         AND stream_version >= ?
@@ -117,7 +117,7 @@ class SqliteEventStore implements EventStore {
         StoredEvent(
           streamPath: streamPath,
           eventId: EventId(
-            row.field<int>('device_id'),
+            row.field<int>('actor_id'),
             row.field<int>('sequence'),
             row.field<int>('event_index'),
           ),
@@ -144,7 +144,7 @@ class SqliteEventStore implements EventStore {
         }
         final rows = tx.query(
           '''SELECT
-        device_id, sequence, event_index, stream_path, kind, detail, occured_at, stream_version, log_position
+        actor_id, sequence, event_index, stream_path, kind, detail, occured_at, stream_version, log_position
       FROM event
       WHERE log_position >= ?
       ORDER BY log_position ASC
@@ -156,7 +156,7 @@ class SqliteEventStore implements EventStore {
             StoredEvent(
               streamPath: row.field<String>('stream_path'),
               eventId: EventId(
-                row.field<int>('device_id'),
+                row.field<int>('actor_id'),
                 row.field<int>('sequence'),
                 row.field<int>('event_index'),
               ),
@@ -193,18 +193,18 @@ class SqliteEventStore implements EventStore {
         final row = tx.queryRow(
           '''SELECT dependency, occured_at
           FROM command
-          WHERE device_id = ?
+          WHERE actor_id = ?
             AND sequence = ?;''',
-          [commandId.deviceId, commandId.sequence],
+          [commandId.actorId, commandId.sequence],
         );
         if (row == null) return null;
         final rows = tx.query(
           '''SELECT stream_path, kind, detail, occured_at
           FROM event
-          WHERE device_id = ?
+          WHERE actor_id = ?
             AND sequence = ?
           ORDER BY event_index ASC;''',
-          [commandId.deviceId, commandId.sequence],
+          [commandId.actorId, commandId.sequence],
         );
         return CommandBundle(
           commandId: commandId,
@@ -227,7 +227,7 @@ class SqliteEventStore implements EventStore {
   @override
   Future<void> saveChanges(CommandChanges changes) =>
       _transaction('Failed to append command batch', (tx) {
-        const deviceId = 0;
+        const actorId = 0;
         if (changes.events.isEmpty) return;
         if (!changes.isValid()) {
           throw ArgumentError('every appended event must have one stream lock');
@@ -244,8 +244,8 @@ class SqliteEventStore implements EventStore {
         }
 
         final commandId = CommandId(
-          deviceId,
-          state.logVersion.value(deviceId) + 1,
+          actorId,
+          state.logVersion.value(actorId) + 1,
         );
         final events = <BundledEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
@@ -283,14 +283,14 @@ EventDatabaseState _getState(SyncContext tx) {
       tx.queryRow('''SELECT
     (SELECT MAX(log_position) FROM command) AS command_position,
     (SELECT MAX(log_position) FROM event) AS event_position''')!;
-  final vectors = tx.query('''SELECT device_id, MAX(sequence) AS sequence
-    FROM command GROUP BY device_id ORDER BY device_id''');
+  final vectors = tx.query('''SELECT actor_id, MAX(sequence) AS sequence
+    FROM command GROUP BY actor_id ORDER BY actor_id''');
   return EventDatabaseState(
     lastCommandLogPosition: counters.field<int?>('command_position'),
     lastEventLogPosition: counters.field<int?>('event_position'),
     logVersion: VersionVector({
       for (final row in vectors)
-        row.field<int>('device_id'): row.field<int>('sequence'),
+        row.field<int>('actor_id'): row.field<int>('sequence'),
     }),
   );
 }
@@ -303,7 +303,7 @@ bool _saveBundle(SyncContext tx, CommandBundle bundle) {
   if (!bundle.isValid) throw ArgumentError('invalid command bundle');
   final frontier = _getState(tx).logVersion;
   if (!frontier.contains(bundle.dependency) ||
-      frontier.value(bundle.commandId.deviceId) + 1 !=
+      frontier.value(bundle.commandId.actorId) + 1 !=
           bundle.commandId.sequence) {
     return false;
   }
@@ -314,12 +314,12 @@ bool _saveBundle(SyncContext tx, CommandBundle bundle) {
 void _insertLog(SyncContext tx, CommandBundle bundle) {
   final id = bundle.commandId;
   tx.execute(
-    '''INSERT INTO command(log_position, device_id, sequence,
+    '''INSERT INTO command(log_position, actor_id, sequence,
     dependency, occured_at, event_count)
     VALUES (?, ?, ?, ?, ?, ?);''',
     [
       _nextLogPosition(tx, 'command'),
-      id.deviceId,
+      id.actorId,
       id.sequence,
       _encodeVector(bundle.dependency),
       bundle.occuredAt.millisecondsSinceEpoch,
@@ -347,12 +347,12 @@ void _insertLogEvents(SyncContext tx, CommandBundle bundle) {
         1;
     versions[event.streamPath] = version;
     tx.execute(
-      '''INSERT INTO event(log_position, device_id, sequence,
+      '''INSERT INTO event(log_position, actor_id, sequence,
         event_index, stream_path, stream_version, kind, detail, occured_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
       [
         logPosition++,
-        bundle.commandId.deviceId,
+        bundle.commandId.actorId,
         bundle.commandId.sequence,
         index,
         event.streamPath,

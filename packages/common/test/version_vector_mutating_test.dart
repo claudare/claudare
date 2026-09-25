@@ -2,7 +2,7 @@ import 'package:common/common.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('applies the greatest sequence for each device', () {
+  test('applies the greatest sequence for each actor', () {
     final vector = VersionVectorMutating()
       ..apply(Dot(1, 2))
       ..apply(Dot(2, 3))

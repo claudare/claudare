@@ -1,15 +1,15 @@
 import 'package:common/common.dart';
 
 class CommandId extends Dot {
-  CommandId(super.deviceId, super.sequence);
+  CommandId(super.actorId, super.sequence);
 
   factory CommandId.fromJson(List<dynamic> json) {
     final dot = Dot.fromJson(json);
-    return CommandId(dot.deviceId, dot.sequence);
+    return CommandId(dot.actorId, dot.sequence);
   }
 
   @override
-  String toString() => 'CommandId(deviceId: $deviceId, sequence: $sequence)';
+  String toString() => 'CommandId(actorId: $actorId, sequence: $sequence)';
 
-  String toStringCompact() => 'CommandId($deviceId.$sequence)';
+  String toStringCompact() => 'CommandId($actorId.$sequence)';
 }

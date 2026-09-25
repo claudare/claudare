@@ -61,8 +61,8 @@ class MemoryEventStore implements EventStore {
     final values = <int, int>{};
     for (final command in _commands) {
       final id = command.commandId;
-      final current = values[id.deviceId] ?? 0;
-      if (id.sequence > current) values[id.deviceId] = id.sequence;
+      final current = values[id.actorId] ?? 0;
+      if (id.sequence > current) values[id.actorId] = id.sequence;
     }
     return VersionVector(values);
   }
@@ -193,7 +193,7 @@ class MemoryEventStore implements EventStore {
   bool _isReady(CommandBundle bundle) {
     final frontier = _logVersion();
     return frontier.contains(bundle.dependency) &&
-        frontier.value(bundle.commandId.deviceId) + 1 ==
+        frontier.value(bundle.commandId.actorId) + 1 ==
             bundle.commandId.sequence;
   }
 
@@ -211,7 +211,7 @@ class MemoryEventStore implements EventStore {
       _events.add(
         _MemoryLogEvent(
           eventId: EventId(
-            bundle.commandId.deviceId,
+            bundle.commandId.actorId,
             bundle.commandId.sequence,
             index,
           ),
@@ -231,7 +231,7 @@ class MemoryEventStore implements EventStore {
   @override
   Future<void> saveChanges(CommandChanges changes) =>
       _write('Failed to append command batch', () {
-        const deviceId = 0;
+        const actorId = 0;
         if (changes.events.isEmpty) return;
         if (!changes.isValid()) {
           throw ArgumentError('every appended event must have one stream lock');
@@ -248,8 +248,8 @@ class MemoryEventStore implements EventStore {
         }
 
         final commandId = CommandId(
-          deviceId,
-          state.logVersion.value(deviceId) + 1,
+          actorId,
+          state.logVersion.value(actorId) + 1,
         );
         final events = <BundledEvent>[];
         for (var i = 0; i < changes.events.length; i++) {
