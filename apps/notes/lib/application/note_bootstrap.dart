@@ -32,15 +32,22 @@ class NoteBootstrap {
     try {
       await _sqlite.open(eventsDbFilepath);
       opened = true;
+
       final eventStore = SqliteEventStore(_sqlite);
-      await eventStore.migrate();
       final runtime = CqrsRuntime(
         eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
       );
+      final application = NoteApplication(cqrsRuntime: runtime);
+
+      await eventStore.migrate();
+      // resolve the notelist so that its snapshot is resolved on startup
+      // also, this will catch any migration replacement issues right away
+      await application.query.noteList();
+
       return NoteBootstrapResult(
-        application: NoteApplication(cqrsRuntime: runtime),
+        application: application,
         eventStore: eventStore,
       );
     } catch (error, stackTrace) {
