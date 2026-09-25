@@ -1,20 +1,13 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AtmDepositInput implements CommandInput {
+class AtmDepositInput {
   final String accountId;
   final int amount;
 
   const AtmDepositInput({required this.accountId, required this.amount});
-
-  @override
-  String get kind => 'atmDeposit';
-
-  @override
-  encode() => JsonConverter.encode({'accountId': accountId, 'amount': amount});
 }
 
 class AtmDeposit implements Command<AtmDepositInput> {

@@ -1,23 +1,13 @@
-import 'dart:typed_data' show Uint8List;
-
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class OpenAccountInput implements CommandInput {
+class OpenAccountInput {
   final String accountId;
   final String name;
 
   const OpenAccountInput({required this.accountId, required this.name});
-
-  @override
-  String get kind => 'OpenAccount';
-
-  @override
-  Uint8List encode() =>
-      JsonConverter.encode({'accountId': accountId, 'name': name});
 }
 
 class OpenAccount implements Command<OpenAccountInput> {

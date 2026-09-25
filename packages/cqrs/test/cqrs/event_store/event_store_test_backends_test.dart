@@ -6,7 +6,6 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
@@ -276,7 +275,6 @@ StagedCommand _command(CommandId commandId, {int eventCount = 1}) =>
     StagedCommand(
       commandId: commandId,
       dependency: VersionVector(),
-      encoded: EncodedCommand(kind: 'remote', bytes: Uint8List(0)),
       startedAt: _timestamp,
       completedAt: _timestamp,
       eventCount: eventCount,
@@ -294,7 +292,6 @@ Future<void> _append(EventStore store) => store.saveChanges(_changes());
 
 CommandChanges _changes() => CommandChanges(
   dependency: VersionVector(),
-  encoded: EncodedCommand(kind: 'test', bytes: Uint8List(0)),
   startedAt: _timestamp,
   completedAt: _timestamp,
   locks: const [

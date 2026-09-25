@@ -1,12 +1,10 @@
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 
 /// Sent to save a command and its events atomically while respecting
 /// concurrency.
 class CommandChanges {
   final VersionVector dependency;
-  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final List<StreamLock> locks;
@@ -14,7 +12,6 @@ class CommandChanges {
 
   const CommandChanges({
     required this.dependency,
-    required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.locks,

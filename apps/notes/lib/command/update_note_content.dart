@@ -1,9 +1,8 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class UpdateNoteContentInput implements CommandInput {
+class UpdateNoteContentInput {
   final String noteId;
   final String overrideContent;
 
@@ -11,17 +10,6 @@ class UpdateNoteContentInput implements CommandInput {
     required this.noteId,
     required this.overrideContent,
   });
-
-  @override
-  String get kind => 'updateNoteContent';
-
-  @override
-  encode() {
-    return JsonConverter.encode({
-      'noteId': noteId,
-      'overrideContent': overrideContent,
-    });
-  }
 
   @override
   String toString() {

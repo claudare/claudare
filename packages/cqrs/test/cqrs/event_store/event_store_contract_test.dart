@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/log_command.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
@@ -322,44 +321,35 @@ void main() {
         expect((await store.getStatistics()).eventCount, 0);
       });
 
-      test(
-        'is idempotent and rejects conflicting command or event bytes',
-        () async {
-          final command = _commandRecord(device: 4, sequence: 1);
-          final event = _stagedEvent(command.commandId, 0);
-          expect(await store.stageCommand(command), StageCommandResult.staged);
-          expect(
-            await store.stageCommand(command),
-            StageCommandResult.alreadyPresent,
-          );
-          await store.stageEvents([event]);
-          expect(
-            await store.stageEvents([event]),
-            StageCommandResult.alreadyPresent,
-          );
-          await expectLater(
-            store.stageCommand(
-              _commandRecord(device: 4, sequence: 1, kind: 'changed'),
-            ),
-            throwsA(isA<StagedCommandConflict>()),
-          );
-          await expectLater(
-            store.stageEvents([
-              _stagedEvent(command.commandId, 0, kind: 'changed'),
-            ]),
-            throwsA(isA<StagedCommandConflict>()),
-          );
-          expect(await store.promoteStaged(command.commandId), isTrue);
-          expect(
-            await store.stageCommand(command),
-            StageCommandResult.alreadyPresent,
-          );
-          expect(
-            await store.stageEvents([event]),
-            StageCommandResult.alreadyPresent,
-          );
-        },
-      );
+      test('is idempotent and rejects conflicting event bytes', () async {
+        final command = _commandRecord(device: 4, sequence: 1);
+        final event = _stagedEvent(command.commandId, 0);
+        expect(await store.stageCommand(command), StageCommandResult.staged);
+        expect(
+          await store.stageCommand(command),
+          StageCommandResult.alreadyPresent,
+        );
+        await store.stageEvents([event]);
+        expect(
+          await store.stageEvents([event]),
+          StageCommandResult.alreadyPresent,
+        );
+        await expectLater(
+          store.stageEvents([
+            _stagedEvent(command.commandId, 0, kind: 'changed'),
+          ]),
+          throwsA(isA<StagedCommandConflict>()),
+        );
+        expect(await store.promoteStaged(command.commandId), isTrue);
+        expect(
+          await store.stageCommand(command),
+          StageCommandResult.alreadyPresent,
+        );
+        expect(
+          await store.stageEvents([event]),
+          StageCommandResult.alreadyPresent,
+        );
+      });
 
       test('reconstructs transport from separately queried log rows', () async {
         await store.saveChanges(
@@ -549,15 +539,11 @@ CommandChanges _commandChanges(
   required List<EventAppend> events,
 }) => CommandChanges(
   dependency: dependency ?? VersionVector(),
-  encoded: _encodedCommand(kind),
   startedAt: _startedAt,
   completedAt: _completedAt,
   locks: logLocks,
   events: events,
 );
-
-EncodedCommand _encodedCommand(String kind) =>
-    EncodedCommand(kind: kind, bytes: Uint8List.fromList([kind.length]));
 
 EventAppend _eventAppend(String streamPath, String kind) => EventAppend(
   streamPath: streamPath,
@@ -571,13 +557,11 @@ EventAppend _eventAppend(String streamPath, String kind) => EventAppend(
 StagedCommand _commandRecord({
   required int device,
   required int sequence,
-  String kind = 'command',
   VersionVector? dependency,
   int eventCount = 1,
 }) => StagedCommand(
   commandId: CommandId(device, sequence),
   dependency: dependency ?? VersionVector(),
-  encoded: _encodedCommand(kind),
   startedAt: _startedAt,
   completedAt: _completedAt,
   eventCount: eventCount,

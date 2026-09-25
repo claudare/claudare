@@ -154,16 +154,10 @@ final class _ValueEventCodec implements EventCodec<_ValueEvent> {
   _ValueEvent fromBytes(Uint8List bytes) => _ValueEvent(utf8.decode(bytes));
 }
 
-final class _AppendValueInput implements CommandInput {
+final class _AppendValueInput {
   final String value;
 
   const _AppendValueInput(this.value);
-
-  @override
-  String get kind => 'appendValue';
-
-  @override
-  Uint8List encode() => Uint8List.fromList(utf8.encode(value));
 }
 
 final class _AppendValue implements Command<_AppendValueInput> {

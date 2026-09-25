@@ -1,10 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:time_provider/time_provider.dart';
@@ -127,10 +124,7 @@ class CommandTester {
         .toList();
   }
 
-  Future<void> run<Input extends CommandInput>(
-    Command<Input> command,
-    Input input,
-  ) async {
+  Future<void> run<Input>(Command<Input> command, Input input) async {
     _ensureNotRan();
 
     await _flushSeeds();
@@ -157,10 +151,6 @@ class CommandTester {
       await _eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          encoded: EncodedCommand(
-            kind: 'command-tester-seed',
-            bytes: Uint8List(0),
-          ),
           startedAt: timestamp,
           completedAt: timestamp,
           locks: [

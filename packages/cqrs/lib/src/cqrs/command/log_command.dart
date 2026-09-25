@@ -1,12 +1,10 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 
 class LogCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final int eventCount;
@@ -15,7 +13,6 @@ class LogCommand {
   LogCommand({
     required this.commandId,
     required this.dependency,
-    required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.eventCount,
@@ -31,7 +28,6 @@ class LogCommand {
   StagedCommand toStagedCommand() => StagedCommand(
     commandId: commandId,
     dependency: dependency,
-    encoded: encoded,
     startedAt: startedAt,
     completedAt: completedAt,
     eventCount: eventCount,
@@ -43,7 +39,6 @@ class LogCommand {
   }) => LogCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    encoded: command.encoded,
     startedAt: command.startedAt,
     completedAt: command.completedAt,
     eventCount: command.eventCount,

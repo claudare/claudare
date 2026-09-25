@@ -1,20 +1,11 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class TrashNoteInput implements CommandInput {
+class TrashNoteInput {
   final String noteId;
 
   const TrashNoteInput({required this.noteId});
-
-  @override
-  String get kind => 'deleteNote';
-
-  @override
-  encode() {
-    return JsonConverter.encode({'noteId': noteId});
-  }
 
   @override
   String toString() {

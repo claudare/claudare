@@ -20,7 +20,6 @@ export 'src/cqrs/event/log_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
-export 'src/cqrs/command/command_input.dart';
 export 'src/cqrs/command/command_context.dart';
 
 // aggregate
@@ -34,7 +33,6 @@ export 'src/cqrs/stream_route/stream_route_all.dart';
 export 'src/cqrs/stream_route/stream_route_wildcard.dart';
 
 // exception
-export 'src/cqrs/exception/command_codec_exception.dart';
 export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';
 export 'src/cqrs/exception/event_codec_exception.dart';

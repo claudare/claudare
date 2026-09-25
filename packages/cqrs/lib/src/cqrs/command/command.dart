@@ -1,7 +1,6 @@
-import 'command_input.dart';
 import 'command_context.dart';
 
-abstract interface class Command<Input extends CommandInput> {
+abstract interface class Command<Input> {
   const Command();
 
   Future<void> handle(Input input, CommandContext ctx);

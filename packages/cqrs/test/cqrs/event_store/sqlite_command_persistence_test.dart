@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
@@ -119,7 +118,6 @@ StagedCommand _command({VersionVector? dependency, int sequence = 1}) =>
     StagedCommand(
       commandId: CommandId(3, sequence),
       dependency: dependency ?? VersionVector(),
-      encoded: EncodedCommand(kind: 'test', bytes: Uint8List.fromList([1])),
       startedAt: DateTime.fromMillisecondsSinceEpoch(100, isUtc: true),
       completedAt: DateTime.fromMillisecondsSinceEpoch(200, isUtc: true),
       eventCount: 1,
@@ -139,10 +137,9 @@ Future<void> _stage(
   ]);
 }
 
-StagedEvent _event(EventId eventId, {String kind = 'test'}) =>
-    StagedEvent(
-      eventId: eventId,
-      streamPath: 'test/1',
-      encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
-      occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
-    );
+StagedEvent _event(EventId eventId, {String kind = 'test'}) => StagedEvent(
+  eventId: eventId,
+  streamPath: 'test/1',
+  encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
+  occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
+);

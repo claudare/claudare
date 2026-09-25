@@ -4,7 +4,6 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
-import 'package:cqrs/src/cqrs/command/command_input.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -38,10 +37,7 @@ class CqrsRuntime {
 
   EventRegistry get eventRegistry => _eventRegistry;
 
-  Future<void> execute<Input extends CommandInput>(
-    Command<Input> command,
-    Input input,
-  ) {
+  Future<void> execute<Input>(Command<Input> command, Input input) {
     return _commandExecutor.execute(command, input);
   }
 

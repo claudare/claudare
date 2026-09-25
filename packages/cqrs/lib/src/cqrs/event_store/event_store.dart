@@ -102,7 +102,6 @@ class EventStore {
           StagedCommand(
             commandId: commandId,
             dependency: changes.dependency,
-            encoded: changes.encoded,
             startedAt: changes.startedAt,
             completedAt: changes.completedAt,
             eventCount: events.length,
@@ -121,67 +120,59 @@ class EventStore {
     _logChangesController.add(null);
   }
 
-  Future<StageCommandResult> stageCommand(
-    StagedCommand command,
-  ) => _mutex.protectWrite(() async {
-    try {
-      final commandId = command.commandId;
-      final existing =
-          await _database.getLogCommand(commandId) ??
-          await _database.getStagedCommand(commandId);
-      if (existing != null) {
-        if (stagedCommandsEqual(existing, command)) {
-          return StageCommandResult.alreadyPresent;
+  Future<StageCommandResult> stageCommand(StagedCommand command) =>
+      _mutex.protectWrite(() async {
+        try {
+          final commandId = command.commandId;
+          final existing =
+              await _database.getLogCommand(commandId) ??
+              await _database.getStagedCommand(commandId);
+          if (existing != null) {
+            if (stagedCommandsEqual(existing, command)) {
+              return StageCommandResult.alreadyPresent;
+            }
+            throw StagedCommandConflict(commandId);
+          }
+          await _database.stageCommand(command);
+          return StageCommandResult.staged;
+        } on StagedCommandConflict {
+          rethrow;
+        } on Exception catch (cause) {
+          throw EventStoreException('Failed to stage command', cause: cause);
         }
-        throw StagedCommandConflict(commandId);
-      }
-      await _database.stageCommand(command);
-      return StageCommandResult.staged;
-    } on StagedCommandConflict {
-      rethrow;
-    } on Exception catch (cause) {
-      throw EventStoreException(
-        'Failed to stage command',
-        cause: cause,
-      );
-    }
-  });
+      });
 
-  Future<StageCommandResult> stageEvents(
-    List<StagedEvent> events,
-  ) => _mutex.protectWrite(() async {
-    try {
-      final unique = <EventId, StagedEvent>{};
-      for (final event in events) {
-        final duplicate = unique[event.eventId];
-        if (duplicate != null && duplicate != event) {
-          throw StagedCommandConflict(event.eventId);
+  Future<StageCommandResult> stageEvents(List<StagedEvent> events) =>
+      _mutex.protectWrite(() async {
+        try {
+          final unique = <EventId, StagedEvent>{};
+          for (final event in events) {
+            final duplicate = unique[event.eventId];
+            if (duplicate != null && duplicate != event) {
+              throw StagedCommandConflict(event.eventId);
+            }
+            unique[event.eventId] = event;
+          }
+          final staged = <StagedEvent>[];
+          for (final event in unique.values) {
+            final existing =
+                await _database.getLogEvent(event.eventId) ??
+                await _database.getStagedEvent(event.eventId);
+            if (existing == null) {
+              staged.add(event);
+            } else if (existing != event) {
+              throw StagedCommandConflict(event.eventId);
+            }
+          }
+          if (staged.isEmpty) return StageCommandResult.alreadyPresent;
+          await _database.stageEvents(staged);
+          return StageCommandResult.staged;
+        } on StagedCommandConflict {
+          rethrow;
+        } on Exception catch (cause) {
+          throw EventStoreException('Failed to stage events', cause: cause);
         }
-        unique[event.eventId] = event;
-      }
-      final staged = <StagedEvent>[];
-      for (final event in unique.values) {
-        final existing =
-            await _database.getLogEvent(event.eventId) ??
-            await _database.getStagedEvent(event.eventId);
-        if (existing == null) {
-          staged.add(event);
-        } else if (existing != event) {
-          throw StagedCommandConflict(event.eventId);
-        }
-      }
-      if (staged.isEmpty) return StageCommandResult.alreadyPresent;
-      await _database.stageEvents(staged);
-      return StageCommandResult.staged;
-    } on StagedCommandConflict {
-      rethrow;
-    } on Exception catch (cause) {
-      throw EventStoreException(
-        'Failed to stage events',
-        cause: cause,
-      );
-    }
-  });
+      });
 
   Future<bool> promoteStaged(CommandId commandId) async {
     final promoted = await _mutex.protectWrite(() async {
@@ -206,10 +197,7 @@ class EventStore {
             _eventFetchPageSize,
           );
         } on Exception catch (cause) {
-          throw EventStoreException(
-            'Failed to get log commands',
-            cause: cause,
-          );
+          throw EventStoreException('Failed to get log commands', cause: cause);
         }
       });
 
@@ -252,23 +240,19 @@ class EventStore {
   });
 
   PaginatedReader<LogEvent> getLogEventReader(int fromPosition) =>
-      PaginatedReader(
-        _readLogEventPage,
-        initialCursor: fromPosition,
-      );
+      PaginatedReader(_readLogEventPage, initialCursor: fromPosition);
 
-  Future<PaginatedResult<LogEvent>> _readLogEventPage(
-    int fromPosition,
-  ) => _mutex.protectRead(() async {
-    try {
-      return await _database.getLogEvents(
-        fromPosition,
-        _eventFetchPageSize,
-      );
-    } on Exception catch (cause) {
-      throw EventStoreException('Failed to get log events', cause: cause);
-    }
-  });
+  Future<PaginatedResult<LogEvent>> _readLogEventPage(int fromPosition) =>
+      _mutex.protectRead(() async {
+        try {
+          return await _database.getLogEvents(
+            fromPosition,
+            _eventFetchPageSize,
+          );
+        } on Exception catch (cause) {
+          throw EventStoreException('Failed to get log events', cause: cause);
+        }
+      });
 
   Future<GetStatisticsResult> getStatistics() => _mutex.protectRead(() async {
     try {

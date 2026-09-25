@@ -1,10 +1,7 @@
-import 'dart:typed_data';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 import 'package:time_provider/time_provider.dart';
@@ -49,7 +46,6 @@ final class CqrsTestRuntime extends CqrsRuntime {
       await _eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          encoded: EncodedCommand(kind: 'test-seed', bytes: Uint8List(0)),
           startedAt: event.occuredAt,
           completedAt: event.occuredAt,
           locks: [

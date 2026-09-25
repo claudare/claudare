@@ -1,20 +1,11 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class RestoreNoteInput implements CommandInput {
+class RestoreNoteInput {
   final String noteId;
 
   const RestoreNoteInput({required this.noteId});
-
-  @override
-  String get kind => 'restoreNote';
-
-  @override
-  encode() {
-    return JsonConverter.encode({'noteId': noteId});
-  }
 
   @override
   String toString() {

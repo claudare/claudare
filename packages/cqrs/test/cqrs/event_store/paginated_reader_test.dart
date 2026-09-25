@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -51,7 +50,6 @@ Future<void> _appendCount(EventStore store, int count) async {
     await store.saveChanges(
       CommandChanges(
         dependency: VersionVector(),
-        encoded: EncodedCommand(kind: 'command-$i', bytes: Uint8List(0)),
         startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         locks: [

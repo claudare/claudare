@@ -5,7 +5,6 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
@@ -80,7 +79,6 @@ void main() {
       await eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
           startedAt: _timestamp,
           completedAt: _timestamp,
           locks: const [
@@ -257,7 +255,6 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
         dependency: VersionVector(),
-        encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
         startedAt: _timestamp,
         completedAt: _timestamp,
         locks: const [

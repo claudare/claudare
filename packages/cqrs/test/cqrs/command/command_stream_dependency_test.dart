@@ -8,8 +8,6 @@ import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/command/command_input.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
@@ -140,7 +138,7 @@ Future<void> _execute(
     eventRegistry: eventRegistry,
     logger: const NoopLogger(),
   );
-  await executor.execute(_Command(handle), const _Input());
+  await executor.execute(_Command(handle), null);
 }
 
 Future<void> _seedCommand(
@@ -153,7 +151,6 @@ Future<void> _seedCommand(
     StagedCommand(
       commandId: commandId,
       dependency: dependency ?? VersionVector(),
-      encoded: EncodedCommand(kind: 'seed', bytes: Uint8List(0)),
       startedAt: _timestamp,
       completedAt: _timestamp,
       eventCount: streamPaths.length,
@@ -170,23 +167,14 @@ Future<void> _seedCommand(
   );
 }
 
-final class _Input implements CommandInput {
-  const _Input();
-
-  @override
-  String get kind => 'test';
-
-  @override
-  Uint8List encode() => Uint8List(0);
-}
-
-final class _Command implements Command<_Input> {
+final class _Command implements Command<dynamic> {
   final Future<void> Function(CommandContext context) _handle;
 
   const _Command(this._handle);
 
   @override
-  Future<void> handle(_Input input, CommandContext context) => _handle(context);
+  Future<void> handle(dynamic input, CommandContext context) =>
+      _handle(context);
 }
 
 final class _Event {

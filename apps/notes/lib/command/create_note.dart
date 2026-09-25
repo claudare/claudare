@@ -1,20 +1,11 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class CreateNoteInput implements CommandInput {
+class CreateNoteInput {
   final String noteId;
 
   const CreateNoteInput({required this.noteId});
-
-  @override
-  String get kind => 'createNote';
-
-  @override
-  encode() {
-    return JsonConverter.encode({'noteId': noteId});
-  }
 
   @override
   String toString() {

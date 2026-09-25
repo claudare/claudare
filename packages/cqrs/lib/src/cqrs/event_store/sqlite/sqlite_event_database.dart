@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/log_command.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
@@ -22,8 +21,6 @@ final eventDatabaseMigrations = SqliteMigrations(
             device_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             dependency BLOB NOT NULL,
-            kind TEXT NOT NULL,
-            detail BLOB NOT NULL,
             started_at INTEGER NOT NULL,
             completed_at INTEGER NOT NULL,
             event_count INTEGER NOT NULL CHECK(event_count > 0),
@@ -206,7 +203,7 @@ class SqliteEventDatabase implements EventDatabase {
     final adhocFilter = isLog ? 'log_position >= 0' : 'log_position < 0';
 
     final row = await _database.queryRow(
-      '''SELECT dependency, kind, detail, started_at, completed_at, event_count
+      '''SELECT dependency, started_at, completed_at, event_count
       FROM command
       WHERE device_id = ?
         AND sequence = ?
@@ -217,14 +214,10 @@ class SqliteEventDatabase implements EventDatabase {
 
     return StagedCommand(
       commandId: commandId,
-      dependency: _decodeVector(row[0] as Uint8List),
-      encoded: EncodedCommand(
-        kind: row[1] as String,
-        bytes: row[2] as Uint8List,
-      ),
-      startedAt: _date(row[3]),
-      completedAt: _date(row[4]),
-      eventCount: row[5] as int,
+      dependency: _decodeVector(row.field<Uint8List>('dependency')),
+      startedAt: _date(row.field<int>('started_at')),
+      completedAt: _date(row.field<int>('completed_at')),
+      eventCount: row.field<int>('event_count'),
     );
   }
 
@@ -248,13 +241,23 @@ class SqliteEventDatabase implements EventDatabase {
         AND $adhocFilter;''',
       [eventId.deviceId, eventId.sequence, eventId.index],
     );
-    return row == null ? null : _readStagedEvent(eventId, row);
+    if (row == null) return null;
+
+    return StagedEvent(
+      eventId: eventId,
+      streamPath: row.field<String>('stream_path'),
+      encodedEvent: EncodedEvent(
+        kind: row.field<String>('kind'),
+        bytes: row.field<Uint8List>('detail'),
+      ),
+      occuredAt: _date(row.field<int>('occured_at')),
+    );
   }
 
   @override
   Future<List<LogCommand>> getLogCommands(int fromPosition, int count) async {
     final rows = await _database.query(
-      '''SELECT log_position, device_id, sequence, dependency, kind, detail,
+      '''SELECT log_position, device_id, sequence, dependency,
       started_at, completed_at, event_count
       FROM command
       WHERE log_position >= ?
@@ -265,16 +268,15 @@ class SqliteEventDatabase implements EventDatabase {
     return [
       for (final row in rows)
         LogCommand(
-          logPosition: row[0] as int,
-          commandId: CommandId(row[1] as int, row[2] as int),
-          dependency: _decodeVector(row[3] as Uint8List),
-          encoded: EncodedCommand(
-            kind: row[4] as String,
-            bytes: row[5] as Uint8List,
+          logPosition: row.field<int>('log_position'),
+          commandId: CommandId(
+            row.field<int>('device_id'),
+            row.field<int>('sequence'),
           ),
-          startedAt: _date(row[6]),
-          completedAt: _date(row[7]),
-          eventCount: row[8] as int,
+          dependency: _decodeVector(row.field<Uint8List>('dependency')),
+          startedAt: _date(row.field<int>('started_at')),
+          completedAt: _date(row.field<int>('completed_at')),
+          eventCount: row.field<int>('event_count'),
         ),
     ];
   }
@@ -297,16 +299,16 @@ class SqliteEventDatabase implements EventDatabase {
           eventId: EventId(
             commandId.deviceId,
             commandId.sequence,
-            row[0] as int,
+            row.field<int>('event_index'),
           ),
-          streamPath: row[1] as String,
+          streamPath: row.field<String>('stream_path'),
           encodedEvent: EncodedEvent(
-            kind: row[2] as String,
-            bytes: row[3] as Uint8List,
+            kind: row.field<String>('kind'),
+            bytes: row.field<Uint8List>('detail'),
           ),
-          occuredAt: _date(row[4]),
-          logPosition: row[5] as int,
-          version: row[6] as int,
+          occuredAt: _date(row.field<int>('occured_at')),
+          logPosition: row.field<int>('log_position'),
+          version: row.field<int>('stream_version'),
         ),
     ];
   }
@@ -423,15 +425,13 @@ void _insertStagedCommand(SyncContext tx, StagedCommand command) {
   final id = command.commandId;
   tx.execute(
     '''INSERT INTO command(log_position, device_id, sequence, dependency,
-    kind, detail, started_at, completed_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    started_at, completed_at, event_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?)''',
     [
       _nextStagedSequence(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
-      command.encoded.kind,
-      command.encoded.bytes,
       command.startedAt.millisecondsSinceEpoch,
       command.completedAt.millisecondsSinceEpoch,
       command.eventCount,
@@ -450,15 +450,13 @@ void _insertLog(
   final id = command.commandId;
   tx.execute(
     '''INSERT INTO command(log_position, device_id, sequence,
-    dependency, kind, detail, started_at, completed_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+    dependency, started_at, completed_at, event_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?);''',
     [
       _nextLogPosition(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
-      command.encoded.kind,
-      command.encoded.bytes,
       command.startedAt.millisecondsSinceEpoch,
       command.completedAt.millisecondsSinceEpoch,
       command.eventCount,
@@ -522,16 +520,6 @@ void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
     [streamPath, version],
   );
 }
-
-StagedEvent _readStagedEvent(EventId eventId, Row row) => StagedEvent(
-  eventId: eventId,
-  streamPath: row[0] as String,
-  encodedEvent: EncodedEvent(
-    kind: row[1] as String,
-    bytes: row[2] as Uint8List,
-  ),
-  occuredAt: _date(row[3]),
-);
 
 DateTime _date(Object? value) =>
     DateTime.fromMillisecondsSinceEpoch(value as int, isUtc: true);

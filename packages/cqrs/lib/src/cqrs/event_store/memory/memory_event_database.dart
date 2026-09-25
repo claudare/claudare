@@ -1,6 +1,5 @@
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/log_command.dart';
-import 'package:cqrs/src/cqrs/command/encoded_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
@@ -30,7 +29,6 @@ class MemoryEventDatabase implements EventDatabase {
   LogCommand _logCommand(_MemoryLogCommand command) => LogCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    encoded: command.encoded,
     startedAt: command.startedAt,
     completedAt: command.completedAt,
     eventCount: command.eventCount,
@@ -43,7 +41,6 @@ class MemoryEventDatabase implements EventDatabase {
   StagedCommand _stagedCommand(_MemoryStagedCommand command) => StagedCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    encoded: command.encoded,
     startedAt: command.startedAt,
     completedAt: command.completedAt,
     eventCount: command.eventCount,
@@ -250,7 +247,6 @@ class MemoryEventDatabase implements EventDatabase {
       _MemoryLogCommand(
         commandId: command.commandId,
         dependency: command.dependency,
-        encoded: command.encoded,
         startedAt: command.startedAt,
         completedAt: command.completedAt,
         eventCount: command.eventCount,
@@ -289,7 +285,6 @@ class MemoryEventDatabase implements EventDatabase {
     _stagedCommands[key] = _MemoryStagedCommand(
       commandId: command.commandId,
       dependency: command.dependency,
-      encoded: command.encoded,
       startedAt: command.startedAt,
       completedAt: command.completedAt,
       eventCount: command.eventCount,
@@ -348,7 +343,6 @@ class MemoryEventDatabase implements EventDatabase {
 class _MemoryLogCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final int eventCount;
@@ -357,7 +351,6 @@ class _MemoryLogCommand {
   _MemoryLogCommand({
     required this.commandId,
     required this.dependency,
-    required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.eventCount,
@@ -374,7 +367,6 @@ class _MemoryLogCommand {
 class _MemoryStagedCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final EncodedCommand encoded;
   final DateTime startedAt;
   final DateTime completedAt;
   final int eventCount;
@@ -382,7 +374,6 @@ class _MemoryStagedCommand {
   _MemoryStagedCommand({
     required this.commandId,
     required this.dependency,
-    required this.encoded,
     required this.startedAt,
     required this.completedAt,
     required this.eventCount,

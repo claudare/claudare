@@ -1,12 +1,9 @@
-import 'dart:typed_data' show Uint8List;
-
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class TransferFundsBetweenAccountsInput implements CommandInput {
+class TransferFundsBetweenAccountsInput {
   final String fromAccountId;
   final String toAccountId;
   final int amount;
@@ -15,16 +12,6 @@ class TransferFundsBetweenAccountsInput implements CommandInput {
     required this.fromAccountId,
     required this.toAccountId,
     required this.amount,
-  });
-
-  @override
-  String get kind => 'TransferFundsBetweenAccounts';
-
-  @override
-  Uint8List encode() => JsonConverter.encode({
-    'fromAccountId': fromAccountId,
-    'toAccountId': toAccountId,
-    'amount': amount,
   });
 }
 

@@ -1,23 +1,13 @@
-import 'dart:typed_data' show Uint8List;
-
 import 'package:cqrs/cqrs.dart';
-import 'package:common/common.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AtmWithdrawalInput implements CommandInput {
+class AtmWithdrawalInput {
   final String accountId;
   final int amount;
 
   const AtmWithdrawalInput({required this.accountId, required this.amount});
-
-  @override
-  String get kind => 'atmWithdrawal';
-
-  @override
-  Uint8List encode() =>
-      JsonConverter.encode({'accountId': accountId, 'amount': amount});
 }
 
 class AtmWithdrawal implements Command<AtmWithdrawalInput> {
