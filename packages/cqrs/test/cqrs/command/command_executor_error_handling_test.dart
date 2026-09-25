@@ -1,20 +1,21 @@
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
-import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
-import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
+import 'package:cqrs/src/cqrs/event/event_registry.dart';
+import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
 void main() {
   test('propagates command exceptions unchanged', () async {
-    final database = MemoryEventDatabase();
+    final database = MemoryEventStore();
     final exception = FormatException('invalid command');
 
     await expectLater(
@@ -26,7 +27,7 @@ void main() {
   });
 
   test('propagates command errors unchanged', () async {
-    final database = MemoryEventDatabase();
+    final database = MemoryEventStore();
     final error = StateError('broken invariant');
 
     await expectLater(
@@ -39,8 +40,8 @@ void main() {
 
   for (final acquireStream in [false, true]) {
     test('skips saving an empty command with locks: $acquireStream', () async {
-      final database = MemoryEventDatabase();
-      final store = _RecordingEventStore(database);
+      final database = MemoryEventStore();
+      final store = _RecordingEventStore();
 
       await _executor(database, eventStore: store).execute(
         _CallbackCommand((context) async {
@@ -55,7 +56,7 @@ void main() {
   }
 
   test('seals the context when an empty command completes', () async {
-    final database = MemoryEventDatabase();
+    final database = MemoryEventStore();
     late CommandContextApi context;
 
     await _executor(
@@ -66,7 +67,7 @@ void main() {
   });
 
   test('persists events in append order across streams', () async {
-    final database = MemoryEventDatabase();
+    final database = MemoryEventStore();
 
     await _executor(database).execute(
       _CallbackCommand((context) async {
@@ -82,7 +83,7 @@ void main() {
       }),
     );
 
-    final events = await database.getLogEvents(0, 10);
+    final events = await database.getLogEvents(0);
     expect(events.data.map((event) => event.streamPath), [
       'first',
       'second',
@@ -91,13 +92,12 @@ void main() {
   });
 }
 
-CommandExecutor _executor(
-  MemoryEventDatabase database, {
-  EventStore? eventStore,
-}) {
+CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
   final registry = EventRegistry()..add(const _EventCodec());
   return CommandExecutor(
-    eventStore: eventStore ?? EventStore(database),
+    eventStore: eventStore ?? database,
+    streamReader:
+        CqrsTestRuntime(eventStore: eventStore ?? database).streamReader,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     eventRegistry: registry,
     logger: const NoopLogger(),
@@ -127,10 +127,8 @@ final class _CallbackCommand implements Command {
   Future<void> handle(CommandContextApi ctx) => _handle(ctx);
 }
 
-final class _RecordingEventStore extends EventStore {
+final class _RecordingEventStore extends MemoryEventStore {
   final List<CommandChanges> savedChanges = [];
-
-  _RecordingEventStore(super.database);
 
   @override
   Future<void> saveChanges(CommandChanges changes) {

@@ -115,7 +115,7 @@ void main() {
   });
 
   testWidgets('settings displays active notes and event count', (tester) async {
-    final eventStore = EventStore(MemoryEventDatabase());
+    final eventStore = MemoryEventStore();
     final application = NoteApplication(
       cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
     );

@@ -90,7 +90,7 @@ class _ControlledBootstrap extends NoteBootstrap {
   }
 
   void complete() {
-    final eventStore = EventStore(MemoryEventDatabase());
+    final eventStore = MemoryEventStore();
     _application.complete(
       NoteBootstrapResult(
         application: NoteApplication(

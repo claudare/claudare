@@ -5,11 +5,10 @@ export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 
 // event store
 export 'src/cqrs/event_store/event_store.dart';
-export 'src/cqrs/event_store/event_database.dart';
 export 'src/cqrs/command/command_id.dart';
 export 'src/cqrs/event/event_id.dart';
-export 'src/cqrs/event_store/memory/memory_event_database.dart';
-export 'src/cqrs/event_store/sqlite/sqlite_event_database.dart';
+export 'src/cqrs/event_store/memory_event_store.dart';
+export 'src/cqrs/event_store/sqlite_event_store.dart';
 
 // event
 export 'src/cqrs/event/event_codec.dart';

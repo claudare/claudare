@@ -2,17 +2,18 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/command_bundle.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
-import 'package:cqrs/src/cqrs/command/command_context_api.dart';
+import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
+import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
@@ -20,13 +21,13 @@ import 'package:time_provider/time_provider.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
-  late MemoryEventDatabase database;
+  late MemoryEventStore database;
   late EventStore eventStore;
   late EventRegistry eventRegistry;
 
   setUp(() async {
-    database = MemoryEventDatabase();
-    eventStore = EventStore(database, eventFetchPageSize: 2);
+    database = MemoryEventStore(eventFetchPageSize: 2);
+    eventStore = database;
     eventRegistry = EventRegistry()..add(const _EventCodec());
 
     await _seedCommand(
@@ -138,7 +139,9 @@ void main() {
       );
 
       expect(
-        await eventStore.getStreamReader('unrelated').scan().toList(),
+        await CqrsTestRuntime(
+          eventStore: eventStore,
+        ).streamReader('unrelated').scan().toList(),
         hasLength(1),
       );
     },
@@ -147,6 +150,7 @@ void main() {
   test('stopping scan applies and locks only the yielded', () async {
     final context = CommandContext(
       eventStore: eventStore,
+      streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
       eventRegistry: eventRegistry,
       timeProvider: FakeTimeProviderStatic.zero(),
       logger: const NoopLogger(),
@@ -172,6 +176,7 @@ Future<void> _execute(
 ) async {
   final executor = CommandExecutor(
     eventStore: eventStore,
+    streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
     timeProvider: FakeTimeProviderStatic.zero(),
     eventRegistry: eventRegistry,
     logger: const NoopLogger(),
@@ -180,7 +185,7 @@ Future<void> _execute(
 }
 
 Future<bool> _seedCommand(
-  MemoryEventDatabase database, {
+  MemoryEventStore database, {
   required CommandId commandId,
   required List<String> streamPaths,
   VersionVector? dependency,

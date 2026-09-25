@@ -2,6 +2,9 @@
 
 CQRS implementation for the Claudare workspace.
 
+`EventStore` is implemented by `MemoryEventStore` and `SqliteEventStore`.
+SQLite migration and close methods belong to the concrete `SqliteEventStore`.
+
 ## Positions
 
 Command, log event, and stream reads are inclusive of the requested position.

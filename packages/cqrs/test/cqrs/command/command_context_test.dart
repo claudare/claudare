@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -13,7 +14,7 @@ import 'package:time_provider/time_provider.dart';
 final _timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
 void main() {
-  late _ControlledDatabase database;
+  late _ControlledStore database;
   late EventStore store;
   late EventRegistry registry;
   late _MutableTimeProvider timeProvider;
@@ -22,14 +23,15 @@ void main() {
   CommandContext createContext({EventRegistry? eventRegistry}) =>
       CommandContext(
         eventStore: store,
+        streamReader: CqrsTestRuntime(eventStore: store).streamReader,
         eventRegistry: eventRegistry ?? registry,
         timeProvider: timeProvider,
         logger: const NoopLogger(),
       );
 
   setUp(() async {
-    database = _ControlledDatabase();
-    store = EventStore(database, eventFetchPageSize: 1);
+    database = _ControlledStore();
+    store = database;
     registry = EventRegistry()..add(const _EventCodec());
     timeProvider = _MutableTimeProvider(_timestamp);
     for (var index = 0; index < 2; index++) {
@@ -368,7 +370,7 @@ void main() {
 }
 
 ({Future<void> started, void Function() resume}) _pauseReads(
-  _ControlledDatabase database,
+  _ControlledStore database,
 ) {
   final started = Completer<void>();
   final released = Completer<void>();
@@ -385,7 +387,9 @@ void main() {
   return (started: started.future, resume: resume);
 }
 
-final class _ControlledDatabase extends MemoryEventDatabase {
+final class _ControlledStore extends MemoryEventStore {
+  _ControlledStore() : super(eventFetchPageSize: 1);
+
   Future<void> Function()? beforeRead;
 
   @override
@@ -398,10 +402,9 @@ final class _ControlledDatabase extends MemoryEventDatabase {
   Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
-    int count,
   ) async {
     await beforeRead?.call();
-    return super.getStreamEvents(streamPath, fromVersion, count);
+    return super.getStreamEvents(streamPath, fromVersion);
   }
 }
 

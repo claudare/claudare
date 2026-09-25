@@ -1,4 +1,4 @@
-/// A generic event store issue. When anything throws
+/// An event store failure with its original cause.
 class EventStoreException implements Exception {
   final String message;
   final dynamic cause;

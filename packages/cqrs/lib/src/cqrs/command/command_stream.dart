@@ -13,7 +13,7 @@ class CommandStream<Event extends Object> {
 
     int? streamVersion;
     try {
-      final reader = _context._eventStore.getStreamReader(_streamPath);
+      final reader = _context._streamReader(_streamPath);
       await for (final event in reader.scan()) {
         final decoded = _context._eventRegistry.decode<Event>(
           event.encodedEvent,
@@ -38,7 +38,7 @@ class CommandStream<Event extends Object> {
   /// Replays and applies the complete stream without yielding events.
   Future<void> lockLatest() => _context._lock(_streamPath, () async {
     int? streamVersion;
-    final reader = _context._eventStore.getStreamReader(_streamPath);
+    final reader = _context._streamReader(_streamPath);
     await for (final event in reader.scan()) {
       streamVersion = event.version;
       _context._applyCommand(event.eventId.commandId);
@@ -48,20 +48,19 @@ class CommandStream<Event extends Object> {
 
   /// Ensures the stream exists and applies its first event.
   Future<void> mustExist() => _context._lock(_streamPath, () async {
-    final info = await _context._eventStore.getStreamInfo(_streamPath);
+    final info = await _context._eventStore.getStreamVersion(_streamPath);
     if (info == null) {
       throw StreamNotFoundException(_streamPath);
     }
 
-    final firstEvent =
-        await _context._eventStore.getStreamReader(_streamPath).scan().first;
+    final firstEvent = await _context._streamReader(_streamPath).scan().first;
     _context._applyCommand(firstEvent.eventId.commandId);
-    return info.originatingStreamVersion;
+    return info;
   });
 
   /// Requires the stream to be absent without applying any dependencies.
   Future<void> mustNotExist() => _context._lock(_streamPath, () async {
-    final info = await _context._eventStore.getStreamInfo(_streamPath);
+    final info = await _context._eventStore.getStreamVersion(_streamPath);
     if (info != null) {
       throw StreamAlreadyExistsException(_streamPath);
     }

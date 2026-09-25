@@ -1,31 +1,51 @@
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
+import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('EventStore stream reader', () {
+  group('CqrsRuntime readers', () {
     late EventStore store;
+    late CqrsTestRuntime runtime;
 
     const pageSize = 2;
 
     setUp(() {
-      store = EventStore(MemoryEventDatabase(), eventFetchPageSize: pageSize);
+      store = MemoryEventStore(eventFetchPageSize: pageSize);
+      runtime = CqrsTestRuntime(eventStore: store);
     });
 
     test('handles empty result', () async {
-      expect(await store.getStreamReader('test').scan().toList(), isEmpty);
+      expect(await runtime.streamReader('test').scan().toList(), isEmpty);
+    });
+
+    test('handles an empty log', () async {
+      expect(await runtime.logReader(0).scan().toList(), isEmpty);
+    });
+
+    test('starts stream replay at the supplied version across pages', () async {
+      await _appendCount(store, 5);
+      final events =
+          await runtime.streamReader('test', fromVersion: 1).scan().toList();
+      expect(events.map((event) => event.version), [1, 2, 3, 4]);
+    });
+
+    test('starts log replay at the supplied position across pages', () async {
+      await _appendCount(store, 5);
+      final events = await runtime.logReader(1).scan().toList();
+      expect(events.map((event) => event.position), [1, 2, 3, 4]);
     });
 
     test('handles exact page size', () async {
       await _appendCount(store, pageSize);
 
-      final events = await store.getStreamReader('test').scan().toList();
+      final events = await runtime.streamReader('test').scan().toList();
       expect(events, hasLength(pageSize));
       expect(events[0].encodedEvent.kind, 'event-0');
       expect(events[1].encodedEvent.kind, 'event-1');
@@ -34,7 +54,7 @@ void main() {
     test('handles multiple pages', () async {
       await _appendCount(store, pageSize + 1);
 
-      final events = await store.getStreamReader('test').scan().toList();
+      final events = await runtime.streamReader('test').scan().toList();
       expect(events, hasLength(pageSize + 1));
       expect(events.map((event) => event.encodedEvent.kind), [
         'event-0',

@@ -12,10 +12,12 @@ void main() {
     group('bundle contract - ${backend.name}', () {
       late EventStoreTestSession session;
       late EventStore store;
+      late CqrsTestRuntime runtime;
 
       setUp(() async {
         session = await backend.open();
         store = session.store;
+        runtime = CqrsTestRuntime(eventStore: store);
       });
       tearDown(() => session.close());
 
@@ -28,15 +30,15 @@ void main() {
         expect(restored, isNotNull);
         expect(restored, bundle);
         expect(restored!.isValid, isTrue);
-        final logged = await store.getLogEventReader(0).scan().toList();
+        final logged = await runtime.logReader(0).scan().toList();
         expect(logged.map((event) => event.eventId), [
           EventId(3, 1, 0),
           EventId(3, 1, 1),
           EventId(3, 1, 2),
         ]);
-        expect(await store.getStreamInfo('one'), isNotNull);
+        expect(await store.getStreamVersion('one'), isNotNull);
         expect(
-          (await session.database.getState()).logVersion,
+          (await session.store.getState()).logVersion,
           VersionVector({3: 1}),
         );
       });
@@ -50,13 +52,13 @@ void main() {
         expect(await store.saveBundle(gap), isFalse);
         expect(await store.saveBundle(dependency), isFalse);
         expect(await store.getBundle(gap.commandId), isNull);
-        expect((await session.database.getStatistics()).eventCount, 0);
+        expect((await session.store.getStatistics()).eventCount, 0);
 
         expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
         expect(await store.saveBundle(gap), isTrue);
         expect(await store.saveBundle(dependency), isTrue);
         expect(
-          (await session.database.getState()).logVersion,
+          (await session.store.getState()).logVersion,
           VersionVector({3: 2, 4: 1}),
         );
       });
@@ -79,21 +81,9 @@ void main() {
       test('keeps log positions and stream versions contiguous', () async {
         await store.saveBundle(_bundle(CommandId(2, 1), paths: ['one', 'two']));
         await store.saveBundle(_bundle(CommandId(4, 1), paths: ['one']));
-        final events = await store.getLogEventReader(0).scan().toList();
+        final events = await runtime.logReader(0).scan().toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
         expect(events.map((event) => event.version), [0, 0, 1]);
-      });
-
-      test('signals only after a bundle is saved', () async {
-        var signals = 0;
-        final subscription = store.logChanges.listen((_) => signals++);
-        addTearDown(subscription.cancel);
-        expect(await store.saveBundle(_bundle(CommandId(2, 2))), isFalse);
-        await Future<void>.delayed(Duration.zero);
-        expect(signals, 0);
-        expect(await store.saveBundle(_bundle(CommandId(2, 1))), isTrue);
-        await Future<void>.delayed(Duration.zero);
-        expect(signals, 1);
       });
 
       test(
@@ -114,10 +104,7 @@ void main() {
             hasLength(1),
           );
           expect((await store.getBundle(CommandId(0, 3))), isNull);
-          expect(
-            (await store.getStreamInfo('one'))!.originatingStreamVersion,
-            1,
-          );
+          expect(await store.getStreamVersion('one'), 1);
         },
       );
 
@@ -125,13 +112,13 @@ void main() {
         for (final device in [1, 2, 3]) {
           await store.saveBundle(_bundle(CommandId(device, 1)));
         }
-        final reader = store.getLogEventReader(0);
+        final reader = runtime.logReader(0);
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [0, 1]);
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [2]);
         expect(await reader.loadMore(), isFalse);
-        final fromTwo = await store.getLogEventReader(2).scan().toList();
+        final fromTwo = await runtime.logReader(2).scan().toList();
         expect(fromTwo.single.position, 2);
       });
 
@@ -139,7 +126,7 @@ void main() {
         await store.saveBundle(_bundle(CommandId(1, 1), paths: ['one', 'two']));
         await store.saveBundle(_bundle(CommandId(1, 2), paths: ['one']));
         final events =
-            await store.getStreamReader('one', fromVersion: 1).scan().toList();
+            await runtime.streamReader('one', fromVersion: 1).scan().toList();
         expect(events.single.version, 1);
         expect(events.single.eventId.commandId, CommandId(1, 2));
       });

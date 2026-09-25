@@ -1,8 +1,9 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
@@ -15,6 +16,7 @@ part 'command_stream.dart';
 /// Collects a command's ordered events, stream locks, and dependencies.
 class CommandContext implements CommandContextApi {
   final EventStore _eventStore;
+  final StreamReader _streamReader;
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
   final Logger _logger;
@@ -26,10 +28,12 @@ class CommandContext implements CommandContextApi {
 
   CommandContext({
     required EventStore eventStore,
+    required StreamReader streamReader,
     required EventRegistry eventRegistry,
     required TimeProvider timeProvider,
     required Logger logger,
   }) : _eventStore = eventStore,
+       _streamReader = streamReader,
        _eventRegistry = eventRegistry,
        _timeProvider = timeProvider,
        _logger = logger,

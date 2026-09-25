@@ -17,7 +17,7 @@ void main() {
   late _MemorySnapshotter snapshotter;
 
   setUp(() {
-    eventStore = EventStore(_PagedMemoryEventDatabase(1));
+    eventStore = MemoryEventStore(eventFetchPageSize: 1);
 
     runtime = CqrsRuntime(
       eventStore: eventStore,
@@ -337,15 +337,6 @@ final class _EnvelopeAggregate
     state.add(envelope);
     if (applyFailure != null) throw applyFailure!;
   }
-}
-
-final class _PagedMemoryEventDatabase extends MemoryEventDatabase {
-  final int pageSize;
-
-  _PagedMemoryEventDatabase(this.pageSize);
-
-  @override
-  int get defaultEventFetchPageSize => pageSize;
 }
 
 final class _MemorySnapshotter

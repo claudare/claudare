@@ -2,43 +2,30 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:time_provider/time_provider.dart';
 
-// Max integer value. This is a hacky solution.
-// https://stackoverflow.com/a/75928881
-// It may have issues, and could silently fail.
-const int _maxIntValue = -1 >>> 1;
-
-// TODO: create a proper CqrsRuntime for testing.
+/// Executes a command and inspects its emitted events.
 class CommandTester {
   final TimeProvider _timeProvider;
-  final EventDatabase _eventDatabase;
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
-  final EventRegistry _eventRegistry = EventRegistry();
+  late final CqrsRuntime _runtime;
+
+  EventRegistry get _eventRegistry => _runtime.eventRegistry;
 
   int? _preRunLastLogPosition;
   bool _ran = false;
 
-  CommandTester({
-    required TimeProvider timeProvider,
-    EventDatabase? eventDatabase,
-  }) : this._(
-         timeProvider: timeProvider,
-         eventDatabase: eventDatabase ?? MemoryEventDatabase(),
-       );
-
-  CommandTester._({
-    required TimeProvider timeProvider,
-    required EventDatabase eventDatabase,
-  }) : _timeProvider = timeProvider,
-       _eventDatabase = eventDatabase,
-       _eventStore = EventStore(
-         eventDatabase,
-         eventFetchPageSize: _maxIntValue,
-       );
+  CommandTester({required TimeProvider timeProvider, EventStore? eventStore})
+    : _timeProvider = timeProvider,
+      _eventStore = eventStore ?? MemoryEventStore() {
+    _runtime = CqrsRuntime(
+      eventStore: _eventStore,
+      timeProvider: timeProvider,
+      logger: const NoopLogger(),
+    );
+  }
 
   void _ensureRan() {
     if (!_ran) {
@@ -113,9 +100,7 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final reader = _eventStore.getLogEventReader(
-      (_preRunLastLogPosition ?? -1) + 1,
-    );
+    final reader = _runtime.logReader((_preRunLastLogPosition ?? -1) + 1);
 
     return reader
         .scan()
@@ -129,24 +114,17 @@ class CommandTester {
 
     await _flushSeeds();
 
-    final state = await _eventDatabase.getState();
+    final state = await _eventStore.getState();
     _preRunLastLogPosition = state.lastEventLogPosition;
     _ran = true;
 
-    final executer = CommandExecutor(
-      eventStore: _eventStore,
-      timeProvider: _timeProvider,
-      eventRegistry: _eventRegistry,
-      logger: const NoopLogger(),
-    );
-
-    await executer.execute(command);
+    await _runtime.execute(command);
   }
 
   // TODO: this can be cleaned up
   Future<void> _flushSeeds() async {
     for (final event in _seedEvents) {
-      final info = await _eventStore.getStreamInfo(event.streamPath);
+      final info = await _eventStore.getStreamVersion(event.streamPath);
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
         CommandChanges(
@@ -155,7 +133,7 @@ class CommandTester {
           locks: [
             StreamLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info?.originatingStreamVersion,
+              originatingStreamVersion: info,
             ),
           ],
           events: [event],

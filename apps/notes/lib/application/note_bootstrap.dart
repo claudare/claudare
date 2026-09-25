@@ -32,9 +32,8 @@ class NoteBootstrap {
     try {
       await _sqlite.open(eventsDbFilepath);
       opened = true;
-      final database = SqliteEventDatabase(_sqlite);
-      await database.migrate();
-      final eventStore = EventStore(database);
+      final eventStore = SqliteEventStore(_sqlite);
+      await eventStore.migrate();
       final runtime = CqrsRuntime(
         eventStore: eventStore,
         logger: logger,

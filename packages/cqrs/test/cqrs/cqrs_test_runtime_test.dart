@@ -23,8 +23,8 @@ void main() {
   });
 
   test('uses an injected store, logger, and time provider', () async {
-    final database = MemoryEventDatabase();
-    final store = EventStore(database);
+    final database = MemoryEventStore();
+    final store = database;
     final runtime = CqrsTestRuntime(
       eventStore: store,
       logger: const NoopLogger(),
@@ -42,7 +42,7 @@ void main() {
   });
 
   test('seeds an event for aggregate resolution', () async {
-    final store = EventStore(MemoryEventDatabase());
+    final store = MemoryEventStore();
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
 
@@ -60,8 +60,8 @@ void main() {
   });
 
   test('seeds multiple streams in the supplied order', () async {
-    final database = MemoryEventDatabase();
-    final store = EventStore(database);
+    final database = MemoryEventStore();
+    final store = database;
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
     final later = seededAt.add(const Duration(days: 1));
@@ -85,19 +85,16 @@ void main() {
     ]);
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
     expect(
-      (await database.getLogEvents(
-        0,
-        10,
-      )).data.map((event) => event.streamPath),
+      (await database.getLogEvents(0)).data.map((event) => event.streamPath),
       ['value/one', 'value/two', 'value/one'],
     );
-    final log = (await database.getLogEvents(0, 10)).data;
+    final log = (await database.getLogEvents(0)).data;
     expect(log.map((event) => event.version), [0, 0, 1]);
   });
 
   test('seeds an existing stream before the next command', () async {
-    final database = MemoryEventDatabase();
-    final store = EventStore(database);
+    final database = MemoryEventStore();
+    final store = database;
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
     await runtime.execute(const _AppendValue('one'));
@@ -113,8 +110,8 @@ void main() {
   });
 
   test('rejects unregistered seed events before writing', () async {
-    final database = MemoryEventDatabase();
-    final store = EventStore(database);
+    final database = MemoryEventStore();
+    final store = database;
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
 
@@ -126,7 +123,7 @@ void main() {
       throwsA(isA<EventCodecException>()),
     );
 
-    expect((await database.getLogEvents(0, 1)).data, isEmpty);
+    expect((await database.getLogEvents(0)).data, isEmpty);
   });
 }
 

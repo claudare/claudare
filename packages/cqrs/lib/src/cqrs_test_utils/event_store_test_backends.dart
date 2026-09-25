@@ -3,37 +3,32 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreTestBackend {
   String get name;
-
   Future<EventStoreTestSession> open();
 }
 
 abstract interface class EventStoreTestSession {
   EventStore get store;
-  EventDatabase get database;
-
   Future<void> close();
 }
 
-class MemoryEventDatabaseTestBackend implements EventStoreTestBackend {
+class MemoryEventStoreTestBackend implements EventStoreTestBackend {
   final int? eventFetchPageSize;
-
-  const MemoryEventDatabaseTestBackend({this.eventFetchPageSize});
+  const MemoryEventStoreTestBackend({this.eventFetchPageSize});
 
   @override
   String get name => 'memory';
 
   @override
-  Future<EventStoreTestSession> open() async {
-    final database = MemoryEventDatabase();
-    final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
-    return _MemoryLogEventDatabaseTestSession(store, database);
-  }
+  Future<EventStoreTestSession> open() async => _MemoryEventStoreTestSession(
+    eventFetchPageSize == null
+        ? MemoryEventStore()
+        : MemoryEventStore(eventFetchPageSize: eventFetchPageSize!),
+  );
 }
 
-class SqliteEventDatabaseTestBackend implements EventStoreTestBackend {
+class SqliteEventStoreTestBackend implements EventStoreTestBackend {
   final int? eventFetchPageSize;
-
-  const SqliteEventDatabaseTestBackend({this.eventFetchPageSize});
+  const SqliteEventStoreTestBackend({this.eventFetchPageSize});
 
   @override
   String get name => 'sqlite';
@@ -42,44 +37,43 @@ class SqliteEventDatabaseTestBackend implements EventStoreTestBackend {
   Future<EventStoreTestSession> open() async {
     final sqlite = IsolateSqlite();
     await sqlite.openInMemory();
-    final database = SqliteEventDatabase(sqlite);
     try {
-      await database.migrate();
+      final store =
+          eventFetchPageSize == null
+              ? SqliteEventStore(sqlite)
+              : SqliteEventStore(
+                sqlite,
+                eventFetchPageSize: eventFetchPageSize!,
+              );
+      await store.migrate();
+      return _SqliteEventStoreTestSession(store);
     } catch (_) {
-      await database.close();
+      await sqlite.close();
       rethrow;
     }
-    final store = EventStore(database, eventFetchPageSize: eventFetchPageSize);
-    return _SqliteEventDatabaseTestSession(store, database);
   }
 }
 
 const eventStoreTestBackends = <EventStoreTestBackend>[
-  MemoryEventDatabaseTestBackend(eventFetchPageSize: 2),
-  SqliteEventDatabaseTestBackend(eventFetchPageSize: 2),
+  MemoryEventStoreTestBackend(eventFetchPageSize: 2),
+  SqliteEventStoreTestBackend(eventFetchPageSize: 2),
 ];
 
-class _MemoryLogEventDatabaseTestSession implements EventStoreTestSession {
+class _MemoryEventStoreTestSession implements EventStoreTestSession {
   @override
-  final EventStore store;
-  @override
-  final MemoryEventDatabase database;
-
-  _MemoryLogEventDatabaseTestSession(this.store, this.database);
+  final MemoryEventStore store;
+  _MemoryEventStoreTestSession(this.store);
 
   @override
   Future<void> close() async {}
 }
 
-class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
+class _SqliteEventStoreTestSession implements EventStoreTestSession {
   @override
-  final EventStore store;
-  @override
-  final SqliteEventDatabase database;
+  final SqliteEventStore store;
   Future<void>? _closeFuture;
-
-  _SqliteEventDatabaseTestSession(this.store, this.database);
+  _SqliteEventStoreTestSession(this.store);
 
   @override
-  Future<void> close() => _closeFuture ??= database.close();
+  Future<void> close() => _closeFuture ??= store.close();
 }

@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/safe_snapshotter.dart';
 import 'package:cqrs/src/cqrs/snapshotter.dart';
@@ -29,11 +31,25 @@ class CqrsRuntime {
        _eventStore = eventStore {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
+      streamReader: streamReader,
       timeProvider: _timeProvider,
       eventRegistry: _eventRegistry,
       logger: _logger,
     );
   }
+
+  /// Creates a reader starting at the inclusive stream version.
+  PaginatedReader<StoredEvent> streamReader(
+    String streamPath, {
+    int fromVersion = 0,
+  }) => PaginatedReader(
+    (cursor) => _eventStore.getStreamEvents(streamPath, cursor),
+    initialCursor: fromVersion,
+  );
+
+  /// Creates a reader starting at the inclusive global log position.
+  PaginatedReader<StoredEvent> logReader(int fromPosition) =>
+      PaginatedReader(_eventStore.getLogEvents, initialCursor: fromPosition);
 
   EventRegistry get eventRegistry => _eventRegistry;
 
@@ -77,14 +93,11 @@ class CqrsRuntime {
 
     final streamPath = aggregate.streamRoute.buildPath(params);
 
-    final stream = _eventStore
-        .getLogEventReader((sequence ?? -1) + 1)
-        .scan()
-        .where((logEvent) {
-          // removes irrelevant events as database level filtering is not
-          // implemented.
-          return aggregate.streamRoute.matches(logEvent.streamPath);
-        });
+    final stream = logReader((sequence ?? -1) + 1).scan().where((logEvent) {
+      // removes irrelevant events as database level filtering is not
+      // implemented.
+      return aggregate.streamRoute.matches(logEvent.streamPath);
+    });
 
     await for (final logEvent in stream) {
       final decoded = _eventRegistry.decode<TEvent>(logEvent.encodedEvent);

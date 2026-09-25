@@ -2,20 +2,22 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/src/cqrs/command/command_changes.dart';
+import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 
 void main() {
   late IsolateSqlite sqlite;
-  late SqliteEventDatabase database;
+  late SqliteEventStore database;
   late EventStore store;
 
   setUp(() async {
     sqlite = IsolateSqlite();
     await sqlite.openInMemory();
-    database = SqliteEventDatabase(sqlite);
+    database = SqliteEventStore(sqlite);
     await database.migrate();
-    store = EventStore(database);
+    store = database;
   });
   tearDown(() => database.close());
 
@@ -65,21 +67,98 @@ void main() {
       WHEN NEW.kind = 'fail'
       BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
     await expectLater(
-      store.saveBundle(_bundle(CommandId(3, 1), kind: 'fail')),
+      store.saveBundle(_bundle(CommandId(3, 1), kind: 'fail', count: 2)),
       throwsA(isA<EventStoreException>()),
     );
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM command'), 0);
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM event'), 0);
+    expect(await store.getStreamVersion('one'), isNull);
     await sqlite.execute('DROP TRIGGER fail_event');
     expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
-    expect((await database.getLogEvents(0, 10)).data.single.position, 0);
+    expect((await database.getLogEvents(0)).data.single.position, 0);
   });
+
+  test(
+    'rolls back all local events and command allocation on failure',
+    () async {
+      await sqlite.execute('''CREATE TRIGGER fail_event BEFORE INSERT ON event
+      WHEN NEW.event_index = 1
+      BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
+      await expectLater(
+        store.saveChanges(_changes('one', count: 2)),
+        throwsA(isA<EventStoreException>()),
+      );
+      final failedState = await store.getState();
+      expect(failedState.lastCommandLogPosition, isNull);
+      expect(failedState.lastEventLogPosition, isNull);
+      expect(failedState.logVersion, VersionVector());
+      expect(await store.getStreamVersion('one'), isNull);
+      await sqlite.execute('DROP TRIGGER fail_event');
+      await store.saveChanges(_changes('one', count: 2));
+      final events = (await store.getLogEvents(0)).data;
+      expect(events.map((event) => event.position), [0, 1]);
+      expect(events.map((event) => event.version), [0, 1]);
+      expect(await store.getBundle(CommandId(0, 1)), isNotNull);
+    },
+  );
+
+  test('separate stores sharing SQLite serialize stream lock checks', () async {
+    final otherStore = SqliteEventStore(sqlite);
+    Future<bool> save(EventStore target) async {
+      try {
+        await target.saveChanges(_changes('one'));
+        return true;
+      } on ConcurrencyProblem {
+        return false;
+      }
+    }
+
+    final results = await Future.wait([save(store), save(otherStore)]);
+    expect(results.where((saved) => saved), hasLength(1));
+    expect((await store.getStatistics()).eventCount, 1);
+    expect((await otherStore.getState()).logVersion, VersionVector({0: 1}));
+  });
+
+  test(
+    'separate stores sharing SQLite allocate distinct command IDs',
+    () async {
+      final otherStore = SqliteEventStore(sqlite);
+      await Future.wait([
+        store.saveChanges(_changes('one')),
+        otherStore.saveChanges(_changes('two')),
+      ]);
+      final state = await store.getState();
+      expect(state.lastCommandLogPosition, 1);
+      expect(state.lastEventLogPosition, 1);
+      expect(state.logVersion, VersionVector({0: 2}));
+      expect(await store.getStreamVersion('one'), 0);
+      expect(await otherStore.getStreamVersion('two'), 0);
+    },
+  );
+}
+
+CommandChanges _changes(String path, {int count = 1}) {
+  final timestamp = DateTime.utc(2026);
+  return CommandChanges(
+    dependency: VersionVector(),
+    occuredAt: timestamp,
+    locks: [StreamLock(streamPath: path, originatingStreamVersion: null)],
+    events: [
+      for (var i = 0; i < count; i++)
+        EventAppend(
+          streamPath: path,
+          encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
+          occuredAt: timestamp,
+        ),
+    ],
+  );
 }
 
 CommandBundle _bundle(
   CommandId id, {
   VersionVector? dependency,
   String kind = 'test',
+  int count = 1,
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return CommandBundle(
@@ -87,11 +166,15 @@ CommandBundle _bundle(
     dependency: dependency ?? VersionVector(),
     occuredAt: time,
     events: [
-      BundledEvent(
-        streamPath: 'one',
-        encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
-        occuredAt: time,
-      ),
+      for (var i = 0; i < count; i++)
+        BundledEvent(
+          streamPath: 'one',
+          encodedEvent: EncodedEvent(
+            kind: i == count - 1 ? kind : 'test',
+            bytes: Uint8List(0),
+          ),
+          occuredAt: time,
+        ),
     ],
   );
 }

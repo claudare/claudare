@@ -18,7 +18,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
     Logger? logger,
     TimeProvider? timeProvider,
   }) => CqrsTestRuntime._(
-    eventStore ?? EventStore(MemoryEventDatabase()),
+    eventStore ?? MemoryEventStore(),
     logger ?? const NoopLogger(),
     timeProvider ?? FakeTimeProviderStatic.zero(),
   );
@@ -42,7 +42,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
     ];
 
     for (final event in appends) {
-      final info = await _eventStore.getStreamInfo(event.streamPath);
+      final info = await _eventStore.getStreamVersion(event.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
@@ -50,7 +50,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
           locks: [
             StreamLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info?.originatingStreamVersion,
+              originatingStreamVersion: info,
             ),
           ],
           events: [event],

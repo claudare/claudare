@@ -13,7 +13,7 @@ the shared packages but does not define their architecture or APIs.
   details.
 - Name contracts for their domain without suffixes such as `Repository`,
   `Service`, or `Implementation`. Prefix concrete types with their role or
-  mechanism, such as `MemoryEventDatabase`.
+  mechanism, such as `MemoryEventStore`.
 - Inject side-effects such as storage, time, IDs, logging, and similar
   collaborators through constructors.
 - Treat in-memory implementations as behavioral references. Database backed
