@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
@@ -18,6 +19,23 @@ class CommandBundle {
     required this.events,
   });
 
+  Map<String, dynamic> toJson() => {
+    'commandId': commandId.toJson(),
+    'dependency': dependency.toJson(),
+    'occuredAt': occuredAt.toUtc().toIso8601String(),
+    'events': [for (final event in events) event.toJson()],
+  };
+
+  factory CommandBundle.fromJson(Map<String, dynamic> json) => CommandBundle(
+    commandId: CommandId.fromJson(json['commandId'] as List<dynamic>),
+    dependency: VersionVector.fromJson(json['dependency'] as List<dynamic>),
+    occuredAt: DateTime.parse(json['occuredAt'] as String),
+    events: [
+      for (final event in json['events'] as List<dynamic>)
+        BundledEvent.fromJson(event as Map<String, dynamic>),
+    ],
+  );
+
   bool get isValid => events.isNotEmpty;
 
   @override
@@ -33,6 +51,11 @@ class CommandBundle {
   @override
   int get hashCode =>
       Object.hash(commandId, dependency, occuredAt, Object.hashAll(events));
+
+  @override
+  String toString() =>
+      'CommandBundle(commandId: $commandId, '
+      'dependency: $dependency, occuredAt: $occuredAt, events: $events)';
 }
 
 /// An event in a [CommandBundle], positioned by its list index.
@@ -46,6 +69,22 @@ class BundledEvent {
     required this.encodedEvent,
     required this.occuredAt,
   });
+
+  Map<String, dynamic> toJson() => {
+    'streamPath': streamPath,
+    'kind': encodedEvent.kind,
+    'bytes': base64Encode(encodedEvent.bytes),
+    'occuredAt': occuredAt.toUtc().toIso8601String(),
+  };
+
+  factory BundledEvent.fromJson(Map<String, dynamic> json) => BundledEvent(
+    streamPath: json['streamPath'] as String,
+    encodedEvent: EncodedEvent(
+      kind: json['kind'] as String,
+      bytes: base64Decode(json['bytes'] as String),
+    ),
+    occuredAt: DateTime.parse(json['occuredAt'] as String),
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -64,6 +103,12 @@ class BundledEvent {
     Object.hashAll(encodedEvent.bytes),
     occuredAt,
   );
+
+  @override
+  String toString() =>
+      'BundledEvent(streamPath: $streamPath, '
+      'kind: ${encodedEvent.kind}, byteLength: ${encodedEvent.bytes.length}, '
+      'occuredAt: $occuredAt)';
 }
 
 bool _eventsEqual(List<BundledEvent> a, List<BundledEvent> b) {

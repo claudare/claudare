@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
@@ -95,5 +96,28 @@ void main() {
     for (final variant in variants) {
       expect(variant, isNot(original));
     }
+  });
+
+  test('CommandBundle round trips with JSON', () {
+    final original = bundle();
+    final restored = CommandBundle.fromJson(
+      jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>,
+    );
+
+    expect(restored, original);
+    expect(restored.hashCode, original.hashCode);
+  });
+
+  test('string representations include metadata without payload bytes', () {
+    final original = bundle(
+      events: [
+        event('one', [0, 255]),
+      ],
+    );
+
+    expect(original.toString(), contains('CommandBundle(commandId: CommandId'));
+    expect(original.toString(), contains('events: [BundledEvent('));
+    expect(original.events.single.toString(), contains('byteLength: 2'));
+    expect(original.toString(), isNot(contains('AP8=')));
   });
 }
