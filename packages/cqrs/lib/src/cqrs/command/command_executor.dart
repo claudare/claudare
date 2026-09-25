@@ -1,11 +1,8 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:time_provider/time_provider.dart';
 
-import 'package:cqrs/src/cqrs/command/command_changes.dart';
-import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 
@@ -26,12 +23,8 @@ class CommandExecutor {
        _eventStore = eventStore;
 
   Future<void> execute(Command command) async {
-    final occuredAt = _timeProvider.now();
-    final executionState = CommandExecutionState(locks: [], events: []);
-
     final context = CommandContext(
       eventStore: _eventStore,
-      executionState: executionState,
       eventRegistry: _eventRegistry,
       timeProvider: _timeProvider,
       logger: _logger,
@@ -39,22 +32,8 @@ class CommandExecutor {
 
     await command.handle(context);
 
-    if (executionState.events.isEmpty) return;
-    await _saveEvents(executionState, context.dependency, occuredAt);
-  }
-
-  Future<void> _saveEvents(
-    CommandExecutionState executionState,
-    VersionVector dependency,
-    DateTime occuredAt,
-  ) async {
-    final changes = CommandChanges(
-      dependency: dependency,
-      occuredAt: occuredAt,
-      locks: executionState.locks,
-      events: executionState.events,
-    );
-
+    final changes = context.finish();
+    if (changes.events.isEmpty) return;
     await _eventStore.saveChanges(changes);
   }
 }

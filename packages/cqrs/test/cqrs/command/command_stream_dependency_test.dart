@@ -5,7 +5,6 @@ import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
-import 'package:cqrs/src/cqrs/command/command_execution_state.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
@@ -147,10 +146,8 @@ void main() {
   );
 
   test('stopping scan applies and locks only the yielded', () async {
-    final executionState = CommandExecutionState(locks: [], events: []);
     final context = CommandContext(
       eventStore: eventStore,
-      executionState: executionState,
       eventRegistry: eventRegistry,
       timeProvider: FakeTimeProviderStatic.zero(),
       logger: const NoopLogger(),
@@ -162,9 +159,10 @@ void main() {
       if (count == 2) break;
     }
 
-    expect(context.dependency, VersionVector({1: 1}));
-    expect(executionState.locks, hasLength(1));
-    expect(executionState.locks.single.originatingStreamVersion, 1);
+    final changes = context.finish();
+    expect(changes.dependency, VersionVector({1: 1}));
+    expect(changes.locks, hasLength(1));
+    expect(changes.locks.single.originatingStreamVersion, 1);
   });
 }
 
