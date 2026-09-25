@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
-import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -35,9 +34,9 @@ void main() {
 
     await runtime.execute(const _AppendValue('one'));
 
-    final log = await database.getLogEventsForCommand(CommandId(0, 1));
-    expect(log, hasLength(1));
-    expect(log.single.occuredAt, seededAt);
+    final bundle = await database.getBundle(CommandId(0, 1));
+    expect(bundle!.events, hasLength(1));
+    expect(bundle.events.single.occuredAt, seededAt);
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.single.occuredAt, seededAt);
   });
@@ -92,11 +91,7 @@ void main() {
       )).data.map((event) => event.streamPath),
       ['value/one', 'value/two', 'value/one'],
     );
-    final commands = await database.getLogCommands(0, 10);
-    final log = <LogEvent>[
-      for (final command in commands)
-        ...await database.getLogEventsForCommand(command.commandId),
-    ];
+    final log = (await database.getLogEvents(0, 10)).data;
     expect(log.map((event) => event.version), [0, 0, 1]);
   });
 

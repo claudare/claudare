@@ -2,8 +2,6 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/command/staged_command.dart';
-import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 
@@ -19,20 +17,30 @@ void main() {
     await database.migrate();
     store = EventStore(database);
   });
-
   tearDown(() => database.close());
 
-  test('database closure closes the SQLite connection', () async {
-    await database.close();
-
-    await expectLater(sqlite.queryValue<int>('SELECT 1'), throwsStateError);
-  });
-
   test('stores canonical integer-key dependency bytes', () async {
-    final command = _command(dependency: VersionVector({2: 4, -1: 3}));
-    await store.stageCommand(command);
+    expect(
+      await store.saveBundle(
+        _bundle(CommandId(3, 1), dependency: VersionVector({2: 4, -1: 3})),
+      ),
+      isFalse,
+    );
+    expect(await store.saveBundle(_bundle(CommandId(-1, 1))), isTrue);
+    for (var i = 2; i <= 3; i++) {
+      expect(await store.saveBundle(_bundle(CommandId(-1, i))), isTrue);
+    }
+    for (var i = 1; i <= 4; i++) {
+      expect(await store.saveBundle(_bundle(CommandId(2, i))), isTrue);
+    }
+    expect(
+      await store.saveBundle(
+        _bundle(CommandId(3, 1), dependency: VersionVector({2: 4, -1: 3})),
+      ),
+      isTrue,
+    );
     final bytes = await sqlite.queryValue<Uint8List>(
-      'SELECT dependency FROM command WHERE log_position < 0',
+      'SELECT dependency FROM command WHERE device_id = 3',
     );
     expect(JsonConverter.decode<List<dynamic>>(bytes), [
       [-1, 3],
@@ -40,105 +48,54 @@ void main() {
     ]);
   });
 
-  test('allocates decreasing staged sequences in unified tables', () async {
-    await store.stageCommand(_command());
-    await store.stageCommand(_command(sequence: 2));
-    await store.stageEvents([
-      _event(EventId(3, 1, 0)),
-      _event(EventId(3, 2, 0)),
-    ]);
-
-    final commands = await sqlite.query(
-      'SELECT log_position FROM command ORDER BY sequence',
-    );
-    final events = await sqlite.query(
-      'SELECT log_position, stream_version FROM event ORDER BY sequence',
-    );
-    expect(commands.map((row) => row[0]), [-1, -2]);
-    expect(events.map((row) => row[0]), [-1, -2]);
-    expect(events.map((row) => row[1]), [-1, -1]);
-    expect((await database.getState()).logVersion, VersionVector());
+  test('schema rejects negative command and event log positions', () async {
+    for (final statement in [
+      '''INSERT INTO command(log_position, device_id, sequence,
+        dependency, occured_at, event_count) VALUES (-1, 1, 1, X'5B5D', 0, 1)''',
+      '''INSERT INTO event(log_position, device_id, sequence, event_index,
+        stream_path, stream_version, kind, detail, occured_at)
+        VALUES (-1, 1, 1, 0, 'one', 0, 'test', X'', 0)''',
+    ]) {
+      await expectLater(sqlite.execute(statement), throwsA(isA<Exception>()));
+    }
   });
 
-  test('computes the log frontier from commands', () async {
-    final command = _command();
-    await _stage(store, command, kind: 'ok');
-    expect(await store.promoteStaged(command.commandId), isTrue);
-    expect((await database.getState()).logVersion, VersionVector({3: 1}));
-  });
-
-  test('rolls back failed promotion without sequence holes', () async {
-    final command = _command();
-    await _stage(store, command, kind: 'fail');
-    await sqlite.execute('''CREATE TRIGGER fail_event BEFORE UPDATE ON event
+  test('rolls back a failed bundle without sequence holes', () async {
+    await sqlite.execute('''CREATE TRIGGER fail_event BEFORE INSERT ON event
       WHEN NEW.kind = 'fail'
       BEGIN SELECT RAISE(ABORT, 'injected failure'); END''');
-
     await expectLater(
-      store.promoteStaged(command.commandId),
+      store.saveBundle(_bundle(CommandId(3, 1), kind: 'fail')),
       throwsA(isA<EventStoreException>()),
     );
-    expect(
-      await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM event WHERE log_position >= 0',
-      ),
-      0,
-    );
-    expect(
-      await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM command WHERE log_position >= 0',
-      ),
-      0,
-    );
-    expect(
-      await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM command WHERE log_position < 0',
-      ),
-      1,
-    );
-    expect(
-      await sqlite.queryValue<int>(
-        'SELECT COUNT(*) FROM event WHERE log_position < 0',
-      ),
-      1,
-    );
-
+    expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM command'), 0);
+    expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM event'), 0);
     await sqlite.execute('DROP TRIGGER fail_event');
-    expect(await store.promoteStaged(command.commandId), isTrue);
-    final log = (await database.getLogCommands(0, 10)).single;
-    final event =
-        (await database.getLogEventsForCommand(command.commandId)).single;
-    expect(log.logPosition, 0);
-    expect(event.logPosition, 0);
-    expect(event.version, 0);
+    expect(await store.saveBundle(_bundle(CommandId(3, 1))), isTrue);
+    expect((await database.getLogEvents(0, 10)).data.single.logPosition, 0);
   });
 }
 
-StagedCommand _command({VersionVector? dependency, int sequence = 1}) =>
-    StagedCommand(
-      commandId: CommandId(3, sequence),
+CommandBundle _bundle(
+  CommandId id, {
+  VersionVector? dependency,
+  String kind = 'test',
+}) {
+  final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  return CommandBundle(
+    command: StagedCommand(
+      commandId: id,
       dependency: dependency ?? VersionVector(),
-      occuredAt: DateTime.fromMillisecondsSinceEpoch(100, isUtc: true),
+      occuredAt: time,
       eventCount: 1,
-    );
-
-Future<void> _stage(
-  EventStore store,
-  StagedCommand command, {
-  required String kind,
-}) async {
-  await store.stageCommand(command);
-  await store.stageEvents([
-    _event(
-      EventId(command.commandId.deviceId, command.commandId.sequence, 0),
-      kind: kind,
     ),
-  ]);
+    events: [
+      StagedEvent(
+        eventId: EventId(id.deviceId, id.sequence, 0),
+        streamPath: 'one',
+        encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
+        occuredAt: time,
+      ),
+    ],
+  );
 }
-
-StagedEvent _event(EventId eventId, {String kind = 'test'}) => StagedEvent(
-  eventId: eventId,
-  streamPath: 'test/1',
-  encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
-  occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
-);

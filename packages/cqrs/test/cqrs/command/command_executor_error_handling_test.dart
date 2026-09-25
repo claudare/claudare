@@ -22,7 +22,7 @@ void main() {
       throwsA(same(exception)),
     );
 
-    expect((await database.getLogCommands(0, 1)), isEmpty);
+    expect((await database.getState()).lastCommandLogPosition, isNull);
   });
 
   test('propagates command errors unchanged', () async {
@@ -34,7 +34,7 @@ void main() {
       throwsA(same(error)),
     );
 
-    expect((await database.getLogCommands(0, 1)), isEmpty);
+    expect((await database.getState()).lastCommandLogPosition, isNull);
   });
 
   for (final acquireStream in [false, true]) {

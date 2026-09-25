@@ -1,4 +1,5 @@
 import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
@@ -16,8 +17,6 @@ import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 class MemoryEventDatabase implements EventDatabase {
   final List<_MemoryLogCommand> _commands = [];
   final List<_MemoryLogEvent> _events = [];
-  final Map<String, _MemoryStagedCommand> _stagedCommands = {};
-  final Map<String, _MemoryStagedEvent> _stagedEvents = {};
   // Each stream links to zero-based indexes in _events, in stream order.
   final Map<String, List<int>> _streamVersions = {};
 
@@ -36,20 +35,6 @@ class MemoryEventDatabase implements EventDatabase {
 
   StagedCommand _stagedCommandFromLog(_MemoryLogCommand command) =>
       _logCommand(command).toStagedCommand();
-
-  StagedCommand _stagedCommand(_MemoryStagedCommand command) => StagedCommand(
-    commandId: command.commandId,
-    dependency: command.dependency,
-    occuredAt: command.occuredAt,
-    eventCount: command.eventCount,
-  );
-
-  StagedEvent _stagedEvent(_MemoryStagedEvent event) => StagedEvent(
-    eventId: event.eventId,
-    streamPath: event.streamPath,
-    encodedEvent: event.encodedEvent,
-    occuredAt: event.occuredAt,
-  );
 
   (String, int) _streamPosition(int eventIndex) {
     for (final entry in _streamVersions.entries) {
@@ -168,76 +153,27 @@ class MemoryEventDatabase implements EventDatabase {
   );
 
   @override
-  Future<StagedCommand?> getLogCommand(CommandId commandId) async {
+  Future<CommandBundle?> getBundle(CommandId commandId) async {
     for (final command in _commands) {
       if (command.commandId == commandId) {
-        return _stagedCommandFromLog(command);
+        return CommandBundle(
+          command: _stagedCommandFromLog(command),
+          events: [
+            for (var index = 0; index < _events.length; index++)
+              if (_events[index].eventId.commandId == commandId)
+                _logEvent(index).toStagedEvent(),
+          ],
+        );
       }
     }
     return null;
   }
 
-  @override
-  Future<StagedCommand?> getStagedCommand(CommandId commandId) async {
-    final command = _stagedCommands[commandId.toStringCompact()];
-    return command == null ? null : _stagedCommand(command);
-  }
-
-  @override
-  Future<StagedEvent?> getLogEvent(EventId eventId) async {
-    for (var index = 0; index < _events.length; index++) {
-      if (_events[index].eventId == eventId) {
-        return _logEvent(index).toStagedEvent();
-      }
-    }
-    return null;
-  }
-
-  @override
-  Future<StagedEvent?> getStagedEvent(EventId eventId) async {
-    final event = _stagedEvents[eventId.toStringCompact()];
-    return event == null ? null : _stagedEvent(event);
-  }
-
-  @override
-  Future<List<LogCommand>> getLogCommands(int fromPosition, int count) async =>
-      _commands
-          .where((command) => command.logPosition >= fromPosition)
-          .take(count)
-          .map(_logCommand)
-          .toList(growable: false);
-
-  @override
-  Future<List<LogEvent>> getLogEventsForCommand(CommandId commandId) async => [
-    for (var index = 0; index < _events.length; index++)
-      if (_events[index].eventId.commandId == commandId) _logEvent(index),
-  ]..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));
-
-  void _validateLog(StagedCommand command, List<StagedEvent> events) {
+  bool _isReady(StagedCommand command) {
     final frontier = _logVersion();
-    if (!frontier.contains(command.dependency)) {
-      throw StateError('command dependency is not ready');
-    }
-    if (frontier.value(command.commandId.deviceId) + 1 !=
-        command.commandId.sequence) {
-      throw StateError('command id is out of order');
-    }
-    if (_commands.any(
-      (logCommand) => logCommand.commandId == command.commandId,
-    )) {
-      throw StateError('command id is already in the log');
-    }
-    if (events.length != command.eventCount) {
-      throw StateError('log event count does not match command');
-    }
-
-    for (var i = 0; i < events.length; i++) {
-      final event = events[i];
-      if (event.eventId.commandId != command.commandId ||
-          event.eventId.index != i) {
-        throw StateError('event identity is invalid');
-      }
-    }
+    return frontier.contains(command.dependency) &&
+        frontier.value(command.commandId.deviceId) + 1 ==
+            command.commandId.sequence;
   }
 
   void _appendValidated(StagedCommand command, List<StagedEvent> events) {
@@ -265,73 +201,10 @@ class MemoryEventDatabase implements EventDatabase {
   }
 
   @override
-  Future<void> appendLog(
-    StagedCommand command,
-    List<StagedEvent> events,
-  ) async {
-    _validateLog(command, events);
-    _appendValidated(command, events);
-  }
-
-  @override
-  Future<void> stageCommand(StagedCommand command) async {
-    final key = command.commandId.toStringCompact();
-    if (_stagedCommands.containsKey(key)) {
-      throw StateError('command id is already staged');
-    }
-    _stagedCommands[key] = _MemoryStagedCommand(
-      commandId: command.commandId,
-      dependency: command.dependency,
-      occuredAt: command.occuredAt,
-      eventCount: command.eventCount,
-    );
-  }
-
-  @override
-  Future<void> stageEvents(List<StagedEvent> events) async {
-    final keys = <String>{};
-    for (final event in events) {
-      final key = event.eventId.toStringCompact();
-      if (_stagedEvents.containsKey(key) || !keys.add(key)) {
-        throw StateError('event id is already staged');
-      }
-    }
-    for (final event in events) {
-      _stagedEvents[event.eventId.toStringCompact()] = _MemoryStagedEvent(
-        streamPath: event.streamPath,
-        eventId: event.eventId,
-        encodedEvent: event.encodedEvent,
-        occuredAt: event.occuredAt,
-      );
-    }
-  }
-
-  @override
-  Future<bool> promoteStaged(CommandId commandId) async {
-    final staged = _stagedCommands[commandId.toStringCompact()];
-    if (staged == null) return false;
-    final command = _stagedCommand(staged);
-    final frontier = _logVersion();
-    if (!frontier.contains(command.dependency) ||
-        frontier.value(commandId.deviceId) + 1 != commandId.sequence) {
-      return false;
-    }
-    final events =
-        _stagedEvents.values
-            .map(_stagedEvent)
-            .where((event) => event.eventId.commandId == commandId)
-            .toList()
-          ..sort((a, b) => a.eventId.index.compareTo(b.eventId.index));
-    if (events.length != command.eventCount) return false;
-    for (var i = 0; i < events.length; i++) {
-      if (events[i].eventId.index != i) return false;
-    }
-    _validateLog(command, events);
-    _appendValidated(command, events);
-    _stagedCommands.remove(commandId.toStringCompact());
-    for (final event in events) {
-      _stagedEvents.remove(event.eventId.toStringCompact());
-    }
+  Future<bool> saveBundle(CommandBundle bundle) async {
+    if (!bundle.isValid) throw ArgumentError('invalid command bundle');
+    if (!_isReady(bundle.command)) return false;
+    _appendValidated(bundle.command, bundle.events);
     return true;
   }
 }
@@ -358,26 +231,6 @@ class _MemoryLogCommand {
   }
 }
 
-class _MemoryStagedCommand {
-  final CommandId commandId;
-  final VersionVector dependency;
-  final DateTime occuredAt;
-  final int eventCount;
-
-  _MemoryStagedCommand({
-    required this.commandId,
-    required this.dependency,
-    required this.occuredAt,
-    required this.eventCount,
-  }) {
-    if (eventCount <= 0) {
-      throw const FormatException(
-        'staged commands must produce at least one event',
-      );
-    }
-  }
-}
-
 class _MemoryLogEvent {
   final EventId eventId;
   final EncodedEvent encodedEvent;
@@ -389,19 +242,5 @@ class _MemoryLogEvent {
     required this.encodedEvent,
     required this.occuredAt,
     required this.logPosition,
-  });
-}
-
-class _MemoryStagedEvent {
-  final String streamPath;
-  final EventId eventId;
-  final EncodedEvent encodedEvent;
-  final DateTime occuredAt;
-
-  const _MemoryStagedEvent({
-    required this.streamPath,
-    required this.eventId,
-    required this.encodedEvent,
-    required this.occuredAt,
   });
 }

@@ -14,9 +14,8 @@ interface are examples, not the architectural center of the repository.
 
 The current code supports local event-sourced application development. It does
 not implement network transport, device identity or enrollment, multi-device
-convergence, encryption, blob storage, or backup. The replicated-command staging
-primitives in `cqrs` are storage building blocks, not a working synchronization
-system.
+convergence, encryption, blob storage, or backup. The `cqrs` package can store
+and retrieve complete command bundles, but synchronization is not implemented.
 
 ## Documentation
 

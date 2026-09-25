@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/log_command.dart';
+import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
 import 'package:cqrs/src/cqrs/event/staged_event.dart';
@@ -11,10 +11,7 @@ import 'package:cqrs/src/cqrs/event_store/event_database.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
-import 'package:cqrs/src/cqrs/exception/staged_command_conflict.dart';
 import 'package:mutex/mutex.dart';
-
-enum StageCommandResult { staged, alreadyPresent }
 
 class GetStreamInfoResult {
   final int? originatingStreamVersion;
@@ -98,15 +95,18 @@ class EventStore {
           );
         }
 
-        await _database.appendLog(
-          StagedCommand(
-            commandId: commandId,
-            dependency: changes.dependency,
-            occuredAt: changes.occuredAt,
-            eventCount: events.length,
+        final saved = await _database.saveBundle(
+          CommandBundle(
+            command: StagedCommand(
+              commandId: commandId,
+              dependency: changes.dependency,
+              occuredAt: changes.occuredAt,
+              eventCount: events.length,
+            ),
+            events: events,
           ),
-          events,
         );
+        if (!saved) throw StateError('local command is out of order');
       } on ConcurrencyProblem {
         rethrow;
       } on Exception catch (cause) {
@@ -119,94 +119,28 @@ class EventStore {
     _logChangesController.add(null);
   }
 
-  Future<StageCommandResult> stageCommand(StagedCommand command) =>
-      _mutex.protectWrite(() async {
-        try {
-          final commandId = command.commandId;
-          final existing =
-              await _database.getLogCommand(commandId) ??
-              await _database.getStagedCommand(commandId);
-          if (existing != null) {
-            if (stagedCommandsEqual(existing, command)) {
-              return StageCommandResult.alreadyPresent;
-            }
-            throw StagedCommandConflict(commandId);
-          }
-          await _database.stageCommand(command);
-          return StageCommandResult.staged;
-        } on StagedCommandConflict {
-          rethrow;
-        } on Exception catch (cause) {
-          throw EventStoreException('Failed to stage command', cause: cause);
-        }
-      });
-
-  Future<StageCommandResult> stageEvents(List<StagedEvent> events) =>
-      _mutex.protectWrite(() async {
-        try {
-          final unique = <EventId, StagedEvent>{};
-          for (final event in events) {
-            final duplicate = unique[event.eventId];
-            if (duplicate != null && duplicate != event) {
-              throw StagedCommandConflict(event.eventId);
-            }
-            unique[event.eventId] = event;
-          }
-          final staged = <StagedEvent>[];
-          for (final event in unique.values) {
-            final existing =
-                await _database.getLogEvent(event.eventId) ??
-                await _database.getStagedEvent(event.eventId);
-            if (existing == null) {
-              staged.add(event);
-            } else if (existing != event) {
-              throw StagedCommandConflict(event.eventId);
-            }
-          }
-          if (staged.isEmpty) return StageCommandResult.alreadyPresent;
-          await _database.stageEvents(staged);
-          return StageCommandResult.staged;
-        } on StagedCommandConflict {
-          rethrow;
-        } on Exception catch (cause) {
-          throw EventStoreException('Failed to stage events', cause: cause);
-        }
-      });
-
-  Future<bool> promoteStaged(CommandId commandId) async {
-    final promoted = await _mutex.protectWrite(() async {
+  Future<bool> saveBundle(CommandBundle bundle) async {
+    final saved = await _mutex.protectWrite(() async {
       try {
-        return await _database.promoteStaged(commandId);
+        return await _database.saveBundle(bundle);
       } on Exception catch (cause) {
         throw EventStoreException(
-          'Failed to promote staged command $commandId',
+          'Failed to save command bundle',
           cause: cause,
         );
       }
     });
-    if (promoted) _logChangesController.add(null);
-    return promoted;
+    if (saved) _logChangesController.add(null);
+    return saved;
   }
 
-  Future<List<LogCommand>> getLogCommands(int fromPosition) =>
+  Future<CommandBundle?> getBundle(CommandId commandId) =>
       _mutex.protectRead(() async {
         try {
-          return await _database.getLogCommands(
-            fromPosition,
-            _eventFetchPageSize,
-          );
-        } on Exception catch (cause) {
-          throw EventStoreException('Failed to get log commands', cause: cause);
-        }
-      });
-
-  Future<List<LogEvent>> getLogEventsForCommand(CommandId commandId) =>
-      _mutex.protectRead(() async {
-        try {
-          return await _database.getLogEventsForCommand(commandId);
+          return await _database.getBundle(commandId);
         } on Exception catch (cause) {
           throw EventStoreException(
-            'Failed to get log events for $commandId',
+            'Failed to get command bundle $commandId',
             cause: cause,
           );
         }

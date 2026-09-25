@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/staged_command.dart';
+import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
@@ -62,7 +63,7 @@ void main() {
     });
 
     expect(
-      (await database.getLogCommands(0, 10)).last.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
       VersionVector(),
     );
   });
@@ -75,7 +76,7 @@ void main() {
     });
 
     expect(
-      (await database.getLogCommands(0, 10)).last.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
       VersionVector({1: 1}),
     );
   });
@@ -88,7 +89,7 @@ void main() {
     });
 
     expect(
-      (await database.getLogCommands(0, 10)).last.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -101,7 +102,7 @@ void main() {
     });
 
     expect(
-      (await database.getLogCommands(0, 10)).last.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
       VersionVector({1: 2, 2: 1}),
     );
   });
@@ -115,7 +116,7 @@ void main() {
     });
 
     expect(
-      (await database.getLogCommands(0, 10)).last.dependency,
+      (await database.getBundle(CommandId(0, 1)))!.command.dependency,
       VersionVector({1: 2, 2: 1, 3: 1}),
     );
   });
@@ -181,28 +182,30 @@ Future<void> _execute(
   await executor.execute(_Command(handle));
 }
 
-Future<void> _seedCommand(
+Future<bool> _seedCommand(
   MemoryEventDatabase database, {
   required CommandId commandId,
   required List<String> streamPaths,
   VersionVector? dependency,
 }) {
-  return database.appendLog(
-    StagedCommand(
-      commandId: commandId,
-      dependency: dependency ?? VersionVector(),
-      occuredAt: _timestamp,
-      eventCount: streamPaths.length,
+  return database.saveBundle(
+    CommandBundle(
+      command: StagedCommand(
+        commandId: commandId,
+        dependency: dependency ?? VersionVector(),
+        occuredAt: _timestamp,
+        eventCount: streamPaths.length,
+      ),
+      events: [
+        for (var index = 0; index < streamPaths.length; index++)
+          StagedEvent(
+            eventId: EventId(commandId.deviceId, commandId.sequence, index),
+            streamPath: streamPaths[index],
+            encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
+            occuredAt: _timestamp,
+          ),
+      ],
     ),
-    [
-      for (var index = 0; index < streamPaths.length; index++)
-        StagedEvent(
-          eventId: EventId(commandId.deviceId, commandId.sequence, index),
-          streamPath: streamPaths[index],
-          encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
-          occuredAt: _timestamp,
-        ),
-    ],
   );
 }
 

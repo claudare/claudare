@@ -20,6 +20,9 @@ export 'src/cqrs/event/log_event.dart';
 
 // command
 export 'src/cqrs/command/command.dart';
+export 'src/cqrs/command/command_bundle.dart';
+export 'src/cqrs/command/staged_command.dart';
+export 'src/cqrs/event/staged_event.dart';
 export 'src/cqrs/command/command_context_api.dart';
 export 'src/cqrs/command/command_context.dart' show CommandStream;
 
@@ -40,6 +43,5 @@ export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
-export 'src/cqrs/exception/staged_command_conflict.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
 export 'src/cqrs/exception/stream_already_exists_exception.dart';

@@ -1,9 +1,6 @@
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/command/log_command.dart';
+import 'package:cqrs/src/cqrs/command/command_bundle.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/command/staged_command.dart';
-import 'package:cqrs/src/cqrs/event/event_id.dart';
-import 'package:cqrs/src/cqrs/event/staged_event.dart';
 import 'package:cqrs/src/cqrs/event/log_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 
@@ -35,17 +32,10 @@ abstract interface class EventDatabase {
   );
   Future<PaginatedResult<LogEvent>> getLogEvents(int fromPosition, int count);
 
-  // writing
-  Future<void> appendLog(StagedCommand command, List<StagedEvent> events);
+  /// Saves a complete bundle when its dependencies and command ID are ready.
+  /// Returns false when the bundle is out of order.
+  Future<bool> saveBundle(CommandBundle bundle);
 
-  // replication... this needs a nice cleanup...
-  Future<StagedCommand?> getLogCommand(CommandId commandId);
-  Future<StagedCommand?> getStagedCommand(CommandId commandId);
-  Future<StagedEvent?> getLogEvent(EventId eventId);
-  Future<StagedEvent?> getStagedEvent(EventId eventId);
-  Future<List<LogCommand>> getLogCommands(int fromPosition, int count);
-  Future<List<LogEvent>> getLogEventsForCommand(CommandId commandId);
-  Future<void> stageCommand(StagedCommand command);
-  Future<void> stageEvents(List<StagedEvent> events);
-  Future<bool> promoteStaged(CommandId commandId);
+  /// Returns a logged bundle by command ID, or null when absent.
+  Future<CommandBundle?> getBundle(CommandId commandId);
 }

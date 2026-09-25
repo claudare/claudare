@@ -1,5 +1,4 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/command/log_command.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 abstract interface class EventStoreTestBackend {
@@ -11,8 +10,6 @@ abstract interface class EventStoreTestBackend {
 abstract interface class EventStoreTestSession {
   EventStore get store;
   EventDatabase get database;
-
-  Future<List<LogCommand>> readLogCommands();
 
   Future<void> close();
 }
@@ -71,10 +68,6 @@ class _MemoryLogEventDatabaseTestSession implements EventStoreTestSession {
   _MemoryLogEventDatabaseTestSession(this.store, this.database);
 
   @override
-  Future<List<LogCommand>> readLogCommands() =>
-      database.getLogCommands(0, -1 >>> 1);
-
-  @override
   Future<void> close() async {}
 }
 
@@ -86,10 +79,6 @@ class _SqliteEventDatabaseTestSession implements EventStoreTestSession {
   Future<void>? _closeFuture;
 
   _SqliteEventDatabaseTestSession(this.store, this.database);
-
-  @override
-  Future<List<LogCommand>> readLogCommands() =>
-      database.getLogCommands(0, -1 >>> 1);
 
   @override
   Future<void> close() => _closeFuture ??= database.close();

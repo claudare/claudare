@@ -31,9 +31,9 @@ events by route and rebuilds state for a query. The CQRS package supports
 optional snapshots, while Notes replays its note events without snapshots.
 Notes persists events in one SQLite database and keeps no derived database.
 
-The event store also has storage primitives for staging replicated commands
-and events. These primitives do not provide network transport, device
-enrollment, multi-device convergence, encryption, blob storage, or backup.
+The event store can store and retrieve complete command bundles. This does not
+provide network transport, device enrollment, multi-device convergence,
+encryption, blob storage, or backup.
 
 See [App Development Guide](APP_DEVELOPMENT_GUIDE.md) for application
 composition and [Security](SECURITY.md) for the current security posture.
