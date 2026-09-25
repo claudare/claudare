@@ -9,8 +9,9 @@ const publicKeyLength = 32;
 class PublicKey implements Comparable<PublicKey> {
   final Uint8List bytes;
 
-  PublicKey(this.bytes) {
-    if (bytes.length != publicKeyLength) {
+  PublicKey(Uint8List bytes)
+    : bytes = Uint8List.fromList(bytes).asUnmodifiableView() {
+    if (this.bytes.length != publicKeyLength) {
       throw ArgumentError('PublicKey must be $publicKeyLength bytes');
     }
   }
@@ -61,5 +62,5 @@ class PublicKey implements Comparable<PublicKey> {
   @override
   toString() => base58Encode(bytes);
 
-  PublicKey.fromString(String str) : bytes = base58Decode(str);
+  factory PublicKey.fromString(String str) => PublicKey(base58Decode(str));
 }

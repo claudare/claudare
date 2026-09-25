@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:claudare_crypto/crypto.dart';
 import 'package:test/test.dart';
 
@@ -7,6 +9,21 @@ void main() {
 
     expect(key.bytes, hasLength(publicKeyLength));
     expect(key.bytes.sublist(publicKeyLength - 3), [1, 2, 3]);
+  });
+
+  test('copies source bytes and exposes an unmodifiable view', () {
+    final source = Uint8List(publicKeyLength)..[publicKeyLength - 1] = 1;
+    final key = PublicKey(source);
+    final originalByte = key.bytes.last;
+
+    source[source.length - 1] = 2;
+
+    expect(key.bytes.last, originalByte);
+    expect(() => key.bytes[0] = 1, throwsUnsupportedError);
+  });
+
+  test('fromString validates the decoded key length', () {
+    expect(() => PublicKey.fromString('2'), throwsArgumentError);
   });
 
   test('compares keys by their bytes in lexicographic order', () {
