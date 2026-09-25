@@ -16,21 +16,19 @@ class CommandChanges {
     required this.events,
   });
 
-  /// For assertions, ensures that every inserted event has a lock.
+  /// Whether locks are unique by stream and cover every appended event.
   bool isValid() {
-    final streamPaths = <String>{};
-
-    for (final event in events) {
-      streamPaths.add(event.streamPath);
-    }
+    final lockedStreamPaths = <String>{};
 
     for (final lock in locks) {
-      if (!streamPaths.remove(lock.streamPath)) {
+      if (!lockedStreamPaths.add(lock.streamPath)) {
         return false;
       }
     }
 
-    return streamPaths.isEmpty;
+    return events.every(
+      (event) => lockedStreamPaths.contains(event.streamPath),
+    );
   }
 }
 

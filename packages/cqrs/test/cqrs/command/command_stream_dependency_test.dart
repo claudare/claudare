@@ -15,6 +15,7 @@ import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory/memory_event_database.dart';
+import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -104,6 +105,46 @@ void main() {
       VersionVector({1: 2, 2: 1}),
     );
   });
+
+  test('keeps dependencies from streams without appended events', () async {
+    await _execute(eventStore, eventRegistry, (context) async {
+      await context.stream<_Event>('target').scan().drain<void>();
+      final stream = context.stream<_Event>('unrelated');
+      await stream.lockLatest();
+      stream.append(const _Event());
+    });
+
+    expect(
+      (await database.getLogCommands(0, 10)).last.dependency,
+      VersionVector({1: 2, 2: 1, 3: 1}),
+    );
+  });
+
+  test(
+    'rejects changes when a stream with no appended events advances',
+    () async {
+      await expectLater(
+        _execute(eventStore, eventRegistry, (context) async {
+          await context.stream<_Event>('target').scan().drain<void>();
+          final stream = context.stream<_Event>('unrelated');
+          await stream.lockLatest();
+          stream.append(const _Event());
+
+          await _execute(eventStore, eventRegistry, (otherContext) async {
+            final otherStream = otherContext.stream<_Event>('target');
+            await otherStream.lockLatest();
+            otherStream.append(const _Event());
+          });
+        }),
+        throwsA(isA<ConcurrencyProblem>()),
+      );
+
+      expect(
+        await eventStore.getStreamReader('unrelated').scan().toList(),
+        hasLength(1),
+      );
+    },
+  );
 
   test('stopping scan applies and locks only the yielded', () async {
     final executionState = CommandExecutionState(locks: [], events: []);
