@@ -50,8 +50,7 @@ Future<void> _appendCount(EventStore store, int count) async {
     await store.saveChanges(
       CommandChanges(
         dependency: VersionVector(),
-        startedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-        completedAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+        occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         locks: [
           StreamLock(
             streamPath: 'test',

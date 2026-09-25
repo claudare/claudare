@@ -29,8 +29,7 @@ class MemoryEventDatabase implements EventDatabase {
   LogCommand _logCommand(_MemoryLogCommand command) => LogCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    startedAt: command.startedAt,
-    completedAt: command.completedAt,
+    occuredAt: command.occuredAt,
     eventCount: command.eventCount,
     logPosition: command.logPosition,
   );
@@ -41,8 +40,7 @@ class MemoryEventDatabase implements EventDatabase {
   StagedCommand _stagedCommand(_MemoryStagedCommand command) => StagedCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    startedAt: command.startedAt,
-    completedAt: command.completedAt,
+    occuredAt: command.occuredAt,
     eventCount: command.eventCount,
   );
 
@@ -247,8 +245,7 @@ class MemoryEventDatabase implements EventDatabase {
       _MemoryLogCommand(
         commandId: command.commandId,
         dependency: command.dependency,
-        startedAt: command.startedAt,
-        completedAt: command.completedAt,
+        occuredAt: command.occuredAt,
         eventCount: command.eventCount,
         logPosition: _commands.length,
       ),
@@ -285,8 +282,7 @@ class MemoryEventDatabase implements EventDatabase {
     _stagedCommands[key] = _MemoryStagedCommand(
       commandId: command.commandId,
       dependency: command.dependency,
-      startedAt: command.startedAt,
-      completedAt: command.completedAt,
+      occuredAt: command.occuredAt,
       eventCount: command.eventCount,
     );
   }
@@ -343,16 +339,14 @@ class MemoryEventDatabase implements EventDatabase {
 class _MemoryLogCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final DateTime startedAt;
-  final DateTime completedAt;
+  final DateTime occuredAt;
   final int eventCount;
   final int logPosition;
 
   _MemoryLogCommand({
     required this.commandId,
     required this.dependency,
-    required this.startedAt,
-    required this.completedAt,
+    required this.occuredAt,
     required this.eventCount,
     required this.logPosition,
   }) {
@@ -367,15 +361,13 @@ class _MemoryLogCommand {
 class _MemoryStagedCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final DateTime startedAt;
-  final DateTime completedAt;
+  final DateTime occuredAt;
   final int eventCount;
 
   _MemoryStagedCommand({
     required this.commandId,
     required this.dependency,
-    required this.startedAt,
-    required this.completedAt,
+    required this.occuredAt,
     required this.eventCount,
   }) {
     if (eventCount <= 0) {

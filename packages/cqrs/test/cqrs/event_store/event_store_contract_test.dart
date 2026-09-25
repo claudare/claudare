@@ -17,8 +17,6 @@ import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/staged_command_conflict.dart';
 import 'package:test/test.dart';
 
-final _startedAt = DateTime.fromMillisecondsSinceEpoch(100, isUtc: true);
-final _completedAt = DateTime.fromMillisecondsSinceEpoch(200, isUtc: true);
 final _occuredAt = DateTime.fromMillisecondsSinceEpoch(300, isUtc: true);
 
 void main() {
@@ -539,8 +537,7 @@ CommandChanges _commandChanges(
   required List<EventAppend> events,
 }) => CommandChanges(
   dependency: dependency ?? VersionVector(),
-  startedAt: _startedAt,
-  completedAt: _completedAt,
+  occuredAt: _occuredAt,
   locks: logLocks,
   events: events,
 );
@@ -562,8 +559,7 @@ StagedCommand _commandRecord({
 }) => StagedCommand(
   commandId: CommandId(device, sequence),
   dependency: dependency ?? VersionVector(),
-  startedAt: _startedAt,
-  completedAt: _completedAt,
+  occuredAt: _occuredAt,
   eventCount: eventCount,
 );
 

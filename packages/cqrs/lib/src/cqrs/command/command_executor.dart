@@ -26,7 +26,7 @@ class CommandExecutor {
        _eventStore = eventStore;
 
   Future<void> execute<Input>(Command<Input> command, Input input) async {
-    final startedAt = _timeProvider.now();
+    final occuredAt = _timeProvider.now();
     final executionState = CommandExecutionState(locks: [], events: []);
 
     final context = CommandContext(
@@ -40,18 +40,17 @@ class CommandExecutor {
     await command.handle(input, context);
 
     if (executionState.events.isEmpty) return;
-    await _saveEvents(executionState, context.dependency, startedAt);
+    await _saveEvents(executionState, context.dependency, occuredAt);
   }
 
   Future<void> _saveEvents(
     CommandExecutionState executionState,
     VersionVector dependency,
-    DateTime startedAt,
+    DateTime occuredAt,
   ) async {
     final changes = CommandChanges(
       dependency: dependency,
-      startedAt: startedAt,
-      completedAt: _timeProvider.now(),
+      occuredAt: occuredAt,
       locks: executionState.locks,
       events: executionState.events,
     );

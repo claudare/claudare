@@ -5,16 +5,14 @@ import 'package:cqrs/src/cqrs/command/staged_command.dart';
 class LogCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final DateTime startedAt;
-  final DateTime completedAt;
+  final DateTime occuredAt;
   final int eventCount;
   final int logPosition;
 
   LogCommand({
     required this.commandId,
     required this.dependency,
-    required this.startedAt,
-    required this.completedAt,
+    required this.occuredAt,
     required this.eventCount,
     required this.logPosition,
   }) {
@@ -28,8 +26,7 @@ class LogCommand {
   StagedCommand toStagedCommand() => StagedCommand(
     commandId: commandId,
     dependency: dependency,
-    startedAt: startedAt,
-    completedAt: completedAt,
+    occuredAt: occuredAt,
     eventCount: eventCount,
   );
 
@@ -39,8 +36,7 @@ class LogCommand {
   }) => LogCommand(
     commandId: command.commandId,
     dependency: command.dependency,
-    startedAt: command.startedAt,
-    completedAt: command.completedAt,
+    occuredAt: command.occuredAt,
     eventCount: command.eventCount,
     logPosition: logPosition,
   );

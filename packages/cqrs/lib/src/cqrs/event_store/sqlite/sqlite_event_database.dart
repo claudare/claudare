@@ -21,8 +21,7 @@ final eventDatabaseMigrations = SqliteMigrations(
             device_id INTEGER NOT NULL,
             sequence INTEGER NOT NULL,
             dependency BLOB NOT NULL,
-            started_at INTEGER NOT NULL,
-            completed_at INTEGER NOT NULL,
+            occured_at INTEGER NOT NULL,
             event_count INTEGER NOT NULL CHECK(event_count > 0),
             UNIQUE(device_id, sequence)
           );''');
@@ -203,7 +202,7 @@ class SqliteEventDatabase implements EventDatabase {
     final adhocFilter = isLog ? 'log_position >= 0' : 'log_position < 0';
 
     final row = await _database.queryRow(
-      '''SELECT dependency, started_at, completed_at, event_count
+      '''SELECT dependency, occured_at, event_count
       FROM command
       WHERE device_id = ?
         AND sequence = ?
@@ -215,8 +214,7 @@ class SqliteEventDatabase implements EventDatabase {
     return StagedCommand(
       commandId: commandId,
       dependency: _decodeVector(row.field<Uint8List>('dependency')),
-      startedAt: _date(row.field<int>('started_at')),
-      completedAt: _date(row.field<int>('completed_at')),
+      occuredAt: _date(row.field<int>('occured_at')),
       eventCount: row.field<int>('event_count'),
     );
   }
@@ -258,7 +256,7 @@ class SqliteEventDatabase implements EventDatabase {
   Future<List<LogCommand>> getLogCommands(int fromPosition, int count) async {
     final rows = await _database.query(
       '''SELECT log_position, device_id, sequence, dependency,
-      started_at, completed_at, event_count
+      occured_at, event_count
       FROM command
       WHERE log_position >= ?
       ORDER BY log_position ASC
@@ -274,8 +272,7 @@ class SqliteEventDatabase implements EventDatabase {
             row.field<int>('sequence'),
           ),
           dependency: _decodeVector(row.field<Uint8List>('dependency')),
-          startedAt: _date(row.field<int>('started_at')),
-          completedAt: _date(row.field<int>('completed_at')),
+          occuredAt: _date(row.field<int>('occured_at')),
           eventCount: row.field<int>('event_count'),
         ),
     ];
@@ -425,15 +422,14 @@ void _insertStagedCommand(SyncContext tx, StagedCommand command) {
   final id = command.commandId;
   tx.execute(
     '''INSERT INTO command(log_position, device_id, sequence, dependency,
-    started_at, completed_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?)''',
+    occured_at, event_count)
+    VALUES (?, ?, ?, ?, ?, ?)''',
     [
       _nextStagedSequence(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
-      command.startedAt.millisecondsSinceEpoch,
-      command.completedAt.millisecondsSinceEpoch,
+      command.occuredAt.millisecondsSinceEpoch,
       command.eventCount,
     ],
   );
@@ -450,15 +446,14 @@ void _insertLog(
   final id = command.commandId;
   tx.execute(
     '''INSERT INTO command(log_position, device_id, sequence,
-    dependency, started_at, completed_at, event_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?);''',
+    dependency, occured_at, event_count)
+    VALUES (?, ?, ?, ?, ?, ?);''',
     [
       _nextLogPosition(tx, 'command'),
       id.deviceId,
       id.sequence,
       _encodeVector(command.dependency),
-      command.startedAt.millisecondsSinceEpoch,
-      command.completedAt.millisecondsSinceEpoch,
+      command.occuredAt.millisecondsSinceEpoch,
       command.eventCount,
     ],
   );

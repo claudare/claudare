@@ -46,8 +46,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
       await _eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          startedAt: event.occuredAt,
-          completedAt: event.occuredAt,
+          occuredAt: event.occuredAt,
           locks: [
             StreamLock(
               streamPath: event.streamPath,

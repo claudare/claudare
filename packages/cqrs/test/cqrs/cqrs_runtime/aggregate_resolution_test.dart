@@ -79,8 +79,7 @@ void main() {
       await eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          startedAt: _timestamp,
-          completedAt: _timestamp,
+          occuredAt: _timestamp,
           locks: const [
             StreamLock(
               streamPath: 'account/one',
@@ -255,8 +254,7 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
         dependency: VersionVector(),
-        startedAt: _timestamp,
-        completedAt: _timestamp,
+        occuredAt: _timestamp,
         locks: const [
           StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
           StreamLock(streamPath: 'account/two', originatingStreamVersion: null),

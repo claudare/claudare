@@ -4,15 +4,13 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 class StagedCommand {
   final CommandId commandId;
   final VersionVector dependency;
-  final DateTime startedAt;
-  final DateTime completedAt;
+  final DateTime occuredAt;
   final int eventCount;
 
   StagedCommand({
     required this.commandId,
     required this.dependency,
-    required this.startedAt,
-    required this.completedAt,
+    required this.occuredAt,
     required this.eventCount,
   }) {
     if (eventCount <= 0) {
@@ -27,6 +25,5 @@ class StagedCommand {
 bool stagedCommandsEqual(StagedCommand a, StagedCommand b) =>
     a.commandId == b.commandId &&
     a.dependency == b.dependency &&
-    a.startedAt == b.startedAt &&
-    a.completedAt == b.completedAt &&
+    a.occuredAt == b.occuredAt &&
     a.eventCount == b.eventCount;

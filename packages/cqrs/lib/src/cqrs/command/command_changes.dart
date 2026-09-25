@@ -5,15 +5,13 @@ import 'package:cqrs/src/cqrs/event/event_append.dart';
 /// concurrency.
 class CommandChanges {
   final VersionVector dependency;
-  final DateTime startedAt;
-  final DateTime completedAt;
+  final DateTime occuredAt;
   final List<StreamLock> locks;
   final List<EventAppend> events;
 
   const CommandChanges({
     required this.dependency,
-    required this.startedAt,
-    required this.completedAt,
+    required this.occuredAt,
     required this.locks,
     required this.events,
   });

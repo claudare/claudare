@@ -102,8 +102,7 @@ class EventStore {
           StagedCommand(
             commandId: commandId,
             dependency: changes.dependency,
-            startedAt: changes.startedAt,
-            completedAt: changes.completedAt,
+            occuredAt: changes.occuredAt,
             eventCount: events.length,
           ),
           events,

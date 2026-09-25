@@ -13,8 +13,7 @@ void main() {
     test('empty is valid', () async {
       final changes = CommandChanges(
         dependency: VersionVector(),
-        startedAt: timestamp,
-        completedAt: timestamp,
+        occuredAt: timestamp,
         locks: [],
         events: [],
       );
@@ -25,8 +24,7 @@ void main() {
     test('no lock', () async {
       final changes = CommandChanges(
         dependency: VersionVector(),
-        startedAt: timestamp,
-        completedAt: timestamp,
+        occuredAt: timestamp,
         locks: [],
         events: [
           EventAppend(
@@ -48,8 +46,7 @@ void main() {
     test('no events', () async {
       final changes = CommandChanges(
         dependency: VersionVector(),
-        startedAt: timestamp,
-        completedAt: timestamp,
+        occuredAt: timestamp,
         locks: [StreamLock(streamPath: 'test', originatingStreamVersion: 42)],
         events: [],
       );

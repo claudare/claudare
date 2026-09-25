@@ -275,8 +275,7 @@ StagedCommand _command(CommandId commandId, {int eventCount = 1}) =>
     StagedCommand(
       commandId: commandId,
       dependency: VersionVector(),
-      startedAt: _timestamp,
-      completedAt: _timestamp,
+      occuredAt: _timestamp,
       eventCount: eventCount,
     );
 
@@ -292,8 +291,7 @@ Future<void> _append(EventStore store) => store.saveChanges(_changes());
 
 CommandChanges _changes() => CommandChanges(
   dependency: VersionVector(),
-  startedAt: _timestamp,
-  completedAt: _timestamp,
+  occuredAt: _timestamp,
   locks: const [
     StreamLock(streamPath: 'test/1', originatingStreamVersion: null),
   ],

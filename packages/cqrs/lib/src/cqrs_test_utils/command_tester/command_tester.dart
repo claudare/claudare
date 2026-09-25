@@ -151,8 +151,7 @@ class CommandTester {
       await _eventStore.saveChanges(
         CommandChanges(
           dependency: VersionVector(),
-          startedAt: timestamp,
-          completedAt: timestamp,
+          occuredAt: timestamp,
           locks: [
             StreamLock(
               streamPath: event.streamPath,

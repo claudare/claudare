@@ -118,8 +118,7 @@ StagedCommand _command({VersionVector? dependency, int sequence = 1}) =>
     StagedCommand(
       commandId: CommandId(3, sequence),
       dependency: dependency ?? VersionVector(),
-      startedAt: DateTime.fromMillisecondsSinceEpoch(100, isUtc: true),
-      completedAt: DateTime.fromMillisecondsSinceEpoch(200, isUtc: true),
+      occuredAt: DateTime.fromMillisecondsSinceEpoch(100, isUtc: true),
       eventCount: 1,
     );
 

@@ -151,8 +151,7 @@ Future<void> _seedCommand(
     StagedCommand(
       commandId: commandId,
       dependency: dependency ?? VersionVector(),
-      startedAt: _timestamp,
-      completedAt: _timestamp,
+      occuredAt: _timestamp,
       eventCount: streamPaths.length,
     ),
     [
