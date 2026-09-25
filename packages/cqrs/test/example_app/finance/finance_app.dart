@@ -41,21 +41,33 @@ class Commands {
 
   const Commands(this._runtime);
 
-  Future<void> atmDeposit(AtmDepositInput input) =>
-      _runtime.execute(AtmDeposit(), input);
+  Future<void> atmDeposit({required String accountId, required int amount}) =>
+      _runtime.execute(AtmDeposit(accountId: accountId, amount: amount));
 
-  Future<void> atmWithdrawal(AtmWithdrawalInput input) =>
-      _runtime.execute(AtmWithdrawal(), input);
+  Future<void> atmWithdrawal({
+    required String accountId,
+    required int amount,
+  }) => _runtime.execute(AtmWithdrawal(accountId: accountId, amount: amount));
 
-  Future<void> openAccount(OpenAccountInput input) =>
-      _runtime.execute(OpenAccount(), input);
+  Future<void> openAccount({required String accountId, required String name}) =>
+      _runtime.execute(OpenAccount(accountId: accountId, name: name));
 
-  Future<void> renameAccount(RenameAccountInput input) =>
-      _runtime.execute(RenameAccount(), input);
+  Future<void> renameAccount({
+    required String accountId,
+    required String newName,
+  }) => _runtime.execute(RenameAccount(accountId: accountId, newName: newName));
 
-  Future<void> transferFundsBetweenAccounts(
-    TransferFundsBetweenAccountsInput input,
-  ) => _runtime.execute(TransferFundsBetweenAccounts(), input);
+  Future<void> transferFundsBetweenAccounts({
+    required String fromAccountId,
+    required String toAccountId,
+    required int amount,
+  }) => _runtime.execute(
+    TransferFundsBetweenAccounts(
+      fromAccountId: fromAccountId,
+      toAccountId: toAccountId,
+      amount: amount,
+    ),
+  );
 }
 
 class Queries {

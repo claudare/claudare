@@ -2,30 +2,24 @@ import 'package:cqrs/cqrs.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class UpdateNoteTitleInput {
+class UpdateNoteTitle implements Command {
   final String noteId;
   final String fullValue;
 
-  const UpdateNoteTitleInput({required this.noteId, required this.fullValue});
+  const UpdateNoteTitle({required this.noteId, required this.fullValue});
 
   @override
   String toString() {
-    return 'UpdateNoteTitleInput{noteId: $noteId, fullValue: $fullValue}';
+    return 'UpdateNoteTitle{noteId: $noteId, fullValue: $fullValue}';
   }
-}
-
-class UpdateNoteTitle implements Command<UpdateNoteTitleInput> {
-  const UpdateNoteTitle();
 
   @override
-  Future<void> handle(input, ctx) async {
-    final noteId = input.noteId;
-
+  Future<void> handle(ctx) async {
     final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
 
     await stream.mustExist();
 
-    stream.append(NoteTitleUpdated(noteId: noteId, newTitle: input.fullValue));
+    stream.append(NoteTitleUpdated(noteId: noteId, newTitle: fullValue));
 
     ctx.logger.debug('note $noteId title updated');
   }

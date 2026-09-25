@@ -2,11 +2,6 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
-import '../command/atm_depost.dart';
-import '../command/atm_withdrawal.dart';
-import '../command/open_account.dart';
-import '../command/rename_account.dart';
-import '../command/transfer_funds_between_accounts.dart';
 import '../finance_app.dart';
 
 void main() {
@@ -20,24 +15,17 @@ void main() {
     app = FinanceApp(cqrsRuntime: CqrsTestRuntime());
   });
 
-  Future<void> openFirstAccount() => app.command.openAccount(
-    const OpenAccountInput(accountId: firstAccountId, name: 'first'),
-  );
+  Future<void> openFirstAccount() =>
+      app.command.openAccount(accountId: firstAccountId, name: 'first');
 
   Future<void> transferToSecondAccount() async {
     await openFirstAccount();
-    await app.command.openAccount(
-      const OpenAccountInput(accountId: secondAccountId, name: 'second'),
-    );
-    await app.command.atmDeposit(
-      const AtmDepositInput(accountId: firstAccountId, amount: 100),
-    );
+    await app.command.openAccount(accountId: secondAccountId, name: 'second');
+    await app.command.atmDeposit(accountId: firstAccountId, amount: 100);
     await app.command.transferFundsBetweenAccounts(
-      const TransferFundsBetweenAccountsInput(
-        fromAccountId: firstAccountId,
-        toAccountId: secondAccountId,
-        amount: 20,
-      ),
+      fromAccountId: firstAccountId,
+      toAccountId: secondAccountId,
+      amount: 20,
     );
   }
 
@@ -69,14 +57,11 @@ void main() {
     'account summary reflects deposits, withdrawals, and renaming',
     () async {
       await openFirstAccount();
-      await app.command.atmDeposit(
-        const AtmDepositInput(accountId: firstAccountId, amount: 100),
-      );
-      await app.command.atmWithdrawal(
-        const AtmWithdrawalInput(accountId: firstAccountId, amount: 10),
-      );
+      await app.command.atmDeposit(accountId: firstAccountId, amount: 100);
+      await app.command.atmWithdrawal(accountId: firstAccountId, amount: 10);
       await app.command.renameAccount(
-        const RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
+        accountId: firstAccountId,
+        newName: 'renamed',
       );
 
       final summary = await app.query.accountSummary(firstAccountId);
@@ -92,11 +77,10 @@ void main() {
     await openFirstAccount();
     final before = await app.query.accountList();
 
-    await app.command.atmDeposit(
-      const AtmDepositInput(accountId: firstAccountId, amount: 40),
-    );
+    await app.command.atmDeposit(accountId: firstAccountId, amount: 40);
     await app.command.renameAccount(
-      const RenameAccountInput(accountId: firstAccountId, newName: 'renamed'),
+      accountId: firstAccountId,
+      newName: 'renamed',
     );
 
     final after = await app.query.accountList();
@@ -142,9 +126,7 @@ void main() {
     await openFirstAccount();
 
     await expectLater(
-      app.command.atmWithdrawal(
-        const AtmWithdrawalInput(accountId: firstAccountId, amount: 40),
-      ),
+      app.command.atmWithdrawal(accountId: firstAccountId, amount: 40),
       throwsA(
         isA<CommandException>().having(
           (error) => error.message,
@@ -161,15 +143,15 @@ void main() {
 
   test('concurrent withdrawals cannot both spend the same balance', () async {
     await openFirstAccount();
-    await app.command.atmDeposit(
-      const AtmDepositInput(accountId: firstAccountId, amount: 100),
-    );
+    await app.command.atmDeposit(accountId: firstAccountId, amount: 100);
 
     final first = app.command.atmWithdrawal(
-      const AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
+      accountId: firstAccountId,
+      amount: 80,
     );
     final second = app.command.atmWithdrawal(
-      const AtmWithdrawalInput(accountId: firstAccountId, amount: 80),
+      accountId: firstAccountId,
+      amount: 80,
     );
     final results = await Future.wait([
       first.then<Object?>((_) => null, onError: (Object error) => error),

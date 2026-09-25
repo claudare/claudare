@@ -3,18 +3,14 @@ import 'package:cqrs/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class OpenAccountInput {
+class OpenAccount implements Command {
   final String accountId;
   final String name;
 
-  const OpenAccountInput({required this.accountId, required this.name});
-}
+  const OpenAccount({required this.accountId, required this.name});
 
-class OpenAccount implements Command<OpenAccountInput> {
   @override
-  Future<void> handle(input, ctx) async {
-    final accountId = input.accountId;
-
+  Future<void> handle(ctx) async {
     final stream = ctx.stream<AccountEvent>(
       accountStreamRoute.buildPath(accountId),
     );
@@ -23,6 +19,6 @@ class OpenAccount implements Command<OpenAccountInput> {
 
     await stream.mustNotExist();
 
-    stream.append(AccountOpened(name: input.name));
+    stream.append(AccountOpened(name: name));
   }
 }

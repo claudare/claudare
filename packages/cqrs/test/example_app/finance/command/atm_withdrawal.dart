@@ -3,22 +3,20 @@ import 'package:cqrs/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AtmWithdrawalInput {
+class AtmWithdrawal implements Command {
   final String accountId;
   final int amount;
 
-  const AtmWithdrawalInput({required this.accountId, required this.amount});
-}
+  const AtmWithdrawal({required this.accountId, required this.amount});
 
-class AtmWithdrawal implements Command<AtmWithdrawalInput> {
   @override
-  Future<void> handle(input, ctx) async {
-    if (input.amount <= 0) {
+  Future<void> handle(ctx) async {
+    if (amount <= 0) {
       throw const CommandException('amount must be positive');
     }
 
     final stream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(input.accountId),
+      accountStreamRoute.buildPath(accountId),
     );
 
     int balance = 0;
@@ -42,12 +40,12 @@ class AtmWithdrawal implements Command<AtmWithdrawalInput> {
       }
     }
 
-    final newBalance = balance - input.amount;
+    final newBalance = balance - amount;
 
     if (newBalance < 0) {
       throw const CommandException('insufficient funds');
     }
 
-    stream.append(AccountAtmWithdrawn(amount: input.amount));
+    stream.append(AccountAtmWithdrawn(amount: amount));
   }
 }

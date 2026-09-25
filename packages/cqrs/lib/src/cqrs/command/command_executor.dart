@@ -25,7 +25,7 @@ class CommandExecutor {
        _timeProvider = timeProvider,
        _eventStore = eventStore;
 
-  Future<void> execute<Input>(Command<Input> command, Input input) async {
+  Future<void> execute(Command command) async {
     final occuredAt = _timeProvider.now();
     final executionState = CommandExecutionState(locks: [], events: []);
 
@@ -37,7 +37,7 @@ class CommandExecutor {
       logger: _logger,
     );
 
-    await command.handle(input, context);
+    await command.handle(context);
 
     if (executionState.events.isEmpty) return;
     await _saveEvents(executionState, context.dependency, occuredAt);

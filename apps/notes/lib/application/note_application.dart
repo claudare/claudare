@@ -40,26 +40,21 @@ class NoteCommands {
 
   Future<String> createNote() async {
     final noteId = _idGenerator.generateId();
-    await _runtime.execute(const CreateNote(), CreateNoteInput(noteId: noteId));
+    await _runtime.execute(CreateNote(noteId: noteId));
     return noteId;
   }
 
-  Future<void> updateNoteTitle(String noteId, String value) => _runtime.execute(
-    const UpdateNoteTitle(),
-    UpdateNoteTitleInput(noteId: noteId, fullValue: value),
-  );
+  Future<void> updateNoteTitle(String noteId, String value) =>
+      _runtime.execute(UpdateNoteTitle(noteId: noteId, fullValue: value));
 
-  Future<void> updateNoteContent(String noteId, String value) =>
-      _runtime.execute(
-        const UpdateNoteContent(),
-        UpdateNoteContentInput(noteId: noteId, overrideContent: value),
-      );
+  Future<void> updateNoteContent(String noteId, String value) => _runtime
+      .execute(UpdateNoteContent(noteId: noteId, overrideContent: value));
 
   Future<void> trashNote(String noteId) =>
-      _runtime.execute(const TrashNote(), TrashNoteInput(noteId: noteId));
+      _runtime.execute(TrashNote(noteId: noteId));
 
   Future<void> restoreNote(String noteId) =>
-      _runtime.execute(const RestoreNote(), RestoreNoteInput(noteId: noteId));
+      _runtime.execute(RestoreNote(noteId: noteId));
 }
 
 /// Resolves current note state directly from the event history.

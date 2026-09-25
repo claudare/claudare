@@ -2,24 +2,18 @@ import 'package:cqrs/cqrs.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class CreateNoteInput {
+class CreateNote implements Command {
   final String noteId;
 
-  const CreateNoteInput({required this.noteId});
+  const CreateNote({required this.noteId});
 
   @override
   String toString() {
-    return 'CreateNoteInput{noteId: $noteId}';
+    return 'CreateNote{noteId: $noteId}';
   }
-}
-
-class CreateNote implements Command<CreateNoteInput> {
-  const CreateNote();
 
   @override
-  Future<void> handle(input, ctx) async {
-    final noteId = input.noteId;
-
+  Future<void> handle(ctx) async {
     final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
 
     await stream.mustNotExist();

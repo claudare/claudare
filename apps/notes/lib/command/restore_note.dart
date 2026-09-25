@@ -2,25 +2,19 @@ import 'package:cqrs/cqrs.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
-class RestoreNoteInput {
+/// Restores a trashed note.
+class RestoreNote implements Command {
   final String noteId;
 
-  const RestoreNoteInput({required this.noteId});
+  const RestoreNote({required this.noteId});
 
   @override
   String toString() {
-    return 'RestoreNoteInput{noteId: $noteId}';
+    return 'RestoreNote{noteId: $noteId}';
   }
-}
-
-/// aka "Untrash note"
-class RestoreNote implements Command<RestoreNoteInput> {
-  const RestoreNote();
 
   @override
-  Future<void> handle(input, ctx) async {
-    final noteId = input.noteId;
-
+  Future<void> handle(ctx) async {
     final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
 
     final deletedCount = await stream.scan().fold(0, (count, ev) {

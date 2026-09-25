@@ -22,7 +22,7 @@ void main() {
   test('create writes a note creation event', () async {
     final tester = newTester();
 
-    await tester.run(const CreateNote(), const CreateNoteInput(noteId: 'one'));
+    await tester.run(const CreateNote(noteId: 'one'));
 
     final events = await tester.getWrittenEvents<NoteEvent, String>(
       noteStreamRoute,
@@ -37,7 +37,7 @@ void main() {
         newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
 
     await expectLater(
-      tester.run(const CreateNote(), const CreateNoteInput(noteId: 'one')),
+      tester.run(const CreateNote(noteId: 'one')),
       throwsA(isA<StreamAlreadyExistsException>()),
     );
   });
@@ -46,10 +46,7 @@ void main() {
     final tester =
         newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
 
-    await tester.run(
-      const UpdateNoteTitle(),
-      const UpdateNoteTitleInput(noteId: 'one', fullValue: 'Title'),
-    );
+    await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
 
     final events = await tester.getWrittenEvents<NoteEvent, String>(
       noteStreamRoute,
@@ -65,8 +62,7 @@ void main() {
         newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
 
     await tester.run(
-      const UpdateNoteContent(),
-      const UpdateNoteContentInput(noteId: 'one', overrideContent: 'Body'),
+      const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
     );
 
     final events = await tester.getWrittenEvents<NoteEvent, String>(
@@ -80,10 +76,7 @@ void main() {
 
   test('title update rejects a missing note', () async {
     await expectLater(
-      newTester().run(
-        const UpdateNoteTitle(),
-        const UpdateNoteTitleInput(noteId: 'one', fullValue: 'Title'),
-      ),
+      newTester().run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title')),
       throwsA(isA<StreamNotFoundException>()),
     );
   });
@@ -91,8 +84,7 @@ void main() {
   test('content update rejects a missing note', () async {
     await expectLater(
       newTester().run(
-        const UpdateNoteContent(),
-        const UpdateNoteContentInput(noteId: 'one', overrideContent: 'Body'),
+        const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
       ),
       throwsA(isA<StreamNotFoundException>()),
     );
@@ -102,7 +94,7 @@ void main() {
     final tester =
         newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
 
-    await tester.run(const TrashNote(), const TrashNoteInput(noteId: 'one'));
+    await tester.run(const TrashNote(noteId: 'one'));
 
     final events = await tester.getWrittenEvents<NoteEvent, String>(
       noteStreamRoute,
@@ -119,14 +111,14 @@ void main() {
           ..withEvent(noteStreamRoute, 'one', const NoteTrashed());
 
     await expectLater(
-      tester.run(const TrashNote(), const TrashNoteInput(noteId: 'one')),
+      tester.run(const TrashNote(noteId: 'one')),
       throwsA(isA<CommandException>()),
     );
   });
 
   test('trash rejects a missing note', () async {
     await expectLater(
-      newTester().run(const TrashNote(), const TrashNoteInput(noteId: 'one')),
+      newTester().run(const TrashNote(noteId: 'one')),
       throwsA(isA<CommandException>()),
     );
   });
@@ -137,10 +129,7 @@ void main() {
           ..withEvent(noteStreamRoute, 'one', const NoteCreated())
           ..withEvent(noteStreamRoute, 'one', const NoteTrashed());
 
-    await tester.run(
-      const RestoreNote(),
-      const RestoreNoteInput(noteId: 'one'),
-    );
+    await tester.run(const RestoreNote(noteId: 'one'));
 
     final events = await tester.getWrittenEvents<NoteEvent, String>(
       noteStreamRoute,
@@ -155,7 +144,7 @@ void main() {
         newTester()..withEvent(noteStreamRoute, 'one', const NoteCreated());
 
     await expectLater(
-      tester.run(const RestoreNote(), const RestoreNoteInput(noteId: 'one')),
+      tester.run(const RestoreNote(noteId: 'one')),
       throwsA(
         isA<Exception>().having(
           (error) => error.toString(),

@@ -124,7 +124,7 @@ class CommandTester {
         .toList();
   }
 
-  Future<void> run<Input>(Command<Input> command, Input input) async {
+  Future<void> run(Command command) async {
     _ensureNotRan();
 
     await _flushSeeds();
@@ -140,7 +140,7 @@ class CommandTester {
       logger: const NoopLogger(),
     );
 
-    await executer.execute(command, input);
+    await executer.execute(command);
   }
 
   // TODO: this can be cleaned up

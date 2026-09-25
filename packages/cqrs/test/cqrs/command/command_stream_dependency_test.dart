@@ -138,7 +138,7 @@ Future<void> _execute(
     eventRegistry: eventRegistry,
     logger: const NoopLogger(),
   );
-  await executor.execute(_Command(handle), null);
+  await executor.execute(_Command(handle));
 }
 
 Future<void> _seedCommand(
@@ -166,14 +166,13 @@ Future<void> _seedCommand(
   );
 }
 
-final class _Command implements Command<dynamic> {
+final class _Command implements Command {
   final Future<void> Function(CommandContext context) _handle;
 
   const _Command(this._handle);
 
   @override
-  Future<void> handle(dynamic input, CommandContext context) =>
-      _handle(context);
+  Future<void> handle(CommandContext context) => _handle(context);
 }
 
 final class _Event {

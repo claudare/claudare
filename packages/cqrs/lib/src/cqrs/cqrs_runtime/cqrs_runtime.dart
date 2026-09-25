@@ -37,8 +37,8 @@ class CqrsRuntime {
 
   EventRegistry get eventRegistry => _eventRegistry;
 
-  Future<void> execute<Input>(Command<Input> command, Input input) {
-    return _commandExecutor.execute(command, input);
+  Future<void> execute(Command command) {
+    return _commandExecutor.execute(command);
   }
 
   /// Resolves an aggregate, optionally resuming from its snapshot.

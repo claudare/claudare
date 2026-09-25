@@ -32,10 +32,7 @@ void main() {
         AccountOpened(name: 'test'),
       );
 
-      await commandTester.run(
-        AtmDeposit(),
-        AtmDepositInput(accountId: '123', amount: 42),
-      );
+      await commandTester.run(AtmDeposit(accountId: '123', amount: 42));
 
       final events = await commandTester.getWrittenEvents<AccountEvent, String>(
         accountStreamRoute,
@@ -49,10 +46,7 @@ void main() {
     // try to append to event that does not exist
     test('propagates exception', () async {
       await expectLater(
-        commandTester.run(
-          AtmDeposit(),
-          AtmDepositInput(accountId: '123', amount: 42),
-        ),
+        commandTester.run(AtmDeposit(accountId: '123', amount: 42)),
         throwsA(isA<StreamNotFoundException>()),
       );
     });
@@ -61,10 +55,7 @@ void main() {
       commandTester.withEvent2('account/123', AccountOpened(name: 'test'));
 
       await expectLater(
-        commandTester.run(
-          AtmDeposit(),
-          AtmDepositInput(accountId: '123', amount: -999),
-        ),
+        commandTester.run(AtmDeposit(accountId: '123', amount: -999)),
         throwsA(
           isA<CommandException>().having(
             (exception) => exception.message,

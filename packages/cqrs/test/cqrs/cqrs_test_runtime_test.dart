@@ -14,7 +14,7 @@ void main() {
     final runtime = CqrsTestRuntime();
     runtime.eventRegistry.add(const _ValueEventCodec());
 
-    await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
+    await runtime.execute(const _AppendValue('one'));
 
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events, hasLength(1));
@@ -32,7 +32,7 @@ void main() {
     );
     runtime.eventRegistry.add(const _ValueEventCodec());
 
-    await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
+    await runtime.execute(const _AppendValue('one'));
 
     final log = await database.getLogEventsForCommand(CommandId(0, 1));
     expect(log, hasLength(1));
@@ -104,12 +104,12 @@ void main() {
     final store = EventStore(database);
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
-    await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
+    await runtime.execute(const _AppendValue('one'));
 
     await runtime.seedEvents([
       TestEvent('value/one', const _ValueEvent('seeded'), seededAt),
     ]);
-    await runtime.execute(const _AppendValue(), const _AppendValueInput('one'));
+    await runtime.execute(const _AppendValue('one'));
 
     final events = await runtime.resolve(_ValueAggregate(), 'one');
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
@@ -154,20 +154,16 @@ final class _ValueEventCodec implements EventCodec<_ValueEvent> {
   _ValueEvent fromBytes(Uint8List bytes) => _ValueEvent(utf8.decode(bytes));
 }
 
-final class _AppendValueInput {
+final class _AppendValue implements Command {
   final String value;
 
-  const _AppendValueInput(this.value);
-}
-
-final class _AppendValue implements Command<_AppendValueInput> {
-  const _AppendValue();
+  const _AppendValue(this.value);
 
   @override
-  Future<void> handle(_AppendValueInput input, CommandContext ctx) async {
-    final stream = ctx.stream<_ValueEvent>('value/${input.value}');
+  Future<void> handle(CommandContext ctx) async {
+    final stream = ctx.stream<_ValueEvent>('value/$value');
     await stream.lockLatest();
-    stream.append(_ValueEvent(input.value));
+    stream.append(_ValueEvent(value));
   }
 }
 

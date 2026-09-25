@@ -3,29 +3,26 @@ import 'package:cqrs/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class TransferFundsBetweenAccountsInput {
+/// An example of using multiple streams + consistency check
+class TransferFundsBetweenAccounts implements Command {
   final String fromAccountId;
   final String toAccountId;
   final int amount;
 
-  const TransferFundsBetweenAccountsInput({
+  const TransferFundsBetweenAccounts({
     required this.fromAccountId,
     required this.toAccountId,
     required this.amount,
   });
-}
 
-/// An example of using multiple streams + consistency check
-class TransferFundsBetweenAccounts
-    implements Command<TransferFundsBetweenAccountsInput> {
   @override
-  Future<void> handle(input, ctx) async {
-    if (input.amount <= 0) {
+  Future<void> handle(ctx) async {
+    if (amount <= 0) {
       throw const CommandException('amount must be positive');
     }
 
     final fromStream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(input.fromAccountId),
+      accountStreamRoute.buildPath(fromAccountId),
     );
 
     final scanner = fromStream.scan();
@@ -44,30 +41,24 @@ class TransferFundsBetweenAccounts
       }
     });
 
-    final newFromBalance = fromBalance - input.amount;
+    final newFromBalance = fromBalance - amount;
 
     if (newFromBalance < 0) {
       throw const CommandException('insufficient funds');
     }
 
     fromStream.append(
-      AccountInnerTransfer(
-        fromAccountId: input.toAccountId,
-        amount: -input.amount,
-      ),
+      AccountInnerTransfer(fromAccountId: toAccountId, amount: -amount),
     );
 
     final toStream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(input.toAccountId),
+      accountStreamRoute.buildPath(toAccountId),
     );
 
     await toStream.mustExist();
 
     toStream.append(
-      AccountInnerTransfer(
-        fromAccountId: input.fromAccountId,
-        amount: input.amount,
-      ),
+      AccountInnerTransfer(fromAccountId: fromAccountId, amount: amount),
     );
   }
 }
