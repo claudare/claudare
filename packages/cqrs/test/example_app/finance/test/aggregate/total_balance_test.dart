@@ -12,14 +12,14 @@ void main() {
 
   group('TotalBalanceAggregate', () {
     test('starts at zero', () {
-      final state = AggregateTester(TotalBalanceAggregate()).run();
+      final state = AggregateTester(totalBalanceAggregate()).run();
 
       expect(state.balance, 0);
     });
 
     test('sums deposits and withdrawals across account streams', () {
       final state =
-          AggregateTester(TotalBalanceAggregate())
+          AggregateTester(totalBalanceAggregate())
               .withEvent(
                 'account/one',
                 const AccountAtmDeposited(accountId: 'one', amount: 100),
@@ -42,7 +42,7 @@ void main() {
 
     test('ignores account metadata and internal transfers', () {
       final state =
-          AggregateTester(TotalBalanceAggregate())
+          AggregateTester(totalBalanceAggregate())
               .withEvent(
                 'account/one',
                 const AccountAtmDeposited(accountId: 'one', amount: 25),

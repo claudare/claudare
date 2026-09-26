@@ -12,7 +12,7 @@ void main() {
 
   group('AccountSummaryAggregate', () {
     test('starts empty and opens the selected account', () {
-      final tester = AggregateTester(AccountSummaryAggregate('one'));
+      final tester = AggregateTester(accountSummaryAggregate('one'));
 
       expect(tester.run().accountId, isEmpty);
 
@@ -34,7 +34,7 @@ void main() {
 
     test('applies deposits, withdrawals, transfers, and renaming', () {
       final state =
-          AggregateTester(AccountSummaryAggregate('one'))
+          AggregateTester(accountSummaryAggregate('one'))
               .withEvent(
                 'account/one',
                 const AccountOpened(accountId: 'one', name: 'Checking'),
@@ -74,7 +74,7 @@ void main() {
 
     test('skips events from another account', () {
       final state =
-          AggregateTester(AccountSummaryAggregate('one'))
+          AggregateTester(accountSummaryAggregate('one'))
               .withEvent(
                 'account/one',
                 const AccountOpened(accountId: 'one', name: 'One'),

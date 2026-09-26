@@ -27,10 +27,11 @@ export 'src/cqrs/command/command_context.dart' show CommandStream;
 
 // aggregate
 export 'src/cqrs/aggregate.dart';
-export 'src/cqrs/snapshotter.dart';
-export 'src/cqrs/memory_snapshotter.dart';
+export 'src/cqrs/snapshot.dart';
 
 // stream route
+export 'src/cqrs/pattern_filter.dart';
+
 export 'src/cqrs/stream_route/stream_route.dart';
 export 'src/cqrs/stream_route/stream_route_all.dart';
 export 'src/cqrs/stream_route/stream_route_wildcard.dart';

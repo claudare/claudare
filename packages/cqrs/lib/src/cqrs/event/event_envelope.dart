@@ -12,4 +12,9 @@ class EventEnvelope<TEvent extends Object> {
     required this.event,
     required this.occuredAt,
   });
+
+  @override
+  String toString() =>
+      'EventEnvelope(actor: $actor, streamPath: $streamPath, '
+      'event: $event, occuredAt: $occuredAt)';
 }

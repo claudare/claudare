@@ -3,7 +3,7 @@ import 'package:cqrs/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class AccountSummaryState {
+class AccountSummaryState implements AggregateState<AccountEvent> {
   String accountId = '';
   String name = '';
   int balance = 0;
@@ -13,77 +13,44 @@ class AccountSummaryState {
 
   AccountSummaryState();
 
-  AccountSummaryState.withInitialValue({
-    required this.accountId,
-    required this.name,
-    required this.openedAt,
-  });
-
-  AccountSummaryState clone() =>
-      AccountSummaryState()
-        ..accountId = accountId
-        ..name = name
-        ..balance = balance
-        ..transactionCount = transactionCount
-        ..openedAt = openedAt
-        ..lastTransactionAt = lastTransactionAt;
-
   @override
   String toString() {
     return 'AccountSummaryState(accountId: $accountId, name: $name, balance: $balance, transactionCount: $transactionCount, openedAt: $openedAt, lastTransactionAt: $lastTransactionAt)';
   }
-}
-
-class AccountSummaryAggregate
-    implements Aggregate<AccountEvent, AccountSummaryState> {
-  final String accountId;
-
-  AccountSummaryAggregate(this.accountId);
 
   @override
-  Snapshotter<AccountSummaryState>? get snapshotter => null;
-
-  @override
-  final int version = 1;
-
-  @override
-  StreamRoute get streamRoute => accountStreamRoute;
-
-  @override
-  AccountSummaryState initialState() {
-    return AccountSummaryState();
-  }
-
-  @override
-  bool canApply(EventEnvelope<AccountEvent> envelope) {
-    return envelope.event.accountId == accountId;
-  }
-
-  @override
-  void apply(AccountSummaryState state, EventEnvelope<AccountEvent> envelope) {
+  void apply(EventEnvelope<AccountEvent> envelope) {
     final event = envelope.event;
     final occuredAt = envelope.occuredAt;
     switch (event) {
       case AccountOpened(:final name, :final accountId):
-        state.accountId = accountId;
-        state.name = name;
-        state.balance = 0;
-        state.openedAt = occuredAt;
-        state.transactionCount = 0;
+        this.accountId = accountId;
+        this.name = name;
+        balance = 0;
+        openedAt = occuredAt;
+        transactionCount = 0;
       case AccountAtmDeposited(:final amount):
-        state.balance += amount;
-        state.lastTransactionAt = occuredAt;
-        state.transactionCount++;
+        balance += amount;
+        lastTransactionAt = occuredAt;
+        transactionCount++;
       case AccountAtmWithdrawn(:final amount):
-        state.balance -= amount;
-        state.lastTransactionAt = occuredAt;
-        state.transactionCount++;
+        balance -= amount;
+        lastTransactionAt = occuredAt;
+        transactionCount++;
       case AccountInnerTransfer(:final amount):
-        state.balance += amount;
-        state.lastTransactionAt = occuredAt;
-        state.transactionCount++;
+        balance += amount;
+        lastTransactionAt = occuredAt;
+        transactionCount++;
       case AccountRenamed(:final newName):
-        state.name = newName;
+        name = newName;
     }
   }
 }
+
+Aggregate<AccountEvent, AccountSummaryState> accountSummaryAggregate(
+  String accountId,
+) => Aggregate(
+  name: 'Account $accountId',
+  filter: PatternFilter.exact(accountStreamRoute.buildPath(accountId)),
+  state: AccountSummaryState(),
+);

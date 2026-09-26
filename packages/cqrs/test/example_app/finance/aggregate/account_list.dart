@@ -2,12 +2,11 @@ import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
-import 'account_list_snapshotter.dart';
 import 'account_summary.dart';
 
 enum SortDirection { ascending, descending }
 
-class AccountListState implements SnapshotCloneable<AccountListState> {
+class AccountListState implements AggregateState<AccountEvent> {
   final accounts = <String, AccountSummaryState>{};
 
   AccountListState();
@@ -37,47 +36,15 @@ class AccountListState implements SnapshotCloneable<AccountListState> {
   }
 
   @override
-  AccountListState clone() {
-    final copy = AccountListState();
-    for (final entry in accounts.entries) {
-      copy.accounts[entry.key] = entry.value.clone();
-    }
-    return copy;
-  }
-}
-
-class AccountListAggregate
-    implements Aggregate<AccountEvent, AccountListState> {
-  final AccountListSnapshotter? _snapshotter;
-  AccountListAggregate([this._snapshotter]);
-
-  @override
-  AccountListSnapshotter? get snapshotter => _snapshotter;
-
-  @override
-  final int version = 1;
-
-  @override
-  StreamRoute get streamRoute => accountStreamRoute;
-
-  @override
-  AccountListState initialState() {
-    return AccountListState();
-  }
-
-  @override
-  bool canApply(_) {
-    return true;
-  }
-
-  @override
-  void apply(AccountListState state, EventEnvelope<AccountEvent> envelope) {
+  void apply(EventEnvelope<AccountEvent> envelope) {
     final accountId = envelope.event.accountId;
-
-    final thisAggregate = AccountSummaryAggregate(accountId);
-    final thisState = state.accounts[accountId] ?? thisAggregate.initialState();
-    thisAggregate.apply(thisState, envelope);
-
-    state.accounts[accountId] = thisState;
+    final account = accounts.putIfAbsent(accountId, AccountSummaryState.new);
+    account.apply(envelope);
   }
 }
+
+Aggregate<AccountEvent, AccountListState> accountListAggregate() => Aggregate(
+  name: 'Account list',
+  filter: accountStreamRoute.filter,
+  state: AccountListState(),
+);

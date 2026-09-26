@@ -5,7 +5,7 @@ import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
 /// Details obtained by replaying one note stream.
-class NoteState {
+class NoteState implements AggregateState<NoteEvent> {
   final String noteId;
   bool exists = false;
   final CrdtString _title = CrdtString();
@@ -23,6 +23,7 @@ class NoteState {
   CrdtText get contentDocument => _content;
   bool get isTrashed => trashedAt != null;
 
+  @override
   void apply(EventEnvelope<NoteEvent> envelope) {
     final actor = envelope.actor;
     final occuredAt = envelope.occuredAt;
@@ -59,30 +60,8 @@ class NoteState {
   }
 }
 
-/// Replays events for one note without retaining a snapshot.
-class NoteAggregate implements Aggregate<NoteEvent, NoteState> {
-  final String noteId;
-
-  const NoteAggregate(this.noteId);
-
-  @override
-  Snapshotter<NoteState>? get snapshotter => null;
-
-  @override
-  int get version => 1;
-
-  @override
-  StreamRoute get streamRoute => noteStreamRoute;
-
-  @override
-  NoteState initialState() => NoteState(noteId);
-
-  @override
-  bool canApply(EventEnvelope<NoteEvent> envelope) =>
-      envelope.event.noteId == noteId;
-
-  @override
-  void apply(NoteState state, EventEnvelope<NoteEvent> envelope) {
-    state.apply(envelope);
-  }
-}
+Aggregate<NoteEvent, NoteState> noteAggregate(String noteId) => Aggregate(
+  name: 'Note $noteId',
+  filter: PatternFilter.exact(noteStreamRoute.buildPath('noteId')),
+  state: NoteState(noteId),
+);

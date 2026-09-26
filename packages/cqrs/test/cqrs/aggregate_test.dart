@@ -3,73 +3,58 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
-  final occurredAt = DateTime.fromMillisecondsSinceEpoch(1, isUtc: true);
+  final occuredAt = DateTime.utc(2026);
 
-  group('AggregateTester', () {
-    test('starts with fresh state on every run', () {
-      final tester = AggregateTester(_RecordingAggregate());
+  test('AggregateTester retains state and applies each event once', () {
+    final aggregate = _recordingAggregate();
+    final tester = AggregateTester(aggregate);
+    final first = tester.run();
+    tester.withEvent('account/one', 'opened', occuredAt: occuredAt);
+    final second = tester.run();
 
-      final first = tester.run();
-      first.add('changed');
+    expect(second, same(first));
+    expect(second, same(aggregate.state));
+    expect(second.values, ['a:account/one:opened']);
+    expect(tester.run().values, ['a:account/one:opened']);
+  });
 
-      expect(tester.run(), isEmpty);
-    });
+  test('AggregateTester applies matching events in order', () {
+    final state =
+        (AggregateTester(_recordingAggregate())
+              ..withEvent('account/one', 'opened', occuredAt: occuredAt)
+              ..withEvent('other/two', 'ignored', occuredAt: occuredAt)
+              ..withEvent('account/two', 'deposit', occuredAt: occuredAt))
+            .run();
 
-    test('applies matching events in order with their envelopes', () {
-      final state =
-          (AggregateTester(_RecordingAggregate())
-                ..withEvent('account/one', 'opened', occuredAt: occurredAt)
-                ..withEvent('other/two', 'ignored', occuredAt: occurredAt)
-                ..withEvent('account/two', 'deposit', occuredAt: occurredAt))
-              .run();
+    expect(state.values, ['a:account/one:opened', 'a:account/two:deposit']);
+  });
 
-      expect(state, ['a:account/one:opened', 'a:account/two:deposit']);
-    });
+  test('AggregateTester passes an explicit actor', () {
+    final state =
+        AggregateTester(_recordingAggregate())
+            .withEvent(
+              'account/one',
+              'opened',
+              actor: 'b',
+              occuredAt: occuredAt,
+            )
+            .run();
 
-    test('passes an explicit actor to the aggregate', () {
-      final state =
-          AggregateTester(_RecordingAggregate())
-              .withEvent(
-                'account/one',
-                'opened',
-                actor: 'b',
-                occuredAt: occurredAt,
-              )
-              .run();
-
-      expect(state, ['b:account/one:opened']);
-    });
-
-    test('checks canApply before applying an event', () {
-      final state =
-          (AggregateTester(_RecordingAggregate())
-                ..withEvent('account/one', 'skip', occuredAt: occurredAt)
-                ..withEvent('account/skip', 'kept', occuredAt: occurredAt))
-              .run();
-
-      expect(state, ['a:account/skip:kept']);
-    });
+    expect(state.values, ['b:account/one:opened']);
   });
 }
 
-final class _RecordingAggregate implements Aggregate<String, List<String>> {
-  @override
-  Snapshotter<List<String>>? get snapshotter => null;
+final class _RecordingState implements AggregateState<String> {
+  final values = <String>[];
 
   @override
-  int get version => 1;
-
-  @override
-  StreamRoute get streamRoute => StreamRouteWildcard('account/*');
-
-  @override
-  List<String> initialState() => [];
-
-  @override
-  bool canApply(EventEnvelope<String> envelope) => envelope.event != 'skip';
-
-  @override
-  void apply(List<String> state, EventEnvelope<String> envelope) {
-    state.add('${envelope.actor}:${envelope.streamPath}:${envelope.event}');
+  void apply(EventEnvelope<String> envelope) {
+    values.add('${envelope.actor}:${envelope.streamPath}:${envelope.event}');
   }
 }
+
+Aggregate<String, _RecordingState> _recordingAggregate() => Aggregate(
+  name: 'Recording',
+  filter: const PatternFilter.startsWith('account/'),
+  state: _RecordingState(),
+);

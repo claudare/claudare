@@ -1,10 +1,14 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 
-/// Replays supplied events against a fresh [Aggregate] state.
-class AggregateTester<TEvent extends Object, TState> {
+/// Applies supplied events to an [Aggregate] in order.
+class AggregateTester<
+  TEvent extends Object,
+  TState extends AggregateState<TEvent>
+> {
   final Aggregate<TEvent, TState> aggregate;
   final List<TestEvent<TEvent>> _testEvents = [];
+  int _nextEventIndex = 0;
 
   AggregateTester(this.aggregate);
 
@@ -26,10 +30,12 @@ class AggregateTester<TEvent extends Object, TState> {
   }
 
   TState run() {
-    final state = aggregate.initialState();
-    for (var i = 0; i < _testEvents.length; i++) {
+    for (var i = _nextEventIndex; i < _testEvents.length; i++) {
       final event = _testEvents[i];
-      if (!aggregate.streamRoute.matches(event.stream)) continue;
+      if (!aggregate.filter.doesMatchPath(event.stream)) {
+        _nextEventIndex = i + 1;
+        continue;
+      }
 
       final envelope = EventEnvelope<TEvent>(
         actor: event.actor,
@@ -37,8 +43,10 @@ class AggregateTester<TEvent extends Object, TState> {
         event: event.event,
         occuredAt: event.occuredAt,
       );
-      if (aggregate.canApply(envelope)) aggregate.apply(state, envelope);
+      aggregate.state.apply(envelope);
+      aggregate.sequence = i;
+      _nextEventIndex = i + 1;
     }
-    return state;
+    return aggregate.state;
   }
 }

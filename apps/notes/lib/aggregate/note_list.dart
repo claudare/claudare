@@ -13,7 +13,7 @@ enum NoteSortOrder {
 }
 
 /// Notes collected from every note stream.
-class NoteListState {
+class NoteListState implements AggregateState<NoteEvent> {
   final Map<String, NoteState> notes = {};
 
   int get activeCount => notes.values.where((note) => !note.isTrashed).length;
@@ -43,31 +43,19 @@ class NoteListState {
 
     return list;
   }
-}
-
-/// Replays every note stream without retaining a snapshot.
-class NoteListAggregate implements Aggregate<NoteEvent, NoteListState> {
-  const NoteListAggregate();
 
   @override
-  Snapshotter<NoteListState>? get snapshotter => null;
-
-  @override
-  int get version => 1;
-
-  @override
-  StreamRoute get streamRoute => noteStreamRoute;
-
-  @override
-  NoteListState initialState() => NoteListState();
-
-  @override
-  bool canApply(EventEnvelope<NoteEvent> envelope) => true;
-
-  @override
-  void apply(NoteListState state, EventEnvelope<NoteEvent> envelope) {
+  void apply(EventEnvelope<NoteEvent> envelope) {
     final noteId = envelope.event.noteId;
-    final note = state.notes.putIfAbsent(noteId, () => NoteState(noteId));
+    final note = notes.putIfAbsent(noteId, () => NoteState(noteId));
     note.apply(envelope);
   }
+}
+
+Aggregate<NoteEvent, NoteListState> noteListAggregate() {
+  return Aggregate(
+    name: 'All notes',
+    filter: noteStreamRoute.filter,
+    state: NoteListState(),
+  );
 }

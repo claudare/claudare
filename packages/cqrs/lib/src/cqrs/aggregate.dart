@@ -1,35 +1,34 @@
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/snapshotter.dart';
-import 'package:cqrs/src/cqrs/stream_route/stream_route.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
+import 'package:cqrs/src/cqrs/snapshot.dart';
 
-/// Defines event selection and mutable state for aggregate resolution.
-abstract interface class Aggregate<TEvent extends Object, TState> {
-  /// Version used to invalidate snapshots when aggregate behavior changes.
-  int get version;
+/// Applies events to mutable aggregate state.
+abstract interface class AggregateState<TEvent extends Object> {
+  /// Mutates this state for [envelope].
+  void apply(EventEnvelope<TEvent> envelope);
+}
 
-  /// Specifies which stream this aggregate uses. When the aggregate is resolved,
-  /// only the compatible events will reach apply.
-  ///
-  /// However, its still beneficial to implement a proper canApply in order to
-  /// implement subAggregates.
-  StreamRoute get streamRoute;
+typedef ApplyEnvelope<TEvent extends Object> =
+    void Function(EventEnvelope<TEvent> envelope);
 
-  /// Optional snapshotter used to avoid replaying the entire event stream.
-  /// It would be beneficial to make this configurable at constructor level.
-  Snapshotter<TState>? get snapshotter;
+/// Defines event selection, mutable state, and sequence tracking for aggregate
+/// resolution.
+class Aggregate<TEvent extends Object, TState extends AggregateState<TEvent>> {
+  /// Name used in diagnostics.
+  final String name;
+  final PatternFilter filter;
+  final TState state;
+  int? sequence;
 
-  /// Returns the initial state of the aggregate. Each resolution needs fresh
-  /// state because apply mutates it.
-  TState initialState();
+  Aggregate({
+    required this.name,
+    required this.filter,
+    required this.state,
+    this.sequence,
+  });
 
-  /// Determines whether this envelope can be applied. Returning false skips the
-  /// apply call.
-  ///
-  /// In most cases this is not needed, as only relevant events in the
-  /// streamRoute will be passed along
-  bool canApply(EventEnvelope<TEvent> envelope);
+  Snapshot<TState> snapshot() => Snapshot(state, sequence);
 
-  /// Mutates state in place. Do not reassign the state parameter!
-  /// Assigning state = { ... } does not update the aggregate's state.
-  void apply(TState state, EventEnvelope<TEvent> envelope);
+  @override
+  String toString() => name;
 }

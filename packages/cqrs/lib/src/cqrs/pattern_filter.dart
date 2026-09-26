@@ -42,6 +42,17 @@ class PatternFilter {
     }
   }
 
+  String path() {
+    switch (type) {
+      case PatternFilterType.any:
+        return '*';
+      case PatternFilterType.startsWith:
+        return '$pattern/*';
+      case PatternFilterType.exact:
+        return pattern;
+    }
+  }
+
   @override
   String toString() {
     switch (type) {

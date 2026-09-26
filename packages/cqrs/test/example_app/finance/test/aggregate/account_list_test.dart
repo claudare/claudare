@@ -14,7 +14,7 @@ void main() {
 
     setUp(() {
       state =
-          AggregateTester(AccountListAggregate())
+          AggregateTester(accountListAggregate())
               .withEvent(
                 'account/one',
                 const AccountOpened(accountId: 'one', name: 'Zeta'),

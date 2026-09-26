@@ -3,7 +3,7 @@ import 'package:cqrs/cqrs.dart';
 import '../account_event/account.dart';
 import '../stream_route/account_stream_route.dart';
 
-class TotalBalanceState {
+class TotalBalanceState implements AggregateState<AccountEvent> {
   int balance = 0;
 
   TotalBalanceState();
@@ -12,38 +12,16 @@ class TotalBalanceState {
   String toString() {
     return 'TotalBalanceState(balance: $balance)';
   }
-}
-
-class TotalBalanceAggregate
-    implements Aggregate<AccountEvent, TotalBalanceState> {
-  @override
-  final int version = 1;
 
   @override
-  StreamRoute get streamRoute => accountStreamRoute;
-
-  @override
-  get snapshotter => null;
-
-  @override
-  TotalBalanceState initialState() {
-    return TotalBalanceState();
-  }
-
-  @override
-  bool canApply(EventEnvelope<AccountEvent> envelope) {
-    return true;
-  }
-
-  @override
-  void apply(TotalBalanceState state, EventEnvelope<AccountEvent> envelope) {
+  void apply(EventEnvelope<AccountEvent> envelope) {
     final event = envelope.event;
 
     switch (event) {
       case AccountAtmDeposited(:final amount):
-        state.balance += amount;
+        balance += amount;
       case AccountAtmWithdrawn(:final amount):
-        state.balance -= amount;
+        balance -= amount;
       case AccountOpened():
       case AccountInnerTransfer():
       case AccountRenamed():
@@ -51,3 +29,9 @@ class TotalBalanceAggregate
     }
   }
 }
+
+Aggregate<AccountEvent, TotalBalanceState> totalBalanceAggregate() => Aggregate(
+  name: 'Total balance',
+  filter: accountStreamRoute.filter,
+  state: TotalBalanceState(),
+);

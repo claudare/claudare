@@ -9,8 +9,7 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/safe_snapshotter.dart';
-import 'package:cqrs/src/cqrs/snapshotter.dart';
+import 'package:cqrs/src/cqrs/pattern_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
@@ -63,70 +62,111 @@ class CqrsRuntime {
     return _commandExecutor.execute(command);
   }
 
-  /// Resolves an aggregate, optionally resuming from its snapshot.
-  /// [forceResolveFromEvents] bypasses snapshot loading and saving.
-  Future<TState> resolve<TEvent extends Object, TState>(
-    Aggregate<TEvent, TState> aggregate, {
-    bool forceResolveFromEvents = false,
+  /// A granular, stateless resolve.
+  /// Will start from provided sequence, and return the final sequence.
+  Future<int?> resolveStateless<TEvent extends Object>({
+    required PatternFilter filter,
+    required ApplyEnvelope<TEvent> apply,
+    int? sequence,
   }) async {
-    final configuredSnapshotter =
-        forceResolveFromEvents ? null : aggregate.snapshotter;
-    final snapshotter =
-        configuredSnapshotter != null
-            ? SafeSnapshotter(configuredSnapshotter, logger: _logger)
-            : null;
-
-    TState state;
-    int? sequence;
-
-    if (snapshotter != null) {
-      final snapshot = await snapshotter.load(aggregate.version);
-      if (snapshot != null) {
-        state = snapshot.state;
-        sequence = snapshot.sequence;
-      } else {
-        state = aggregate.initialState();
-        sequence = null;
-      }
-    } else {
-      state = aggregate.initialState();
-      sequence = null;
-    }
-
     final startingSequence = sequence;
     var applyCount = 0;
 
-    final stream = logReader((sequence ?? -1) + 1).scan().where((logEvent) {
+    final stream = logReader((startingSequence ?? -1) + 1).scan().where((
+      logEvent,
+    ) {
       // removes irrelevant events as database level filtering is not
-      // implemented.
-      return aggregate.streamRoute.matches(logEvent.streamPath);
+      // implemented. In the future, eventStore will support read filtering;
+      // with that system in place, this will not be needed.
+      return filter.doesMatchPath(logEvent.streamPath);
     });
 
     await for (final logEvent in stream) {
-      final decoded = _eventRegistry.decode<TEvent>(logEvent.encodedEvent);
+      final decoded = _eventRegistry.decode(logEvent.encodedEvent);
+      if (decoded is! TEvent) {
+        // its programmers job to specify the correct event type
+        throw StateError(
+          'stateless decoded event is not of type $TEvent: $decoded',
+        );
+      }
+
       final envelope = EventEnvelope(
         actor: logEvent.eventId.actor,
         streamPath: logEvent.streamPath,
         event: decoded,
         occuredAt: logEvent.occuredAt,
       );
-      if (!aggregate.canApply(envelope)) continue;
-
-      aggregate.apply(state, envelope);
+      apply(envelope);
+      _logger.debug('stateless applied $envelope');
       sequence = logEvent.position;
       applyCount++;
     }
 
-    if (snapshotter != null &&
-        sequence != null &&
-        startingSequence != sequence) {
-      await snapshotter.save(aggregate.version, Snapshot(state, sequence));
-    }
-
     _logger.info(
-      'resolved ${aggregate.streamRoute.pattern}: startingSequence=$startingSequence, finalSequence=$sequence, applyCount=$applyCount',
+      'stateless ran on ${filter.path()}: '
+      'startingSequence=$startingSequence, finalSequence=$sequence, '
+      'applyCount=$applyCount',
     );
 
-    return state;
+    return sequence;
+  }
+
+  /// Catches up the aggregate to the latest version.
+  /// Returns the same [Aggregate] that was passed in.
+  Future<Aggregate<TEvent, TState>>
+  resolve<TEvent extends Object, TState extends AggregateState<TEvent>>(
+    Aggregate<TEvent, TState> aggregate, {
+    ApplyEnvelope<TEvent>? onApplied,
+  }) async {
+    final startingSequence = aggregate.sequence;
+    var applyCount = 0;
+
+    final stream = logReader((aggregate.sequence ?? -1) + 1).scan().where((
+      logEvent,
+    ) {
+      // removes irrelevant events as database level filtering is not
+      // implemented. In the future, eventStore will support read filtering;
+      // with that system in place, this will not be needed.
+      return aggregate.filter.doesMatchPath(logEvent.streamPath);
+    });
+
+    await for (final logEvent in stream) {
+      final decoded = _eventRegistry.decode(logEvent.encodedEvent);
+      if (decoded is! TEvent) {
+        // its programmers job to specify the correct event type
+        throw StateError(
+          '$aggregate: decoded event is not of type $TEvent: $decoded',
+        );
+      }
+
+      final envelope = EventEnvelope(
+        actor: logEvent.eventId.actor,
+        streamPath: logEvent.streamPath,
+        event: decoded,
+        occuredAt: logEvent.occuredAt,
+      );
+
+      aggregate.state.apply(envelope);
+      if (onApplied != null) {
+        onApplied(envelope);
+      }
+      _logger.debug('$aggregate: applied $envelope');
+      aggregate.sequence = logEvent.position;
+      applyCount++;
+    }
+
+    if (startingSequence == aggregate.sequence) {
+      _logger.info(
+        'resolved $aggregate: already up to date. sequence=${aggregate.sequence}',
+      );
+    } else {
+      _logger.info(
+        'resolved $aggregate: '
+        'startingSequence=$startingSequence, finalSequence=${aggregate.sequence}, '
+        'applyCount=$applyCount',
+      );
+    }
+
+    return aggregate;
   }
 }

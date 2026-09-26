@@ -3,8 +3,10 @@ import 'dart:math';
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
+import 'package:mutex/mutex.dart' show Mutex;
 import 'package:notes/aggregate/note.dart';
 import 'package:notes/aggregate/note_list.dart';
+import 'package:notes/aggregate/statistics.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
@@ -13,7 +15,6 @@ import 'package:notes/command/update_note_title.dart';
 import 'package:notes/command/test_simulate_external_note_content_append.dart';
 import 'package:notes/command/test_simulate_external_note_content_random_insert.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 export 'package:notes/aggregate/note.dart' show NoteState;
 export 'package:notes/aggregate/note_list.dart'
@@ -107,36 +108,33 @@ class NoteCommands {
 /// Resolves current note state directly from the event history.
 class NoteQueries {
   final CqrsRuntime _runtime;
+  final _noteList = noteListAggregate();
+  final _noteListMutex = Mutex();
 
-  const NoteQueries(this._runtime);
+  NoteQueries(this._runtime);
 
-  /// Reads note events from the inclusive [fromVersion] until caught up.
-  Stream<({int version, EventEnvelope<NoteEvent> envelope})> noteEvents(
-    String noteId, {
-    int fromVersion = 0,
-  }) async* {
-    final reader = _runtime.streamReader(
-      noteStreamRoute.buildPath(noteId),
-      fromVersion: fromVersion,
-    );
-    await for (final stored in reader.scan()) {
-      yield (
-        version: stored.version,
-        envelope: EventEnvelope<NoteEvent>(
-          actor: stored.eventId.actor,
-          streamPath: stored.streamPath,
-          event: _runtime.eventRegistry.decode<NoteEvent>(stored.encodedEvent),
-          occuredAt: stored.occuredAt,
-        ),
-      );
-    }
+  /// Returns the resolved state for one note identifier.
+  Future<NoteState> note(String noteId) =>
+      (_runtime.resolve(noteAggregate(noteId))).then((v) => v.state);
+
+  Future<void> catchupNote(
+    Aggregate<NoteEvent, NoteState> aggregate, {
+    required ApplyEnvelope<NoteEvent> onApplied,
+  }) async {
+    await _runtime.resolve(aggregate, onApplied: onApplied);
   }
 
-  Future<NoteState?> note(String noteId) async {
-    final state = await _runtime.resolve(NoteAggregate(noteId));
-    return state.exists ? state : null;
+  /// Global notes list. It is kept in memory between resolves.
+  /// In order to force concurrency, we are using a mutex.
+  Future<NoteListState> noteList() {
+    return _noteListMutex.protect(() async {
+      await _runtime.resolve(_noteList);
+      return _noteList.state;
+    });
   }
 
-  Future<NoteListState> noteList() =>
-      _runtime.resolve(const NoteListAggregate());
+  Future<StatisticsState> statistics() async {
+    final v = await _runtime.resolve(statisticsAggregate());
+    return v.state;
+  }
 }

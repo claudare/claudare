@@ -1,5 +1,7 @@
+import 'package:cqrs/cqrs.dart';
 import 'package:flutter/foundation.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:notes/aggregate/note.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/event/note.dart';
 
@@ -7,8 +9,7 @@ class NoteController extends ChangeNotifier {
   final NoteApplication application;
 
   String? _noteId;
-  NoteState? _persisted;
-  int _nextVersion = 0;
+  Aggregate<NoteEvent, NoteState>? _persisted;
   String _titleStored = '';
   String _titleLatest = '';
   final CrdtTextEditContext content;
@@ -42,7 +43,7 @@ class NoteController extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   int get editRevision => _editRevision;
-  bool get exists => _persisted?.exists ?? false;
+  bool get exists => _persisted?.state.exists ?? false;
   DateTime? get createdAt => _createdAt;
   DateTime? get updatedAt => _updatedAt;
   DateTime? get trashedAt => _trashedAt;
@@ -125,21 +126,19 @@ class NoteController extends ChangeNotifier {
 
   Future<void> _refreshNote() async {
     final noteId = _noteId!;
-    final note = _persisted ??= NoteState(noteId);
+    final note = _persisted ??= noteAggregate(noteId);
     try {
-      await for (final delivery in application.query.noteEvents(
-        noteId,
-        fromVersion: _nextVersion,
-      )) {
-        if (_disposed) return;
-        final event = delivery.envelope.event;
-        if (event is NoteContentUpdated) content.applyChange(event.change);
-        note.apply(delivery.envelope);
-        _nextVersion = delivery.version + 1;
-      }
-      if (!note.exists) throw Exception('Note not found');
+      await application.query.catchupNote(
+        note,
+        onApplied: (EventEnvelope<NoteEvent> envelope) {
+          if (envelope.event is NoteContentUpdated) {
+            content.applyChange((envelope.event as NoteContentUpdated).change);
+          }
+        },
+      );
+      if (!note.state.exists) throw Exception('Note not found');
     } finally {
-      if (note.exists) _applyNote(note);
+      if (note.state.exists) _applyNote(note.state);
       _notify();
     }
   }

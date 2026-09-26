@@ -10,7 +10,7 @@ void main() {
   final trashedAt = DateTime.utc(2026, 1, 4);
 
   NoteListState replayNotes() =>
-      AggregateTester(const NoteListAggregate())
+      AggregateTester(noteListAggregate())
           .withEvent(
             'other/ignored',
             const NoteCreated(noteId: 'ignored'),
@@ -50,7 +50,7 @@ void main() {
 
   test('keys notes from event data when stream path differs', () {
     final state =
-        AggregateTester(const NoteListAggregate())
+        AggregateTester(noteListAggregate())
             .withEvent(
               'note/one',
               const NoteCreated(noteId: 'two'),
@@ -112,7 +112,7 @@ void main() {
 
   test('restoring a note returns it to the active list', () {
     final state =
-        AggregateTester(const NoteListAggregate())
+        AggregateTester(noteListAggregate())
             .withEvent(
               'note/one',
               const NoteCreated(noteId: 'one'),

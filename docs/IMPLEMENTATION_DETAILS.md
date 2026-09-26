@@ -26,8 +26,8 @@ event streams, validates a change, and appends events. `EventStore` persists an
 accepted command and its events atomically. The event history is authoritative.
 
 Each application registers codecs for its event types. An aggregate selects
-events by route and rebuilds state for a query. The CQRS package supports
-optional snapshots.
+events by path filter and applies them to its state. It can resume from its
+last applied log sequence. Snapshot persistence is not provided.
 
 Events, not read models, are authoritative application state. Each concrete
 event type has an application-owned `EventCodec` with a stable persisted kind.
