@@ -176,10 +176,12 @@ class _NoteScreenState extends State<NoteScreen> {
       while (true) {
         if (!identical(controller, _controller)) return false;
         _flushAgain = false;
-        final revision = controller.editRevision;
         applied = await controller.flushChanges() || applied;
         if (!identical(controller, _controller)) return false;
-        if (!_flushAgain && controller.editRevision == revision) break;
+        if (!_flushAgain &&
+            (!controller.exists || !controller.hasPendingChanges)) {
+          break;
+        }
       }
       if (!applied) {
         if (showNothingToSave && mounted) {

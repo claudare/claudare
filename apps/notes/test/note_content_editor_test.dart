@@ -102,6 +102,24 @@ void main() {
     });
   }
 
+  testWidgets(
+    'saving a draft after deleting all content finishes without creating it',
+    (tester) async {
+      final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+      await _open(tester, app, null);
+      final field = find.byType(TextField).last;
+      await tester.enterText(field, 'Temporary content');
+      await tester.enterText(field, '');
+
+      await _pressSaveShortcut(tester);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Nothing to save'), findsOneWidget);
+      expect(await app.query.noteList(), isEmpty);
+    },
+  );
+
   testWidgets('navigation saves a new content-only note', (tester) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(

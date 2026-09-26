@@ -15,7 +15,6 @@ class NoteController extends ChangeNotifier {
   late final CrdtTextEditContext content;
   bool _isLoading = false;
   bool _disposed = false;
-  int _editRevision = 0;
 
   String get noteId => _persisted.state.noteId;
 
@@ -26,12 +25,10 @@ class NoteController extends ChangeNotifier {
       document: _persisted.state.titleDocument,
       actorId: application.actor,
     );
-    title.addListener(_onDraftChanged);
     content = CrdtTextEditContext(
       document: _persisted.state.contentDocument,
       actorId: application.actor,
     );
-    content.addListener(_onDraftChanged);
   }
 
   /// Delivers new persisted events to the current editing draft.
@@ -47,7 +44,8 @@ class NoteController extends ChangeNotifier {
   }
 
   bool get isLoading => _isLoading;
-  int get editRevision => _editRevision;
+  bool get hasPendingChanges =>
+      title.hasPendingChanges || content.hasPendingChanges;
   bool get exists => _persisted.state.exists;
   DateTime? get createdAt => exists ? _persisted.state.createdAt : null;
   DateTime? get updatedAt => exists ? _persisted.state.updatedAt : null;
@@ -128,19 +126,13 @@ class NoteController extends ChangeNotifier {
     }
   }
 
-  void _onDraftChanged() {
-    _editRevision++;
-  }
-
   void _notify() {
     if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
-    title.removeListener(_onDraftChanged);
     title.dispose();
-    content.removeListener(_onDraftChanged);
     content.dispose();
     _disposed = true;
     super.dispose();
