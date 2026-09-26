@@ -9,7 +9,7 @@ final class CrdtTextBinding {
   final CrdtTextEditContext _editContext;
   final CrdtTextController _controller;
   late List<CrdtTextInsert> _displayed;
-  late CrdtTextEditingValue _value;
+  late TextEditingValue _value;
   bool _writingController = false;
   bool _handlingController = false;
   bool _disposed = false;
@@ -21,7 +21,7 @@ final class CrdtTextBinding {
        _controller = controller {
     _displayed = editContext._draft._visibleAtoms();
     final content = _displayed.map((atom) => atom.character).join();
-    _value = CrdtTextEditingValue(
+    _value = TextEditingValue(
       text: content,
       selectionBase: content.length,
       selectionExtent: content.length,
@@ -101,7 +101,7 @@ final class CrdtTextBinding {
         ? -1
         : _resolve(_anchor(_value.composingStart, stickAfterInsertions: true));
     _displayed = _text._visibleAtoms();
-    final next = CrdtTextEditingValue(
+    final next = TextEditingValue(
       text: _displayed.map((atom) => atom.character).join(),
       selectionBase: base,
       selectionExtent: extent,
@@ -174,12 +174,9 @@ final class _TextSplice {
   const _TextSplice(this.start, this.end, this.replacement);
 }
 
-_TextSplice _findSplice(
-  CrdtTextEditingValue previous,
-  CrdtTextEditingValue next,
-) {
-  final old = _scalars(previous.text);
-  final updated = _scalars(next.text);
+_TextSplice _findSplice(TextEditingValue previous, TextEditingValue next) {
+  final old = unicodeScalars(previous.text);
+  final updated = unicodeScalars(next.text);
   final commonLength = old.length < updated.length
       ? old.length
       : updated.length;

@@ -57,7 +57,7 @@ final class CrdtTextInsert extends CrdtTextOperation {
     required this.character,
     this.after,
   }) {
-    if (_scalars(character).length != 1) {
+    if (unicodeScalars(character).length != 1) {
       throw ArgumentError('An insertion must contain one Unicode scalar.');
     }
   }

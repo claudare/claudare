@@ -38,7 +38,7 @@ final class CrdtTextEditContext {
     RangeError.checkValidRange(start, end, content.length);
     final first = _scalarIndex(atoms, start);
     final last = _scalarIndex(atoms, end);
-    _scalars(text);
+    unicodeScalars(text);
     if (content.substring(start, end) == text) return;
     _replaceIds(
       atoms.sublist(first, last).map((atom) => atom.id).toList(),
@@ -102,7 +102,7 @@ final class CrdtTextEditContext {
     CrdtTextId? after,
     String replacement,
   ) {
-    final characters = _scalars(replacement);
+    final characters = unicodeScalars(replacement);
     final count = targets.length + characters.length;
     if (count == 0) return [];
     var counter = _greatestCounter(_draft._version);

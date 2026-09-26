@@ -1,23 +1,23 @@
-import 'package:crdt/crdt_text.dart';
+import 'package:crdt/crdt_text.dart' as crdt;
 import 'package:flutter/widgets.dart';
 
-/// Adapts Flutter editing values for [CrdtTextBinding].
-class FlutterCrdtTextController implements CrdtTextController {
+/// Adapts Flutter editing values for [crdt.CrdtTextBinding].
+class FlutterCrdtTextController implements crdt.CrdtTextController {
   final TextEditingController controller;
 
   FlutterCrdtTextController(this.controller);
 
   @override
-  CrdtTextEditingValue get value {
+  crdt.TextEditingValue get value {
     final value = controller.value;
-    return CrdtTextEditingValue(
+    return crdt.TextEditingValue(
       text: value.text,
       selectionBase: value.selection.baseOffset,
       selectionExtent: value.selection.extentOffset,
       affinity:
           value.selection.affinity == TextAffinity.upstream
-              ? CrdtTextAffinity.upstream
-              : CrdtTextAffinity.downstream,
+              ? crdt.TextAffinity.upstream
+              : crdt.TextAffinity.downstream,
       isDirectional: value.selection.isDirectional,
       composingStart: value.composing.start,
       composingEnd: value.composing.end,
@@ -25,14 +25,14 @@ class FlutterCrdtTextController implements CrdtTextController {
   }
 
   @override
-  set value(CrdtTextEditingValue value) {
+  set value(crdt.TextEditingValue value) {
     controller.value = TextEditingValue(
       text: value.text,
       selection: TextSelection(
         baseOffset: value.selectionBase,
         extentOffset: value.selectionExtent,
         affinity:
-            value.affinity == CrdtTextAffinity.upstream
+            value.affinity == crdt.TextAffinity.upstream
                 ? TextAffinity.upstream
                 : TextAffinity.downstream,
         isDirectional: value.isDirectional,

@@ -83,11 +83,11 @@ void main() {
         () {
           final f = _Fixture('abcd');
           addTearDown(f.binding.dispose);
-          f.controller.value = CrdtTextEditingValue(
+          f.controller.value = TextEditingValue(
             text: 'abcd',
             selectionBase: reversed ? 3 : 1,
             selectionExtent: reversed ? 1 : 3,
-            affinity: CrdtTextAffinity.upstream,
+            affinity: TextAffinity.upstream,
             isDirectional: true,
           );
           f.remote.insert(3, 'Y');
@@ -96,7 +96,7 @@ void main() {
           expect(f.controller.value.text, 'aXbcYd');
           expect(f.controller.value.selectionBase, reversed ? 4 : 2);
           expect(f.controller.value.selectionExtent, reversed ? 2 : 4);
-          expect(f.controller.value.affinity, CrdtTextAffinity.upstream);
+          expect(f.controller.value.affinity, TextAffinity.upstream);
           expect(f.controller.value.isDirectional, isTrue);
         },
       );
@@ -105,7 +105,7 @@ void main() {
     test('preserves an absent selection when the document changes', () {
       final f = _Fixture('abc');
       addTearDown(f.binding.dispose);
-      f.controller.value = CrdtTextEditingValue(text: 'abc');
+      f.controller.value = TextEditingValue(text: 'abc');
       f.remote.delete(0, 3);
       f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.controller.value.selectionBase, -1);

@@ -1,5 +1,5 @@
-import 'package:crdt/src/lww/crdt_string.dart';
-import 'package:crdt/src/lww/crdt_string_change.dart';
+import 'package:crdt/src/string/crdt_string.dart';
+import 'package:crdt/src/string/crdt_string_change.dart';
 
 /// A local string draft whose prepared values are acknowledged by replay.
 ///

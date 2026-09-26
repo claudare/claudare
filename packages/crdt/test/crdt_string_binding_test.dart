@@ -1,5 +1,4 @@
 import 'package:crdt/crdt_string.dart';
-import 'package:crdt/crdt_text.dart';
 import 'package:test/test.dart';
 
 import 'text/text_test_support.dart';
@@ -50,18 +49,18 @@ void main() {
   });
 
   test('remote replacement clamps selection and retains its direction', () {
-    controller.value = CrdtTextEditingValue(
+    controller.value = TextEditingValue(
       text: 'Title',
       selectionBase: 5,
       selectionExtent: 1,
-      affinity: CrdtTextAffinity.upstream,
+      affinity: TextAffinity.upstream,
       isDirectional: true,
     );
     remote('Hi');
     expect(controller.value.text, 'Hi');
     expect(controller.value.selectionBase, 2);
     expect(controller.value.selectionExtent, 1);
-    expect(controller.value.affinity, CrdtTextAffinity.upstream);
+    expect(controller.value.affinity, TextAffinity.upstream);
     expect(controller.value.isDirectional, isTrue);
     expect(context.prepareChange(), isNull);
   });

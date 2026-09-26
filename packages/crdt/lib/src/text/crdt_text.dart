@@ -1,6 +1,7 @@
 library;
 
 import 'package:crdt/crdt_text.dart';
+import 'package:crdt/src/common/unicode_scalars.dart';
 
 part 'crdt_text_binding.dart';
 part 'crdt_text_change.dart';

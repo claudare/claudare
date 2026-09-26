@@ -1,5 +1,6 @@
-import 'package:crdt/src/lww/crdt_string_edit_context.dart';
+import 'package:crdt/src/string/crdt_string_edit_context.dart';
 import 'package:crdt/src/text/crdt_text.dart';
+import 'package:crdt/src/common/text_editing_value.dart';
 
 /// Connects a string draft to an editor using the shared text adapter.
 ///
@@ -8,7 +9,7 @@ import 'package:crdt/src/text/crdt_text.dart';
 final class CrdtStringBinding {
   final CrdtStringEditContext _editContext;
   final CrdtTextController _controller;
-  late CrdtTextEditingValue _value;
+  late TextEditingValue _value;
   bool _writingController = false;
   bool _handlingController = false;
   bool _disposed = false;
@@ -18,7 +19,7 @@ final class CrdtStringBinding {
     required CrdtTextController controller,
   }) : _editContext = editContext,
        _controller = controller {
-    _value = CrdtTextEditingValue(
+    _value = TextEditingValue(
       text: editContext.value,
       selectionBase: editContext.value.length,
       selectionExtent: editContext.value.length,
@@ -53,7 +54,7 @@ final class CrdtStringBinding {
   void _refreshEditor() {
     final text = _editContext.value;
     if (text == _value.text) return;
-    final next = CrdtTextEditingValue(
+    final next = TextEditingValue(
       text: text,
       selectionBase: _value.selectionBase.clamp(-1, text.length),
       selectionExtent: _value.selectionExtent.clamp(-1, text.length),

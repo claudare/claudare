@@ -22,15 +22,15 @@ CrdtTextInsert insertion(
 );
 
 final class FakeTextController implements CrdtTextController {
-  CrdtTextEditingValue _value = CrdtTextEditingValue();
+  TextEditingValue _value = TextEditingValue();
   final List<void Function()> listeners = [];
   int assignments = 0;
 
   @override
-  CrdtTextEditingValue get value => _value;
+  TextEditingValue get value => _value;
 
   @override
-  set value(CrdtTextEditingValue next) {
+  set value(TextEditingValue next) {
     assignments++;
     if (next == _value) return;
     _value = next;
@@ -52,7 +52,7 @@ final class FakeTextController implements CrdtTextController {
     int composingStart = -1,
     int composingEnd = -1,
   }) {
-    value = CrdtTextEditingValue(
+    value = TextEditingValue(
       text: text,
       selectionBase: base ?? caret,
       selectionExtent: caret,

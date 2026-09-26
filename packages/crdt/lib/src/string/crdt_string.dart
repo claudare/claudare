@@ -1,4 +1,4 @@
-import 'package:crdt/src/lww/crdt_string_change.dart';
+import 'package:crdt/src/string/crdt_string_change.dart';
 
 /// Last-Write-Wins (LWW) CRDT string value.
 class CrdtString {
