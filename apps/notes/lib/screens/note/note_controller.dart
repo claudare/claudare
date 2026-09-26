@@ -33,11 +33,9 @@ class NoteController extends ChangeNotifier {
   Future<void> simulateExternalEdit() async {
     final noteId = _noteId;
     if (noteId == null || isTrashed) return;
-    final note = await application.query.note(noteId);
-    if (note == null) throw Exception('Note not found');
-    await application.command.simulateExternalNoteContentEdit(
+    await application.command.testSimulateExternalNoteContentRandomInsert(
       noteId,
-      '${note.content}\nTesting',
+      '\nWhy hello there\n',
       actorId: '${application.actor}-simulation',
     );
   }

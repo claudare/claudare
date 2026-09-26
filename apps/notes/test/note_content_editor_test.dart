@@ -77,21 +77,21 @@ void main() {
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     final id = await app.command.createNote();
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
       'Base',
       actorId: 'remote',
     );
     await _open(tester, app, id);
     await tester.enterText(find.byType(TextField).last, 'Local Base');
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
-      'Base one',
+      ' one',
       actorId: 'remote',
     );
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
-      'Base one two',
+      ' two',
       actorId: 'remote',
     );
     expect(_content(tester).text, 'Local Base');
@@ -107,26 +107,26 @@ void main() {
     expect(_content(tester).text, 'Local Base one two');
   });
 
-  testWidgets('refresh adjusts the selection around an external insertion', (
+  testWidgets('refresh preserves selection before externally appended text', (
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     final id = await app.command.createNote();
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
       'abc',
       actorId: 'remote',
     );
     await _open(tester, app, id);
     _content(tester).selection = const TextSelection.collapsed(offset: 2);
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
-      'Xabc',
+      'X',
       actorId: 'remote',
     );
     await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
-    expect(_content(tester).selection.baseOffset, 3);
+    expect(_content(tester).selection.baseOffset, 2);
   });
 
   testWidgets('refresh waits for composition before updating the field', (
@@ -134,7 +134,7 @@ void main() {
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     final id = await app.command.createNote();
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
       'abc',
       actorId: 'remote',
@@ -146,9 +146,9 @@ void main() {
       selection: TextSelection.collapsed(offset: 3),
       composing: TextRange(start: 1, end: 3),
     );
-    await app.command.simulateExternalNoteContentEdit(
+    await app.command.testSimulateExternalNoteContentAppend(
       id,
-      'Xabc',
+      'X',
       actorId: 'remote',
     );
     await tester.tap(find.byTooltip('Refresh'));
@@ -156,7 +156,7 @@ void main() {
     expect(controller.text, 'abc');
     controller.value = controller.value.copyWith(composing: TextRange.empty);
     await tester.pump();
-    expect(controller.text, 'Xabc');
+    expect(controller.text, 'abcX');
   });
 
   testWidgets('failed content save retries the prepared batch', (tester) async {

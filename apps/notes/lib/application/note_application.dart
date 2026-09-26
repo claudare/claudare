@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
@@ -8,6 +10,8 @@ import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
+import 'package:notes/command/test_simulate_external_note_content_append.dart';
+import 'package:notes/command/test_simulate_external_note_content_random_insert.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -40,6 +44,7 @@ class NoteApplication {
 class NoteCommands {
   final CqrsRuntime _runtime;
   final IdGenerator _idGenerator = IdGeneratorSecure();
+  final Random _random = Random();
 
   NoteCommands(this._runtime);
 
@@ -61,24 +66,41 @@ class NoteCommands {
   Future<void> restoreNote(String noteId) =>
       _runtime.execute(RestoreNote(noteId: noteId));
 
-  /// Simulates another writer against the persisted note content.
-  Future<void> simulateExternalNoteContentEdit(
+  /// Appends text as another writer against the command's resolved state.
+  Future<void> testSimulateExternalNoteContentAppend(
     String noteId,
-    String newText, {
+    String text, {
     required String actorId,
   }) async {
     if (actorId == _runtime.actor) {
       throw ArgumentError('Simulation requires a distinct actor');
     }
-    final note = await _runtime.resolve(NoteAggregate(noteId));
-    if (!note.exists) throw Exception('Note not found');
-    final context = CrdtTextEditContext(
-      document: note.contentDocument,
-      actorId: actorId,
+    await _runtime.execute(
+      TestSimulateExternalNoteContentAppend(
+        noteId: noteId,
+        text: text,
+        actorId: actorId,
+      ),
     );
-    updateText(context, newText);
-    final change = context.prepareChange();
-    if (change != null) await updateNoteContent(noteId, change);
+  }
+
+  /// Inserts configurable text at a random position for visual testing.
+  Future<void> testSimulateExternalNoteContentRandomInsert(
+    String noteId,
+    String text, {
+    required String actorId,
+  }) async {
+    if (actorId == _runtime.actor) {
+      throw ArgumentError('Simulation requires a distinct actor');
+    }
+    await _runtime.execute(
+      TestSimulateExternalNoteContentRandomInsert(
+        noteId: noteId,
+        text: text,
+        actorId: actorId,
+        random: _random,
+      ),
+    );
   }
 }
 

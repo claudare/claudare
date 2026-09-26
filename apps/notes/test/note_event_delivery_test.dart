@@ -18,7 +18,7 @@ void main() {
       final other = await app.command.createNote();
       await app.command.updateNoteTitle(other, 'Other');
       await app.command.updateNoteTitle(id, 'Title');
-      await app.command.simulateExternalNoteContentEdit(
+      await app.command.testSimulateExternalNoteContentAppend(
         id,
         'Body',
         actorId: 'remote',
@@ -68,14 +68,14 @@ void main() {
       final controller = NoteController(app);
       addTearDown(controller.dispose);
       await controller.load(id);
-      await app.command.simulateExternalNoteContentEdit(
+      await app.command.testSimulateExternalNoteContentAppend(
         id,
         'One',
         actorId: 'remote',
       );
-      await app.command.simulateExternalNoteContentEdit(
+      await app.command.testSimulateExternalNoteContentAppend(
         id,
-        'One two',
+        ' two',
         actorId: 'remote',
       );
       store.failAt = 2;
