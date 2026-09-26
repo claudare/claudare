@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
@@ -11,6 +12,52 @@ import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/event/note.dart';
 
 void main() {
+  for (final (fieldIndex, value) in [(0, 'Shortcut title'), (1, 'Body')]) {
+    testWidgets('Ctrl+S saves field $fieldIndex without moving focus', (
+      tester,
+    ) async {
+      final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+      await tester.pumpWidget(
+        NoteApplicationProvider(
+          application: app,
+          child: const MaterialApp(home: NoteScreen(noteId: null)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final field = find.byType(TextField).at(fieldIndex);
+      await tester.enterText(field, value);
+      await _pressSaveShortcut(tester);
+      await tester.pumpAndSettle();
+
+      final notes = (await app.query.noteList()).notes.values.toList();
+      expect(notes, hasLength(1));
+      expect(
+        fieldIndex == 0 ? notes.single.title : notes.single.content,
+        value,
+      );
+      expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
+    });
+  }
+
+  for (final existing in [false, true]) {
+    testWidgets('Ctrl+S reports nothing to save for existing=$existing', (
+      tester,
+    ) async {
+      final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+      final id = existing ? await app.command.createNote() : null;
+      await _open(tester, app, id);
+      await tester.tap(find.byType(TextField).first);
+
+      await _pressSaveShortcut(tester);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Nothing to save'), findsOneWidget);
+      expect((await app.query.noteList()).activeCount, existing ? 1 : 0);
+    });
+  }
+
   testWidgets('navigation saves a new content-only note', (tester) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(
@@ -223,7 +270,7 @@ Future<List<NoteContentUpdated>> _contentEvents(
         .whereType<NoteContentUpdated>()
         .toList();
 
-Future<void> _open(WidgetTester tester, NoteApplication app, String id) async {
+Future<void> _open(WidgetTester tester, NoteApplication app, String? id) async {
   await tester.pumpWidget(
     NoteApplicationProvider(
       application: app,
@@ -231,6 +278,12 @@ Future<void> _open(WidgetTester tester, NoteApplication app, String id) async {
     ),
   );
   await tester.pumpAndSettle();
+}
+
+Future<void> _pressSaveShortcut(WidgetTester tester) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(LogicalKeyboardKey.keyS);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
 }
 
 Future<void> _reopen(

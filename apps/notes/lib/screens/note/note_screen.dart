@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:crdt/crdt_text.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/common.dart';
@@ -143,7 +144,7 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
-  Future<bool> _flushChanges() async {
+  Future<bool> _flushChanges({bool showNothingToSave = false}) async {
     final controller = _controller;
     await _refreshInProgress;
     if (!mounted || !identical(controller, _controller)) return false;
@@ -153,7 +154,7 @@ class _NoteScreenState extends State<NoteScreen> {
       return active;
     }
 
-    final flush = _runFlush(controller);
+    final flush = _runFlush(controller, showNothingToSave: showNothingToSave);
     _flushInProgress = flush;
     try {
       return await flush;
@@ -162,7 +163,10 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
-  Future<bool> _runFlush(NoteController controller) async {
+  Future<bool> _runFlush(
+    NoteController controller, {
+    required bool showNothingToSave,
+  }) async {
     try {
       var applied = false;
       while (true) {
@@ -173,7 +177,17 @@ class _NoteScreenState extends State<NoteScreen> {
         if (!identical(controller, _controller)) return false;
         if (!_flushAgain && controller.editRevision == revision) break;
       }
-      if (!applied) return true;
+      if (!applied) {
+        if (showNothingToSave && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nothing to save'),
+              duration: Duration(seconds: 1),
+            ),
+          );
+        }
+        return true;
+      }
 
       if (mounted && identical(controller, _controller)) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -331,44 +345,65 @@ class _NoteScreenState extends State<NoteScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: _allowPop,
-      onPopInvokedWithResult: (didPop, _) => _onPopInvokedWithResult(didPop),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(
+              LogicalKeyboardKey.keyS,
+              control: true,
+              includeRepeats: false,
+            ):
+            _SaveNoteIntent(),
+      },
+      child: Actions(
+        actions: {
+          _SaveNoteIntent: CallbackAction<_SaveNoteIntent>(
+            onInvoke: (_) {
+              unawaited(_flushChanges(showNothingToSave: true));
+              return null;
+            },
           ),
-          actions: [
-            IconButton(
-              tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh),
-              onPressed:
-                  _controller.exists &&
-                          !_controller.isLoading &&
-                          _refreshInProgress == null
-                      ? _refreshNote
-                      : null,
-            ),
-            _controller.isTrashed
-                ? IconButton(
-                  icon: Icon(Icons.restore),
+        },
+        child: PopScope(
+          canPop: _allowPop,
+          onPopInvokedWithResult:
+              (didPop, _) => _onPopInvokedWithResult(didPop),
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(
+                _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
+              ),
+              actions: [
+                IconButton(
+                  tooltip: 'Refresh',
+                  icon: const Icon(Icons.refresh),
                   onPressed:
-                      _controller.isTrashed ? () => _restoreNote() : null,
-                )
-                : IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed:
-                      _controller.exists && !_controller.isLoading
-                          ? () => _trashNote()
+                      _controller.exists &&
+                              !_controller.isLoading &&
+                              _refreshInProgress == null
+                          ? _refreshNote
                           : null,
                 ),
-          ],
+                _controller.isTrashed
+                    ? IconButton(
+                      icon: Icon(Icons.restore),
+                      onPressed:
+                          _controller.isTrashed ? () => _restoreNote() : null,
+                    )
+                    : IconButton(
+                      icon: Icon(Icons.delete),
+                      onPressed:
+                          _controller.exists && !_controller.isLoading
+                              ? () => _trashNote()
+                              : null,
+                    ),
+              ],
+            ),
+            body:
+                _loadError == null
+                    ? _buildEditor()
+                    : Center(child: Text('Error loading note: $_loadError')),
+          ),
         ),
-        body:
-            _loadError == null
-                ? _buildEditor()
-                : Center(child: Text('Error loading note: $_loadError')),
       ),
     );
   }
@@ -441,4 +476,8 @@ class _NoteScreenState extends State<NoteScreen> {
       ),
     );
   }
+}
+
+class _SaveNoteIntent extends Intent {
+  const _SaveNoteIntent();
 }
