@@ -74,7 +74,7 @@ class _NoteScreenState extends State<NoteScreen> {
       _controller.dispose();
     }
     _application = application;
-    _controller = NoteController(application);
+    _controller = NoteController(application, noteId: widget.noteId);
     _simulation = NoteContentSimulation(
       controller: _controller,
       onPersisted: _refreshAfterSimulatedEdit,
@@ -98,7 +98,7 @@ class _NoteScreenState extends State<NoteScreen> {
 
   Future<void> _loadNote(NoteController controller) async {
     try {
-      final values = await controller.load(widget.noteId);
+      final values = await controller.load();
       if (!mounted || !identical(controller, _controller)) return;
       _titleController.text = values.title;
       _contentBinding = CrdtTextBinding(

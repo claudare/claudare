@@ -8,23 +8,24 @@ import 'package:notes/event/note.dart';
 class NoteController extends ChangeNotifier {
   final NoteApplication application;
 
-  String? _noteId;
-  Aggregate<NoteEvent, NoteState>? _persisted;
-  String _titleStored = '';
+  final Aggregate<NoteEvent, NoteState> _persisted;
+  final bool _isNewDraft;
   String _titleLatest = '';
-  final CrdtTextEditContext content;
-  DateTime? _createdAt;
-  DateTime? _updatedAt;
-  DateTime? _trashedAt;
+  late final CrdtTextEditContext content;
   bool _isLoading = false;
   bool _disposed = false;
   int _editRevision = 0;
 
-  NoteController(this.application)
-    : content = CrdtTextEditContext(
-        document: CrdtText(),
-        actorId: application.actor,
-      ) {
+  String get noteId => _persisted.state.noteId;
+  String get _titleStored => _persisted.state.title;
+
+  NoteController(this.application, {String? noteId})
+    : _isNewDraft = noteId == null,
+      _persisted = noteAggregate(noteId ?? application.generateNoteId()) {
+    content = CrdtTextEditContext(
+      document: _persisted.state.contentDocument,
+      actorId: application.actor,
+    );
     content.addListener(_onContentChanged);
   }
 
@@ -32,8 +33,7 @@ class NoteController extends ChangeNotifier {
   Future<void> refresh() => _refreshNote();
 
   Future<void> simulateExternalEdit() async {
-    final noteId = _noteId;
-    if (noteId == null || isTrashed) return;
+    if (!exists || isTrashed) return;
     await application.command.testSimulateExternalNoteContentRandomInsert(
       noteId,
       '[Why hello there]',
@@ -43,20 +43,17 @@ class NoteController extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   int get editRevision => _editRevision;
-  bool get exists => _persisted?.state.exists ?? false;
-  DateTime? get createdAt => _createdAt;
-  DateTime? get updatedAt => _updatedAt;
-  DateTime? get trashedAt => _trashedAt;
-  bool get isTrashed => _trashedAt != null;
+  bool get exists => _persisted.state.exists;
+  DateTime? get createdAt => exists ? _persisted.state.createdAt : null;
+  DateTime? get updatedAt => exists ? _persisted.state.updatedAt : null;
+  DateTime? get trashedAt => _persisted.state.trashedAt;
+  bool get isTrashed => _persisted.state.isTrashed;
 
-  Future<LoadResolvedText> load(String? noteId) async {
+  Future<LoadResolvedText> load() async {
     _isLoading = true;
     _notify();
 
     try {
-      if (noteId == null) return const LoadResolvedText.empty();
-
-      _noteId = noteId;
       await _refreshNote();
       _titleLatest = _titleStored;
       return LoadResolvedText(title: _titleStored, content: content.text);
@@ -67,11 +64,10 @@ class NoteController extends ChangeNotifier {
   }
 
   Future<bool> trash() async {
-    final noteId = _noteId;
-    if (noteId == null) {
+    if (!exists) {
       throw Exception('Cannot trash a note that has not been saved');
     }
-    if (_trashedAt != null) return false;
+    if (isTrashed) return false;
 
     await flushChanges();
     await application.command.trashNote(noteId);
@@ -80,11 +76,10 @@ class NoteController extends ChangeNotifier {
   }
 
   Future<bool> restore() async {
-    final noteId = _noteId;
-    if (noteId == null) {
+    if (!exists) {
       throw Exception('Cannot restore a note that has not been loaded');
     }
-    if (_trashedAt == null) return false;
+    if (!isTrashed) return false;
 
     await application.command.restoreNote(noteId);
     await _refreshNote();
@@ -93,20 +88,16 @@ class NoteController extends ChangeNotifier {
 
   /// Returns true when a command wrote a change.
   Future<bool> flushChanges() async {
-    if (_noteId == null && _titleLatest.isEmpty && content.text.isEmpty) {
-      return false;
-    }
-
-    if (_noteId != null) await _refreshNote();
+    await _refreshNote();
 
     var changed = false;
-    if (_noteId == null) {
-      _noteId = await application.command.createNote();
+    if (!exists) {
+      if (_titleLatest.isEmpty && content.text.isEmpty) return false;
+      await application.command.createNote(noteId);
       changed = true;
       await _refreshNote();
     }
 
-    final noteId = _noteId!;
     final title = _titleLatest;
     if (title != _titleStored) {
       await application.command.updateNoteTitle(noteId, title);
@@ -121,29 +112,16 @@ class NoteController extends ChangeNotifier {
       await _refreshNote();
     }
 
-    if (_createdAt == null) await _refreshNote();
     return changed;
   }
 
   Future<void> _refreshNote() async {
-    final noteId = _noteId!;
-    final note =
-        _persisted ??= noteAggregate(noteId, contentDocument: content.document);
-
     try {
-      await application.query.catchupNote(note);
-      if (!note.state.exists) throw Exception('Note not found');
+      await application.query.catchupNote(_persisted);
+      if (!exists && !_isNewDraft) throw Exception('Note not found');
     } finally {
-      if (note.state.exists) _applyNote(note.state);
       _notify();
     }
-  }
-
-  void _applyNote(NoteState note) {
-    _titleStored = note.title;
-    _createdAt = note.createdAt;
-    _updatedAt = note.updatedAt;
-    _trashedAt = note.trashedAt;
   }
 
   void submitTitleChange(String text) {

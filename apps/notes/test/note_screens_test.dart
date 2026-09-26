@@ -58,10 +58,12 @@ void main() {
     tester,
   ) async {
     final first = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final firstId = await first.command.createNote();
+    final firstId = first.generateNoteId();
+    await first.command.createNote(firstId);
     await first.command.updateNoteTitle(firstId, 'First application');
     final second = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final secondId = await second.command.createNote();
+    final secondId = second.generateNoteId();
+    await second.command.createNote(secondId);
     await second.command.updateNoteTitle(secondId, 'Second application');
 
     await tester.pumpWidget(
@@ -119,8 +121,9 @@ void main() {
     final application = NoteApplication(
       cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
     );
-    await application.command.createNote();
-    final trashedId = await application.command.createNote();
+    await application.command.createNote(application.generateNoteId());
+    final trashedId = application.generateNoteId();
+    await application.command.createNote(trashedId);
     await application.command.trashNote(trashedId);
     var resets = 0;
 

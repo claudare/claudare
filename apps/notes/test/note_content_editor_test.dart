@@ -46,7 +46,8 @@ void main() {
       tester,
     ) async {
       final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-      final id = existing ? await app.command.createNote() : null;
+      final id = existing ? app.generateNoteId() : null;
+      if (id != null) await app.command.createNote(id);
       await _open(tester, app, id);
       await tester.tap(find.byType(TextField).first);
 
@@ -103,7 +104,8 @@ void main() {
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await _open(tester, app, id);
     for (final text in ['Hello', 'Hello world', 'Hello 🌍', '🌍', '']) {
       await tester.enterText(find.byType(TextField).last, text);
@@ -121,7 +123,8 @@ void main() {
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
       id,
       'Base',
@@ -156,7 +159,8 @@ void main() {
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
       id,
       'abc',
@@ -178,7 +182,8 @@ void main() {
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
       id,
       'abc',
@@ -209,7 +214,8 @@ void main() {
     final app = NoteApplication(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
     );
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await _open(tester, app, id);
     await tester.enterText(find.byType(TextField).last, 'Draft');
     store.failNext = true;
@@ -229,7 +235,8 @@ void main() {
     final app = NoteApplication(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
     );
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await _open(tester, app, id);
     await tester.enterText(find.byType(TextField).last, 'First');
     final gate = Completer<void>();
@@ -248,7 +255,8 @@ void main() {
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-    final id = await app.command.createNote();
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
     await _open(tester, app, id);
     await tester.tap(find.byType(TextField).last);
     await _save(tester);

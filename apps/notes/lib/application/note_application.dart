@@ -24,11 +24,13 @@ export 'package:notes/aggregate/note_list.dart'
 class NoteApplication {
   final NoteCommands command;
   final NoteQueries query;
+  final IdGenerator _idGenerator;
 
   late final String actor;
 
-  NoteApplication({required CqrsRuntime cqrsRuntime})
-    : command = NoteCommands(cqrsRuntime),
+  NoteApplication({required CqrsRuntime cqrsRuntime, IdGenerator? idGenerator})
+    : _idGenerator = idGenerator ?? IdGeneratorSecure(),
+      command = NoteCommands(cqrsRuntime),
       query = NoteQueries(cqrsRuntime) {
     cqrsRuntime.eventRegistry
       ..add(const NoteContentUpdatedCodec())
@@ -39,21 +41,20 @@ class NoteApplication {
       ..freeze();
     actor = cqrsRuntime.actor;
   }
+
+  /// Allocates an identifier before a note is persisted.
+  String generateNoteId() => _idGenerator.generateId();
 }
 
 /// Writes note events through the runtime.
 class NoteCommands {
   final CqrsRuntime _runtime;
-  final IdGenerator _idGenerator = IdGeneratorSecure();
   final Random _random = Random();
 
   NoteCommands(this._runtime);
 
-  Future<String> createNote() async {
-    final noteId = _idGenerator.generateId();
-    await _runtime.execute(CreateNote(noteId: noteId));
-    return noteId;
-  }
+  Future<void> createNote(String noteId) =>
+      _runtime.execute(CreateNote(noteId: noteId));
 
   Future<void> updateNoteTitle(String noteId, String value) =>
       _runtime.execute(UpdateNoteTitle(noteId: noteId, fullValue: value));

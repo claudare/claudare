@@ -20,7 +20,8 @@ void main() {
   });
 
   test('create generates a usable note ID', () async {
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
 
     expect(noteId, hasLength(IdGenerator.stringLength));
     final note = await application.query.note(noteId);
@@ -33,8 +34,10 @@ void main() {
   });
 
   test('create generates distinct IDs', () async {
-    final firstId = await application.command.createNote();
-    final secondId = await application.command.createNote();
+    final firstId = application.generateNoteId();
+    await application.command.createNote(firstId);
+    final secondId = application.generateNoteId();
+    await application.command.createNote(secondId);
 
     expect(secondId, isNot(firstId));
     expect(
@@ -44,7 +47,8 @@ void main() {
   });
 
   test('updates are visible in note and list queries', () async {
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
 
     await application.command.updateNoteTitle(noteId, 'Title');
 
@@ -63,7 +67,8 @@ void main() {
   });
 
   test('trash and restore update list filtering and active count', () async {
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
     await application.command.trashNote(noteId);
 
     final trashedList = await application.query.noteList();
@@ -86,7 +91,8 @@ void main() {
 
   test('list query reflects commands after an earlier read', () async {
     final before = await application.query.noteList();
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
     final after = await application.query.noteList();
 
     expect(before, isEmpty);
@@ -141,7 +147,8 @@ void main() {
   });
 
   test('list query returns current note state without cloning it', () async {
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
     final document = CrdtText();
     await application.command.updateNoteTitle(noteId, 'First');
     await application.command.updateNoteContent(

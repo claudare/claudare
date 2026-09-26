@@ -14,11 +14,13 @@ void main() {
       final app = NoteApplication(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
       );
-      final id = await app.command.createNote();
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
       final aggregate = noteAggregate(id);
       await app.query.catchupNote(aggregate);
       expect(aggregate.sequence, 0);
-      final other = await app.command.createNote();
+      final other = app.generateNoteId();
+      await app.command.createNote(other);
       await app.command.updateNoteTitle(other, 'Other');
       await app.command.updateNoteTitle(id, 'Title');
       await app.command.testSimulateExternalNoteContentAppend(
@@ -43,10 +45,11 @@ void main() {
     final app = NoteApplication(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
     );
-    final id = await app.command.createNote();
-    final controller = NoteController(app);
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
+    final controller = NoteController(app, noteId: id);
     addTearDown(controller.dispose);
-    await controller.load(id);
+    await controller.load();
     await app.command.updateNoteTitle(id, 'Title');
     await app.command.trashNote(id);
     store.reads.clear();
@@ -64,10 +67,11 @@ void main() {
     'refresh merges persisted content into the retained local draft',
     () async {
       final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
-      final id = await app.command.createNote();
-      final controller = NoteController(app);
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
+      final controller = NoteController(app, noteId: id);
       addTearDown(controller.dispose);
-      await controller.load(id);
+      await controller.load();
       final document = controller.content.document;
       controller.content.insert(0, 'Body');
       expect(document.text, '');
@@ -98,10 +102,11 @@ void main() {
       final app = NoteApplication(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
       );
-      final id = await app.command.createNote();
-      final controller = NoteController(app);
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
+      final controller = NoteController(app, noteId: id);
       addTearDown(controller.dispose);
-      await controller.load(id);
+      await controller.load();
       controller.content.insert(0, 'Body');
       final prepared = controller.content.prepareChange();
       store.failReadAfterWrite = true;
@@ -125,10 +130,11 @@ void main() {
       final app = NoteApplication(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
       );
-      final id = await app.command.createNote();
-      final controller = NoteController(app);
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
+      final controller = NoteController(app, noteId: id);
       addTearDown(controller.dispose);
-      await controller.load(id);
+      await controller.load();
       var fail = true;
       final observed = <String>[];
       controller.content.addListener(() {
@@ -159,10 +165,11 @@ void main() {
       final app = NoteApplication(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
       );
-      final id = await app.command.createNote();
-      final controller = NoteController(app);
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
+      final controller = NoteController(app, noteId: id);
       addTearDown(controller.dispose);
-      await controller.load(id);
+      await controller.load();
       await app.command.testSimulateExternalNoteContentAppend(
         id,
         'One',

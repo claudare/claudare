@@ -24,7 +24,8 @@ void main() {
       same(application),
     );
 
-    final noteId = await application.application.command.createNote();
+    final noteId = application.application.generateNoteId();
+    await application.application.command.createNote(noteId);
     await application.application.command.updateNoteTitle(
       noteId,
       'Persisted title',

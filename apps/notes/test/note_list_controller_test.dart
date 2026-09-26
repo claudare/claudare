@@ -16,7 +16,8 @@ void main() {
 
   test('reload reads notes created by a local command', () async {
     await controller.reloadNotes();
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
 
     expect(controller.noteData, isEmpty);
 
@@ -26,7 +27,8 @@ void main() {
   });
 
   test('deleting notes refreshes their trashed state', () async {
-    final noteId = await application.command.createNote();
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
     await controller.reloadNotes();
 
     await controller.deleteNotes([noteId]);
@@ -36,8 +38,10 @@ void main() {
   });
 
   test('category changes filter the current aggregate state', () async {
-    final activeId = await application.command.createNote();
-    final trashedId = await application.command.createNote();
+    final activeId = application.generateNoteId();
+    await application.command.createNote(activeId);
+    final trashedId = application.generateNoteId();
+    await application.command.createNote(trashedId);
     await application.command.trashNote(trashedId);
 
     await controller.setCategory(NoteCategory.active);
