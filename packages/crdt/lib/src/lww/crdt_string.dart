@@ -5,6 +5,7 @@ class CrdtString {
   String _value = '';
   String _actor = '';
   int? _time;
+  final List<void Function(CrdtStringChange)> _listeners = [];
 
   CrdtString();
 
@@ -25,15 +26,20 @@ class CrdtString {
   String get value => _time != null ? _value : '';
 
   void applyChange(CrdtStringChange change) {
-    if (_time == null) {
+    if (_time == null || _compareTo(change) < 0) {
       _apply(change);
-      return;
     }
-
-    if (_compareTo(change) < 0) {
-      _apply(change);
+    for (final listener in List.of(_listeners)) {
+      listener(change);
     }
   }
+
+  /// Observes replayed changes, including duplicates and losing writes.
+  void addListener(void Function(CrdtStringChange) listener) =>
+      _listeners.add(listener);
+
+  void removeListener(void Function(CrdtStringChange) listener) =>
+      _listeners.remove(listener);
 
   int _compareTo(CrdtStringChange change) {
     final times = _time!.compareTo(change.time.millisecondsSinceEpoch);

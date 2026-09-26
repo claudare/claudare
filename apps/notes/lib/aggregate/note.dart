@@ -39,6 +39,9 @@ class NoteState implements AggregateState<NoteEvent> {
   String get title => _title.value;
   String get content => _content.text;
 
+  /// Persisted title state observed by attached editing contexts.
+  CrdtString get titleDocument => _title;
+
   /// Persisted content state observed by attached editing contexts.
   CrdtText get contentDocument => _content;
   bool get isTrashed => trashedAt != null;

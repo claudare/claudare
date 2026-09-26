@@ -1,6 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/foundation.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:crdt/crdt_string.dart';
 import 'package:notes/aggregate/note.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/event/note.dart';
@@ -10,23 +11,27 @@ class NoteController extends ChangeNotifier {
 
   final Aggregate<NoteEvent, NoteState> _persisted;
   final bool _isNewDraft;
-  String _titleLatest = '';
+  late final CrdtStringEditContext title;
   late final CrdtTextEditContext content;
   bool _isLoading = false;
   bool _disposed = false;
   int _editRevision = 0;
 
   String get noteId => _persisted.state.noteId;
-  String get _titleStored => _persisted.state.title;
 
   NoteController(this.application, {String? noteId})
     : _isNewDraft = noteId == null,
       _persisted = noteAggregate(noteId ?? application.generateNoteId()) {
+    title = CrdtStringEditContext(
+      document: _persisted.state.titleDocument,
+      actorId: application.actor,
+    );
+    title.addListener(_onDraftChanged);
     content = CrdtTextEditContext(
       document: _persisted.state.contentDocument,
       actorId: application.actor,
     );
-    content.addListener(_onContentChanged);
+    content.addListener(_onDraftChanged);
   }
 
   /// Delivers new persisted events to the current editing draft.
@@ -55,8 +60,7 @@ class NoteController extends ChangeNotifier {
 
     try {
       await _refreshNote();
-      _titleLatest = _titleStored;
-      return LoadResolvedText(title: _titleStored, content: content.text);
+      return LoadResolvedText(title: title.value, content: content.text);
     } finally {
       _isLoading = false;
       _notify();
@@ -92,15 +96,15 @@ class NoteController extends ChangeNotifier {
 
     var changed = false;
     if (!exists) {
-      if (_titleLatest.isEmpty && content.text.isEmpty) return false;
+      if (title.value.isEmpty && content.text.isEmpty) return false;
       await application.command.createNote(noteId);
       changed = true;
       await _refreshNote();
     }
 
-    final title = _titleLatest;
-    if (title != _titleStored) {
-      await application.command.updateNoteTitle(noteId, title);
+    final titleChange = title.prepareChange();
+    if (titleChange != null) {
+      await application.command.updateNoteTitle(noteId, titleChange);
       changed = true;
       await _refreshNote();
     }
@@ -124,13 +128,7 @@ class NoteController extends ChangeNotifier {
     }
   }
 
-  void submitTitleChange(String text) {
-    if (_titleLatest == text) return;
-    _titleLatest = text;
-    _editRevision++;
-  }
-
-  void _onContentChanged() {
+  void _onDraftChanged() {
     _editRevision++;
   }
 
@@ -140,7 +138,9 @@ class NoteController extends ChangeNotifier {
 
   @override
   void dispose() {
-    content.removeListener(_onContentChanged);
+    title.removeListener(_onDraftChanged);
+    title.dispose();
+    content.removeListener(_onDraftChanged);
     content.dispose();
     _disposed = true;
     super.dispose();

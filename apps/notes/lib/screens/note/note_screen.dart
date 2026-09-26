@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:crdt/crdt_text.dart';
+import 'package:crdt/crdt_string.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:notes/application/note_application.dart';
@@ -25,10 +26,12 @@ class _NoteScreenState extends State<NoteScreen> {
 
   late TextEditingController _titleController;
   late FocusNode _titleFocus;
+  CrdtStringBinding? _titleBinding;
 
   late TextEditingController _contentController;
   late FocusNode _contentFocus;
   CrdtTextBinding? _contentBinding;
+
   late NoteContentSimulation _simulation;
   Future<void>? _refreshInProgress;
 
@@ -43,7 +46,6 @@ class _NoteScreenState extends State<NoteScreen> {
     super.initState();
 
     _titleController = TextEditingController(text: '');
-    _titleController.addListener(_onTitleTextChange);
 
     _titleFocus = FocusNode();
     _titleFocus.addListener(_onTitleFocusChange);
@@ -68,6 +70,8 @@ class _NoteScreenState extends State<NoteScreen> {
 
     if (_application != null) {
       _simulation.dispose();
+      _titleBinding?.dispose();
+      _titleBinding = null;
       _contentBinding?.dispose();
       _contentBinding = null;
       _controller.removeListener(_onControllerChanged);
@@ -98,9 +102,12 @@ class _NoteScreenState extends State<NoteScreen> {
 
   Future<void> _loadNote(NoteController controller) async {
     try {
-      final values = await controller.load();
+      await controller.load();
       if (!mounted || !identical(controller, _controller)) return;
-      _titleController.text = values.title;
+      _titleBinding = CrdtStringBinding(
+        editContext: controller.title,
+        controller: FlutterCrdtTextController(_titleController),
+      );
       _contentBinding = CrdtTextBinding(
         editContext: controller.content,
         controller: FlutterCrdtTextController(_contentController),
@@ -115,6 +122,7 @@ class _NoteScreenState extends State<NoteScreen> {
   @override
   void dispose() {
     _simulation.dispose();
+    _titleBinding?.dispose();
     _contentBinding?.dispose();
     _titleController.dispose();
     _titleFocus.dispose();
@@ -126,10 +134,6 @@ class _NoteScreenState extends State<NoteScreen> {
     _controller.dispose();
 
     super.dispose();
-  }
-
-  void _onTitleTextChange() {
-    _controller.submitTitleChange(_titleController.text);
   }
 
   void _onTitleFocusChange() {

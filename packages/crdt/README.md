@@ -78,5 +78,16 @@ workspace root.
 
 ## Value
 
+Import `package:crdt/crdt_string.dart` for `CrdtString`, an actor-aware LWW
+string. `CrdtStringEditContext` keeps local edits separate from persisted state
+and acknowledges prepared values through replay from the same actor. The caller
+supplies persistence timestamps. Unsaved local edits survive remote updates;
+after acknowledgment, the persisted LWW winner is authoritative.
+
+`CrdtStringBinding` connects this draft to the same `CrdtTextController` adapter
+used by text bindings. It preserves selection offsets where possible and delays
+remote editor updates during composition. Contexts and bindings are disposable
+and hold only in-memory editing state.
+
 `CrdtValueLatestWriteWins` and its value/timestamp pair remain available. Equal
 timestamps retain the incoming value; this helper has no actor tie-breaker.

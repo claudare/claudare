@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
@@ -78,7 +80,7 @@ void main() {
     expect(note.createdAt, isNull);
     expect(note.updatedAt, isNull);
     expect(note.trashedAt, isNull);
-    note.submitTitleChange('Local title');
+    note.title.value = 'Local title';
     await expectLater(note.flushChanges(), notFound);
     await expectLater(note.refresh(), notFound);
     expect(note.noteId, 'missing');
@@ -91,7 +93,7 @@ void main() {
     final id = draft.noteId;
     final document = draft.content.document;
     draft.content.insert(0, 'Local body');
-    draft.submitTitleChange('Local title');
+    draft.title.value = 'Local title';
     await draft.refresh();
     expect(draft.content.text, 'Local body');
     expect(draft.content.hasPendingChanges, isTrue);
@@ -161,6 +163,88 @@ void main() {
     expect(store.kinds, isEmpty);
   });
 
+  test(
+    'title refresh follows persisted updates without writing them back',
+    () async {
+      await application.command.createNote('existing');
+      final note = controller(noteId: 'existing');
+      await note.load();
+      await application.command.updateNoteTitle('existing', 'Remote');
+      expect(await note.flushChanges(), isFalse);
+      expect(note.title.value, 'Remote');
+      expect(note.title.hasPendingChanges, isFalse);
+      expect(store.kinds, hasLength(2));
+    },
+  );
+
+  test('title refresh preserves unsaved local edits', () async {
+    await application.command.createNote('existing');
+    final note = controller(noteId: 'existing');
+    await note.load();
+    note.title.value = 'Z local';
+    await application.command.updateNoteTitle('existing', 'Remote');
+    await note.refresh();
+    expect(note.title.value, 'Z local');
+    expect(note.title.document.value, 'Remote');
+    expect(await note.flushChanges(), isTrue);
+    expect((await application.query.note('existing')).title, 'Z local');
+    expect(note.title.hasPendingChanges, isFalse);
+  });
+
+  for (final failure in ['write', 'replay']) {
+    test('title $failure failure retries without duplicate events', () async {
+      await application.command.createNote('existing');
+      final note = controller(noteId: 'existing');
+      await note.load();
+      note.title.value = 'Local';
+      store.failWrite = failure == 'write';
+      store.failReadAfterWrite = failure == 'replay';
+      await expectLater(note.flushChanges(), throwsException);
+      expect(note.title.value, 'Local');
+      expect(note.title.hasPendingChanges, isTrue);
+      expect(await note.flushChanges(), failure == 'write');
+      expect(note.title.hasPendingChanges, isFalse);
+      expect(
+        store.kinds.where((kind) => kind == const NoteTitleUpdatedCodec().kind),
+        hasLength(1),
+      );
+    });
+  }
+
+  test('title edits during a save remain pending for the next save', () async {
+    await application.command.createNote('existing');
+    final note = controller(noteId: 'existing');
+    await note.load();
+    note.title.value = 'First';
+    final started = Completer<void>();
+    final release = Completer<void>();
+    store.writeStarted = started;
+    store.writeGate = release.future;
+    final saving = note.flushChanges();
+    await started.future;
+    note.title.value = 'Second';
+    release.complete();
+    await saving;
+    expect(note.title.value, 'Second');
+    expect(note.title.hasPendingChanges, isTrue);
+    expect(await note.flushChanges(), isTrue);
+    expect((await application.query.note('existing')).title, 'Second');
+    expect(note.title.hasPendingChanges, isFalse);
+  });
+
+  test('losing title write adopts the winner without repeated saves', () async {
+    await application.command.createNote('existing');
+    await application.command.updateNoteTitle('existing', 'Z winner');
+    final note = controller(noteId: 'existing');
+    await note.load();
+    // The static test clock gives both writes the same timestamp and actor.
+    note.title.value = 'A loser';
+    expect(await note.flushChanges(), isTrue);
+    expect(note.title.value, 'Z winner');
+    expect(note.title.hasPendingChanges, isFalse);
+    expect(await note.flushChanges(), isFalse);
+  });
+
   test('draft cannot be restored before persistence', () async {
     await expectLater(controller().restore(), throwsException);
     expect(store.kinds, isEmpty);
@@ -177,9 +261,16 @@ class _FailingStore extends MemoryEventStore {
   bool failWrite = false;
   bool failRead = false;
   bool failReadAfterWrite = false;
+  Completer<void>? writeStarted;
+  Future<void>? writeGate;
 
   @override
   Future<void> saveChanges(changes) async {
+    final gate = writeGate;
+    writeGate = null;
+    writeStarted?.complete();
+    writeStarted = null;
+    await gate;
     if (failWrite) {
       failWrite = false;
       throw Exception('Interrupted creation');

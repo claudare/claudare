@@ -13,6 +13,48 @@ import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/event/note.dart';
 
 void main() {
+  testWidgets(
+    'title binding displays replayed updates without writing them back',
+    (tester) async {
+      final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+      final id = app.generateNoteId();
+      await app.command.createNote(id);
+      await _open(tester, app, id);
+      await app.command.updateNoteTitle(id, 'Remote title');
+      await tester.tap(find.byType(TextField).first);
+      await _pressSaveShortcut(tester);
+      await tester.pumpAndSettle();
+      final editor =
+          tester.widget<TextField>(find.byType(TextField).first).controller!;
+      expect(editor.text, 'Remote title');
+      expect(find.text('Nothing to save'), findsOneWidget);
+      expect((await app.query.note(id)).title, 'Remote title');
+    },
+  );
+
+  testWidgets('title edits made during saving persist in a subsequent batch', (
+    tester,
+  ) async {
+    final store = _ControlledStore();
+    final app = NoteApplication(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+    );
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
+    await _open(tester, app, id);
+    final field = find.byType(TextField).first;
+    await tester.enterText(field, 'First');
+    final gate = Completer<void>();
+    store.gate = gate.future;
+    await _pressSaveShortcut(tester);
+    await tester.pump();
+    await tester.enterText(field, 'Second');
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect((await app.query.note(id)).title, 'Second');
+    expect(tester.widget<TextField>(field).controller!.text, 'Second');
+  });
+
   for (final (fieldIndex, value) in [(0, 'Shortcut title'), (1, 'Body')]) {
     testWidgets('Ctrl+S saves field $fieldIndex without moving focus', (
       tester,
