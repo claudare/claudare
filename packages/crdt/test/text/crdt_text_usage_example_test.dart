@@ -17,7 +17,7 @@ void main() {
         eventLog.add(jsonEncode(change.toJson()));
       }
 
-      editor.insert(0, 'Hello');
+      updateText(editor, 'Hello');
       final prepared = editor.prepareChange()!;
       editor.insert(editor.length, '!');
       expect(state.text, '');
@@ -52,7 +52,7 @@ void main() {
         actorId: 'bob',
       );
       expect(nextEditor.prepareChange(), isNull);
-      nextEditor.insert(nextEditor.length, '?');
+      updateText(nextEditor, 'Hello!?');
       expect(nextEditor.prepareChange()!.actorId, 'bob');
       expect(restored.text, 'Hello!');
     },

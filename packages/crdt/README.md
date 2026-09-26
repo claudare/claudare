@@ -16,6 +16,10 @@ Dart strings and Flutter selections. Edits must fall on Unicode scalar
 boundaries; malformed strings and split surrogate pairs are rejected. Combining
 sequences are preserved without normalization or grapheme-level conflict rules.
 
+Use `updateText(context, newText)` when a caller supplies the complete text.
+This standalone helper preserves the common prefix and suffix and replaces the
+changed middle through the context.
+
 Incoming changes require causal delivery. Missing dependencies and conflicting
 operation IDs throw `CrdtTextException` without partially applying a batch.
 Exact duplicates are accepted. The caller provides delivery and persistence.
