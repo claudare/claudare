@@ -4,6 +4,58 @@ import 'package:crdt/crdt_text.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('incremental delivery preserves prepared and later local edits', () {
+    final aliceDocument = CrdtText();
+
+    // Alice writes to an empty document and saves the changes
+    final alice = CrdtTextEditContext(
+      document: aliceDocument,
+      actorId: 'alice',
+    );
+    updateText(alice, 'Hello');
+    final initial = alice.prepareChange()!;
+    aliceDocument.applyChange(initial);
+    alice.acknowledgeChange(initial);
+
+    // Bob inserts the value at the start.
+    final bobDocument = CrdtText.fromJson(aliceDocument.toJson());
+    final bob = CrdtTextEditContext(document: bobDocument, actorId: 'bob');
+    alice.insert(0, 'Local ');
+    final prepared = alice.prepareChange()!;
+    alice.insert(0, 'Later ');
+
+    // Bob creates a concurrent edit while Alice has a prepared batch.
+    bob.insert(bob.length, ' remote');
+    final remote = bob.prepareChange()!;
+    bobDocument.applyChange(remote);
+    bob.acknowledgeChange(remote);
+    aliceDocument.applyChange(remote);
+    alice.applyChange(remote);
+    expect(alice.text, 'Later Local Hello remote');
+    expect(alice.prepareChange(), same(prepared));
+
+    // Event delivery can precede acknowledgment of the successful write.
+    aliceDocument.applyChange(prepared);
+    alice.applyChange(prepared);
+    bobDocument.applyChange(prepared);
+    bob.applyChange(prepared);
+    expect(alice.prepareChange(), same(prepared));
+    alice.acknowledgeChange(prepared);
+    expect(alice.hasPendingChanges, isTrue);
+
+    final later = alice.prepareChange()!;
+    aliceDocument.applyChange(later);
+    alice.applyChange(later);
+    bobDocument.applyChange(later);
+    bob.applyChange(later);
+    alice.acknowledgeChange(later);
+    expect(alice.prepareChange(), isNull);
+    expect(bob.prepareChange(), isNull);
+    expect(aliceDocument.toJson(), bobDocument.toJson());
+    expect(alice.text, aliceDocument.text);
+    expect(bob.text, aliceDocument.text);
+  });
+
   test(
     'edit, persist, replay, acknowledge, and restore document state',
     () async {

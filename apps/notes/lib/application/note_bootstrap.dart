@@ -26,10 +26,10 @@ class NoteBootstrap {
     if (_closing != null) {
       throw StateError('Notes bootstrap is closed');
     }
-    return _initialization ??= _open(eventsDbFilepath);
+    return _initialization ??= _initialize(eventsDbFilepath);
   }
 
-  Future<NoteBootstrapResult> _open(String eventsDbFilepath) async {
+  Future<NoteBootstrapResult> _initialize(String eventsDbFilepath) async {
     var opened = false;
     try {
       await _sqlite.open(eventsDbFilepath);

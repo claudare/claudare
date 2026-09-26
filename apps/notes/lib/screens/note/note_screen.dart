@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:crdt/crdt_text.dart';
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/common.dart';
 import 'package:notes/screens/note/note_controller.dart';
+import 'package:notes/screens/note/flutter_crdt_text_controller.dart';
 
 class NoteScreen extends StatefulWidget {
   final String? noteId;
@@ -24,6 +26,10 @@ class _NoteScreenState extends State<NoteScreen> {
 
   late TextEditingController _contentController;
   late FocusNode _contentFocus;
+  CrdtTextBinding? _contentBinding;
+  Timer? _simulationTimer;
+  bool _simulationWriting = false;
+  Future<void>? _refreshInProgress;
 
   Future<bool>? _flushInProgress;
   bool _flushAgain = false;
@@ -45,7 +51,6 @@ class _NoteScreenState extends State<NoteScreen> {
     };
 
     _contentController = TextEditingController(text: '');
-    _contentController.addListener(_onContentTextChange);
 
     _contentFocus = FocusNode();
     _contentFocus.addListener(_onContentFocusChange);
@@ -61,6 +66,9 @@ class _NoteScreenState extends State<NoteScreen> {
     if (identical(_application, application)) return;
 
     if (_application != null) {
+      _stopSimulation();
+      _contentBinding?.dispose();
+      _contentBinding = null;
       _controller.removeListener(_onControllerChanged);
       _controller.dispose();
     }
@@ -68,6 +76,7 @@ class _NoteScreenState extends State<NoteScreen> {
     _controller = NoteController(application);
     _controller.addListener(_onControllerChanged);
     _flushInProgress = null;
+    _refreshInProgress = null;
     _flushAgain = false;
     _allowPop = false;
     _leaving = false;
@@ -86,7 +95,10 @@ class _NoteScreenState extends State<NoteScreen> {
       final values = await controller.load(widget.noteId);
       if (!mounted || !identical(controller, _controller)) return;
       _titleController.text = values.title;
-      _contentController.text = values.content;
+      _contentBinding = CrdtTextBinding(
+        editContext: controller.content,
+        controller: FlutterCrdtTextController(_contentController),
+      );
     } on Exception catch (error) {
       if (mounted && identical(controller, _controller)) {
         setState(() => _loadError = error);
@@ -96,6 +108,8 @@ class _NoteScreenState extends State<NoteScreen> {
 
   @override
   void dispose() {
+    _stopSimulation();
+    _contentBinding?.dispose();
     _titleController.dispose();
     _titleFocus.dispose();
 
@@ -118,10 +132,6 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
-  void _onContentTextChange() {
-    _controller.submitContentChange(_contentController.text);
-  }
-
   void _onContentFocusChange() {
     if (!_contentFocus.hasFocus) {
       unawaited(_flushChanges());
@@ -129,13 +139,16 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<bool> _flushChanges() async {
+    final controller = _controller;
+    await _refreshInProgress;
+    if (!mounted || !identical(controller, _controller)) return false;
     final active = _flushInProgress;
     if (active != null) {
       _flushAgain = true;
       return active;
     }
 
-    final flush = _runFlush(_controller);
+    final flush = _runFlush(controller);
     _flushInProgress = flush;
     try {
       return await flush;
@@ -180,6 +193,7 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _trashNote() async {
+    setState(_stopSimulation);
     final controller = _controller;
     try {
       if (!await _flushChanges()) return;
@@ -235,6 +249,7 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _onPopInvokedWithResult(bool didPop) async {
+    if (mounted) setState(_stopSimulation);
     if (didPop || _leaving) return;
 
     final controller = _controller;
@@ -249,6 +264,74 @@ class _NoteScreenState extends State<NoteScreen> {
     }
   }
 
+  void _stopSimulation() {
+    _simulationTimer?.cancel();
+    _simulationTimer = null;
+  }
+
+  void _toggleSimulation(bool enabled) {
+    setState(() {
+      _stopSimulation();
+      if (enabled) {
+        _simulationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+          unawaited(_simulateExternalEdit(_controller));
+        });
+      }
+    });
+  }
+
+  Future<void> _simulateExternalEdit(NoteController controller) async {
+    if (_simulationWriting || _leaving) return;
+    _simulationWriting = true;
+    try {
+      await controller.simulateExternalEdit();
+    } on Exception catch (error) {
+      if (mounted && identical(controller, _controller)) {
+        setState(_stopSimulation);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error simulating edit: $error')),
+        );
+      }
+    } finally {
+      _simulationWriting = false;
+    }
+  }
+
+  Future<void> _refreshNote() async {
+    if (_refreshInProgress != null) return;
+    final controller = _controller;
+    final refresh = _runRefresh(controller, _flushInProgress);
+    setState(() {
+      _refreshInProgress = refresh;
+    });
+    try {
+      await refresh;
+    } finally {
+      if (mounted && identical(_refreshInProgress, refresh)) {
+        setState(() => _refreshInProgress = null);
+      }
+    }
+  }
+
+  Future<void> _runRefresh(
+    NoteController controller,
+    Future<bool>? saving,
+  ) async {
+    try {
+      await saving;
+      if (!mounted || !identical(controller, _controller)) return;
+      await controller.refresh();
+      if (!mounted || !identical(controller, _controller)) return;
+      if (controller.isTrashed) setState(_stopSimulation);
+    } on Exception catch (error) {
+      if (mounted && identical(controller, _controller)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error refreshing note: $error')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -260,6 +343,16 @@ class _NoteScreenState extends State<NoteScreen> {
             _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
           ),
           actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              icon: const Icon(Icons.refresh),
+              onPressed:
+                  _controller.exists &&
+                          !_controller.isLoading &&
+                          _refreshInProgress == null
+                      ? _refreshNote
+                      : null,
+            ),
             _controller.isTrashed
                 ? IconButton(
                   icon: Icon(Icons.restore),
@@ -317,6 +410,16 @@ class _NoteScreenState extends State<NoteScreen> {
             ),
           ),
           SizedBox(height: 4),
+          SwitchListTile(
+            title: const Text('Simulate external edits'),
+            value: _simulationTimer != null,
+            onChanged:
+                _controller.exists &&
+                        !_controller.isLoading &&
+                        !_controller.isTrashed
+                    ? _toggleSimulation
+                    : null,
+          ),
           Wrap(
             spacing: 8.0,
             children: [

@@ -42,6 +42,8 @@ class CqrsRuntime {
     );
   }
 
+  String get actor => _actor;
+
   /// Creates a reader starting at the inclusive stream version.
   PaginatedReader<StoredEvent> streamReader(
     String streamPath, {

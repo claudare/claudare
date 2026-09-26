@@ -9,6 +9,11 @@ The application stores note events in `events.sqlite`. Note details and lists
 are rebuilt from that history when queried. It does not provide text search,
 replication, encryption, or backup.
 
+Content editing uses CRDT changes with the existing focus-loss and navigation
+saves. Refresh merges persisted edits into an open draft. For visual testing,
+the simulation toggle appends external text every five seconds until disabled
+or the note is closed; use Refresh to display those edits.
+
 ## Run
 
 From the workspace root, resolve dependencies with `fvm flutter pub get`.

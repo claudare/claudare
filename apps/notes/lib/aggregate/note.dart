@@ -18,6 +18,9 @@ class NoteState {
 
   String get title => _title.value;
   String get content => _content.text;
+
+  /// Persisted content state for initializing an independent editing context.
+  CrdtText get contentDocument => _content;
   bool get isTrashed => trashedAt != null;
 
   void apply(EventEnvelope<NoteEvent> envelope) {

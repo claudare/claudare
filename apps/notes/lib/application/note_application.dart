@@ -9,6 +9,7 @@ import 'package:notes/command/trash_note.dart';
 import 'package:notes/command/update_note_content.dart';
 import 'package:notes/command/update_note_title.dart';
 import 'package:notes/event/note.dart';
+import 'package:notes/stream_route/note_stream_route.dart';
 
 export 'package:notes/aggregate/note.dart' show NoteState;
 export 'package:notes/aggregate/note_list.dart'
@@ -18,6 +19,8 @@ export 'package:notes/aggregate/note_list.dart'
 class NoteApplication {
   final NoteCommands command;
   final NoteQueries query;
+
+  late final String actor;
 
   NoteApplication({required CqrsRuntime cqrsRuntime})
     : command = NoteCommands(cqrsRuntime),
@@ -29,6 +32,7 @@ class NoteApplication {
       ..add(const NoteTitleUpdatedCodec())
       ..add(const NoteTrashedCodec())
       ..freeze();
+    actor = cqrsRuntime.actor;
   }
 }
 
@@ -56,6 +60,26 @@ class NoteCommands {
 
   Future<void> restoreNote(String noteId) =>
       _runtime.execute(RestoreNote(noteId: noteId));
+
+  /// Simulates another writer against the persisted note content.
+  Future<void> simulateExternalNoteContentEdit(
+    String noteId,
+    String newText, {
+    required String actorId,
+  }) async {
+    if (actorId == _runtime.actor) {
+      throw ArgumentError('Simulation requires a distinct actor');
+    }
+    final note = await _runtime.resolve(NoteAggregate(noteId));
+    if (!note.exists) throw Exception('Note not found');
+    final context = CrdtTextEditContext(
+      document: note.contentDocument,
+      actorId: actorId,
+    );
+    updateText(context, newText);
+    final change = context.prepareChange();
+    if (change != null) await updateNoteContent(noteId, change);
+  }
 }
 
 /// Resolves current note state directly from the event history.
@@ -63,6 +87,28 @@ class NoteQueries {
   final CqrsRuntime _runtime;
 
   const NoteQueries(this._runtime);
+
+  /// Reads note events from the inclusive [fromVersion] until caught up.
+  Stream<({int version, EventEnvelope<NoteEvent> envelope})> noteEvents(
+    String noteId, {
+    int fromVersion = 0,
+  }) async* {
+    final reader = _runtime.streamReader(
+      noteStreamRoute.buildPath(noteId),
+      fromVersion: fromVersion,
+    );
+    await for (final stored in reader.scan()) {
+      yield (
+        version: stored.version,
+        envelope: EventEnvelope<NoteEvent>(
+          actor: stored.eventId.actor,
+          streamPath: stored.streamPath,
+          event: _runtime.eventRegistry.decode<NoteEvent>(stored.encodedEvent),
+          occuredAt: stored.occuredAt,
+        ),
+      );
+    }
+  }
 
   Future<NoteState?> note(String noteId) async {
     final state = await _runtime.resolve(NoteAggregate(noteId));
