@@ -42,7 +42,7 @@ void main() {
       (await reopened.application.query.note(noteId)).title,
       'Persisted title',
     );
-    expect((await reopened.application.query.noteList()).activeCount, 1);
+    expect(await reopened.application.query.noteList(), hasLength(1));
     expect((await reopened.eventStore.getStatistics()).eventCount, 2);
   });
 

@@ -31,7 +31,7 @@ void main() {
       await _pressSaveShortcut(tester);
       await tester.pumpAndSettle();
 
-      final notes = (await app.query.noteList()).notes.values.toList();
+      final notes = await app.query.noteList();
       expect(notes, hasLength(1));
       expect(
         fieldIndex == 0 ? notes.single.title : notes.single.content,
@@ -55,7 +55,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Nothing to save'), findsOneWidget);
-      expect((await app.query.noteList()).activeCount, existing ? 1 : 0);
+      expect(await app.query.noteList(), hasLength(existing ? 1 : 0));
     });
   }
 
@@ -73,9 +73,9 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'New content');
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    final notes = (await app.query.noteList()).notes;
+    final notes = await app.query.noteList();
     expect(notes, hasLength(1));
-    expect(notes.values.single.content, 'New content');
+    expect(notes.single.content, 'New content');
   });
 
   testWidgets('application replacement detaches the previous content draft', (
@@ -95,11 +95,8 @@ void main() {
       await tester.enterText(find.byType(TextField).last, 'Draft');
     }
     await _save(tester);
-    expect((await first.query.noteList()).notes, isEmpty);
-    expect(
-      (await second.query.noteList()).notes.values.single.content,
-      'Draft',
-    );
+    expect(await first.query.noteList(), isEmpty);
+    expect((await second.query.noteList()).single.content, 'Draft');
   });
 
   testWidgets('successive UI edits persist and reopen with their actor', (

@@ -16,7 +16,7 @@ void main() {
 
   test('returns absent state for a note that was never created', () async {
     expect((await application.query.note('missing')).exists, isFalse);
-    expect((await application.query.noteList()).notes, isEmpty);
+    expect(await application.query.noteList(), isEmpty);
   });
 
   test('create generates a usable note ID', () async {
@@ -37,10 +37,10 @@ void main() {
     final secondId = await application.command.createNote();
 
     expect(secondId, isNot(firstId));
-    expect((await application.query.noteList()).notes.keys, {
-      firstId,
-      secondId,
-    });
+    expect(
+      (await application.query.noteList()).map((note) => note.noteId).toSet(),
+      {firstId, secondId},
+    );
   });
 
   test('updates are visible in note and list queries', () async {
@@ -58,8 +58,8 @@ void main() {
 
     expect(note.title, 'Title');
     expect(note.content, 'Body');
-    expect(list.notes[noteId]!.title, 'Title');
-    expect(list.notes[noteId]!.content, 'Body');
+    expect(list.single.title, 'Title');
+    expect(list.single.content, 'Body');
   });
 
   test('trash and restore update list filtering and active count', () async {
@@ -67,10 +67,11 @@ void main() {
     await application.command.trashNote(noteId);
 
     final trashedList = await application.query.noteList();
-    expect(trashedList.activeCount, 0);
-    expect(trashedList.toSortedList(), isEmpty);
+    expect(trashedList, isEmpty);
     expect(
-      trashedList.toSortedList(category: NoteCategory.trashed).single.noteId,
+      (await application.query.noteList(
+        category: NoteCategory.trashed,
+      )).single.noteId,
       noteId,
     );
     expect((await application.query.note(noteId)).isTrashed, isTrue);
@@ -78,8 +79,8 @@ void main() {
     await application.command.restoreNote(noteId);
 
     final restoredList = await application.query.noteList();
-    expect(restoredList.activeCount, 1);
-    expect(restoredList.toSortedList().single.noteId, noteId);
+    expect(restoredList, hasLength(1));
+    expect(restoredList.single.noteId, noteId);
     expect((await application.query.note(noteId)).isTrashed, isFalse);
   });
 
@@ -88,11 +89,58 @@ void main() {
     final noteId = await application.command.createNote();
     final after = await application.query.noteList();
 
-    expect(before.notes, isEmpty);
-    expect(after.notes.keys, [noteId]);
+    expect(before, isEmpty);
+    expect(after.map((note) => note.noteId), [noteId]);
   });
 
-  test('list query keeps earlier nested note state independent', () async {
+  test('list query applies category and sort order', () async {
+    await runtime.seedEvents([
+      TestEvent(
+        actor: 'a',
+        stream: 'note/one',
+        event: const NoteCreated(noteId: 'one'),
+        occuredAt: DateTime.utc(2026, 1, 1),
+      ),
+      TestEvent(
+        actor: 'a',
+        stream: 'note/two',
+        event: const NoteCreated(noteId: 'two'),
+        occuredAt: DateTime.utc(2026, 1, 2),
+      ),
+      TestEvent(
+        actor: 'a',
+        stream: 'note/one',
+        event: const NoteTrashed(noteId: 'one'),
+        occuredAt: DateTime.utc(2026, 1, 3),
+      ),
+    ]);
+
+    expect((await application.query.noteList()).map((note) => note.noteId), [
+      'two',
+    ]);
+    expect(
+      (await application.query.noteList(
+        category: NoteCategory.all,
+        order: NoteSortOrder.createdAtAscending,
+      )).map((note) => note.noteId),
+      ['one', 'two'],
+    );
+    expect(
+      (await application.query.noteList(
+        category: NoteCategory.all,
+        order: NoteSortOrder.createdAtDescending,
+      )).map((note) => note.noteId),
+      ['two', 'one'],
+    );
+    expect(
+      (await application.query.noteList(
+        category: NoteCategory.trashed,
+      )).map((note) => note.noteId),
+      ['one'],
+    );
+  });
+
+  test('list query returns current note state without cloning it', () async {
     final noteId = await application.command.createNote();
     final document = CrdtText();
     await application.command.updateNoteTitle(noteId, 'First');
@@ -109,11 +157,11 @@ void main() {
     );
     final after = await application.query.noteList();
 
-    expect(before.notes[noteId]!.title, 'First');
-    expect(before.notes[noteId]!.content, 'First');
-    expect(after.notes[noteId]!.title, 'Second');
-    expect(after.notes[noteId]!.content, 'Second');
-    expect(after.notes[noteId], isNot(same(before.notes[noteId])));
+    expect(after.single, same(before.single));
+    expect(after.single.title, 'Second');
+    expect(after.single.content, 'Second');
+    expect(before.single.title, 'Second');
+    expect(before.single.content, 'Second');
   });
 
   test('reads existing note events with the registered codecs', () async {
@@ -152,7 +200,7 @@ void main() {
     expect(note.content, 'History');
     expect(note.createdAt, createdAt);
     expect(note.updatedAt, editedAt);
-    expect(list.notes['old']!.title, 'Existing');
+    expect(list.single.title, 'Existing');
   });
 
   test('crdt text works', () async {

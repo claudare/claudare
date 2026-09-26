@@ -124,12 +124,15 @@ class NoteQueries {
     await _runtime.resolve(aggregate, onApplied: onApplied);
   }
 
-  /// Global notes list. It is kept in memory between resolves.
-  /// In order to force concurrency, we are using a mutex.
-  Future<NoteListState> noteList() {
+  /// Returns sorted references to notes in the cached aggregate.
+  /// A later catchup can update the returned [NoteState] objects.
+  Future<List<NoteState>> noteList({
+    NoteCategory category = NoteCategory.active,
+    NoteSortOrder order = NoteSortOrder.createdAtDescending,
+  }) {
     return _noteListMutex.protect(() async {
       await _runtime.resolve(_noteList);
-      return _noteList.state.clone();
+      return _noteList.state.toSortedList(category: category, order: order);
     });
   }
 

@@ -110,8 +110,8 @@ void main() {
     await tester.enterText(find.byType(TextField).first, 'New draft');
     await tester.tap(find.byType(TextField).last);
     await tester.pumpAndSettle();
-    expect((await first.query.noteList()).activeCount, 0);
-    expect((await second.query.noteList()).activeCount, 1);
+    expect(await first.query.noteList(), isEmpty);
+    expect(await second.query.noteList(), hasLength(1));
   });
 
   testWidgets('settings displays active notes and event count', (tester) async {

@@ -44,9 +44,12 @@ class NoteListController extends ChangeNotifier {
     _notify();
 
     try {
-      final notes = await application.query.noteList();
+      final notes = await application.query.noteList(
+        category: _category,
+        order: _order,
+      );
       if (_disposed) return;
-      _noteData = notes.toSortedList(category: _category, order: _order);
+      _noteData = notes;
       _loadError = null;
     } on Exception catch (error) {
       if (!_disposed) _loadError = error;

@@ -50,7 +50,7 @@ class NoteListState implements AggregateState<NoteEvent> {
       return chronological != 0 ? chronological : a.noteId.compareTo(b.noteId);
     });
 
-    return list;
+    return List.unmodifiable(list);
   }
 
   @override
