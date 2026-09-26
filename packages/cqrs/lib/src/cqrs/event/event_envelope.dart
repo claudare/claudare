@@ -1,7 +1,6 @@
-// import 'package:cqrs/src/cqrs/event/event_id.dart';
-
 /// Events which are emitted to aggregates
 class EventEnvelope<TEvent extends Object> {
+  // careful, as this may turn into another TParams spaghetti
   final String actor;
   final String streamPath;
   final TEvent event;

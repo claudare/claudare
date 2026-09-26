@@ -1,5 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_string.dart';
+import 'package:crdt/crdt_text.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -8,7 +9,7 @@ class NoteState {
   final String noteId;
   bool exists = false;
   final CrdtString _title = CrdtString();
-  String content = ''; // TODO: convert this to CrdtText();
+  final CrdtText _content = CrdtText();
   late DateTime createdAt;
   late DateTime updatedAt;
   DateTime? trashedAt;
@@ -16,6 +17,7 @@ class NoteState {
   NoteState(this.noteId);
 
   String get title => _title.value;
+  String get content => _content.text;
   bool get isTrashed => trashedAt != null;
 
   void apply(EventEnvelope<NoteEvent> envelope) {
@@ -25,7 +27,6 @@ class NoteState {
     switch (envelope.event) {
       case NoteCreated():
         exists = true;
-        content = '';
         createdAt = occuredAt;
         updatedAt = occuredAt;
         trashedAt = null;
@@ -35,9 +36,9 @@ class NoteState {
           CrdtStringChange(value: newTitle, actor: actor, time: occuredAt),
         );
         updatedAt = occuredAt;
-      case NoteContentUpdated(:final newContent):
+      case NoteContentUpdated(:final change):
         _requireCreated();
-        content = newContent;
+        _content.applyChange(change);
         updatedAt = occuredAt;
       case NoteTrashed():
         _requireCreated();

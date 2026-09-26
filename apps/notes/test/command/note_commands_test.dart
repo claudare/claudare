@@ -1,5 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:crdt/crdt_text.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
@@ -68,7 +69,10 @@ void main() {
           ..withEvent(noteStreamRoute, 'one', const NoteCreated(noteId: 'one'));
 
     await tester.run(
-      const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
+      UpdateNoteContent(
+        noteId: 'one',
+        change: testCrdtTextSingleChange('Body'),
+      ),
     );
 
     final events = await tester.getWrittenEvents<NoteEvent>(
@@ -77,7 +81,6 @@ void main() {
     );
     expect(events, hasLength(1));
     expect(events.single, isA<NoteContentUpdated>());
-    expect((events.single as NoteContentUpdated).newContent, 'Body');
   });
 
   test('title update rejects a missing note', () async {
@@ -92,7 +95,10 @@ void main() {
   test('content update rejects a missing note', () async {
     await expectLater(
       createTester().run(
-        const UpdateNoteContent(noteId: 'one', overrideContent: 'Body'),
+        UpdateNoteContent(
+          noteId: 'one',
+          change: testCrdtTextSingleChange('Body'),
+        ),
       ),
       throwsA(isA<StreamNotFoundException>()),
     );

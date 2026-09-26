@@ -1,4 +1,5 @@
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/event/note.dart';
@@ -44,8 +45,13 @@ void main() {
 
   test('updates are visible in note and list queries', () async {
     final noteId = await application.command.createNote();
+
     await application.command.updateNoteTitle(noteId, 'Title');
-    await application.command.updateNoteContent(noteId, 'Body');
+
+    await application.command.updateNoteContent(
+      noteId,
+      testCrdtTextSingleChange('Body'),
+    );
 
     final note = await application.query.note(noteId);
     final list = await application.query.noteList();
@@ -89,6 +95,11 @@ void main() {
   test('reads existing note events with the registered codecs', () async {
     final createdAt = DateTime.utc(2026, 1, 1);
     final editedAt = DateTime.utc(2026, 1, 2);
+
+    final document = CrdtText();
+    final change = testCrdtTextApplyChangeToDocument(document, 'History');
+    expect(change, isNotNull);
+
     await runtime.seedEvents([
       TestEvent(
         actor: 'a',
@@ -105,7 +116,7 @@ void main() {
       TestEvent(
         actor: 'a',
         stream: 'note/old',
-        event: const NoteContentUpdated(noteId: 'old', newContent: 'History'),
+        event: NoteContentUpdated(noteId: 'old', change: change!),
         occuredAt: editedAt,
       ),
     ]);
@@ -118,5 +129,39 @@ void main() {
     expect(note.createdAt, createdAt);
     expect(note.updatedAt, editedAt);
     expect(list.notes['old']!.title, 'Existing');
+  });
+
+  test('crdt text works', () async {
+    final time = DateTime.utc(2026, 1, 1);
+
+    final document = CrdtText();
+    final change = testCrdtTextApplyChangeToDocument(document, 'Hello,');
+    expect(change, isNotNull);
+
+    await runtime.seedEvents([
+      TestEvent(
+        actor: 'a',
+        stream: 'note/greeting',
+        event: const NoteCreated(noteId: 'greeting'),
+        occuredAt: time,
+      ),
+      TestEvent(
+        actor: 'a',
+        stream: 'note/greeting',
+        event: NoteContentUpdated(noteId: 'greeting', change: change!),
+        occuredAt: time,
+      ),
+    ]);
+
+    final note = await application.query.note('greeting');
+    expect(note!.content, 'Hello,');
+
+    final change2 = testCrdtTextApplyChangeToDocument(document, 'Hello, CRDT!');
+    expect(change2, isNotNull);
+
+    await application.command.updateNoteContent('greeting', change2!);
+
+    final updatedNote = await application.query.note('greeting');
+    expect(updatedNote!.content, 'Hello, CRDT!');
   });
 }

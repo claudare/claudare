@@ -1,5 +1,7 @@
 library;
 
+import 'package:crdt/crdt_text.dart';
+
 part 'crdt_text_binding.dart';
 part 'crdt_text_change.dart';
 part 'crdt_text_controller.dart';
@@ -8,6 +10,7 @@ part 'crdt_text_exception.dart';
 part 'crdt_text_id.dart';
 part 'crdt_text_helpers.dart';
 part 'crdt_text_operation.dart';
+part 'crdt_text_test_utils.dart';
 
 /// Mutable RGA document state, independent of the actor editing it.
 ///

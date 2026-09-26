@@ -5,25 +5,25 @@ class NoteContentUpdated extends NoteEvent {
 
   @override
   final String noteId;
-  final String newContent;
+  final CrdtTextChange change;
 
-  const NoteContentUpdated({required this.noteId, required this.newContent});
+  const NoteContentUpdated({required this.noteId, required this.change});
 
   @override
   Map<String, dynamic> toJson() {
-    return {'noteId': noteId, 'newContent': newContent};
+    return {'noteId': noteId, 'change': change};
   }
 
   factory NoteContentUpdated.fromJson(Map<String, dynamic> json) {
     return NoteContentUpdated(
       noteId: json['noteId'],
-      newContent: json['newContent'],
+      change: CrdtTextChange.fromJson(json['change']),
     );
   }
 
   @override
   String toString() {
-    return 'NoteContentUpdated{noteId: $noteId, newContent: $newContent}';
+    return 'NoteContentUpdated{noteId: $noteId, change: $change}';
   }
 }
 

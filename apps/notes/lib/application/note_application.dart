@@ -1,4 +1,5 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:notes/aggregate/note.dart';
 import 'package:notes/aggregate/note_list.dart';
@@ -47,8 +48,8 @@ class NoteCommands {
   Future<void> updateNoteTitle(String noteId, String value) =>
       _runtime.execute(UpdateNoteTitle(noteId: noteId, fullValue: value));
 
-  Future<void> updateNoteContent(String noteId, String value) => _runtime
-      .execute(UpdateNoteContent(noteId: noteId, overrideContent: value));
+  Future<void> updateNoteContent(String noteId, CrdtTextChange change) =>
+      _runtime.execute(UpdateNoteContent(noteId: noteId, change: change));
 
   Future<void> trashNote(String noteId) =>
       _runtime.execute(TrashNote(noteId: noteId));
