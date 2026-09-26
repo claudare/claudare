@@ -13,18 +13,16 @@ sealed class CrdtTextOperation {
     }
   }
 
-  factory CrdtTextOperation.fromJson(Object? json) => _parseJson(() {
-    final map = _jsonMap(json);
+  factory CrdtTextOperation.fromJson(Object? json) {
+    final map = json as Map<String, dynamic>;
     final id = CrdtTextId.fromJson(map['id']);
-    final dependencies = _jsonMap(
-      map['dependencies'],
-    ).map((key, value) => MapEntry(key, _jsonInt(value)));
+    final dependencies = Map<String, int>.from(map['dependencies'] as Map);
     return switch (map['kind']) {
       'insert' => CrdtTextInsert(
         id: id,
         dependencies: dependencies,
         after: map['after'] == null ? null : CrdtTextId.fromJson(map['after']),
-        character: _jsonString(map['character']),
+        character: map['character'] as String,
       ),
       'delete' => CrdtTextDelete(
         id: id,
@@ -33,18 +31,9 @@ sealed class CrdtTextOperation {
       ),
       _ => throw const FormatException('Unknown text operation kind.'),
     };
-  });
+  }
 
   Map<String, Object?> toJson();
-
-  Map<String, Object?> _jsonBase(String kind) => {
-    'kind': kind,
-    'id': id.toJson(),
-    'dependencies': {
-      for (final actor in dependencies.keys.toList()..sort())
-        actor: dependencies[actor],
-    },
-  };
 
   bool _sameBase(CrdtTextOperation other) =>
       id == other.id && _sameMap(dependencies, other.dependencies);
@@ -75,7 +64,12 @@ final class CrdtTextInsert extends CrdtTextOperation {
 
   @override
   Map<String, Object?> toJson() => {
-    ..._jsonBase('insert'),
+    'kind': 'insert',
+    'id': id.toJson(),
+    'dependencies': {
+      for (final actor in dependencies.keys.toList()..sort())
+        actor: dependencies[actor],
+    },
     'after': after?.toJson(),
     'character': character,
   };
@@ -103,7 +97,12 @@ final class CrdtTextDelete extends CrdtTextOperation {
 
   @override
   Map<String, Object?> toJson() => {
-    ..._jsonBase('delete'),
+    'kind': 'delete',
+    'id': id.toJson(),
+    'dependencies': {
+      for (final actor in dependencies.keys.toList()..sort())
+        actor: dependencies[actor],
+    },
     'target': target.toJson(),
   };
 

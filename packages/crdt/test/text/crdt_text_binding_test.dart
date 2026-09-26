@@ -197,7 +197,10 @@ void main() {
     test('supports edits from another bound controller', () {
       final f = _Fixture('ab');
       final otherController = FakeTextController();
-      final other = CrdtTextBinding(text: f.local, controller: otherController);
+      final other = CrdtTextBinding(
+        editContext: f.local,
+        controller: otherController,
+      );
       addTearDown(f.binding.dispose);
       addTearDown(other.dispose);
       otherController.edit('aXb', 2);
@@ -330,18 +333,18 @@ void main() {
 }
 
 final class _Fixture {
-  final CrdtText local = CrdtText(actorId: 'A');
-  final CrdtText remote = CrdtText(actorId: 'B');
+  final CrdtTextEditContext local = editContext('A');
+  final CrdtTextEditContext remote = editContext('B');
   final FakeTextController controller = FakeTextController();
   late final CrdtTextBinding binding;
 
   _Fixture(String content) {
     if (content.isNotEmpty) {
-      final source = CrdtText(actorId: 'S')..insert(0, content);
+      final source = editContext('S')..insert(0, content);
       final initial = save(source);
       local.applyChange(initial);
       remote.applyChange(initial);
     }
-    binding = CrdtTextBinding(text: local, controller: controller);
+    binding = CrdtTextBinding(editContext: local, controller: controller);
   }
 }

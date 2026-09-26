@@ -1,12 +1,12 @@
 part of 'crdt_text.dart';
 
-/// Connects a document to an editor without a dependency on its UI framework.
+/// Connects an editing draft to an editor without depending on its UI framework.
 ///
-/// The document initializes the editor. During IME composition, document edits
+/// The draft initializes the editor. During IME composition, draft edits
 /// still apply, but editor refreshes wait until composition ends. Local edits
 /// target the displayed character IDs even while remote edits are undisplayed.
 final class CrdtTextBinding {
-  final CrdtText _text;
+  final CrdtTextEditContext _editContext;
   final CrdtTextController _controller;
   late List<CrdtTextInsert> _displayed;
   late CrdtTextEditingValue _value;
@@ -15,11 +15,11 @@ final class CrdtTextBinding {
   bool _disposed = false;
 
   CrdtTextBinding({
-    required CrdtText text,
+    required CrdtTextEditContext editContext,
     required CrdtTextController controller,
-  }) : _text = text,
+  }) : _editContext = editContext,
        _controller = controller {
-    _displayed = text._visibleAtoms();
+    _displayed = editContext._draft._visibleAtoms();
     final content = _displayed.map((atom) => atom.character).join();
     _value = CrdtTextEditingValue(
       text: content,
@@ -28,15 +28,17 @@ final class CrdtTextBinding {
     );
     controller.value = _value;
     controller.addListener(_onControllerChange);
-    _text.addListener(_onDocumentChange);
+    _editContext.addListener(_onDocumentChange);
   }
 
-  /// Detaches listeners without disposing the supplied controller or document.
+  CrdtText get _text => _editContext._draft;
+
+  /// Detaches listeners without disposing the supplied controller or context.
   void dispose() {
     if (_disposed) return;
     _disposed = true;
     _controller.removeListener(_onControllerChange);
-    _text.removeListener(_onDocumentChange);
+    _editContext.removeListener(_onDocumentChange);
   }
 
   void _onControllerChange() {
@@ -50,7 +52,7 @@ final class CrdtTextBinding {
     try {
       if (next.text != _value.text) {
         final splice = _findSplice(_value, next);
-        final inserted = _text._replaceIds(
+        final inserted = _editContext._replaceIds(
           _displayed
               .sublist(splice.start, splice.end)
               .map((atom) => atom.id)

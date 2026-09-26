@@ -1,47 +1,55 @@
 # crdt
 
 Text CRDT and timestamp-based value helpers for the Claudare workspace. Import
-the public API through `package:crdt/crdt.dart`.
+the text API through `package:crdt/crdt_text.dart`.
 
 ## Text
 
-`CrdtText` is mutable plain text with deterministic RGA merging. It supports
-insert, delete, and replace operations, incoming `CrdtTextChange` batches, and
-complete JSON snapshots. It depends only on Dart SDK libraries.
+`CrdtText()` is mutable document state with deterministic RGA merging. It
+accepts `CrdtTextChange` batches and supports complete JSON snapshots without
+requiring a local actor ID. It depends only on Dart SDK libraries.
 
-Supply a distinct, nonempty string actor ID for each independent writer. Offsets
-and `length` use UTF-16, matching Dart strings and Flutter selections. Edits
-must fall on Unicode scalar boundaries; malformed strings and split surrogate
-pairs are rejected. Combining sequences are preserved without normalization or
-grapheme-level conflict rules.
+`CrdtTextEditContext(document: document, actorId: actorId)` copies the document
+into a private draft with insert, delete, and replace operations. Supply an
+actor ID for each independent writer. Offsets and `length` use UTF-16, matching
+Dart strings and Flutter selections. Edits must fall on Unicode scalar
+boundaries; malformed strings and split surrogate pairs are rejected. Combining
+sequences are preserved without normalization or grapheme-level conflict rules.
 
 Incoming changes require causal delivery. Missing dependencies and conflicting
 operation IDs throw `CrdtTextException` without partially applying a batch.
 Exact duplicates are accepted. The caller provides delivery and persistence.
 
-Call `prepareChange()` to obtain unsaved local edits, persist its JSON in the
-event log, then call `acknowledgeChange(change)`. Until acknowledgment,
-preparation returns the same immutable batch for retries. Edits made while
-saving remain pending for the next batch. Replayed events are never included in
-local pending edits.
+Call `prepareChange()` on the context to obtain unsaved local edits, persist its
+JSON in the event log, then call `acknowledgeChange(change)`. Until
+acknowledgment, preparation returns the same immutable batch for retries.
+Edits made while saving remain pending for the next batch. Replayed events are
+never included in local pending edits. Editing and acknowledgment do not update
+the original document. Apply persisted changes to it explicitly, and deliver
+incoming changes to the context with `applyChange()` to update the draft.
 
-`toJson()` and `CrdtText.fromJson()` preserve the document and pending save
-state, including a prepared batch. Export does not acknowledge changes.
-Restoration resumes the same actor; initialize a different writer with a new
-actor ID and replay saved changes. Changes also support JSON round trips.
+`CrdtText.toJson()` and `CrdtText.fromJson()` preserve document history,
+including operation actor IDs and tombstones. Snapshots contain no local writer
+identity, pending edits, or prepared batch. A restored document can be edited
+through a fresh context for any actor.
+
+Contexts exist only in memory. Discarding one loses its unsaved edits. See the
+[usage example test](test/text/crdt_text_usage_example_test.dart) for editing,
+persistence, replay, and snapshot restoration without application dependencies.
 
 ## Editors
 
-`CrdtTextBinding` connects the document to a `CrdtTextController`. This small
-interface exposes one complete editing value and listener registration. Its
-value includes text, selection, visual affinity, directionality, and composing
-range. A consumer's Flutter adapter maps these to `TextEditingController.value`
-and forwards its listener methods; this package does not import Flutter.
+`CrdtTextBinding(editContext: context, controller: controller)` connects the
+editing draft to a `CrdtTextController`. This small interface exposes one
+complete editing value and listener registration. Its value includes text,
+selection, visual affinity, directionality, and composing range. A consumer's
+Flutter adapter maps these to `TextEditingController.value` and forwards its
+listener methods; this package does not import Flutter.
 
-Binding initializes the editor from the document with the caret at the end.
+Binding initializes the editor from the draft with the caret at the end.
 Selections follow character anchors through remote edits. During composition,
-document-driven editor refreshes wait until composition ends while local and
-remote document edits continue. Dispose the binding to detach its listeners; the
+draft-driven editor refreshes wait until composition ends while local and
+remote draft edits continue. Dispose the binding to detach its listeners; the
 caller retains ownership of the controller.
 
 ## Limits and validation

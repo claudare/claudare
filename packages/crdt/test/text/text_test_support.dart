@@ -2,7 +2,10 @@ import 'dart:convert';
 
 import 'package:crdt/crdt_text.dart';
 
-CrdtTextChange save(CrdtText text) {
+CrdtTextEditContext editContext(String actorId, {CrdtText? document}) =>
+    CrdtTextEditContext(document: document ?? CrdtText(), actorId: actorId);
+
+CrdtTextChange save(CrdtTextEditContext text) {
   final change = text.prepareChange()!;
   text.acknowledgeChange(change);
   return change;

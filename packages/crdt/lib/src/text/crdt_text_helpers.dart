@@ -37,44 +37,6 @@ List<String> _scalars(String text) {
   return result;
 }
 
-Map<String, Object?> _jsonMap(Object? value) {
-  if (value is! Map || value.keys.any((key) => key is! String)) {
-    throw const FormatException('Expected a JSON object.');
-  }
-  return Map<String, Object?>.from(value);
-}
-
-List<Object?> _jsonList(Object? value) {
-  if (value is! List) throw const FormatException('Expected a JSON array.');
-  return List<Object?>.from(value);
-}
-
-String _jsonString(Object? value) {
-  if (value is! String) throw const FormatException('Expected a JSON string.');
-  return value;
-}
-
-int _jsonInt(Object? value) {
-  if (value is! int) throw const FormatException('Expected a JSON integer.');
-  return value;
-}
-
-void _checkJsonVersion(Map<String, Object?> map) {
-  if (_jsonInt(map['version']) != 1) {
-    throw const FormatException('Unsupported CRDT text JSON version.');
-  }
-}
-
-T _parseJson<T>(T Function() parse) {
-  try {
-    return parse();
-  } on ArgumentError catch (error) {
-    throw FormatException('Invalid CRDT text JSON: ${error.message}');
-  } on CrdtTextException catch (error) {
-    throw FormatException('Invalid CRDT text JSON: ${error.message}');
-  }
-}
-
 bool _sameList<T>(List<T> left, List<T> right) {
   if (left.length != right.length) return false;
   for (var index = 0; index < left.length; index++) {

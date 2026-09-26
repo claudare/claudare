@@ -8,7 +8,7 @@ class NoteState {
   final String noteId;
   bool exists = false;
   final CrdtString _title = CrdtString();
-  String content = '';
+  String content = ''; // TODO: convert this to CrdtText();
   late DateTime createdAt;
   late DateTime updatedAt;
   DateTime? trashedAt;

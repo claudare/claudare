@@ -6,7 +6,7 @@ import 'text_test_support.dart';
 void main() {
   group('save lifecycle', () {
     test('prepares the same batch until acknowledgment', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
+      final text = editContext('A')..insert(0, 'a');
       final first = text.prepareChange()!;
       text.insert(1, 'b');
       expect(text.prepareChange(), same(first));
@@ -22,15 +22,15 @@ void main() {
     test(
       'a failed persistence attempt leaves the batch available for retry',
       () async {
-        final text = CrdtText(actorId: 'A')..insert(0, 'draft');
+        final text = editContext('A')..insert(0, 'draft');
         final batch = text.prepareChange()!;
-        final before = text.toJson();
         Future<void> persist(CrdtTextChange change) async {
           throw const FormatException('Storage rejected the write.');
         }
 
         await expectLater(persist(batch), throwsFormatException);
-        expect(text.toJson(), before);
+        expect(text.text, 'draft');
+        expect(text.hasPendingChanges, isTrue);
         expect(text.prepareChange(), same(batch));
       },
     );
@@ -38,7 +38,7 @@ void main() {
     test(
       'acknowledgment clears only local edits and creates no text notification',
       () {
-        final text = CrdtText(actorId: 'A')..insert(0, 'a');
+        final text = editContext('A')..insert(0, 'a');
         var notified = false;
         text.addListener(() => notified = true);
         text.acknowledgeChange(text.prepareChange()!);
@@ -49,26 +49,26 @@ void main() {
     );
 
     test('rejects an acknowledgment before preparation', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
+      final text = editContext('A')..insert(0, 'a');
       final candidate = CrdtTextChange([insertion(1, character: 'a')]);
-      final before = text.toJson();
       expect(() => text.acknowledgeChange(candidate), throwsArgumentError);
-      expect(text.toJson(), before);
+      expect(text.text, 'a');
+      expect(text.prepareChange(), candidate);
     });
 
     test('rejects stale acknowledgments without discarding later edits', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
+      final text = editContext('A')..insert(0, 'a');
       final first = save(text);
       text.insert(1, 'b');
-      text.prepareChange();
-      final before = text.toJson();
+      final before = text.prepareChange();
       expect(() => text.acknowledgeChange(first), throwsArgumentError);
-      expect(text.toJson(), before);
+      expect(text.prepareChange(), same(before));
+      expect(text.text, 'ab');
     });
 
     test('captures local edits on both sides of a remote change', () {
-      final a = CrdtText(actorId: 'A')..insert(0, 'a');
-      final b = CrdtText(actorId: 'B')..insert(0, 'b');
+      final a = editContext('A')..insert(0, 'a');
+      final b = editContext('B')..insert(0, 'b');
       final remote = save(b);
       a.applyChange(remote);
       a.insert(a.length, '!');
@@ -78,7 +78,7 @@ void main() {
         everyElement('A'),
       );
 
-      final receiver = CrdtText(actorId: 'C');
+      final receiver = CrdtText();
       expect(
         () => receiver.applyChange(local),
         throwsA(isA<CrdtTextException>()),
@@ -91,9 +91,9 @@ void main() {
     });
 
     test('allows remote replies to a prepared batch before acknowledgment', () {
-      final a = CrdtText(actorId: 'A')..insert(0, 'a');
+      final a = editContext('A')..insert(0, 'a');
       final prepared = a.prepareChange()!;
-      final b = CrdtText(actorId: 'B')..applyChange(prepared);
+      final b = editContext('B')..applyChange(prepared);
       b.insert(1, 'b');
       final reply = save(b);
       a.applyChange(reply);
@@ -106,79 +106,111 @@ void main() {
     });
 
     test('rejects another writer extending the local actor while dirty', () {
-      final a = CrdtText(actorId: 'A')..insert(0, 'a');
-      final other = CrdtText(actorId: 'A')..applyChange(a.prepareChange()!);
+      final a = editContext('A')..insert(0, 'a');
+      final other = editContext('A')..applyChange(a.prepareChange()!);
       other.insert(1, 'b');
-      final before = a.toJson();
+      final before = a.prepareChange();
       expect(
         () => a.applyChange(save(other)),
         throwsA(isA<CrdtTextException>()),
       );
-      expect(a.toJson(), before);
+      expect(a.text, 'a');
+      expect(a.prepareChange(), same(before));
+      a.acknowledgeChange(before!);
+      expect(a.hasPendingChanges, isFalse);
     });
   });
 
   group('JSON persistence', () {
     test('empty state round trips', () {
-      final text = CrdtText(actorId: 'A');
+      final text = CrdtText();
       final restored = CrdtText.fromJson(jsonCopy(text.toJson()));
       expect(restored.toJson(), text.toJson());
     });
 
     test('restores tombstones and permits later insertion after them', () {
-      final a = CrdtText(actorId: 'A')..insert(0, 'abc');
+      final a = editContext('A')..insert(0, 'abc');
       final initial = save(a);
-      final b = CrdtText(actorId: 'B')..applyChange(initial);
+      final document = CrdtText()..applyChange(initial);
+      final b = editContext('B')..applyChange(initial);
       a.delete(1, 2);
-      save(a);
+      document.applyChange(save(a));
       b.insert(2, 'X');
-      final restored = CrdtText.fromJson(jsonCopy(a.toJson()));
+      final restored = CrdtText.fromJson(jsonCopy(document.toJson()));
       restored.applyChange(save(b));
       expect(restored.text, 'aXc');
-      expect(restored.hasPendingChanges, isFalse);
     });
 
-    test('restores an outstanding save and edits made after preparation', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a😀');
-      final first = text.prepareChange()!;
-      text.insert(text.length, 'b');
-      final snapshot = jsonCopy(text.toJson());
+    test('snapshots contain document history without local editing state', () {
+      final document = CrdtText();
+      final context = editContext('A', document: document)..insert(0, 'a😀');
+      document.applyChange(save(context));
+      context.insert(context.length, 'b');
+      context.prepareChange();
+      context.insert(context.length, 'c');
+
+      final snapshot = jsonCopy(document.toJson());
+      expect(snapshot.keys, ['operations']);
       final restored = CrdtText.fromJson(snapshot);
-      expect(restored.actorId, 'A');
-      expect(restored.prepareChange(), first);
-      restored.acknowledgeChange(first);
-      final later = restored.prepareChange()!;
-      expect(later.operations, hasLength(1));
-      expect((later.operations.single as CrdtTextInsert).character, 'b');
-      restored.acknowledgeChange(later);
-      restored.insert(restored.length, '!');
-      expect(restored.prepareChange()!.operations.single.id.counter, 4);
-      expect(restored.text, 'a😀b!');
-      expect(text.toJson(), snapshot);
+      expect(restored.text, 'a😀');
+      expect(restored.toJson(), snapshot);
+      final fresh = editContext('A', document: restored);
+      expect(fresh.hasPendingChanges, isFalse);
+      expect(fresh.prepareChange(), isNull);
     });
 
-    test('snapshot export does not prepare or acknowledge edits', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
-      final snapshot = text.toJson();
-      text.insert(1, 'b');
-      expect(snapshot['prepared'], isNull);
-      expect(text.prepareChange()!.operations, hasLength(2));
+    for (final actor in ['A', 'B']) {
+      test('restored history can be edited by actor $actor', () {
+        final document = CrdtText();
+        final original = editContext('A', document: document)..insert(0, 'ab');
+        document.applyChange(save(original));
+        original.delete(1, 2);
+        document.applyChange(save(original));
+        final snapshot = jsonCopy(document.toJson());
+        final restored = CrdtText.fromJson(snapshot);
+        final context = editContext(actor, document: restored);
+        context.insert(1, '!');
+        final change = context.prepareChange()!;
+        expect(change.operations.single.id, textId(4, actor));
+        expect(change.operations.single.dependencies, {'A': 3});
+        restored.applyChange(change);
+        expect(restored.text, 'a!');
+        expect(document.toJson(), snapshot);
+      });
+    }
+
+    test('snapshot export does not prepare local edits', () {
+      final document = CrdtText();
+      final context = editContext('A', document: document)..insert(0, 'a');
+      document.toJson();
+      context.insert(1, 'b');
+      expect(context.prepareChange()!.operations, hasLength(2));
+    });
+
+    test('snapshot export does not acknowledge a prepared batch', () {
+      final document = CrdtText();
+      final context = editContext('A', document: document)..insert(0, 'a');
+      final prepared = context.prepareChange()!;
+      document.applyChange(prepared);
+      document.toJson();
+      expect(context.prepareChange(), same(prepared));
+      expect(context.hasPendingChanges, isTrue);
     });
 
     test('change JSON round trips insertions and deletions', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'x😀');
+      final text = editContext('A')..insert(0, 'x😀');
       text.delete(0, 1);
       final change = text.prepareChange()!;
+      expect(change.toJson().keys, ['operations']);
       final restored = CrdtTextChange.fromJson(jsonCopy(change.toJson()));
       expect(restored, change);
       expect(restored.hashCode, change.hashCode);
-      final replica = CrdtText(actorId: 'B')..applyChange(restored);
+      final replica = CrdtText()..applyChange(restored);
       expect(replica.text, '😀');
     });
 
     test('restored state detects a conflicting duplicate', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
-      save(text);
+      final text = CrdtText()..applyChange(CrdtTextChange([insertion(1)]));
       final restored = CrdtText.fromJson(jsonCopy(text.toJson()));
       expect(
         () => restored.applyChange(
@@ -202,86 +234,90 @@ void main() {
     });
 
     test('mutating exported JSON cannot mutate the document', () {
-      final text = CrdtText(actorId: 'A')..insert(0, 'a');
+      final text = CrdtText()..applyChange(CrdtTextChange([insertion(1)]));
       final before = text.toJson();
       final json = text.toJson();
       ((json['operations'] as List).first as Map)['character'] = 'b';
-      (json['pending'] as List).clear();
+      (json['operations'] as List).clear();
       expect(text.toJson(), before);
     });
 
-    final corruptions = <(String, void Function(Map<String, Object?>))>[
-      ('unknown version', (json) => json['version'] = 2),
-      ('noninteger version', (json) => json['version'] = 1.0),
-      ('empty actor', (json) => json['actorId'] = ''),
-      ('missing operations', (json) => json.remove('operations')),
-      (
-        'duplicate operation',
-        (json) {
-          final operations = json['operations'] as List;
-          operations.add(operations.first);
-        },
-      ),
-      (
-        'unknown operation kind',
-        (json) {
-          ((json['operations'] as List).first as Map)['kind'] = 'other';
-        },
-      ),
-      (
-        'invalid scalar',
-        (json) {
-          ((json['operations'] as List).first as Map)['character'] = 'ab';
-        },
-      ),
-      (
-        'noninteger counter',
-        (json) {
-          (((json['operations'] as List).first as Map)['id']
-                  as Map)['counter'] =
-              1.5;
-        },
-      ),
-      (
-        'missing causal predecessor',
-        (json) {
-          (json['operations'] as List).removeAt(0);
-        },
-      ),
-      (
-        'pending prefix instead of suffix',
-        (json) {
-          (json['pending'] as List).removeLast();
-        },
-      ),
-      ('missing prepared state', (json) => json.remove('prepared')),
-      (
-        'prepared mismatch',
-        (json) {
-          json['prepared'] = CrdtTextChange([
-            insertion(1, character: 'z'),
-          ]).toJson();
-        },
-      ),
-    ];
-    for (final (name, corrupt) in corruptions) {
+    final corruptions =
+        <(String, void Function(Map<String, Object?>), Matcher)>[
+          (
+            'empty operation actor',
+            (json) {
+              (((json['operations'] as List).first as Map)['id']
+                      as Map)['actorId'] =
+                  '';
+            },
+            throwsArgumentError,
+          ),
+          (
+            'missing operations',
+            (json) => json.remove('operations'),
+            throwsA(isA<TypeError>()),
+          ),
+          (
+            'duplicate operation',
+            (json) {
+              final operations = json['operations'] as List;
+              operations.add(operations.first);
+            },
+            throwsFormatException,
+          ),
+          (
+            'unknown operation kind',
+            (json) {
+              ((json['operations'] as List).first as Map)['kind'] = 'other';
+            },
+            throwsFormatException,
+          ),
+          (
+            'invalid scalar',
+            (json) {
+              ((json['operations'] as List).first as Map)['character'] = 'ab';
+            },
+            throwsArgumentError,
+          ),
+          (
+            'noninteger counter',
+            (json) {
+              (((json['operations'] as List).first as Map)['id']
+                      as Map)['counter'] =
+                  1.5;
+            },
+            throwsA(isA<TypeError>()),
+          ),
+          (
+            'missing causal predecessor',
+            (json) {
+              (json['operations'] as List).removeAt(0);
+            },
+            throwsA(isA<CrdtTextException>()),
+          ),
+        ];
+    for (final (name, corrupt, expectedError) in corruptions) {
       test('rejects snapshot with $name', () {
-        final text = CrdtText(actorId: 'A')..insert(0, 'ab');
+        final context = editContext('A')..insert(0, 'ab');
+        final text = CrdtText()..applyChange(save(context));
         final json = jsonCopy(text.toJson());
         corrupt(json);
-        expect(() => CrdtText.fromJson(json), throwsFormatException);
+        expect(() => CrdtText.fromJson(json), expectedError);
       });
     }
 
-    for (final json in [
-      null,
-      [],
-      {},
-      {'version': 1, 'operations': []},
-    ]) {
+    for (final json in [null, [], {}]) {
       test('rejects malformed change $json', () {
-        expect(() => CrdtTextChange.fromJson(json), throwsFormatException);
+        expect(() => CrdtTextChange.fromJson(json), throwsA(isA<TypeError>()));
       });
     }
+
+    test('rejects a decoded change without operations', () {
+      expect(
+        () => CrdtTextChange.fromJson({'operations': []}),
+        throwsArgumentError,
+      );
+    });
   });
 }

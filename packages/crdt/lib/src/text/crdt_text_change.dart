@@ -16,16 +16,14 @@ final class CrdtTextChange {
 
   String get actorId => operations.first.id.actorId;
 
-  factory CrdtTextChange.fromJson(Object? json) => _parseJson(() {
-    final map = _jsonMap(json);
-    _checkJsonVersion(map);
+  factory CrdtTextChange.fromJson(Object? json) {
+    final map = json as Map<String, dynamic>;
     return CrdtTextChange(
-      _jsonList(map['operations']).map(CrdtTextOperation.fromJson),
+      (map['operations'] as List).map(CrdtTextOperation.fromJson),
     );
-  });
+  }
 
   Map<String, Object?> toJson() => {
-    'version': 1,
     'operations': operations.map((operation) => operation.toJson()).toList(),
   };
 

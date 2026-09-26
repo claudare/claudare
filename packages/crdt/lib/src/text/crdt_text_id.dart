@@ -10,13 +10,13 @@ final class CrdtTextId implements Comparable<CrdtTextId> {
     _requireCounter(counter);
   }
 
-  factory CrdtTextId.fromJson(Object? json) => _parseJson(() {
-    final map = _jsonMap(json);
+  factory CrdtTextId.fromJson(Object? json) {
+    final map = json as Map<String, dynamic>;
     return CrdtTextId(
-      actorId: _jsonString(map['actorId']),
-      counter: _jsonInt(map['counter']),
+      actorId: map['actorId'] as String,
+      counter: map['counter'] as int,
     );
-  });
+  }
 
   Map<String, Object?> toJson() => {'actorId': actorId, 'counter': counter};
 

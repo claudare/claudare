@@ -7,8 +7,8 @@ import 'text_test_support.dart';
 
 void main() {
   test('merges the transcript Helo example', () {
-    final a = CrdtText(actorId: 'A')..insert(0, 'Helo');
-    final b = CrdtText(actorId: 'B')..applyChange(save(a));
+    final a = editContext('A')..insert(0, 'Helo');
+    final b = editContext('B')..applyChange(save(a));
     a.insert(3, 'l');
     b.insert(4, '!');
     final left = save(a);
@@ -20,10 +20,10 @@ void main() {
   });
 
   test('keeps concurrent forward insertion runs together', () {
-    final source = CrdtText(actorId: 'S')..insert(0, 'ab');
+    final source = editContext('S')..insert(0, 'ab');
     final initial = save(source);
-    final a = CrdtText(actorId: 'A')..applyChange(initial);
-    final b = CrdtText(actorId: 'B')..applyChange(initial);
+    final a = editContext('A')..applyChange(initial);
+    final b = editContext('B')..applyChange(initial);
     a.insert(2, 'de');
     b.insert(2, 'fg');
     final left = save(a);
@@ -35,10 +35,10 @@ void main() {
   });
 
   test('merges overlapping deletions by insertion identity', () {
-    final source = CrdtText(actorId: 'S')..insert(0, 'abcd');
+    final source = editContext('S')..insert(0, 'abcd');
     final initial = save(source);
-    final a = CrdtText(actorId: 'A')..applyChange(initial);
-    final b = CrdtText(actorId: 'B')..applyChange(initial);
+    final a = editContext('A')..applyChange(initial);
+    final b = editContext('B')..applyChange(initial);
     a.delete(1, 3);
     b.delete(2, 4);
     final left = save(a);
@@ -53,11 +53,11 @@ void main() {
   test(
     'exhaustive causal permutations preserve text and operation records',
     () {
-      final source = CrdtText(actorId: 'S')..insert(0, 'x');
+      final source = editContext('S')..insert(0, 'x');
       final initial = save(source);
-      final a = CrdtText(actorId: 'A')..applyChange(initial);
-      final b = CrdtText(actorId: 'B')..applyChange(initial);
-      final c = CrdtText(actorId: 'C')..applyChange(initial);
+      final a = editContext('A')..applyChange(initial);
+      final b = editContext('B')..applyChange(initial);
+      final c = editContext('C')..applyChange(initial);
       a.insert(1, 'a');
       final firstA = save(a);
       a.insert(2, 'A');
@@ -81,7 +81,7 @@ void main() {
           continue;
         }
         schedules++;
-        final replica = CrdtText(actorId: 'R')..applyChange(initial);
+        final replica = CrdtText()..applyChange(initial);
         for (final change in ordering) {
           replica.applyChange(change);
           replica.applyChange(
@@ -101,9 +101,10 @@ void main() {
       'seed $seed converges after partitions, duplicate delivery, and reload',
       () {
         final random = Random(seed);
+        final documents = List.generate(3, (_) => CrdtText());
         final replicas = List.generate(
           3,
-          (index) => CrdtText(actorId: 'actor$index'),
+          (index) => editContext('actor$index', document: documents[index]),
         );
         final received = List.generate(3, (_) => <CrdtTextId>{});
         final history = <CrdtTextChange>[];
@@ -128,6 +129,7 @@ void main() {
             replica.replace(boundaries[start], boundaries[end], replacement);
             if (replica.hasPendingChanges) {
               final change = save(replica);
+              documents[index].applyChange(change);
               history.add(change);
               received[index].addAll(change.operations.map((op) => op.id));
             }
@@ -138,11 +140,18 @@ void main() {
             if (ready.isNotEmpty) {
               final change = ready[random.nextInt(ready.length)];
               replica.applyChange(change);
+              documents[index].applyChange(change);
               received[index].addAll(change.operations.map((op) => op.id));
             }
           }
           if (step % 19 == 0) {
-            replicas[index] = CrdtText.fromJson(jsonCopy(replica.toJson()));
+            documents[index] = CrdtText.fromJson(
+              jsonCopy(documents[index].toJson()),
+            );
+            replicas[index] = editContext(
+              'actor$index',
+              document: documents[index],
+            );
           }
         }
 
@@ -172,6 +181,7 @@ void main() {
               replicas[index].applyChange(
                 CrdtTextChange.fromJson(jsonCopy(change.toJson())),
               );
+              documents[index].applyChange(change);
               received[index].addAll(change.operations.map((op) => op.id));
             }
           }
@@ -191,12 +201,11 @@ void main() {
                 .map((op) => op.character)
                 .toList()
               ..sort();
-        for (final replica in replicas) {
+        for (var index = 0; index < replicas.length; index++) {
+          final replica = replicas[index];
           expect(replica.text, replicas.first.text);
-          expect(
-            replica.toJson()['operations'],
-            replicas.first.toJson()['operations'],
-          );
+          expect(documents[index].text, replica.text);
+          expect(documents[index].toJson(), documents.first.toJson());
           final actualCharacters =
               replica.text.runes.map(String.fromCharCode).toList()..sort();
           expect(actualCharacters, expectedCharacters);
