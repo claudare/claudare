@@ -8,13 +8,31 @@ import 'package:notes/stream_route/note_stream_route.dart';
 class NoteState implements AggregateState<NoteEvent> {
   final String noteId;
   bool exists = false;
-  final CrdtString _title = CrdtString();
-  final CrdtText _content = CrdtText();
+  final CrdtString _title;
+  final CrdtText _content;
   late DateTime createdAt;
   late DateTime updatedAt;
   DateTime? trashedAt;
 
-  NoteState(this.noteId);
+  NoteState(this.noteId) : _title = CrdtString(), _content = CrdtText();
+
+  NoteState._copy(this.noteId, this._title, this._content);
+
+  /// Returns independent state with the same resolved note history.
+  NoteState clone() {
+    final copy = NoteState._copy(
+      noteId,
+      CrdtString.fromJson(_title.toJson()),
+      _content.fork(),
+    );
+    copy.exists = exists;
+    if (exists) {
+      copy.createdAt = createdAt;
+      copy.updatedAt = updatedAt;
+    }
+    copy.trashedAt = trashedAt;
+    return copy;
+  }
 
   String get title => _title.value;
   String get content => _content.text;
@@ -62,6 +80,6 @@ class NoteState implements AggregateState<NoteEvent> {
 
 Aggregate<NoteEvent, NoteState> noteAggregate(String noteId) => Aggregate(
   name: 'Note $noteId',
-  filter: PatternFilter.exact(noteStreamRoute.buildPath('noteId')),
+  filter: PatternFilter.exact(noteStreamRoute.buildPath(noteId)),
   state: NoteState(noteId),
 );

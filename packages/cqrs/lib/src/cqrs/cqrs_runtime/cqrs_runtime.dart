@@ -86,7 +86,7 @@ class CqrsRuntime {
       if (decoded is! TEvent) {
         // its programmers job to specify the correct event type
         throw StateError(
-          'stateless decoded event is not of type $TEvent: $decoded',
+          'stateless decoded event is not of type $TEvent: ${decoded.runtimeType}',
         );
       }
 
@@ -97,7 +97,7 @@ class CqrsRuntime {
         occuredAt: logEvent.occuredAt,
       );
       apply(envelope);
-      _logger.debug('stateless applied $envelope');
+      _logger.debug('stateless applied event at position ${logEvent.position}');
       sequence = logEvent.position;
       applyCount++;
     }
@@ -113,6 +113,7 @@ class CqrsRuntime {
 
   /// Catches up the aggregate to the latest version.
   /// Returns the same [Aggregate] that was passed in.
+  /// [onApplied] runs before state mutation so a callback failure can retry.
   Future<Aggregate<TEvent, TState>>
   resolve<TEvent extends Object, TState extends AggregateState<TEvent>>(
     Aggregate<TEvent, TState> aggregate, {
@@ -135,7 +136,7 @@ class CqrsRuntime {
       if (decoded is! TEvent) {
         // its programmers job to specify the correct event type
         throw StateError(
-          '$aggregate: decoded event is not of type $TEvent: $decoded',
+          '$aggregate: decoded event is not of type $TEvent: ${decoded.runtimeType}',
         );
       }
 
@@ -146,11 +147,13 @@ class CqrsRuntime {
         occuredAt: logEvent.occuredAt,
       );
 
-      aggregate.state.apply(envelope);
       if (onApplied != null) {
         onApplied(envelope);
       }
-      _logger.debug('$aggregate: applied $envelope');
+      aggregate.state.apply(envelope);
+      _logger.debug(
+        '$aggregate: applied event at position ${logEvent.position}',
+      );
       aggregate.sequence = logEvent.position;
       applyCount++;
     }

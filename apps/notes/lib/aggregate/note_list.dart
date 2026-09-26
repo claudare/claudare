@@ -18,6 +18,15 @@ class NoteListState implements AggregateState<NoteEvent> {
 
   int get activeCount => notes.values.where((note) => !note.isTrashed).length;
 
+  /// Returns independent note states for a completed query.
+  NoteListState clone() {
+    final copy = NoteListState();
+    for (final entry in notes.entries) {
+      copy.notes[entry.key] = entry.value.clone();
+    }
+    return copy;
+  }
+
   List<NoteState> toSortedList({
     NoteCategory category = NoteCategory.active,
     NoteSortOrder order = NoteSortOrder.createdAtDescending,

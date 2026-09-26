@@ -129,7 +129,7 @@ class NoteQueries {
   Future<NoteListState> noteList() {
     return _noteListMutex.protect(() async {
       await _runtime.resolve(_noteList);
-      return _noteList.state;
+      return _noteList.state.clone();
     });
   }
 

@@ -16,5 +16,5 @@ class EventEnvelope<TEvent extends Object> {
   @override
   String toString() =>
       'EventEnvelope(actor: $actor, streamPath: $streamPath, '
-      'event: $event, occuredAt: $occuredAt)';
+      'eventType: ${event.runtimeType}, occuredAt: $occuredAt)';
 }

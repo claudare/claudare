@@ -16,6 +16,9 @@ void main() {
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
       );
       final id = await app.command.createNote();
+      final aggregate = noteAggregate(id);
+      await app.query.catchupNote(aggregate, onApplied: (_) {});
+      expect(aggregate.sequence, 0);
       final other = await app.command.createNote();
       await app.command.updateNoteTitle(other, 'Other');
       await app.command.updateNoteTitle(id, 'Title');
@@ -24,7 +27,6 @@ void main() {
         'Body',
         actorId: 'remote',
       );
-      final aggregate = noteAggregate(id)..sequence = 0;
       final events = <EventEnvelope<NoteEvent>>[];
       await app.query.catchupNote(aggregate, onApplied: events.add);
       expect(events.map((event) => event.event.runtimeType), [
@@ -35,34 +37,29 @@ void main() {
       expect(events.first.actor, app.actor);
       expect(aggregate.sequence, 4);
     },
-    skip: 'Known bug: noteAggregate filters the literal noteId path.',
   );
 
-  test(
-    'refresh advances past non-content events and empty reads',
-    () async {
-      final store = _ObservedStore();
-      final app = NoteApplication(
-        cqrsRuntime: CqrsTestRuntime(eventStore: store),
-      );
-      final id = await app.command.createNote();
-      final controller = NoteController(app);
-      addTearDown(controller.dispose);
-      await controller.load(id);
-      await app.command.updateNoteTitle(id, 'Title');
-      await app.command.trashNote(id);
-      store.reads.clear();
-      await controller.refresh();
-      expect(store.reads.first, 1);
-      expect(controller.isTrashed, isTrue);
-      store.reads.clear();
-      await controller.refresh();
-      await controller.refresh();
-      expect(store.reads, [3, 3]);
-      expect(controller.content.prepareChange(), isNull);
-    },
-    skip: 'Known bug: noteAggregate filters the literal noteId path.',
-  );
+  test('refresh advances past non-content events and empty reads', () async {
+    final store = _ObservedStore();
+    final app = NoteApplication(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+    );
+    final id = await app.command.createNote();
+    final controller = NoteController(app);
+    addTearDown(controller.dispose);
+    await controller.load(id);
+    await app.command.updateNoteTitle(id, 'Title');
+    await app.command.trashNote(id);
+    store.reads.clear();
+    await controller.refresh();
+    expect(store.reads.first, 1);
+    expect(controller.isTrashed, isTrue);
+    store.reads.clear();
+    await controller.refresh();
+    await controller.refresh();
+    expect(store.reads, [3, 3]);
+    expect(controller.content.prepareChange(), isNull);
+  });
 
   test(
     'refresh resumes after the last successfully delivered event on failure',
@@ -94,7 +91,6 @@ void main() {
       expect(controller.content.text, 'One two');
       expect(controller.content.prepareChange(), isNull);
     },
-    skip: 'Known bug: noteAggregate filters the literal noteId path.',
   );
 }
 

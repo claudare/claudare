@@ -105,33 +105,63 @@ void main() {
     expect(values, ['opened', 'deposit']);
   });
 
-  test(
-    'callback failure does not apply the event twice on retry',
-    () async {
-      await _appendAccountEvents(eventStore);
-      final aggregate = _envelopeAggregate('account/one');
-      var failed = false;
-      await expectLater(
-        runtime.resolve(
-          aggregate,
-          onApplied: (_) {
-            if (!failed) {
-              failed = true;
-              throw StateError('callback failed');
-            }
-          },
-        ),
-        throwsStateError,
-      );
-      await runtime.resolve(aggregate);
-      expect(aggregate.state.events.map((v) => v.event.value), [
-        'opened',
-        'deposit',
-      ]);
-    },
-    skip:
-        'Known bug: callback failure leaves mutated state before sequence update.',
-  );
+  test('resolution diagnostics omit event payloads', () async {
+    await _appendAccountEvents(eventStore);
+    final logger = RecordingLogger();
+    final observed = CqrsRuntime(
+      actor: 'test-actor',
+      eventStore: eventStore,
+      logger: logger,
+      timeProvider: FakeTimeProviderStatic.zero(),
+    );
+    observed.eventRegistry
+      ..add(const _TestEventCodec())
+      ..freeze();
+
+    await observed.resolve(_envelopeAggregate('account/one'));
+    await observed.resolveStateless<_TestEvent>(
+      filter: const PatternFilter.exact('account/one'),
+      apply: (_) {},
+    );
+
+    final messages = logger.entries.map((entry) => entry.message).join(' ');
+    expect(messages, isNot(contains('opened')));
+    expect(messages, isNot(contains('deposit')));
+    expect(
+      EventEnvelope(
+        actor: 'a',
+        streamPath: 'account/one',
+        event: const _TestEvent('secret', 'one'),
+        occuredAt: _timestamp,
+      ).toString(),
+      isNot(contains('secret')),
+    );
+  });
+
+  test('callback failure does not apply the event twice on retry', () async {
+    await _appendAccountEvents(eventStore);
+    final aggregate = _envelopeAggregate('account/one');
+    var failed = false;
+    await expectLater(
+      runtime.resolve(
+        aggregate,
+        onApplied: (_) {
+          if (!failed) {
+            failed = true;
+            throw StateError('callback failed');
+          }
+        },
+      ),
+      throwsStateError,
+    );
+    expect(aggregate.state.events, isEmpty);
+    expect(aggregate.sequence, isNull);
+    await runtime.resolve(aggregate);
+    expect(aggregate.state.events.map((v) => v.event.value), [
+      'opened',
+      'deposit',
+    ]);
+  });
 }
 
 Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
@@ -188,6 +218,9 @@ final class _TestEvent {
   final String accountId;
 
   const _TestEvent(this.value, this.accountId);
+
+  @override
+  String toString() => value;
 }
 
 final class _TestEventCodec implements EventCodec<_TestEvent> {

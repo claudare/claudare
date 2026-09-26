@@ -24,9 +24,9 @@ class MakeshiftCrdt {
       _map[noteId] = NoteExistence(noteId, false, time);
       return;
     }
-    if (time.compareTo(v.time) > 0) {
+    if (time.compareTo(v.time) >= 0) {
       v.isActive = false;
-      v.time = v.time;
+      v.time = time;
     }
   }
 
@@ -36,9 +36,9 @@ class MakeshiftCrdt {
       _map[noteId] = NoteExistence(noteId, true, time);
       return;
     }
-    if (time.compareTo(v.time) > 0) {
+    if (time.compareTo(v.time) >= 0) {
       v.isActive = true;
-      v.time = v.time;
+      v.time = time;
     }
   }
 }

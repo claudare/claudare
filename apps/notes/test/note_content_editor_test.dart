@@ -13,7 +13,6 @@ import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/event/note.dart';
 
 void main() {
-  // Skipped widget tests need note catchup, which filters the literal noteId.
   for (final (fieldIndex, value) in [(0, 'Shortcut title'), (1, 'Body')]) {
     testWidgets('Ctrl+S saves field $fieldIndex without moving focus', (
       tester,
@@ -39,7 +38,7 @@ void main() {
         value,
       );
       expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
-    }, skip: true);
+    });
   }
 
   for (final existing in [false, true]) {
@@ -57,7 +56,7 @@ void main() {
 
       expect(find.text('Nothing to save'), findsOneWidget);
       expect((await app.query.noteList()).activeCount, existing ? 1 : 0);
-    }, skip: existing);
+    });
   }
 
   testWidgets('navigation saves a new content-only note', (tester) async {
@@ -77,7 +76,7 @@ void main() {
     final notes = (await app.query.noteList()).notes;
     expect(notes, hasLength(1));
     expect(notes.values.single.content, 'New content');
-  }, skip: true);
+  });
 
   testWidgets('application replacement detaches the previous content draft', (
     tester,
@@ -101,7 +100,7 @@ void main() {
       (await second.query.noteList()).notes.values.single.content,
       'Draft',
     );
-  }, skip: true);
+  });
 
   testWidgets('successive UI edits persist and reopen with their actor', (
     tester,
@@ -119,7 +118,7 @@ void main() {
     expect(events.every((event) => event.change.actorId == app.actor), isTrue);
     await _reopen(tester, app, id);
     expect(_content(tester).text, '');
-  }, skip: true);
+  });
 
   testWidgets('refresh merges external edits with an unsaved UI draft', (
     tester,
@@ -154,7 +153,7 @@ void main() {
     await _save(tester);
     await _reopen(tester, app, id);
     expect(_content(tester).text, 'Local Base one two');
-  }, skip: true);
+  });
 
   testWidgets('refresh preserves selection before externally appended text', (
     tester,
@@ -176,7 +175,7 @@ void main() {
     await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(_content(tester).selection.baseOffset, 2);
-  }, skip: true);
+  });
 
   testWidgets('refresh waits for composition before updating the field', (
     tester,
@@ -206,7 +205,7 @@ void main() {
     controller.value = controller.value.copyWith(composing: TextRange.empty);
     await tester.pump();
     expect(controller.text, 'abcX');
-  }, skip: true);
+  });
 
   testWidgets('failed content save retries the prepared batch', (tester) async {
     final store = _ControlledStore();
@@ -224,7 +223,7 @@ void main() {
     await _save(tester);
     expect((await app.query.note(id)).content, 'Draft');
     expect(await _contentEvents(app, id), hasLength(1));
-  }, skip: true);
+  });
 
   testWidgets('edits during saving are persisted in a subsequent batch', (
     tester,
@@ -246,7 +245,7 @@ void main() {
     final note = await app.query.note(id);
     expect(note.content, 'First second');
     expect(await _contentEvents(app, id), hasLength(2));
-  }, skip: true);
+  });
 
   testWidgets('selection changes and unchanged saves emit no content events', (
     tester,
@@ -257,7 +256,7 @@ void main() {
     await tester.tap(find.byType(TextField).last);
     await _save(tester);
     expect(await _contentEvents(app, id), isEmpty);
-  }, skip: true);
+  });
 }
 
 TextEditingController _content(WidgetTester tester) =>

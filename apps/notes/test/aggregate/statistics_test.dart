@@ -23,30 +23,51 @@ void main() {
     expect(state.activeCount, 2);
   });
 
-  test(
-    'older trash does not override a later restore',
-    () {
-      final state =
-          AggregateTester(statisticsAggregate())
-              .withEvent(
-                'note/one',
-                const NoteCreated(noteId: 'one'),
-                occuredAt: DateTime.utc(2026, 1, 1),
-              )
-              .withEvent(
-                'note/one',
-                const NoteRestored(noteId: 'one'),
-                occuredAt: DateTime.utc(2026, 1, 3),
-              )
-              .withEvent(
-                'note/one',
-                const NoteTrashed(noteId: 'one'),
-                occuredAt: DateTime.utc(2026, 1, 2),
-              )
-              .run();
+  test('later replayed change wins when timestamps tie', () {
+    final time = DateTime.utc(2026, 1, 1);
+    final state =
+        AggregateTester(statisticsAggregate())
+            .withEvent(
+              'note/one',
+              const NoteCreated(noteId: 'one'),
+              occuredAt: time,
+            )
+            .withEvent(
+              'note/one',
+              const NoteTrashed(noteId: 'one'),
+              occuredAt: time,
+            )
+            .withEvent(
+              'note/one',
+              const NoteRestored(noteId: 'one'),
+              occuredAt: time,
+            )
+            .run();
 
-      expect(state.activeCount, 1);
-    },
-    skip: 'Known bug: statistics does not update the stored event time.',
-  );
+    expect(state.eventCount, 3);
+    expect(state.activeCount, 1);
+  });
+
+  test('older trash does not override a later restore', () {
+    final state =
+        AggregateTester(statisticsAggregate())
+            .withEvent(
+              'note/one',
+              const NoteCreated(noteId: 'one'),
+              occuredAt: DateTime.utc(2026, 1, 1),
+            )
+            .withEvent(
+              'note/one',
+              const NoteRestored(noteId: 'one'),
+              occuredAt: DateTime.utc(2026, 1, 3),
+            )
+            .withEvent(
+              'note/one',
+              const NoteTrashed(noteId: 'one'),
+              occuredAt: DateTime.utc(2026, 1, 2),
+            )
+            .run();
+
+    expect(state.activeCount, 1);
+  });
 }
