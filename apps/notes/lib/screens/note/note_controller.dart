@@ -35,7 +35,7 @@ class NoteController extends ChangeNotifier {
     if (noteId == null || isTrashed) return;
     await application.command.testSimulateExternalNoteContentRandomInsert(
       noteId,
-      '\nWhy hello there\n',
+      '[Why hello there]',
       actorId: '${application.actor}-simulation',
     );
   }

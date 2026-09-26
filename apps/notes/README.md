@@ -12,7 +12,7 @@ replication, encryption, or backup.
 Content editing uses CRDT changes with the existing focus-loss and navigation
 saves. Refresh merges persisted edits into an open draft. For visual testing,
 the simulation toggle inserts external text at a random position every five
-seconds.
+seconds. The editor refreshes after each simulated edit is saved.
 
 ## Run
 
