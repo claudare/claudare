@@ -40,7 +40,7 @@ void main() {
               'note/one',
               NoteContentUpdated(
                 noteId: 'one',
-                change: testCrdtTextSingleChange('Text'),
+                change: CrdtTextTestUtils.singleChange('Text'),
               ),
               occuredAt: laterAt,
             )

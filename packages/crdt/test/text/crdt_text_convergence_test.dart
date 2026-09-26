@@ -7,12 +7,13 @@ import 'text_test_support.dart';
 
 void main() {
   test('merges the transcript Helo example', () {
-    final a = editContext('A')..insert(0, 'Helo');
-    final b = editContext('B')..applyChange(save(a));
+    final a = CrdtTextTestUtils.editContext('A')..insert(0, 'Helo');
+    final b = CrdtTextTestUtils.editContext('B')
+      ..applyChange(CrdtTextTestUtils.save(a));
     a.insert(3, 'l');
     b.insert(4, '!');
-    final left = save(a);
-    final right = save(b);
+    final left = CrdtTextTestUtils.save(a);
+    final right = CrdtTextTestUtils.save(b);
     a.applyChange(right);
     b.applyChange(left);
     expect(a.text, 'Hello!');
@@ -20,14 +21,14 @@ void main() {
   });
 
   test('keeps concurrent forward insertion runs together', () {
-    final source = editContext('S')..insert(0, 'ab');
-    final initial = save(source);
-    final a = editContext('A')..applyChange(initial);
-    final b = editContext('B')..applyChange(initial);
+    final source = CrdtTextTestUtils.editContext('S')..insert(0, 'ab');
+    final initial = CrdtTextTestUtils.save(source);
+    final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
+    final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
     a.insert(2, 'de');
     b.insert(2, 'fg');
-    final left = save(a);
-    final right = save(b);
+    final left = CrdtTextTestUtils.save(a);
+    final right = CrdtTextTestUtils.save(b);
     a.applyChange(right);
     b.applyChange(left);
     expect(a.text, 'abfgde');
@@ -35,14 +36,14 @@ void main() {
   });
 
   test('merges overlapping deletions by insertion identity', () {
-    final source = editContext('S')..insert(0, 'abcd');
-    final initial = save(source);
-    final a = editContext('A')..applyChange(initial);
-    final b = editContext('B')..applyChange(initial);
+    final source = CrdtTextTestUtils.editContext('S')..insert(0, 'abcd');
+    final initial = CrdtTextTestUtils.save(source);
+    final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
+    final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
     a.delete(1, 3);
     b.delete(2, 4);
-    final left = save(a);
-    final right = save(b);
+    final left = CrdtTextTestUtils.save(a);
+    final right = CrdtTextTestUtils.save(b);
     a.applyChange(right);
     b.applyChange(left);
     a.applyChange(right);
@@ -53,21 +54,21 @@ void main() {
   test(
     'exhaustive causal permutations preserve text and operation records',
     () {
-      final source = editContext('S')..insert(0, 'x');
-      final initial = save(source);
-      final a = editContext('A')..applyChange(initial);
-      final b = editContext('B')..applyChange(initial);
-      final c = editContext('C')..applyChange(initial);
+      final source = CrdtTextTestUtils.editContext('S')..insert(0, 'x');
+      final initial = CrdtTextTestUtils.save(source);
+      final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
+      final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
+      final c = CrdtTextTestUtils.editContext('C')..applyChange(initial);
       a.insert(1, 'a');
-      final firstA = save(a);
+      final firstA = CrdtTextTestUtils.save(a);
       a.insert(2, 'A');
-      final secondA = save(a);
+      final secondA = CrdtTextTestUtils.save(a);
       b.insert(1, 'b');
-      final firstB = save(b);
+      final firstB = CrdtTextTestUtils.save(b);
       b.insert(2, 'B');
-      final secondB = save(b);
+      final secondB = CrdtTextTestUtils.save(b);
       c.delete(0, 1);
-      final deletion = save(c);
+      final deletion = CrdtTextTestUtils.save(c);
       final changes = [firstA, secondA, firstB, secondB, deletion];
       Object? expectedOperations;
       var schedules = 0;
@@ -104,7 +105,10 @@ void main() {
         final documents = List.generate(3, (_) => CrdtText());
         final replicas = List.generate(
           3,
-          (index) => editContext('actor$index', document: documents[index]),
+          (index) => CrdtTextTestUtils.editContext(
+            'actor$index',
+            document: documents[index],
+          ),
         );
         final received = List.generate(3, (_) => <CrdtTextId>{});
         final history = <CrdtTextChange>[];
@@ -128,7 +132,7 @@ void main() {
             ).join();
             replica.replace(boundaries[start], boundaries[end], replacement);
             if (replica.hasPendingChanges) {
-              final change = save(replica);
+              final change = CrdtTextTestUtils.save(replica);
               documents[index].applyChange(change);
               history.add(change);
               received[index].addAll(change.operations.map((op) => op.id));
@@ -148,7 +152,7 @@ void main() {
             documents[index] = CrdtText.fromJson(
               jsonCopy(documents[index].toJson()),
             );
-            replicas[index] = editContext(
+            replicas[index] = CrdtTextTestUtils.editContext(
               'actor$index',
               document: documents[index],
             );

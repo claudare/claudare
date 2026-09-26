@@ -15,14 +15,14 @@ void main() {
 
   group('local editing', () {
     test('starts empty without pending changes', () {
-      final text = editContext('A');
+      final text = CrdtTextTestUtils.editContext('A');
       expect(text.text, '');
       expect(text.length, 0);
       expect(text.prepareChange(), isNull);
     });
 
     test('inserts at the head, middle, and tail', () {
-      final text = editContext('A');
+      final text = CrdtTextTestUtils.editContext('A');
       text.insert(0, 'elo');
       text.insert(0, 'H');
       text.insert(3, 'l');
@@ -31,13 +31,13 @@ void main() {
     });
 
     test('replaces a range with a longer string', () {
-      final text = editContext('A')..insert(0, 'Hi');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'Hi');
       text.replace(1, 2, 'ello');
       expect(text.text, 'Hello');
     });
 
     test('supports complete deletion followed by insertion', () {
-      final text = editContext('A')..insert(0, 'hello');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
       text.delete(0, 5);
       expect(text.text, '');
       text.insert(0, 'new');
@@ -45,8 +45,8 @@ void main() {
     });
 
     test('no-op edits do not allocate operations or notify', () {
-      final text = editContext('A')..insert(0, 'abc');
-      save(text);
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
+      CrdtTextTestUtils.save(text);
       var notifications = 0;
       text.addListener(() => notifications++);
       text.insert(1, '');
@@ -57,7 +57,8 @@ void main() {
     });
 
     test('uses UTF-16 offsets without normalizing Unicode', () {
-      final text = editContext('A')..insert(0, 'a😀e\u0301👩‍💻\r\n');
+      final text = CrdtTextTestUtils.editContext('A')
+        ..insert(0, 'a😀e\u0301👩‍💻\r\n');
       expect(text.length, 'a😀e\u0301👩‍💻\r\n'.length);
       text.replace(1, 3, '🌍');
       expect(text.text, 'a🌍e\u0301👩‍💻\r\n');
@@ -65,7 +66,7 @@ void main() {
 
     for (final range in [(-1, 0), (0, 4), (2, 1), (1, 1), (0, 1)]) {
       test('rejects invalid or split-surrogate range $range atomically', () {
-        final text = editContext('A')..insert(0, '😀x');
+        final text = CrdtTextTestUtils.editContext('A')..insert(0, '😀x');
         final before = text.prepareChange();
         expect(
           () => text.replace(range.$1, range.$2, 'y'),
@@ -80,14 +81,14 @@ void main() {
 
     for (final invalid in ['\ud800', '\udc00', '\ud800x']) {
       test('rejects malformed Unicode ${invalid.codeUnits}', () {
-        final text = editContext('A');
+        final text = CrdtTextTestUtils.editContext('A');
         expect(() => text.insert(0, invalid), throwsArgumentError);
         expect(text.hasPendingChanges, isFalse);
       });
     }
 
     test('reports a replacement only after it is fully applied', () {
-      final text = editContext('A')..insert(0, 'abc');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
       final observed = <String>[];
       text.addListener(() => observed.add(text.text));
       text.replace(0, 2, 'XY');
@@ -96,7 +97,7 @@ void main() {
 
     test('traverses a long insertion chain without recursive calls', () {
       final content = List.filled(3000, 'a').join();
-      final text = editContext('A')..insert(0, content);
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, content);
       expect(text.text, content);
     });
 
@@ -106,7 +107,7 @@ void main() {
       for (var trial = 0; trial < 15; trial++) {
         var expected = '';
         var document = CrdtText();
-        var text = editContext('writer', document: document);
+        var text = CrdtTextTestUtils.editContext('writer', document: document);
         for (var step = 0; step < 100; step++) {
           final boundaries = [0];
           for (final rune in expected.runes) {
@@ -126,9 +127,11 @@ void main() {
           );
           expect(text.text, expected, reason: 'trial $trial, step $step');
           if (step % 25 == 0) {
-            if (text.hasPendingChanges) document.applyChange(save(text));
+            if (text.hasPendingChanges) {
+              document.applyChange(CrdtTextTestUtils.save(text));
+            }
             document = CrdtText.fromJson(jsonCopy(document.toJson()));
-            text = editContext('writer', document: document);
+            text = CrdtTextTestUtils.editContext('writer', document: document);
           }
         }
       }
@@ -137,7 +140,7 @@ void main() {
 
   group('causal application', () {
     test('accepts a local event-log echo without acknowledging it', () {
-      final text = editContext('A')..insert(0, 'hello');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
       final change = text.prepareChange()!;
       var notifications = 0;
       text.addListener(() => notifications++);
@@ -149,31 +152,33 @@ void main() {
     });
 
     test('replay does not create unsaved edits', () {
-      final source = editContext('A')..insert(0, 'hello');
-      final receiver = editContext('B')..applyChange(save(source));
+      final source = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
+      final receiver = CrdtTextTestUtils.editContext('B')
+        ..applyChange(CrdtTextTestUtils.save(source));
       expect(receiver.text, 'hello');
       expect(receiver.hasPendingChanges, isFalse);
     });
 
     test('clock advances past received deletion IDs', () {
-      final source = editContext('A')..insert(0, 'x');
-      final receiver = editContext('B')..applyChange(save(source));
+      final source = CrdtTextTestUtils.editContext('A')..insert(0, 'x');
+      final receiver = CrdtTextTestUtils.editContext('B')
+        ..applyChange(CrdtTextTestUtils.save(source));
       source.delete(0, 1);
-      receiver.applyChange(save(source));
+      receiver.applyChange(CrdtTextTestUtils.save(source));
       receiver.insert(0, 'y');
       expect(receiver.prepareChange()!.operations.single.id.counter, 3);
     });
 
     test('accepts an older counter from a concurrent actor', () {
-      final first = editContext('A')..insert(0, 'abc');
-      final second = editContext('B')..insert(0, 'x');
-      first.applyChange(save(second));
+      final first = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
+      final second = CrdtTextTestUtils.editContext('B')..insert(0, 'x');
+      first.applyChange(CrdtTextTestUtils.save(second));
       expect(first.text, 'xabc');
     });
 
     test('duplicate changes do not notify twice', () {
-      final source = editContext('A')..insert(0, 'x');
-      final change = save(source);
+      final source = CrdtTextTestUtils.editContext('A')..insert(0, 'x');
+      final change = CrdtTextTestUtils.save(source);
       final receiver = CrdtText();
       var notifications = 0;
       receiver.addListener(() => notifications++);
@@ -183,10 +188,10 @@ void main() {
     });
 
     test('rejects a later causal batch until its predecessor arrives', () {
-      final source = editContext('A')..insert(0, 'a');
-      final first = save(source);
+      final source = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final first = CrdtTextTestUtils.save(source);
       source.insert(0, 'b');
-      final second = save(source);
+      final second = CrdtTextTestUtils.save(source);
       final receiver = CrdtText();
       expect(
         () => receiver.applyChange(second),
@@ -237,9 +242,9 @@ void main() {
     });
 
     test('rejects a reference to a deletion operation', () {
-      final source = editContext('A')..insert(0, 'a');
+      final source = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       source.delete(0, 1);
-      final receiver = CrdtText()..applyChange(save(source));
+      final receiver = CrdtText()..applyChange(CrdtTextTestUtils.save(source));
       final invalid = CrdtTextDelete(
         id: textId(3, 'C'),
         dependencies: {'A': 2},
@@ -252,12 +257,13 @@ void main() {
     });
 
     test('rejects a context that omits transitive dependencies', () {
-      final a = editContext('A')..insert(0, 'a');
-      final b = editContext('B')..applyChange(save(a));
+      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final b = CrdtTextTestUtils.editContext('B')
+        ..applyChange(CrdtTextTestUtils.save(a));
       b.insert(1, 'b');
       final c = CrdtText();
       c.applyChange(CrdtTextChange([insertion(1, character: 'a')]));
-      c.applyChange(save(b));
+      c.applyChange(CrdtTextTestUtils.save(b));
       final invalid = insertion(3, actor: 'D', dependencies: {'B': 2});
       expect(
         () => c.applyChange(CrdtTextChange([invalid])),

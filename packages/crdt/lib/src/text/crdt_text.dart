@@ -27,6 +27,9 @@ final class CrdtText {
     : _operations = Map.of(document._operations),
       _version = Map.of(document._version);
 
+  /// Copies document history into independent state without copying listeners.
+  CrdtText fork() => CrdtText._copy(this);
+
   /// Restores document history without selecting a writer.
   factory CrdtText.fromJson(Object? json) {
     final map = json as Map<String, dynamic>;

@@ -5,53 +5,62 @@ import 'package:test/test.dart';
 
 void main() {
   test('incremental delivery preserves prepared and later local edits', () {
+    // Alice opens an empty document and edits her private draft.
     final aliceDocument = CrdtText();
-
-    // Alice writes to an empty document and saves the changes
-    final alice = CrdtTextEditContext(
+    final alice = CrdtTextTestUtils.editContext(
+      'alice',
       document: aliceDocument,
-      actorId: 'alice',
     );
     updateText(alice, 'Hello');
-    final initial = alice.prepareChange()!;
-    aliceDocument.applyChange(initial);
-    alice.acknowledgeChange(initial);
 
-    // Bob inserts the value at the start.
-    final bobDocument = CrdtText.fromJson(aliceDocument.toJson());
-    final bob = CrdtTextEditContext(document: bobDocument, actorId: 'bob');
+    // Saving applies Alice's batch to her document and acknowledges it.
+    CrdtTextTestUtils.save(alice, document: aliceDocument);
+
+    // Bob forks the saved history, then opens a draft with his own actor ID.
+    final bobDocument = aliceDocument.fork();
+    final bob = CrdtTextTestUtils.editContext('bob', document: bobDocument);
+
+    // Alice prepares a local edit for saving, without persisting it yet.
     alice.insert(0, 'Local ');
     final prepared = alice.prepareChange()!;
+
+    // A later edit stays outside the already prepared batch.
     alice.insert(0, 'Later ');
 
-    // Bob creates a concurrent edit while Alice has a prepared batch.
+    // Bob edits independently and saves before receiving Alice's changes.
     bob.insert(bob.length, ' remote');
-    final remote = bob.prepareChange()!;
-    bobDocument.applyChange(remote);
-    bob.acknowledgeChange(remote);
-    aliceDocument.applyChange(remote);
-    alice.applyChange(remote);
+    final remote = CrdtTextTestUtils.save(bob, document: bobDocument);
+
+    // Delivery updates Alice's document and draft, preserving her pending edits.
+    CrdtTextTestUtils.deliver(remote, document: aliceDocument, context: alice);
     expect(alice.text, 'Later Local Hello remote');
     expect(alice.prepareChange(), same(prepared));
 
-    // Event delivery can precede acknowledgment of the successful write.
+    // Alice's prepared batch is now persisted, excluding her later edit.
     aliceDocument.applyChange(prepared);
+
+    // Its local echo can arrive before the save is acknowledged.
     alice.applyChange(prepared);
-    bobDocument.applyChange(prepared);
-    bob.applyChange(prepared);
     expect(alice.prepareChange(), same(prepared));
+
+    // Bob receives that persisted batch and applies it to his document and draft.
+    CrdtTextTestUtils.deliver(prepared, document: bobDocument, context: bob);
+
+    // Acknowledging the successful save leaves Alice's later edit pending.
     alice.acknowledgeChange(prepared);
     expect(alice.hasPendingChanges, isTrue);
 
-    final later = alice.prepareChange()!;
-    aliceDocument.applyChange(later);
-    alice.applyChange(later);
-    bobDocument.applyChange(later);
-    bob.applyChange(later);
-    alice.acknowledgeChange(later);
+    // Alice saves the remaining edit as a separate batch.
+    final later = CrdtTextTestUtils.save(alice, document: aliceDocument);
+
+    // Bob receives the final batch after the earlier batch it depends on.
+    CrdtTextTestUtils.deliver(later, document: bobDocument, context: bob);
+
+    // Both documents and drafts converge, and neither writer has pending edits.
     expect(alice.prepareChange(), isNull);
     expect(bob.prepareChange(), isNull);
     expect(aliceDocument.toJson(), bobDocument.toJson());
+    expect(aliceDocument.text, 'Later Local Hello remote');
     expect(alice.text, aliceDocument.text);
     expect(bob.text, aliceDocument.text);
   });

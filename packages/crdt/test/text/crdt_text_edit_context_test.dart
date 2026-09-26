@@ -5,12 +5,12 @@ import 'text_test_support.dart';
 
 void main() {
   test('rejects an empty actor ID', () {
-    expect(() => editContext(''), throwsArgumentError);
+    expect(() => CrdtTextTestUtils.editContext(''), throwsArgumentError);
   });
 
   test('copies existing history without creating pending edits', () {
     final document = CrdtText()..applyChange(CrdtTextChange([insertion(1)]));
-    final context = editContext('B', document: document);
+    final context = CrdtTextTestUtils.editContext('B', document: document);
     expect(context.actorId, 'B');
     expect(context.text, 'x');
     expect(context.length, 1);
@@ -23,7 +23,7 @@ void main() {
     final before = document.toJson();
     var notifications = 0;
     document.addListener(() => notifications++);
-    final context = editContext('B', document: document);
+    final context = CrdtTextTestUtils.editContext('B', document: document);
     context.replace(0, 1, 'draft');
     expect(context.text, 'draft');
     expect(document.toJson(), before);
@@ -32,7 +32,7 @@ void main() {
 
   test('source changes do not implicitly update or notify the draft', () {
     final document = CrdtText();
-    final context = editContext('B', document: document);
+    final context = CrdtTextTestUtils.editContext('B', document: document);
     var notifications = 0;
     context.addListener(() => notifications++);
     document.applyChange(CrdtTextChange([insertion(1)]));
@@ -43,7 +43,7 @@ void main() {
 
   test('incoming draft changes do not mutate the source document', () {
     final document = CrdtText();
-    final context = editContext('B', document: document);
+    final context = CrdtTextTestUtils.editContext('B', document: document);
     context.applyChange(CrdtTextChange([insertion(1)]));
     expect(context.text, 'x');
     expect(document.text, '');
@@ -52,7 +52,8 @@ void main() {
 
   test('acknowledgment does not apply a change to the source document', () {
     final document = CrdtText();
-    final context = editContext('A', document: document)..insert(0, 'draft');
+    final context = CrdtTextTestUtils.editContext('A', document: document)
+      ..insert(0, 'draft');
     context.acknowledgeChange(context.prepareChange()!);
     expect(document.text, '');
     expect(document.toJson()['operations'], isEmpty);
@@ -61,8 +62,8 @@ void main() {
 
   test('contexts from one document own independent drafts and batches', () {
     final document = CrdtText();
-    final a = editContext('A', document: document);
-    final b = editContext('B', document: document);
+    final a = CrdtTextTestUtils.editContext('A', document: document);
+    final b = CrdtTextTestUtils.editContext('B', document: document);
     a.insert(0, 'a');
     b.insert(0, 'b');
     expect(a.text, 'a');
@@ -72,21 +73,21 @@ void main() {
   });
 
   test('copied tombstones retain anchors for incoming edits', () {
-    final author = editContext('A')..insert(0, 'abc');
-    final initial = save(author);
+    final author = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
+    final initial = CrdtTextTestUtils.save(author);
     final document = CrdtText()..applyChange(initial);
-    final remote = editContext('B', document: document);
+    final remote = CrdtTextTestUtils.editContext('B', document: document);
     author.delete(1, 2);
-    document.applyChange(save(author));
-    final context = editContext('C', document: document);
+    document.applyChange(CrdtTextTestUtils.save(author));
+    final context = CrdtTextTestUtils.editContext('C', document: document);
     remote.insert(2, 'X');
-    context.applyChange(save(remote));
+    context.applyChange(CrdtTextTestUtils.save(remote));
     expect(context.text, 'aXc');
     expect(context.hasPendingChanges, isFalse);
   });
 
   test('accepted local edits are pending before listeners run', () {
-    final context = editContext('A');
+    final context = CrdtTextTestUtils.editContext('A');
     CrdtTextChange? observed;
     context.addListener(() => observed = context.prepareChange());
     context.insert(0, 'a');
@@ -95,10 +96,11 @@ void main() {
   });
 
   test('accepts another writer extending the actor after acknowledgment', () {
-    final context = editContext('A')..insert(0, 'a');
-    final document = CrdtText()..applyChange(save(context));
-    final other = editContext('A', document: document)..insert(1, 'b');
-    context.applyChange(save(other));
+    final context = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+    final document = CrdtText()..applyChange(CrdtTextTestUtils.save(context));
+    final other = CrdtTextTestUtils.editContext('A', document: document)
+      ..insert(1, 'b');
+    context.applyChange(CrdtTextTestUtils.save(other));
     expect(context.text, 'ab');
     expect(context.hasPendingChanges, isFalse);
     context.insert(2, 'c');
@@ -106,7 +108,7 @@ void main() {
   });
 
   test('invalid incoming batches preserve the draft and pending edits', () {
-    final context = editContext('A')..insert(0, 'a');
+    final context = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
     final pending = context.prepareChange()!;
     var notifications = 0;
     context.addListener(() => notifications++);

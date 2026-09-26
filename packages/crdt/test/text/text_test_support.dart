@@ -2,15 +2,6 @@ import 'dart:convert';
 
 import 'package:crdt/crdt_text.dart';
 
-CrdtTextEditContext editContext(String actorId, {CrdtText? document}) =>
-    CrdtTextEditContext(document: document ?? CrdtText(), actorId: actorId);
-
-CrdtTextChange save(CrdtTextEditContext text) {
-  final change = text.prepareChange()!;
-  text.acknowledgeChange(change);
-  return change;
-}
-
 Map<String, Object?> jsonCopy(Map<String, Object?> json) =>
     (jsonDecode(jsonEncode(json)) as Map).cast<String, Object?>();
 

@@ -6,7 +6,7 @@ import 'text_test_support.dart';
 void main() {
   group('save lifecycle', () {
     test('prepares the same batch until acknowledgment', () {
-      final text = editContext('A')..insert(0, 'a');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final first = text.prepareChange()!;
       text.insert(1, 'b');
       expect(text.prepareChange(), same(first));
@@ -22,7 +22,7 @@ void main() {
     test(
       'a failed persistence attempt leaves the batch available for retry',
       () async {
-        final text = editContext('A')..insert(0, 'draft');
+        final text = CrdtTextTestUtils.editContext('A')..insert(0, 'draft');
         final batch = text.prepareChange()!;
         Future<void> persist(CrdtTextChange change) async {
           throw const FormatException('Storage rejected the write.');
@@ -38,7 +38,7 @@ void main() {
     test(
       'acknowledgment clears only local edits and creates no text notification',
       () {
-        final text = editContext('A')..insert(0, 'a');
+        final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
         var notified = false;
         text.addListener(() => notified = true);
         text.acknowledgeChange(text.prepareChange()!);
@@ -49,7 +49,7 @@ void main() {
     );
 
     test('rejects an acknowledgment before preparation', () {
-      final text = editContext('A')..insert(0, 'a');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final candidate = CrdtTextChange([insertion(1, character: 'a')]);
       expect(() => text.acknowledgeChange(candidate), throwsArgumentError);
       expect(text.text, 'a');
@@ -57,8 +57,8 @@ void main() {
     });
 
     test('rejects stale acknowledgments without discarding later edits', () {
-      final text = editContext('A')..insert(0, 'a');
-      final first = save(text);
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final first = CrdtTextTestUtils.save(text);
       text.insert(1, 'b');
       final before = text.prepareChange();
       expect(() => text.acknowledgeChange(first), throwsArgumentError);
@@ -67,12 +67,12 @@ void main() {
     });
 
     test('captures local edits on both sides of a remote change', () {
-      final a = editContext('A')..insert(0, 'a');
-      final b = editContext('B')..insert(0, 'b');
-      final remote = save(b);
+      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final b = CrdtTextTestUtils.editContext('B')..insert(0, 'b');
+      final remote = CrdtTextTestUtils.save(b);
       a.applyChange(remote);
       a.insert(a.length, '!');
-      final local = save(a);
+      final local = CrdtTextTestUtils.save(a);
       expect(
         local.operations.map((operation) => operation.id.actorId),
         everyElement('A'),
@@ -91,27 +91,28 @@ void main() {
     });
 
     test('allows remote replies to a prepared batch before acknowledgment', () {
-      final a = editContext('A')..insert(0, 'a');
+      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final prepared = a.prepareChange()!;
-      final b = editContext('B')..applyChange(prepared);
+      final b = CrdtTextTestUtils.editContext('B')..applyChange(prepared);
       b.insert(1, 'b');
-      final reply = save(b);
+      final reply = CrdtTextTestUtils.save(b);
       a.applyChange(reply);
       a.insert(2, 'c');
       a.acknowledgeChange(prepared);
-      final later = save(a);
+      final later = CrdtTextTestUtils.save(a);
       b.applyChange(later);
       expect(b.text, 'abc');
       expect(a.text, b.text);
     });
 
     test('rejects another writer extending the local actor while dirty', () {
-      final a = editContext('A')..insert(0, 'a');
-      final other = editContext('A')..applyChange(a.prepareChange()!);
+      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final other = CrdtTextTestUtils.editContext('A')
+        ..applyChange(a.prepareChange()!);
       other.insert(1, 'b');
       final before = a.prepareChange();
       expect(
-        () => a.applyChange(save(other)),
+        () => a.applyChange(CrdtTextTestUtils.save(other)),
         throwsA(isA<CrdtTextException>()),
       );
       expect(a.text, 'a');
@@ -129,22 +130,23 @@ void main() {
     });
 
     test('restores tombstones and permits later insertion after them', () {
-      final a = editContext('A')..insert(0, 'abc');
-      final initial = save(a);
+      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
+      final initial = CrdtTextTestUtils.save(a);
       final document = CrdtText()..applyChange(initial);
-      final b = editContext('B')..applyChange(initial);
+      final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
       a.delete(1, 2);
-      document.applyChange(save(a));
+      document.applyChange(CrdtTextTestUtils.save(a));
       b.insert(2, 'X');
       final restored = CrdtText.fromJson(jsonCopy(document.toJson()));
-      restored.applyChange(save(b));
+      restored.applyChange(CrdtTextTestUtils.save(b));
       expect(restored.text, 'aXc');
     });
 
     test('snapshots contain document history without local editing state', () {
       final document = CrdtText();
-      final context = editContext('A', document: document)..insert(0, 'a😀');
-      document.applyChange(save(context));
+      final context = CrdtTextTestUtils.editContext('A', document: document)
+        ..insert(0, 'a😀');
+      document.applyChange(CrdtTextTestUtils.save(context));
       context.insert(context.length, 'b');
       context.prepareChange();
       context.insert(context.length, 'c');
@@ -154,7 +156,7 @@ void main() {
       final restored = CrdtText.fromJson(snapshot);
       expect(restored.text, 'a😀');
       expect(restored.toJson(), snapshot);
-      final fresh = editContext('A', document: restored);
+      final fresh = CrdtTextTestUtils.editContext('A', document: restored);
       expect(fresh.hasPendingChanges, isFalse);
       expect(fresh.prepareChange(), isNull);
     });
@@ -162,13 +164,17 @@ void main() {
     for (final actor in ['A', 'B']) {
       test('restored history can be edited by actor $actor', () {
         final document = CrdtText();
-        final original = editContext('A', document: document)..insert(0, 'ab');
-        document.applyChange(save(original));
+        final original = CrdtTextTestUtils.editContext('A', document: document)
+          ..insert(0, 'ab');
+        document.applyChange(CrdtTextTestUtils.save(original));
         original.delete(1, 2);
-        document.applyChange(save(original));
+        document.applyChange(CrdtTextTestUtils.save(original));
         final snapshot = jsonCopy(document.toJson());
         final restored = CrdtText.fromJson(snapshot);
-        final context = editContext(actor, document: restored);
+        final context = CrdtTextTestUtils.editContext(
+          actor,
+          document: restored,
+        );
         context.insert(1, '!');
         final change = context.prepareChange()!;
         expect(change.operations.single.id, textId(4, actor));
@@ -181,7 +187,8 @@ void main() {
 
     test('snapshot export does not prepare local edits', () {
       final document = CrdtText();
-      final context = editContext('A', document: document)..insert(0, 'a');
+      final context = CrdtTextTestUtils.editContext('A', document: document)
+        ..insert(0, 'a');
       document.toJson();
       context.insert(1, 'b');
       expect(context.prepareChange()!.operations, hasLength(2));
@@ -189,7 +196,8 @@ void main() {
 
     test('snapshot export does not acknowledge a prepared batch', () {
       final document = CrdtText();
-      final context = editContext('A', document: document)..insert(0, 'a');
+      final context = CrdtTextTestUtils.editContext('A', document: document)
+        ..insert(0, 'a');
       final prepared = context.prepareChange()!;
       document.applyChange(prepared);
       document.toJson();
@@ -198,7 +206,7 @@ void main() {
     });
 
     test('change JSON round trips insertions and deletions', () {
-      final text = editContext('A')..insert(0, 'x😀');
+      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'x😀');
       text.delete(0, 1);
       final change = text.prepareChange()!;
       expect(change.toJson().keys, ['operations']);
@@ -299,8 +307,8 @@ void main() {
         ];
     for (final (name, corrupt, expectedError) in corruptions) {
       test('rejects snapshot with $name', () {
-        final context = editContext('A')..insert(0, 'ab');
-        final text = CrdtText()..applyChange(save(context));
+        final context = CrdtTextTestUtils.editContext('A')..insert(0, 'ab');
+        final text = CrdtText()..applyChange(CrdtTextTestUtils.save(context));
         final json = jsonCopy(text.toJson());
         corrupt(json);
         expect(() => CrdtText.fromJson(json), expectedError);

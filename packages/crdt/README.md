@@ -9,6 +9,8 @@ the text API through `package:crdt/crdt_text.dart`.
 accepts `CrdtTextChange` batches and supports complete JSON snapshots without
 requiring a local actor ID. It depends only on Dart SDK libraries.
 
+Call `document.fork()` to copy its history into an independent document.
+
 `CrdtTextEditContext(document: document, actorId: actorId)` copies the document
 into a private draft with insert, delete, and replace operations. Supply an
 actor ID for each independent writer. Offsets and `length` use UTF-16, matching
@@ -40,6 +42,10 @@ through a fresh context for any actor.
 Contexts exist only in memory. Discarding one loses its unsaved edits. See the
 [usage example test](test/text/crdt_text_usage_example_test.dart) for editing,
 persistence, replay, and snapshot restoration without application dependencies.
+
+`CrdtTextTestUtils` provides static helpers for text fixtures, simulated saves,
+and explicit change delivery. Tests can delay or repeat deliveries to exercise
+concurrent editing without a transport.
 
 ## Editors
 

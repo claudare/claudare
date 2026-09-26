@@ -12,7 +12,7 @@ final class CrdtTextEditContext {
   CrdtTextChange? _prepared;
 
   CrdtTextEditContext({required CrdtText document, required this.actorId})
-    : _draft = CrdtText._copy(document) {
+    : _draft = document.fork() {
     _requireActor(actorId);
   }
 

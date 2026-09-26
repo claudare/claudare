@@ -71,7 +71,7 @@ void main() {
     await tester.run(
       UpdateNoteContent(
         noteId: 'one',
-        change: testCrdtTextSingleChange('Body'),
+        change: CrdtTextTestUtils.singleChange('Body'),
       ),
     );
 
@@ -97,7 +97,7 @@ void main() {
       createTester().run(
         UpdateNoteContent(
           noteId: 'one',
-          change: testCrdtTextSingleChange('Body'),
+          change: CrdtTextTestUtils.singleChange('Body'),
         ),
       ),
       throwsA(isA<StreamNotFoundException>()),

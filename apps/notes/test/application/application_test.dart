@@ -50,7 +50,7 @@ void main() {
 
     await application.command.updateNoteContent(
       noteId,
-      testCrdtTextSingleChange('Body'),
+      CrdtTextTestUtils.singleChange('Body'),
     );
 
     final note = await application.query.note(noteId);
@@ -97,7 +97,7 @@ void main() {
     final editedAt = DateTime.utc(2026, 1, 2);
 
     final document = CrdtText();
-    final change = testCrdtTextApplyChangeToDocument(document, 'History');
+    final change = CrdtTextTestUtils.applyChangeToDocument(document, 'History');
     expect(change, isNotNull);
 
     await runtime.seedEvents([
@@ -135,7 +135,7 @@ void main() {
     final time = DateTime.utc(2026, 1, 1);
 
     final document = CrdtText();
-    final change = testCrdtTextApplyChangeToDocument(document, 'Hello,');
+    final change = CrdtTextTestUtils.applyChangeToDocument(document, 'Hello,');
     expect(change, isNotNull);
 
     await runtime.seedEvents([
@@ -156,7 +156,10 @@ void main() {
     final note = await application.query.note('greeting');
     expect(note!.content, 'Hello,');
 
-    final change2 = testCrdtTextApplyChangeToDocument(document, 'Hello, CRDT!');
+    final change2 = CrdtTextTestUtils.applyChangeToDocument(
+      document,
+      'Hello, CRDT!',
+    );
     expect(change2, isNotNull);
 
     await application.command.updateNoteContent('greeting', change2!);

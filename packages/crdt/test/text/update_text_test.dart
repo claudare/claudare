@@ -102,8 +102,11 @@ void main() {
 (CrdtText, CrdtTextEditContext) _editing(String initial) {
   final document = CrdtText();
   if (initial.isNotEmpty) {
-    final source = editContext('source')..insert(0, initial);
-    document.applyChange(save(source));
+    final source = CrdtTextTestUtils.editContext('source')..insert(0, initial);
+    document.applyChange(CrdtTextTestUtils.save(source));
   }
-  return (document, editContext('writer', document: document));
+  return (
+    document,
+    CrdtTextTestUtils.editContext('writer', document: document),
+  );
 }
