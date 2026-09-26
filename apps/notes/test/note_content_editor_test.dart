@@ -263,16 +263,27 @@ Future<List<NoteContentUpdated>> _contentEvents(
   NoteApplication app,
   String id,
 ) async {
-  final events = <NoteContentUpdated>[];
+  final state = _ContentEventState(id);
   await app.query.catchupNote(
-    noteAggregate(id),
-    onApplied: (envelope) {
-      if (envelope.event is NoteContentUpdated) {
-        events.add(envelope.event as NoteContentUpdated);
-      }
-    },
+    Aggregate<NoteEvent, NoteState>(
+      name: 'Content events',
+      filter: noteAggregate(id).filter,
+      state: state,
+    ),
   );
-  return events;
+  return state.events;
+}
+
+class _ContentEventState extends NoteState {
+  final events = <NoteContentUpdated>[];
+
+  _ContentEventState(super.noteId);
+
+  @override
+  void apply(EventEnvelope<NoteEvent> envelope) {
+    super.apply(envelope);
+    if (envelope.event case final NoteContentUpdated event) events.add(event);
+  }
 }
 
 Future<void> _open(WidgetTester tester, NoteApplication app, String? id) async {

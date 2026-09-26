@@ -20,6 +20,7 @@ final class CrdtText {
   Map<CrdtTextId, CrdtTextOperation> _operations = {};
   Map<String, int> _version = {};
   final List<void Function()> _listeners = [];
+  bool _notificationPending = false;
 
   CrdtText();
 
@@ -56,7 +57,7 @@ final class CrdtText {
   ///
   /// Throws [CrdtTextException] before mutation if any operation is invalid.
   void applyChange(CrdtTextChange change) {
-    if (_integrate(change.operations)) _notify();
+    if (_integrate(change.operations) || _notificationPending) _notify();
   }
 
   /// Exports detached document history without local editing state.
@@ -69,13 +70,20 @@ final class CrdtText {
   }
 
   /// Observes accepted edits synchronously, after the full mutation commits.
+  /// If a listener throws, the next application retries notification.
   void addListener(void Function() listener) => _listeners.add(listener);
 
   void removeListener(void Function() listener) => _listeners.remove(listener);
 
   void _notify() {
-    for (final listener in List.of(_listeners)) {
-      if (_listeners.contains(listener)) listener();
+    _notificationPending = false;
+    try {
+      for (final listener in List.of(_listeners)) {
+        if (_listeners.contains(listener)) listener();
+      }
+    } catch (_) {
+      _notificationPending = true;
+      rethrow;
     }
   }
 

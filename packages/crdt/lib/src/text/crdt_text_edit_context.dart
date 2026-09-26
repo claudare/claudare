@@ -1,19 +1,21 @@
 part of 'crdt_text.dart';
 
-/// A private editing draft with an actor and explicit save acknowledgment.
+/// An editing view of [document] plus pending local edits.
 ///
-/// Copies the supplied document. Deliver subsequent changes with [applyChange]
-/// and apply saved changes separately to the original document. Each independent
-/// writer must use a distinct [actorId]. Pending edits exist only in memory.
+/// Applied document changes update the draft and acknowledge prepared edits.
+/// Each independent writer must use a distinct [actorId]. Pending edits exist
+/// only in memory. Call [dispose] when the context is no longer needed.
 final class CrdtTextEditContext {
   final String actorId;
+  final CrdtText document;
   final CrdtText _draft;
   final List<CrdtTextOperation> _pending = [];
   CrdtTextChange? _prepared;
 
-  CrdtTextEditContext({required CrdtText document, required this.actorId})
+  CrdtTextEditContext({required this.document, required this.actorId})
     : _draft = document.fork() {
     _requireActor(actorId);
+    document.addListener(_reconcile);
   }
 
   String get text => _draft.text;
@@ -45,43 +47,49 @@ final class CrdtTextEditContext {
     );
   }
 
-  /// Applies incoming changes to the draft without creating pending edits.
-  ///
-  /// Exact echoes do not acknowledge edits. Throws [CrdtTextException] before
-  /// mutation for invalid changes or another writer extending this actor while
-  /// local edits are pending.
-  void applyChange(CrdtTextChange change) {
-    if (change.actorId == actorId &&
-        _pending.isNotEmpty &&
-        change.operations.any(
-          (operation) => !_draft._operations.containsKey(operation.id),
+  void _reconcile() {
+    final prepared = _prepared;
+    final acknowledged = prepared != null && _isApplied(prepared);
+    final remaining =
+        _pending.length - (acknowledged ? prepared.operations.length : 0);
+    final operations = document._operations.values.toList()
+      ..sort((left, right) => left.id.compareTo(right.id));
+    if (remaining > 0 &&
+        operations.any(
+          (operation) =>
+              operation.id.actorId == actorId &&
+              !_draft._operations.containsKey(operation.id),
         )) {
       throw const CrdtTextException(
         'Another writer cannot extend this actor while local edits are pending.',
       );
     }
-    _draft.applyChange(change);
+    final changed = _draft._integrate(operations);
+    if (acknowledged) {
+      _pending.removeRange(0, prepared.operations.length);
+      _prepared = null;
+    }
+    if (changed || _draft._notificationPending) _draft._notify();
   }
 
   /// Captures unsaved edits; repeated calls return the same batch until saved.
   CrdtTextChange? prepareChange() {
     if (_prepared != null) return _prepared;
     if (_pending.isEmpty) return null;
-    return _prepared = CrdtTextChange(_pending);
+    final change = CrdtTextChange(_pending);
+    if (_isApplied(change)) {
+      _pending.clear();
+      return null;
+    }
+    return _prepared = change;
   }
 
-  /// Clears only the prepared batch after the caller has persisted it.
-  ///
-  /// Does not apply changes to the original document or notify text listeners.
-  void acknowledgeChange(CrdtTextChange change) {
-    if (_prepared == null || _prepared != change) {
-      throw ArgumentError(
-        'Only the currently prepared change can be acknowledged.',
-      );
-    }
-    _pending.removeRange(0, change.operations.length);
-    _prepared = null;
-  }
+  bool _isApplied(CrdtTextChange change) => change.operations.every(
+    (operation) => document._operations[operation.id] == operation,
+  );
+
+  /// Detaches the context from its source document.
+  void dispose() => document.removeListener(_reconcile);
 
   /// Observes accepted draft edits after the full mutation commits.
   void addListener(void Function() listener) => _draft.addListener(listener);

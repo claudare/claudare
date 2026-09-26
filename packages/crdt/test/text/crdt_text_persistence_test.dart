@@ -11,7 +11,7 @@ void main() {
       text.insert(1, 'b');
       expect(text.prepareChange(), same(first));
       expect(first.operations, hasLength(1));
-      text.acknowledgeChange(first);
+      text.document.applyChange(first);
       expect(text.prepareChange()!.operations, hasLength(1));
       expect(
         (text.prepareChange()!.operations.single as CrdtTextInsert).character,
@@ -41,27 +41,27 @@ void main() {
         final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
         var notified = false;
         text.addListener(() => notified = true);
-        text.acknowledgeChange(text.prepareChange()!);
+        text.document.applyChange(text.prepareChange()!);
         expect(text.hasPendingChanges, isFalse);
         expect(text.prepareChange(), isNull);
         expect(notified, isFalse);
       },
     );
 
-    test('rejects an acknowledgment before preparation', () {
+    test('preparation recognizes edits already present in the document', () {
       final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final candidate = CrdtTextChange([insertion(1, character: 'a')]);
-      expect(() => text.acknowledgeChange(candidate), throwsArgumentError);
+      text.document.applyChange(candidate);
       expect(text.text, 'a');
-      expect(text.prepareChange(), candidate);
+      expect(text.prepareChange(), isNull);
     });
 
-    test('rejects stale acknowledgments without discarding later edits', () {
+    test('duplicate delivery does not discard later edits', () {
       final text = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final first = CrdtTextTestUtils.save(text);
       text.insert(1, 'b');
       final before = text.prepareChange();
-      expect(() => text.acknowledgeChange(first), throwsArgumentError);
+      text.document.applyChange(first);
       expect(text.prepareChange(), same(before));
       expect(text.text, 'ab');
     });
@@ -70,7 +70,7 @@ void main() {
       final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final b = CrdtTextTestUtils.editContext('B')..insert(0, 'b');
       final remote = CrdtTextTestUtils.save(b);
-      a.applyChange(remote);
+      a.document.applyChange(remote);
       a.insert(a.length, '!');
       final local = CrdtTextTestUtils.save(a);
       expect(
@@ -90,35 +90,40 @@ void main() {
       expect(receiver.text, 'ba!');
     });
 
-    test('allows remote replies to a prepared batch before acknowledgment', () {
-      final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
-      final prepared = a.prepareChange()!;
-      final b = CrdtTextTestUtils.editContext('B')..applyChange(prepared);
-      b.insert(1, 'b');
-      final reply = CrdtTextTestUtils.save(b);
-      a.applyChange(reply);
-      a.insert(2, 'c');
-      a.acknowledgeChange(prepared);
-      final later = CrdtTextTestUtils.save(a);
-      b.applyChange(later);
-      expect(b.text, 'abc');
-      expect(a.text, b.text);
-    });
+    test(
+      'merges remote replies after replay acknowledges a prepared batch',
+      () {
+        final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+        final prepared = a.prepareChange()!;
+        final b = CrdtTextTestUtils.editContext('B')
+          ..document.applyChange(prepared);
+        b.insert(1, 'b');
+        final reply = CrdtTextTestUtils.save(b);
+        a.document.applyChange(prepared);
+        a.document.applyChange(reply);
+        a.insert(2, 'c');
+        final later = CrdtTextTestUtils.save(a);
+        b.document.applyChange(later);
+        expect(b.text, 'abc');
+        expect(a.text, b.text);
+      },
+    );
 
     test('rejects another writer extending the local actor while dirty', () {
       final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+      final initial = CrdtTextChange([insertion(1, character: 'a')]);
       final other = CrdtTextTestUtils.editContext('A')
-        ..applyChange(a.prepareChange()!);
+        ..document.applyChange(initial);
       other.insert(1, 'b');
-      final before = a.prepareChange();
+      final extension = CrdtTextTestUtils.save(other);
       expect(
-        () => a.applyChange(CrdtTextTestUtils.save(other)),
+        () => a.document.applyChange(
+          CrdtTextChange([...initial.operations, ...extension.operations]),
+        ),
         throwsA(isA<CrdtTextException>()),
       );
       expect(a.text, 'a');
-      expect(a.prepareChange(), same(before));
-      a.acknowledgeChange(before!);
-      expect(a.hasPendingChanges, isFalse);
+      expect(a.hasPendingChanges, isTrue);
     });
   });
 
@@ -133,7 +138,8 @@ void main() {
       final a = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
       final initial = CrdtTextTestUtils.save(a);
       final document = CrdtText()..applyChange(initial);
-      final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
+      final b = CrdtTextTestUtils.editContext('B')
+        ..document.applyChange(initial);
       a.delete(1, 2);
       document.applyChange(CrdtTextTestUtils.save(a));
       b.insert(2, 'X');
@@ -199,7 +205,6 @@ void main() {
       final context = CrdtTextTestUtils.editContext('A', document: document)
         ..insert(0, 'a');
       final prepared = context.prepareChange()!;
-      document.applyChange(prepared);
       document.toJson();
       expect(context.prepareChange(), same(prepared));
       expect(context.hasPendingChanges, isTrue);

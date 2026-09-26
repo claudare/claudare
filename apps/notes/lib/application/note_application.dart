@@ -117,11 +117,8 @@ class NoteQueries {
   Future<NoteState> note(String noteId) =>
       (_runtime.resolve(noteAggregate(noteId))).then((v) => v.state);
 
-  Future<void> catchupNote(
-    Aggregate<NoteEvent, NoteState> aggregate, {
-    required ApplyEnvelope<NoteEvent> onApplied,
-  }) async {
-    await _runtime.resolve(aggregate, onApplied: onApplied);
+  Future<void> catchupNote(Aggregate<NoteEvent, NoteState> aggregate) async {
+    await _runtime.resolve(aggregate);
   }
 
   /// Returns sorted references to notes in the cached aggregate.

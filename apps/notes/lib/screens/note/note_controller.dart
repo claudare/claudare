@@ -97,6 +97,8 @@ class NoteController extends ChangeNotifier {
       return false;
     }
 
+    if (_noteId != null) await _refreshNote();
+
     var changed = false;
     if (_noteId == null) {
       _noteId = await application.command.createNote();
@@ -115,7 +117,6 @@ class NoteController extends ChangeNotifier {
     final change = content.prepareChange();
     if (change != null) {
       await application.command.updateNoteContent(noteId, change);
-      content.acknowledgeChange(change);
       changed = true;
       await _refreshNote();
     }
@@ -126,16 +127,11 @@ class NoteController extends ChangeNotifier {
 
   Future<void> _refreshNote() async {
     final noteId = _noteId!;
-    final note = _persisted ??= noteAggregate(noteId);
+    final note =
+        _persisted ??= noteAggregate(noteId, contentDocument: content.document);
+
     try {
-      await application.query.catchupNote(
-        note,
-        onApplied: (EventEnvelope<NoteEvent> envelope) {
-          if (envelope.event is NoteContentUpdated) {
-            content.applyChange((envelope.event as NoteContentUpdated).change);
-          }
-        },
-      );
+      await application.query.catchupNote(note);
       if (!note.state.exists) throw Exception('Note not found');
     } finally {
       if (note.state.exists) _applyNote(note.state);
@@ -167,6 +163,7 @@ class NoteController extends ChangeNotifier {
   @override
   void dispose() {
     content.removeListener(_onContentChanged);
+    content.dispose();
     _disposed = true;
     super.dispose();
   }

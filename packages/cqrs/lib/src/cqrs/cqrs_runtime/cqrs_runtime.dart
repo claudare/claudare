@@ -113,12 +113,10 @@ class CqrsRuntime {
 
   /// Catches up the aggregate to the latest version.
   /// Returns the same [Aggregate] that was passed in.
-  /// [onApplied] runs before state mutation so a callback failure can retry.
-  Future<Aggregate<TEvent, TState>>
-  resolve<TEvent extends Object, TState extends AggregateState<TEvent>>(
-    Aggregate<TEvent, TState> aggregate, {
-    ApplyEnvelope<TEvent>? onApplied,
-  }) async {
+  Future<Aggregate<TEvent, TState>> resolve<
+    TEvent extends Object,
+    TState extends AggregateState<TEvent>
+  >(Aggregate<TEvent, TState> aggregate) async {
     final startingSequence = aggregate.sequence;
     var applyCount = 0;
 
@@ -147,9 +145,6 @@ class CqrsRuntime {
         occuredAt: logEvent.occuredAt,
       );
 
-      if (onApplied != null) {
-        onApplied(envelope);
-      }
       aggregate.state.apply(envelope);
       _logger.debug(
         '$aggregate: applied event at position ${logEvent.position}',

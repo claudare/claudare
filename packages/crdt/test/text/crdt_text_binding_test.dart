@@ -21,7 +21,7 @@ void main() {
         f.controller.edit('help!', 5);
         expect(f.local.text, 'help!');
         expect(f.controller.assignments, 2);
-        f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+        f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
         expect(f.remote.text, 'help!');
       },
     );
@@ -30,7 +30,7 @@ void main() {
       final f = _Fixture('ab');
       addTearDown(f.binding.dispose);
       f.remote.insert(1, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.controller.value.text, 'aRb');
       expect(f.local.prepareChange(), isNull);
       expect(f.controller.assignments, 2);
@@ -50,7 +50,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('ab', 1);
       f.remote.insert(1, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.controller.value.selectionBase, 2);
       expect(f.controller.value.selectionExtent, 2);
     });
@@ -62,7 +62,7 @@ void main() {
         addTearDown(f.binding.dispose);
         f.controller.edit('abc', 1);
         f.remote.insert(3, 'R');
-        f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+        f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
         expect(f.controller.value.selectionExtent, 1);
       },
     );
@@ -72,7 +72,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('abcd', 2);
       f.remote.delete(1, 3);
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.controller.value.text, 'ad');
       expect(f.controller.value.selectionExtent, 1);
     });
@@ -92,7 +92,7 @@ void main() {
           );
           f.remote.insert(3, 'Y');
           f.remote.insert(1, 'X');
-          f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+          f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
           expect(f.controller.value.text, 'aXbcYd');
           expect(f.controller.value.selectionBase, reversed ? 4 : 2);
           expect(f.controller.value.selectionExtent, reversed ? 2 : 4);
@@ -107,7 +107,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.value = CrdtTextEditingValue(text: 'abc');
       f.remote.delete(0, 3);
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.controller.value.selectionBase, -1);
       expect(f.controller.value.selectionExtent, -1);
     });
@@ -119,10 +119,10 @@ void main() {
         addTearDown(f.binding.dispose);
         f.controller.edit('😀b', 1);
         f.remote.insert(0, 'a');
-        f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+        f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
         expect(f.controller.value.selectionExtent, 2);
         f.remote.delete(1, 3);
-        f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+        f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
         expect(f.controller.value.selectionExtent, 1);
       },
     );
@@ -132,7 +132,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('😁', 2);
       final change = CrdtTextTestUtils.save(f.local);
-      f.remote.applyChange(change);
+      f.remote.document.applyChange(change);
       expect(f.remote.text, '😁');
       expect(
         change.operations.whereType<CrdtTextInsert>().single.character,
@@ -144,7 +144,7 @@ void main() {
       final f = _Fixture('e\u0301');
       addTearDown(f.binding.dispose);
       f.controller.edit('e\u0301!', 3);
-      f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+      f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
       expect(f.remote.text, 'e\u0301!');
     });
 
@@ -228,7 +228,7 @@ void main() {
       f.controller.edit('ab', 1, composingStart: 0, composingEnd: 1);
       final assignments = f.controller.assignments;
       f.remote.insert(0, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.local.text, 'Rab');
       expect(f.controller.value.text, 'ab');
       expect(f.controller.assignments, assignments);
@@ -243,7 +243,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('aにb', 2, composingStart: 1, composingEnd: 2);
       f.remote.insert(1, 'X');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       expect(f.local.text, 'aXにb');
       expect(f.controller.value.text, 'aにb');
       f.controller.edit('a日本b', 3, composingStart: 1, composingEnd: 3);
@@ -252,7 +252,7 @@ void main() {
       f.controller.edit('a日本b', 3);
       expect(f.controller.value.text, 'a日本Xb');
       expect(f.controller.value.selectionExtent, 4);
-      f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+      f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
       expect(f.remote.text, f.local.text);
     });
 
@@ -261,12 +261,12 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('abcd', 3, base: 1, composingStart: 1, composingEnd: 3);
       f.remote.insert(2, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       f.controller.edit('aXd', 2, composingStart: 1, composingEnd: 2);
       expect(f.local.text, 'aXRd');
       f.controller.edit('aXd', 2);
       expect(f.controller.value.text, 'aXRd');
-      f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+      f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
       expect(f.remote.text, f.local.text);
     });
 
@@ -277,13 +277,13 @@ void main() {
         addTearDown(f.binding.dispose);
         f.controller.edit('aにb', 2, composingStart: 1, composingEnd: 2);
         f.remote.delete(0, 2);
-        f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+        f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
         expect(f.controller.value.text, 'aにb');
         f.controller.edit('a日本b', 3, composingStart: 1, composingEnd: 3);
         f.controller.edit('a日本b', 3);
         expect(f.controller.value.text, '日本');
         expect(f.controller.value.selectionExtent, 2);
-        f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+        f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
         expect(f.remote.text, '日本');
       },
     );
@@ -293,10 +293,10 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('aにb', 2, composingStart: 1, composingEnd: 2);
       f.remote.insert(1, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       f.controller.edit('ab', 1);
       expect(f.controller.value.text, 'aRb');
-      f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+      f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
       expect(f.remote.text, 'aRb');
     });
 
@@ -307,13 +307,14 @@ void main() {
         addTearDown(f.binding.dispose);
         f.controller.edit('aにb', 2, composingStart: 1, composingEnd: 2);
         final batch = f.local.prepareChange()!;
-        f.remote.applyChange(batch);
+        f.remote.document.applyChange(batch);
+        f.local.document.applyChange(batch);
         f.remote.delete(1, 2);
-        f.local.applyChange(CrdtTextTestUtils.save(f.remote));
-        f.local.acknowledgeChange(batch);
+        f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
+
         f.controller.edit('a日本b', 3, composingStart: 1, composingEnd: 3);
         f.controller.edit('a日本b', 3);
-        f.remote.applyChange(CrdtTextTestUtils.save(f.local));
+        f.remote.document.applyChange(CrdtTextTestUtils.save(f.local));
         expect(f.remote.text, 'a日本b');
         expect(f.controller.value.text, f.remote.text);
       },
@@ -324,7 +325,7 @@ void main() {
       addTearDown(f.binding.dispose);
       f.controller.edit('😀', 2, composingStart: 0, composingEnd: 2);
       f.remote.insert(0, 'R');
-      f.local.applyChange(CrdtTextTestUtils.save(f.remote));
+      f.local.document.applyChange(CrdtTextTestUtils.save(f.remote));
       f.controller.edit('😀', 2);
       expect(f.controller.value.text, 'R😀');
       expect(f.controller.value.selectionExtent, 3);
@@ -342,8 +343,8 @@ final class _Fixture {
     if (content.isNotEmpty) {
       final source = CrdtTextTestUtils.editContext('S')..insert(0, content);
       final initial = CrdtTextTestUtils.save(source);
-      local.applyChange(initial);
-      remote.applyChange(initial);
+      local.document.applyChange(initial);
+      remote.document.applyChange(initial);
     }
     binding = CrdtTextBinding(editContext: local, controller: controller);
   }

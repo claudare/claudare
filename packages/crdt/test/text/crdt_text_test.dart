@@ -74,7 +74,7 @@ void main() {
         );
         expect(text.text, '😀x');
         expect(text.prepareChange(), same(before));
-        text.acknowledgeChange(before!);
+        text.document.applyChange(before!);
         expect(text.hasPendingChanges, isFalse);
       });
     }
@@ -139,22 +139,27 @@ void main() {
   });
 
   group('causal application', () {
-    test('accepts a local event-log echo without acknowledging it', () {
-      final text = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
-      final change = text.prepareChange()!;
-      var notifications = 0;
-      text.addListener(() => notifications++);
-      text.applyChange(CrdtTextChange.fromJson(jsonCopy(change.toJson())));
-      expect(text.text, 'hello');
-      expect(text.prepareChange(), same(change));
-      expect(text.hasPendingChanges, isTrue);
-      expect(notifications, 0);
-    });
+    test(
+      'acknowledges a local event-log echo without notifying text listeners',
+      () {
+        final text = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
+        final change = text.prepareChange()!;
+        var notifications = 0;
+        text.addListener(() => notifications++);
+        text.document.applyChange(
+          CrdtTextChange.fromJson(jsonCopy(change.toJson())),
+        );
+        expect(text.text, 'hello');
+        expect(text.prepareChange(), isNull);
+        expect(text.hasPendingChanges, isFalse);
+        expect(notifications, 0);
+      },
+    );
 
     test('replay does not create unsaved edits', () {
       final source = CrdtTextTestUtils.editContext('A')..insert(0, 'hello');
       final receiver = CrdtTextTestUtils.editContext('B')
-        ..applyChange(CrdtTextTestUtils.save(source));
+        ..document.applyChange(CrdtTextTestUtils.save(source));
       expect(receiver.text, 'hello');
       expect(receiver.hasPendingChanges, isFalse);
     });
@@ -162,9 +167,9 @@ void main() {
     test('clock advances past received deletion IDs', () {
       final source = CrdtTextTestUtils.editContext('A')..insert(0, 'x');
       final receiver = CrdtTextTestUtils.editContext('B')
-        ..applyChange(CrdtTextTestUtils.save(source));
+        ..document.applyChange(CrdtTextTestUtils.save(source));
       source.delete(0, 1);
-      receiver.applyChange(CrdtTextTestUtils.save(source));
+      receiver.document.applyChange(CrdtTextTestUtils.save(source));
       receiver.insert(0, 'y');
       expect(receiver.prepareChange()!.operations.single.id.counter, 3);
     });
@@ -172,7 +177,7 @@ void main() {
     test('accepts an older counter from a concurrent actor', () {
       final first = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
       final second = CrdtTextTestUtils.editContext('B')..insert(0, 'x');
-      first.applyChange(CrdtTextTestUtils.save(second));
+      first.document.applyChange(CrdtTextTestUtils.save(second));
       expect(first.text, 'xabc');
     });
 
@@ -259,7 +264,7 @@ void main() {
     test('rejects a context that omits transitive dependencies', () {
       final a = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
       final b = CrdtTextTestUtils.editContext('B')
-        ..applyChange(CrdtTextTestUtils.save(a));
+        ..document.applyChange(CrdtTextTestUtils.save(a));
       b.insert(1, 'b');
       final c = CrdtText();
       c.applyChange(CrdtTextChange([insertion(1, character: 'a')]));

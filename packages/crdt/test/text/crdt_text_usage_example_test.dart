@@ -14,7 +14,7 @@ void main() {
     updateText(alice, 'Hello');
 
     // Saving applies Alice's batch to her document and acknowledges it.
-    CrdtTextTestUtils.save(alice, document: aliceDocument);
+    CrdtTextTestUtils.save(alice);
 
     // Bob forks the saved history, then opens a draft with his own actor ID.
     final bobDocument = aliceDocument.fork();
@@ -29,32 +29,27 @@ void main() {
 
     // Bob edits independently and saves before receiving Alice's changes.
     bob.insert(bob.length, ' remote');
-    final remote = CrdtTextTestUtils.save(bob, document: bobDocument);
+    final remote = CrdtTextTestUtils.save(bob);
 
     // Delivery updates Alice's document and draft, preserving her pending edits.
-    CrdtTextTestUtils.deliver(remote, document: aliceDocument, context: alice);
+    aliceDocument.applyChange(remote);
     expect(alice.text, 'Later Local Hello remote');
     expect(alice.prepareChange(), same(prepared));
 
     // Alice's prepared batch is now persisted, excluding her later edit.
     aliceDocument.applyChange(prepared);
 
-    // Its local echo can arrive before the save is acknowledged.
-    alice.applyChange(prepared);
-    expect(alice.prepareChange(), same(prepared));
+    // Bob receives the persisted batch through his document.
+    bobDocument.applyChange(prepared);
 
-    // Bob receives that persisted batch and applies it to his document and draft.
-    CrdtTextTestUtils.deliver(prepared, document: bobDocument, context: bob);
-
-    // Acknowledging the successful save leaves Alice's later edit pending.
-    alice.acknowledgeChange(prepared);
+    // Replay acknowledges the saved batch, leaving Alice's later edit pending.
     expect(alice.hasPendingChanges, isTrue);
 
     // Alice saves the remaining edit as a separate batch.
-    final later = CrdtTextTestUtils.save(alice, document: aliceDocument);
+    final later = CrdtTextTestUtils.save(alice);
 
     // Bob receives the final batch after the earlier batch it depends on.
-    CrdtTextTestUtils.deliver(later, document: bobDocument, context: bob);
+    bobDocument.applyChange(later);
 
     // Both documents and drafts converge, and neither writer has pending edits.
     expect(alice.prepareChange(), isNull);
@@ -86,8 +81,6 @@ void main() {
       await persist(prepared);
       final persisted = CrdtTextChange.fromJson(jsonDecode(eventLog.single));
       state.applyChange(persisted);
-      editor.applyChange(persisted); // Event delivery can echo local changes.
-      editor.acknowledgeChange(prepared);
 
       // Edits made while saving stay in the draft and out of the snapshot.
       final snapshot = jsonEncode(state.toJson());
@@ -99,7 +92,6 @@ void main() {
       final later = editor.prepareChange()!;
       await persist(later);
       state.applyChange(CrdtTextChange.fromJson(jsonDecode(eventLog.last)));
-      editor.acknowledgeChange(later);
 
       // A restored snapshot can replay subsequent events without an actor.
       restored.applyChange(CrdtTextChange.fromJson(jsonDecode(eventLog.last)));

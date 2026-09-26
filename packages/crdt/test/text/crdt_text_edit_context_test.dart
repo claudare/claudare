@@ -30,33 +30,34 @@ void main() {
     expect(notifications, 0);
   });
 
-  test('source changes do not implicitly update or notify the draft', () {
+  test('source changes update and notify the draft', () {
     final document = CrdtText();
     final context = CrdtTextTestUtils.editContext('B', document: document);
     var notifications = 0;
     context.addListener(() => notifications++);
     document.applyChange(CrdtTextChange([insertion(1)]));
-    expect(context.text, '');
+    expect(context.text, 'x');
     expect(context.hasPendingChanges, isFalse);
-    expect(notifications, 0);
+    expect(notifications, 1);
   });
 
-  test('incoming draft changes do not mutate the source document', () {
+  test('disposing twice detaches the draft from source changes', () {
     final document = CrdtText();
     final context = CrdtTextTestUtils.editContext('B', document: document);
-    context.applyChange(CrdtTextChange([insertion(1)]));
-    expect(context.text, 'x');
-    expect(document.text, '');
-    expect(document.toJson()['operations'], isEmpty);
+    context.dispose();
+    context.dispose();
+    document.applyChange(CrdtTextChange([insertion(1)]));
+    expect(context.text, '');
+    expect(document.text, 'x');
   });
 
-  test('acknowledgment does not apply a change to the source document', () {
+  test('source application acknowledges the prepared batch', () {
     final document = CrdtText();
     final context = CrdtTextTestUtils.editContext('A', document: document)
       ..insert(0, 'draft');
-    context.acknowledgeChange(context.prepareChange()!);
-    expect(document.text, '');
-    expect(document.toJson()['operations'], isEmpty);
+    document.applyChange(context.prepareChange()!);
+    expect(document.text, 'draft');
+    expect(context.hasPendingChanges, isFalse);
     expect(context.text, 'draft');
   });
 
@@ -76,12 +77,15 @@ void main() {
     final author = CrdtTextTestUtils.editContext('A')..insert(0, 'abc');
     final initial = CrdtTextTestUtils.save(author);
     final document = CrdtText()..applyChange(initial);
-    final remote = CrdtTextTestUtils.editContext('B', document: document);
+    final remote = CrdtTextTestUtils.editContext(
+      'B',
+      document: document.fork(),
+    );
     author.delete(1, 2);
     document.applyChange(CrdtTextTestUtils.save(author));
     final context = CrdtTextTestUtils.editContext('C', document: document);
     remote.insert(2, 'X');
-    context.applyChange(CrdtTextTestUtils.save(remote));
+    document.applyChange(CrdtTextTestUtils.save(remote));
     expect(context.text, 'aXc');
     expect(context.hasPendingChanges, isFalse);
   });
@@ -95,12 +99,28 @@ void main() {
     expect(replay.text, 'a');
   });
 
+  test(
+    'a listener can persist a local edit without recursive notification',
+    () {
+      final context = CrdtTextTestUtils.editContext('A');
+      var notifications = 0;
+      context.addListener(() {
+        notifications++;
+        context.document.applyChange(context.prepareChange()!);
+      });
+      context.insert(0, 'a');
+      expect(notifications, 1);
+      expect(context.document.text, 'a');
+      expect(context.hasPendingChanges, isFalse);
+    },
+  );
+
   test('accepts another writer extending the actor after acknowledgment', () {
     final context = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
     final document = CrdtText()..applyChange(CrdtTextTestUtils.save(context));
     final other = CrdtTextTestUtils.editContext('A', document: document)
       ..insert(1, 'b');
-    context.applyChange(CrdtTextTestUtils.save(other));
+    context.document.applyChange(CrdtTextTestUtils.save(other));
     expect(context.text, 'ab');
     expect(context.hasPendingChanges, isFalse);
     context.insert(2, 'c');
@@ -117,13 +137,84 @@ void main() {
       insertion(3, actor: 'B', dependencies: {'B': 1}),
     ]);
     expect(
-      () => context.applyChange(invalid),
+      () => context.document.applyChange(invalid),
       throwsA(isA<CrdtTextException>()),
     );
     expect(context.text, 'a');
     expect(context.prepareChange(), same(pending));
     expect(notifications, 0);
-    context.acknowledgeChange(pending);
+    context.document.applyChange(pending);
     expect(context.hasPendingChanges, isFalse);
+  });
+
+  test('acknowledges a prepared batch delivered in separate pieces', () {
+    final context = CrdtTextTestUtils.editContext('A')..insert(0, 'ab');
+    final prepared = context.prepareChange()!;
+    context.insert(2, 'c');
+    context.document.applyChange(CrdtTextChange([prepared.operations.first]));
+    expect(context.prepareChange(), same(prepared));
+    context.document.applyChange(CrdtTextChange([prepared.operations.last]));
+    expect(context.prepareChange()!.operations.single.id, textId(3));
+    expect(context.document.text, 'ab');
+    expect(context.text, 'abc');
+  });
+
+  test('acknowledges a prepared batch contained in a larger batch', () {
+    final context = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+    final prepared = context.prepareChange()!;
+    final remote = CrdtTextTestUtils.editContext('A');
+    remote.document.applyChange(prepared);
+    remote.insert(1, 'b');
+    final later = remote.prepareChange()!;
+    context.document.applyChange(
+      CrdtTextChange([...prepared.operations, ...later.operations]),
+    );
+    expect(context.text, 'ab');
+    expect(context.prepareChange(), isNull);
+  });
+
+  test('matching operation IDs with different contents do not acknowledge', () {
+    final context = CrdtTextTestUtils.editContext('A')..insert(0, 'a');
+    final prepared = context.prepareChange()!;
+    expect(
+      () => context.document.applyChange(
+        CrdtTextChange([insertion(1, character: 'b')]),
+      ),
+      throwsA(isA<CrdtTextException>()),
+    );
+    expect(context.text, 'a');
+    expect(context.prepareChange(), same(prepared));
+  });
+
+  test('source retry reconciles a context skipped by a failing listener', () {
+    final document = CrdtText();
+    var fail = true;
+    document.addListener(() {
+      if (fail) throw StateError('Listener failed');
+    });
+    final context = CrdtTextTestUtils.editContext('B', document: document);
+    final change = CrdtTextTestUtils.singleChange('remote');
+    expect(() => document.applyChange(change), throwsStateError);
+    expect(context.text, '');
+    fail = false;
+    document.applyChange(change);
+    expect(context.text, 'remote');
+    expect(context.hasPendingChanges, isFalse);
+  });
+
+  test('source retry notifies a draft listener after its earlier failure', () {
+    final context = CrdtTextTestUtils.editContext('B');
+    var fail = true;
+    final observed = <String>[];
+    context.addListener(() {
+      if (fail) throw StateError('Editor failed');
+      observed.add(context.text);
+    });
+    final change = CrdtTextTestUtils.singleChange('remote');
+    expect(() => context.document.applyChange(change), throwsStateError);
+    fail = false;
+    context.document.applyChange(change);
+    context.document.applyChange(change);
+    expect(observed, ['remote']);
   });
 }

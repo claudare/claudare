@@ -138,30 +138,22 @@ void main() {
     );
   });
 
-  test('callback failure does not apply the event twice on retry', () async {
-    await _appendAccountEvents(eventStore);
-    final aggregate = _envelopeAggregate('account/one');
-    var failed = false;
-    await expectLater(
-      runtime.resolve(
-        aggregate,
-        onApplied: (_) {
-          if (!failed) {
-            failed = true;
-            throw StateError('callback failed');
-          }
-        },
-      ),
-      throwsStateError,
-    );
-    expect(aggregate.state.events, isEmpty);
-    expect(aggregate.sequence, isNull);
-    await runtime.resolve(aggregate);
-    expect(aggregate.state.events.map((v) => v.event.value), [
-      'opened',
-      'deposit',
-    ]);
-  });
+  test(
+    'state application failure leaves the event available for retry',
+    () async {
+      await _appendAccountEvents(eventStore);
+      final aggregate = _envelopeAggregate('account/one');
+      aggregate.state.failNext = true;
+      await expectLater(runtime.resolve(aggregate), throwsStateError);
+      expect(aggregate.state.events, isEmpty);
+      expect(aggregate.sequence, isNull);
+      await runtime.resolve(aggregate);
+      expect(aggregate.state.events.map((v) => v.event.value), [
+        'opened',
+        'deposit',
+      ]);
+    },
+  );
 }
 
 Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
@@ -176,9 +168,16 @@ Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
 
 final class _EnvelopeState implements AggregateState<_TestEvent> {
   final events = <EventEnvelope<_TestEvent>>[];
+  bool failNext = false;
 
   @override
-  void apply(EventEnvelope<_TestEvent> envelope) => events.add(envelope);
+  void apply(EventEnvelope<_TestEvent> envelope) {
+    if (failNext) {
+      failNext = false;
+      throw StateError('State application failed');
+    }
+    events.add(envelope);
+  }
 }
 
 Future<void> _appendAccountEvents(EventStore eventStore) =>

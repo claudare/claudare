@@ -14,7 +14,9 @@ class NoteState implements AggregateState<NoteEvent> {
   late DateTime updatedAt;
   DateTime? trashedAt;
 
-  NoteState(this.noteId) : _title = CrdtString(), _content = CrdtText();
+  NoteState(this.noteId, {CrdtText? contentDocument})
+    : _title = CrdtString(),
+      _content = contentDocument ?? CrdtText();
 
   NoteState._copy(this.noteId, this._title, this._content);
 
@@ -37,7 +39,7 @@ class NoteState implements AggregateState<NoteEvent> {
   String get title => _title.value;
   String get content => _content.text;
 
-  /// Persisted content state for initializing an independent editing context.
+  /// Persisted content state observed by attached editing contexts.
   CrdtText get contentDocument => _content;
   bool get isTrashed => trashedAt != null;
 
@@ -78,8 +80,11 @@ class NoteState implements AggregateState<NoteEvent> {
   }
 }
 
-Aggregate<NoteEvent, NoteState> noteAggregate(String noteId) => Aggregate(
+Aggregate<NoteEvent, NoteState> noteAggregate(
+  String noteId, {
+  CrdtText? contentDocument,
+}) => Aggregate(
   name: 'Note $noteId',
   filter: PatternFilter.exact(noteStreamRoute.buildPath(noteId)),
-  state: NoteState(noteId),
+  state: NoteState(noteId, contentDocument: contentDocument),
 );

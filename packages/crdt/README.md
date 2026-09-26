@@ -11,10 +11,11 @@ requiring a local actor ID. It depends only on Dart SDK libraries.
 
 Call `document.fork()` to copy its history into an independent document.
 
-`CrdtTextEditContext(document: document, actorId: actorId)` copies the document
-into a private draft with insert, delete, and replace operations. Supply an
-actor ID for each independent writer. Offsets and `length` use UTF-16, matching
-Dart strings and Flutter selections. Edits must fall on Unicode scalar
+`CrdtTextEditContext(document: document, actorId: actorId)` observes the
+document and maintains a private draft with insert, delete, and replace
+operations.
+Supply an actor ID for each independent writer. Offsets and `length` use UTF-16,
+matching Dart strings and Flutter selections. Edits must fall on Unicode scalar
 boundaries; malformed strings and split surrogate pairs are rejected. Combining
 sequences are preserved without normalization or grapheme-level conflict rules.
 
@@ -27,24 +28,25 @@ operation IDs throw `CrdtTextException` without partially applying a batch.
 Exact duplicates are accepted. The caller provides delivery and persistence.
 
 Call `prepareChange()` on the context to obtain unsaved local edits, persist its
-JSON in the event log, then call `acknowledgeChange(change)`. Until
-acknowledgment, preparation returns the same immutable batch for retries.
-Edits made while saving remain pending for the next batch. Replayed events are
-never included in local pending edits. Editing and acknowledgment do not update
-the original document. Apply persisted changes to it explicitly, and deliver
-incoming changes to the context with `applyChange()` to update the draft.
+data in the event log, then apply persisted changes to the source document with
+`document.applyChange(change)`. Attached contexts update automatically and
+acknowledge prepared edits once their operations are present in the document.
+Until acknowledgment, preparation returns the same immutable batch for retries.
+Edits made while saving remain pending for the next batch. Local edits do not
+update the source document, and replay does not create pending edits.
 
 `CrdtText.toJson()` and `CrdtText.fromJson()` preserve document history,
 including operation actor IDs and tombstones. Snapshots contain no local writer
 identity, pending edits, or prepared batch. A restored document can be edited
 through a fresh context for any actor.
 
-Contexts exist only in memory. Discarding one loses its unsaved edits. See the
+Contexts exist only in memory. Call `dispose()` to detach a context from its
+document when finished. Discarding one loses its unsaved edits. See the
 [usage example test](test/text/crdt_text_usage_example_test.dart) for editing,
 persistence, replay, and snapshot restoration without application dependencies.
 
-`CrdtTextTestUtils` provides static helpers for text fixtures, simulated saves,
-and explicit change delivery. Tests can delay or repeat deliveries to exercise
+`CrdtTextTestUtils` provides helpers for text fixtures and simulated saves
+through source documents. Tests can delay or repeat deliveries to exercise
 concurrent editing without a transport.
 
 ## Editors

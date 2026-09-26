@@ -9,13 +9,13 @@ void main() {
   test('merges the transcript Helo example', () {
     final a = CrdtTextTestUtils.editContext('A')..insert(0, 'Helo');
     final b = CrdtTextTestUtils.editContext('B')
-      ..applyChange(CrdtTextTestUtils.save(a));
+      ..document.applyChange(CrdtTextTestUtils.save(a));
     a.insert(3, 'l');
     b.insert(4, '!');
     final left = CrdtTextTestUtils.save(a);
     final right = CrdtTextTestUtils.save(b);
-    a.applyChange(right);
-    b.applyChange(left);
+    a.document.applyChange(right);
+    b.document.applyChange(left);
     expect(a.text, 'Hello!');
     expect(b.text, 'Hello!');
   });
@@ -23,14 +23,14 @@ void main() {
   test('keeps concurrent forward insertion runs together', () {
     final source = CrdtTextTestUtils.editContext('S')..insert(0, 'ab');
     final initial = CrdtTextTestUtils.save(source);
-    final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
-    final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
+    final a = CrdtTextTestUtils.editContext('A')..document.applyChange(initial);
+    final b = CrdtTextTestUtils.editContext('B')..document.applyChange(initial);
     a.insert(2, 'de');
     b.insert(2, 'fg');
     final left = CrdtTextTestUtils.save(a);
     final right = CrdtTextTestUtils.save(b);
-    a.applyChange(right);
-    b.applyChange(left);
+    a.document.applyChange(right);
+    b.document.applyChange(left);
     expect(a.text, 'abfgde');
     expect(b.text, a.text);
   });
@@ -38,15 +38,15 @@ void main() {
   test('merges overlapping deletions by insertion identity', () {
     final source = CrdtTextTestUtils.editContext('S')..insert(0, 'abcd');
     final initial = CrdtTextTestUtils.save(source);
-    final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
-    final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
+    final a = CrdtTextTestUtils.editContext('A')..document.applyChange(initial);
+    final b = CrdtTextTestUtils.editContext('B')..document.applyChange(initial);
     a.delete(1, 3);
     b.delete(2, 4);
     final left = CrdtTextTestUtils.save(a);
     final right = CrdtTextTestUtils.save(b);
-    a.applyChange(right);
-    b.applyChange(left);
-    a.applyChange(right);
+    a.document.applyChange(right);
+    b.document.applyChange(left);
+    a.document.applyChange(right);
     expect(a.text, 'a');
     expect(b.text, 'a');
   });
@@ -56,9 +56,12 @@ void main() {
     () {
       final source = CrdtTextTestUtils.editContext('S')..insert(0, 'x');
       final initial = CrdtTextTestUtils.save(source);
-      final a = CrdtTextTestUtils.editContext('A')..applyChange(initial);
-      final b = CrdtTextTestUtils.editContext('B')..applyChange(initial);
-      final c = CrdtTextTestUtils.editContext('C')..applyChange(initial);
+      final a = CrdtTextTestUtils.editContext('A')
+        ..document.applyChange(initial);
+      final b = CrdtTextTestUtils.editContext('B')
+        ..document.applyChange(initial);
+      final c = CrdtTextTestUtils.editContext('C')
+        ..document.applyChange(initial);
       a.insert(1, 'a');
       final firstA = CrdtTextTestUtils.save(a);
       a.insert(2, 'A');
@@ -143,7 +146,7 @@ void main() {
                 .toList();
             if (ready.isNotEmpty) {
               final change = ready[random.nextInt(ready.length)];
-              replica.applyChange(change);
+              replica.document.applyChange(change);
               documents[index].applyChange(change);
               received[index].addAll(change.operations.map((op) => op.id));
             }
@@ -182,7 +185,7 @@ void main() {
               reason: 'The valid event history must make progress.',
             );
             for (final change in ready) {
-              replicas[index].applyChange(
+              replicas[index].document.applyChange(
                 CrdtTextChange.fromJson(jsonCopy(change.toJson())),
               );
               documents[index].applyChange(change);

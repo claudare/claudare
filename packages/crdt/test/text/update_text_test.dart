@@ -79,7 +79,7 @@ void main() {
       expect(context.text, '😀a🌍!');
       expect(context.prepareChange(), same(prepared));
       expect(notifications, 0);
-      context.acknowledgeChange(prepared);
+      context.document.applyChange(prepared);
       expect(context.hasPendingChanges, isFalse);
     });
   }
@@ -91,7 +91,6 @@ void main() {
     updateText(context, 'hello!');
     expect(context.prepareChange(), same(first));
     document.applyChange(first);
-    context.acknowledgeChange(first);
     final later = context.prepareChange()!;
     expect(later.operations, hasLength(1));
     document.applyChange(later);

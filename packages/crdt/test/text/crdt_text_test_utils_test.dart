@@ -43,31 +43,30 @@ void main() {
     final prepared = context.prepareChange()!;
     context.insert(context.length, '!');
 
-    expect(CrdtTextTestUtils.save(context, document: document), same(prepared));
+    expect(CrdtTextTestUtils.save(context), same(prepared));
     expect(document.text, 'Hello');
     expect(context.text, 'Hello!');
     expect(context.hasPendingChanges, isTrue);
-    CrdtTextTestUtils.save(context, document: document);
+    CrdtTextTestUtils.save(context);
     expect(document.text, 'Hello!');
     expect(context.prepareChange(), isNull);
   });
 
-  test('a failed document write leaves the prepared batch retryable', () {
-    final document = CrdtText()
-      ..applyChange(
-        CrdtTextTestUtils.singleChange('Conflict', actorId: 'alice'),
-      );
-    final context = CrdtTextTestUtils.editContext('alice')..insert(0, 'Hello');
-    final prepared = context.prepareChange()!;
-    final before = document.toJson();
+  test(
+    'a failed document notification leaves the prepared batch retryable',
+    () {
+      final document = CrdtText();
+      void fail() => throw StateError('Delivery interrupted');
+      document.addListener(fail);
+      final context = CrdtTextTestUtils.editContext('alice', document: document)
+        ..insert(0, 'Hello');
+      final prepared = context.prepareChange()!;
 
-    expect(
-      () => CrdtTextTestUtils.save(context, document: document),
-      throwsA(isA<CrdtTextException>()),
-    );
-    expect(context.prepareChange(), same(prepared));
-    expect(document.toJson(), before);
-  });
+      expect(() => CrdtTextTestUtils.save(context), throwsStateError);
+      expect(context.prepareChange(), same(prepared));
+      expect(document.text, 'Hello');
+    },
+  );
 
   test('save rejects a context without pending edits', () {
     final context = CrdtTextTestUtils.editContext('alice');
@@ -90,7 +89,7 @@ void main() {
     context.addListener(() => notifications++);
 
     for (var delivery = 0; delivery < 2; delivery++) {
-      CrdtTextTestUtils.deliver(change, document: document, context: context);
+      document.applyChange(change);
     }
 
     expect(document.text, 'Hello!');
@@ -99,16 +98,16 @@ void main() {
     expect(notifications, 1);
   });
 
-  test('delivery of a local echo does not acknowledge it', () {
+  test('delivery of a local echo acknowledges it', () {
     final document = CrdtText();
     final context = CrdtTextTestUtils.editContext('alice', document: document)
       ..insert(0, 'Hello');
     final prepared = context.prepareChange()!;
 
-    CrdtTextTestUtils.deliver(prepared, document: document, context: context);
+    document.applyChange(prepared);
 
     expect(document.text, 'Hello');
-    expect(context.prepareChange(), same(prepared));
-    expect(context.hasPendingChanges, isTrue);
+    expect(context.prepareChange(), isNull);
+    expect(context.hasPendingChanges, isFalse);
   });
 }
