@@ -2,11 +2,13 @@
 
 /// Events which are emitted to aggregates
 class EventEnvelope<TEvent extends Object> {
+  final String actor;
   final String streamPath;
   final TEvent event;
   final DateTime occuredAt;
 
   const EventEnvelope({
+    required this.actor,
     required this.streamPath,
     required this.event,
     required this.occuredAt,

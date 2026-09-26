@@ -1,5 +1,5 @@
 import 'package:cqrs/cqrs.dart';
-import 'package:crdt/crdt_lww.dart';
+import 'package:crdt/crdt_string.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/stream_route/note_stream_route.dart';
 
@@ -7,7 +7,7 @@ import 'package:notes/stream_route/note_stream_route.dart';
 class NoteState {
   final String noteId;
   bool exists = false;
-  CrdtLwwValue<String> _title = CrdtLwwValue<String>.zero('');
+  final CrdtString _title = CrdtString();
   String content = '';
   late DateTime createdAt;
   late DateTime updatedAt;
@@ -18,8 +18,11 @@ class NoteState {
   String get title => _title.value;
   bool get isTrashed => trashedAt != null;
 
-  void apply(NoteEvent event, DateTime occuredAt) {
-    switch (event) {
+  void apply(EventEnvelope<NoteEvent> envelope) {
+    final actor = envelope.actor;
+    final occuredAt = envelope.occuredAt;
+
+    switch (envelope.event) {
       case NoteCreated():
         exists = true;
         content = '';
@@ -28,7 +31,9 @@ class NoteState {
         trashedAt = null;
       case NoteTitleUpdated(:final newTitle):
         _requireCreated();
-        _title.applyChange(CrdtLwwChange(newTitle, occuredAt));
+        _title.applyChange(
+          CrdtStringChange(value: newTitle, actor: actor, time: occuredAt),
+        );
         updatedAt = occuredAt;
       case NoteContentUpdated(:final newContent):
         _requireCreated();
@@ -74,6 +79,6 @@ class NoteAggregate implements Aggregate<NoteEvent, NoteState> {
 
   @override
   void apply(NoteState state, EventEnvelope<NoteEvent> envelope) {
-    state.apply(envelope.event, envelope.occuredAt);
+    state.apply(envelope);
   }
 }

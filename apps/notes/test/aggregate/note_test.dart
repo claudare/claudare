@@ -74,7 +74,7 @@ void main() {
     expect(state.updatedAt, editedAt);
   });
 
-  test('uses the later event when title timestamps tie', () {
+  test('uses the greater actor when title timestamps tie', () {
     final state =
         AggregateTester(NoteAggregate('one'))
             .withEvent(
@@ -85,16 +85,18 @@ void main() {
             .withEvent(
               'note/one',
               const NoteTitleUpdated(noteId: 'one', newTitle: 'First'),
+              actor: 'b',
               occuredAt: editedAt,
             )
             .withEvent(
               'note/one',
               const NoteTitleUpdated(noteId: 'one', newTitle: 'Second'),
+              actor: 'a',
               occuredAt: editedAt,
             )
             .run();
 
-    expect(state.title, 'Second');
+    expect(state.title, 'First');
   });
 
   test('trash and restore change only trash state', () {

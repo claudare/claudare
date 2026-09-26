@@ -23,7 +23,21 @@ void main() {
                 ..withEvent('account/two', 'deposit', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['account/one:opened', 'account/two:deposit']);
+      expect(state, ['a:account/one:opened', 'a:account/two:deposit']);
+    });
+
+    test('passes an explicit actor to the aggregate', () {
+      final state =
+          AggregateTester(_RecordingAggregate())
+              .withEvent(
+                'account/one',
+                'opened',
+                actor: 'b',
+                occuredAt: occurredAt,
+              )
+              .run();
+
+      expect(state, ['b:account/one:opened']);
     });
 
     test('checks canApply before applying an event', () {
@@ -33,7 +47,7 @@ void main() {
                 ..withEvent('account/skip', 'kept', occuredAt: occurredAt))
               .run();
 
-      expect(state, ['account/skip:kept']);
+      expect(state, ['a:account/skip:kept']);
     });
   });
 }
@@ -56,6 +70,6 @@ final class _RecordingAggregate implements Aggregate<String, List<String>> {
 
   @override
   void apply(List<String> state, EventEnvelope<String> envelope) {
-    state.add('${envelope.streamPath}:${envelope.event}');
+    state.add('${envelope.actor}:${envelope.streamPath}:${envelope.event}');
   }
 }

@@ -90,16 +90,23 @@ void main() {
     final createdAt = DateTime.utc(2026, 1, 1);
     final editedAt = DateTime.utc(2026, 1, 2);
     await runtime.seedEvents([
-      TestEvent('note/old', const NoteCreated(noteId: 'old'), createdAt),
       TestEvent(
-        'note/old',
-        const NoteTitleUpdated(noteId: 'old', newTitle: 'Existing'),
-        editedAt,
+        actor: 'a',
+        stream: 'note/old',
+        event: const NoteCreated(noteId: 'old'),
+        occuredAt: createdAt,
       ),
       TestEvent(
-        'note/old',
-        const NoteContentUpdated(noteId: 'old', newContent: 'History'),
-        editedAt,
+        actor: 'a',
+        stream: 'note/old',
+        event: const NoteTitleUpdated(noteId: 'old', newTitle: 'Existing'),
+        occuredAt: editedAt,
+      ),
+      TestEvent(
+        actor: 'a',
+        stream: 'note/old',
+        event: const NoteContentUpdated(noteId: 'old', newContent: 'History'),
+        occuredAt: editedAt,
       ),
     ]);
 

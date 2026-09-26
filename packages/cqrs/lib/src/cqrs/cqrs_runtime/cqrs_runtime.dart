@@ -103,6 +103,7 @@ class CqrsRuntime {
     await for (final logEvent in stream) {
       final decoded = _eventRegistry.decode<TEvent>(logEvent.encodedEvent);
       final envelope = EventEnvelope(
+        actor: logEvent.eventId.actor,
         streamPath: logEvent.streamPath,
         event: decoded,
         occuredAt: logEvent.occuredAt,

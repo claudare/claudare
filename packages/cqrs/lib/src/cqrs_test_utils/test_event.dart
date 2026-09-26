@@ -1,7 +1,13 @@
 final class TestEvent<TEvent extends Object> {
-  final String streamPath;
+  final String actor;
+  final String stream;
   final TEvent event;
   final DateTime occuredAt;
 
-  const TestEvent(this.streamPath, this.event, this.occuredAt);
+  const TestEvent({
+    required this.actor,
+    required this.stream,
+    required this.event,
+    required this.occuredAt,
+  });
 }

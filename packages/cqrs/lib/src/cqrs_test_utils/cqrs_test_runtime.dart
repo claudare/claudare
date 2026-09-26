@@ -41,26 +41,27 @@ final class CqrsTestRuntime extends CqrsRuntime {
     final appends = [
       for (final event in events)
         EventAppend(
-          streamPath: event.streamPath,
+          streamPath: event.stream,
           encodedEvent: eventRegistry.encode(event.event),
           occuredAt: event.occuredAt,
         ),
     ];
 
-    for (final event in appends) {
-      final info = await _eventStore.getStreamVersion(event.streamPath);
+    for (var index = 0; index < appends.length; index++) {
+      final append = appends[index];
+      final info = await _eventStore.getStreamVersion(append.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
-          actor: _testActor,
+          actor: events[index].actor,
           dependency: CommandDependency(),
-          occuredAt: event.occuredAt,
+          occuredAt: append.occuredAt,
           locks: [
             StreamLock(
-              streamPath: event.streamPath,
+              streamPath: append.streamPath,
               originatingStreamVersion: info,
             ),
           ],
-          events: [event],
+          events: [append],
         ),
       );
     }

@@ -68,6 +68,6 @@ class NoteListAggregate implements Aggregate<NoteEvent, NoteListState> {
   void apply(NoteListState state, EventEnvelope<NoteEvent> envelope) {
     final noteId = envelope.event.noteId;
     final note = state.notes.putIfAbsent(noteId, () => NoteState(noteId));
-    note.apply(envelope.event, envelope.occuredAt);
+    note.apply(envelope);
   }
 }

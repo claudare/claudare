@@ -48,7 +48,12 @@ void main() {
 
     expect(
       await runtime.seedEvents([
-        TestEvent('value/one', const _ValueEvent('seeded'), seededAt),
+        TestEvent(
+          actor: 'a',
+          stream: 'value/one',
+          event: const _ValueEvent('seeded'),
+          occuredAt: seededAt,
+        ),
       ]),
       same(runtime),
     );
@@ -67,9 +72,24 @@ void main() {
     final later = seededAt.add(const Duration(days: 1));
 
     await runtime.seedEvents([
-      TestEvent('value/one', const _ValueEvent('first'), seededAt),
-      TestEvent('value/two', const _ValueEvent('second'), later),
-      TestEvent('value/one', const _ValueEvent('third'), later),
+      TestEvent(
+        actor: 'a',
+        stream: 'value/one',
+        event: const _ValueEvent('first'),
+        occuredAt: seededAt,
+      ),
+      TestEvent(
+        actor: 'b',
+        stream: 'value/two',
+        event: const _ValueEvent('second'),
+        occuredAt: later,
+      ),
+      TestEvent(
+        actor: 'a',
+        stream: 'value/one',
+        event: const _ValueEvent('third'),
+        occuredAt: later,
+      ),
     ]);
 
     final events = await runtime.resolve(_ValueAggregate());
@@ -84,6 +104,7 @@ void main() {
       'value/one',
     ]);
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
+    expect(events.map((event) => event.actor), ['a', 'b', 'a']);
     expect(
       (await database.getLogEvents(0)).data.map((event) => event.streamPath),
       ['value/one', 'value/two', 'value/one'],
@@ -100,7 +121,12 @@ void main() {
     await runtime.execute(const _AppendValue('one'));
 
     await runtime.seedEvents([
-      TestEvent('value/one', const _ValueEvent('seeded'), seededAt),
+      TestEvent(
+        actor: 'test-actor',
+        stream: 'value/one',
+        event: const _ValueEvent('seeded'),
+        occuredAt: seededAt,
+      ),
     ]);
     await runtime.execute(const _AppendValue('one'));
 
@@ -117,8 +143,18 @@ void main() {
 
     await expectLater(
       runtime.seedEvents([
-        TestEvent('value/one', const _ValueEvent('registered'), seededAt),
-        TestEvent('value/one', Object(), seededAt),
+        TestEvent(
+          actor: 'a',
+          stream: 'value/one',
+          event: const _ValueEvent('registered'),
+          occuredAt: seededAt,
+        ),
+        TestEvent(
+          actor: 'a',
+          stream: 'value/one',
+          event: Object(),
+          occuredAt: seededAt,
+        ),
       ]),
       throwsA(isA<EventCodecException>()),
     );
