@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 import 'account_summary.dart';
 
 enum SortDirection { ascending, descending }
@@ -45,6 +45,6 @@ class AccountListState implements AggregateState<AccountEvent> {
 
 Aggregate<AccountEvent, AccountListState> accountListAggregate() => Aggregate(
   name: 'Account list',
-  filter: accountStreamRoute.filter,
+  filter: allAccountsFilter,
   state: AccountListState(),
 );

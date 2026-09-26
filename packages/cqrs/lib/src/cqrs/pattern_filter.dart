@@ -1,4 +1,4 @@
-enum PatternFilterType { exact, startsWith, any }
+enum PatternFilterType { exact, startsWith, all }
 
 class PatternFilter {
   final PatternFilterType type;
@@ -9,7 +9,7 @@ class PatternFilter {
   const PatternFilter.exact(this.pattern) : type = PatternFilterType.exact;
   const PatternFilter.startsWith(this.pattern)
     : type = PatternFilterType.startsWith;
-  const PatternFilter.any() : type = PatternFilterType.any, pattern = '*';
+  const PatternFilter.all() : type = PatternFilterType.all, pattern = '*';
 
   factory PatternFilter.fromString(String value) {
     final catchAllIndex = value.indexOf('*');
@@ -20,7 +20,7 @@ class PatternFilter {
     if (catchAllIndex == 0) {
       assert(value.length == 1, "Wildcard pattern must be '*' only");
 
-      return PatternFilter.any();
+      return PatternFilter.all();
     }
 
     final prefix = value.substring(0, catchAllIndex);
@@ -33,7 +33,7 @@ class PatternFilter {
     }
 
     switch (type) {
-      case PatternFilterType.any:
+      case PatternFilterType.all:
         return true;
       case PatternFilterType.startsWith:
         return path.startsWith(pattern);
@@ -44,7 +44,7 @@ class PatternFilter {
 
   String path() {
     switch (type) {
-      case PatternFilterType.any:
+      case PatternFilterType.all:
         return '*';
       case PatternFilterType.startsWith:
         return '$pattern/*';
@@ -56,7 +56,7 @@ class PatternFilter {
   @override
   String toString() {
     switch (type) {
-      case PatternFilterType.any:
+      case PatternFilterType.all:
         return 'PatternFilter.any()';
       case PatternFilterType.startsWith:
         return 'PatternFilter.startsWith($pattern)';

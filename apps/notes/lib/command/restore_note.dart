@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 /// Restores a trashed note.
 class RestoreNote implements Command {
@@ -15,7 +15,7 @@ class RestoreNote implements Command {
 
   @override
   Future<void> handle(ctx) async {
-    final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
+    final stream = ctx.stream<NoteEvent>(noteStream(noteId));
 
     final deletedCount = await stream.scan().fold(0, (count, ev) {
       if (ev is NoteTrashed) {

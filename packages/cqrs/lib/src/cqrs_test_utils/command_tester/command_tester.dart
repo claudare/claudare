@@ -47,30 +47,8 @@ class CommandTester {
     return this;
   }
 
-  /// Appends event to the stream with type safety for stream and event.
+  /// Appends an event to [streamPath].
   CommandTester withEvent<Event extends Object>(
-    StreamRoute streamRoute,
-    String streamParams,
-    Event event,
-  ) {
-    _ensureNotRan();
-
-    final encoded = _eventRegistry.encode(event);
-
-    final streamPath = streamRoute.buildPath(streamParams);
-    _seedEvents.add(
-      EventAppend(
-        streamPath: streamPath,
-        encodedEvent: encoded,
-        occuredAt: _timeProvider.now(),
-      ),
-    );
-
-    return this;
-  }
-
-  /// Appends event to the stream with type safety for event only.
-  CommandTester withEvent2<Event extends Object>(
     String streamPath,
     Event event,
   ) {
@@ -90,13 +68,6 @@ class CommandTester {
   }
 
   Future<List<Event>> getWrittenEvents<Event extends Object>(
-    StreamRoute streamRoute,
-    String streamParams,
-  ) async {
-    return getWrittenEvents2<Event>(streamRoute.buildPath(streamParams));
-  }
-
-  Future<List<Event>> getWrittenEvents2<Event extends Object>(
     String streamPath,
   ) async {
     _ensureRan();

@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 
 class AccountSummaryState implements AggregateState<AccountEvent> {
   String accountId = '';
@@ -51,6 +51,6 @@ Aggregate<AccountEvent, AccountSummaryState> accountSummaryAggregate(
   String accountId,
 ) => Aggregate(
   name: 'Account $accountId',
-  filter: PatternFilter.exact(accountStreamRoute.buildPath(accountId)),
+  filter: accountStreamFilter(accountId),
   state: AccountSummaryState(),
 );

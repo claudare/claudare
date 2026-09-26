@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 
 class TotalBalanceState implements AggregateState<AccountEvent> {
   int balance = 0;
@@ -32,6 +32,6 @@ class TotalBalanceState implements AggregateState<AccountEvent> {
 
 Aggregate<AccountEvent, TotalBalanceState> totalBalanceAggregate() => Aggregate(
   name: 'Total balance',
-  filter: accountStreamRoute.filter,
+  filter: allAccountsFilter,
   state: TotalBalanceState(),
 );

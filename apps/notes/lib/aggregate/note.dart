@@ -1,8 +1,8 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_string.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 /// Details obtained by replaying one note stream.
 class NoteState implements AggregateState<NoteEvent> {
@@ -88,6 +88,6 @@ Aggregate<NoteEvent, NoteState> noteAggregate(
   CrdtText? contentDocument,
 }) => Aggregate(
   name: 'Note $noteId',
-  filter: PatternFilter.exact(noteStreamRoute.buildPath(noteId)),
+  filter: noteStreamFilter(noteId),
   state: NoteState(noteId, contentDocument: contentDocument),
 );

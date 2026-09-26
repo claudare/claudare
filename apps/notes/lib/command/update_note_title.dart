@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 class UpdateNoteTitle implements Command {
   final String noteId;
@@ -15,7 +15,7 @@ class UpdateNoteTitle implements Command {
 
   @override
   Future<void> handle(ctx) async {
-    final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
+    final stream = ctx.stream<NoteEvent>(noteStream(noteId));
 
     await stream.mustExist();
 

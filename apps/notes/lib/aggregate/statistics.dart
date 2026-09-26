@@ -77,7 +77,7 @@ class StatisticsState implements AggregateState<Object> {
 Aggregate<Object, StatisticsState> statisticsAggregate() {
   return Aggregate(
     name: 'statistics',
-    filter: PatternFilter.any(),
+    filter: PatternFilter.all(),
     state: StatisticsState(),
   );
 }

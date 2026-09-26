@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:notes/aggregate/note.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 enum NoteCategory { all, active, trashed }
 
@@ -64,7 +64,7 @@ class NoteListState implements AggregateState<NoteEvent> {
 Aggregate<NoteEvent, NoteListState> noteListAggregate() {
   return Aggregate(
     name: 'All notes',
-    filter: noteStreamRoute.filter,
+    filter: allNotesFilter,
     state: NoteListState(),
   );
 }

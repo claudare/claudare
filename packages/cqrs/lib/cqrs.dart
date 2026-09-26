@@ -32,10 +32,6 @@ export 'src/cqrs/snapshot.dart';
 // stream route
 export 'src/cqrs/pattern_filter.dart';
 
-export 'src/cqrs/stream_route/stream_route.dart';
-export 'src/cqrs/stream_route/stream_route_all.dart';
-export 'src/cqrs/stream_route/stream_route_wildcard.dart';
-
 // exception
 export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';

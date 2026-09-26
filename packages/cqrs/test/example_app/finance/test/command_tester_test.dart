@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 
 import '../account_event/account.dart';
 import '../command/atm_depost.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 
 // testing the command tester on the example app
 // TODO: these tests need to be standalone
@@ -27,16 +27,14 @@ void main() {
 
     test('happy path', () async {
       commandTester.withEvent(
-        accountStreamRoute,
-        '123',
+        accountStream('123'),
         AccountOpened(accountId: '123', name: 'test'),
       );
 
       await commandTester.run(AtmDeposit(accountId: '123', amount: 42));
 
       final events = await commandTester.getWrittenEvents<AccountEvent>(
-        accountStreamRoute,
-        '123',
+        accountStream('123'),
       );
       expect(events, hasLength(1));
       expect(events.first, isA<AccountAtmDeposited>());
@@ -50,8 +48,7 @@ void main() {
             ..registerEvent(const AccountOpenedCodec())
             ..registerEvent(const AccountAtmDepositedCodec());
       tester.withEvent(
-        accountStreamRoute,
-        '123',
+        accountStream('123'),
         AccountOpened(accountId: '123', name: 'test'),
       );
       await tester.run(AtmDeposit(accountId: '123', amount: 42));
@@ -72,8 +69,8 @@ void main() {
     });
 
     test('propagates application validation exception', () async {
-      commandTester.withEvent2(
-        'account/123',
+      commandTester.withEvent(
+        accountStream('123'),
         AccountOpened(accountId: '123', name: 'test'),
       );
 

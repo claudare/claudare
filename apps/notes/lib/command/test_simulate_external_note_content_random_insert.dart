@@ -2,8 +2,8 @@ import 'dart:math';
 
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/event/note.dart';
-import 'package:notes/stream_route/note_stream_route.dart';
 
 /// Inserts text at a random Unicode scalar boundary for visual testing.
 class TestSimulateExternalNoteContentRandomInsert implements Command {
@@ -21,7 +21,7 @@ class TestSimulateExternalNoteContentRandomInsert implements Command {
 
   @override
   Future<void> handle(ctx) async {
-    final stream = ctx.stream<NoteEvent>(noteStreamRoute.buildPath(noteId));
+    final stream = ctx.stream<NoteEvent>(noteStream(noteId));
     final document = CrdtText();
     var exists = false;
     await for (final event in stream.scan()) {

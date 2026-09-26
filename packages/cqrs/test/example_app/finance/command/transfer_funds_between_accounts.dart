@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 
 /// An example of using multiple streams + consistency check
 class TransferFundsBetweenAccounts implements Command {
@@ -21,9 +21,7 @@ class TransferFundsBetweenAccounts implements Command {
       throw const CommandException('amount must be positive');
     }
 
-    final fromStream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(fromAccountId),
-    );
+    final fromStream = ctx.stream<AccountEvent>(accountStream(fromAccountId));
 
     final scanner = fromStream.scan();
 
@@ -55,9 +53,7 @@ class TransferFundsBetweenAccounts implements Command {
       ),
     );
 
-    final toStream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(toAccountId),
-    );
+    final toStream = ctx.stream<AccountEvent>(accountStream(toAccountId));
 
     await toStream.mustExist();
 

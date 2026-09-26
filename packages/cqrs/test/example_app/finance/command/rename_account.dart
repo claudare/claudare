@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs.dart';
 
 import '../account_event/account.dart';
-import '../stream_route/account_stream_route.dart';
+import '../paths.dart';
 
 class RenameAccount implements Command {
   final String accountId;
@@ -11,9 +11,7 @@ class RenameAccount implements Command {
 
   @override
   Future<void> handle(ctx) async {
-    final stream = ctx.stream<AccountEvent>(
-      accountStreamRoute.buildPath(accountId),
-    );
+    final stream = ctx.stream<AccountEvent>(accountStream(accountId));
 
     await stream.mustExist();
 
