@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
@@ -17,6 +19,10 @@ import 'package:mutex/mutex.dart';
 /// This is a reference implementation of the [EventStore].
 /// It is slow yet correct.
 class MemoryEventStore implements EventStore {
+  final StreamController<CommandChange> _commandChanges =
+      StreamController<CommandChange>.broadcast();
+  final StreamController<EventChange> _eventChanges =
+      StreamController<EventChange>.broadcast();
   final List<_MemoryLogCommand> _commands = [];
   final List<_MemoryLogEvent> _events = [];
   // Each stream links to zero-based indexes in _events, in stream order.
@@ -29,6 +35,23 @@ class MemoryEventStore implements EventStore {
     : _eventFetchPageSize = eventFetchPageSize {
     if (eventFetchPageSize <= 0) {
       throw ArgumentError.value(eventFetchPageSize, 'eventFetchPageSize');
+    }
+  }
+
+  @override
+  Stream<CommandChange> get commandChanges => _commandChanges.stream;
+
+  @override
+  Stream<EventChange> get eventChanges => _eventChanges.stream;
+
+  void _publishChanges(
+    ChangeOrigin origin,
+    CommandId commandId,
+    List<EventAppend> events,
+  ) {
+    _commandChanges.add(CommandChange(origin: origin, commandId: commandId));
+    for (final event in events) {
+      _eventChanges.add(EventChange(stream: event.streamPath));
     }
   }
 
@@ -229,19 +252,21 @@ class MemoryEventStore implements EventStore {
                 command.commandId.sequence) {
           return false;
         }
+        final events = [
+          for (final event in command.events)
+            EventAppend(
+              streamPath: event.streamPath,
+              encodedEvent: event.encodedEvent,
+              occuredAt: event.occuredAt,
+            ),
+        ];
         _append(
           commandId: command.commandId,
           dependency: command.dependency,
           occuredAt: command.occuredAt,
-          events: [
-            for (final event in command.events)
-              EventAppend(
-                streamPath: event.streamPath,
-                encodedEvent: event.encodedEvent,
-                occuredAt: event.occuredAt,
-              ),
-          ],
+          events: events,
         );
+        _publishChanges(ChangeOrigin.remote, command.commandId, events);
         return true;
       });
 
@@ -264,12 +289,14 @@ class MemoryEventStore implements EventStore {
         }
 
         final sequence = state.logVersion.value(changes.actor) + 1;
+        final commandId = CommandId(changes.actor, sequence);
         _append(
-          commandId: CommandId(changes.actor, sequence),
+          commandId: commandId,
           dependency: changes.dependency,
           occuredAt: changes.occuredAt,
           events: changes.events,
         );
+        _publishChanges(ChangeOrigin.local, commandId, changes.events);
       });
 }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:common/common.dart';
@@ -55,6 +56,10 @@ final eventDatabaseMigrations =
 
 /// Stores commands and events in SQLite transactions.
 class SqliteEventStore implements EventStore {
+  final StreamController<CommandChange> _commandChanges =
+      StreamController<CommandChange>.broadcast();
+  final StreamController<EventChange> _eventChanges =
+      StreamController<EventChange>.broadcast();
   final IsolateSqlite _database;
 
   final int _eventFetchPageSize;
@@ -64,6 +69,23 @@ class SqliteEventStore implements EventStore {
       _eventFetchPageSize = eventFetchPageSize {
     if (eventFetchPageSize <= 0) {
       throw ArgumentError.value(eventFetchPageSize, 'eventFetchPageSize');
+    }
+  }
+
+  @override
+  Stream<CommandChange> get commandChanges => _commandChanges.stream;
+
+  @override
+  Stream<EventChange> get eventChanges => _eventChanges.stream;
+
+  void _publishChanges(
+    ChangeOrigin origin,
+    CommandId commandId,
+    List<String> streams,
+  ) {
+    _commandChanges.add(CommandChange(origin: origin, commandId: commandId));
+    for (final stream in streams) {
+      _eventChanges.add(EventChange(stream: stream));
     }
   }
 
@@ -102,82 +124,87 @@ class SqliteEventStore implements EventStore {
   Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
-  ) => _transaction('Failed to get stream events', (tx) {
-    if (fromVersion < 0) {
-      throw ArgumentError('fromVersion must be non-negative');
-    }
-    final rows = tx.query(
-      '''SELECT
+  ) {
+    final pageSize = _eventFetchPageSize;
+    return _transaction('Failed to get stream events', (tx) {
+      if (fromVersion < 0) {
+        throw ArgumentError('fromVersion must be non-negative');
+      }
+      final rows = tx.query(
+        '''SELECT
         id_actor, id_sequence, id_index, kind, detail, occured_at, stream_version, log_position
       FROM event
       WHERE stream_path = ?
         AND stream_version >= ?
       ORDER BY stream_version ASC
       LIMIT ?;''',
-      [streamPath, fromVersion, _eventFetchPageSize],
-    );
-    final events = [
-      for (final row in rows)
-        StoredEvent(
-          streamPath: streamPath,
-          eventId: EventId(
-            row.field<String>('id_actor'),
-            row.field<int>('id_sequence'),
-            row.field<int>('id_index'),
+        [streamPath, fromVersion, pageSize],
+      );
+      final events = [
+        for (final row in rows)
+          StoredEvent(
+            streamPath: streamPath,
+            eventId: EventId(
+              row.field<String>('id_actor'),
+              row.field<int>('id_sequence'),
+              row.field<int>('id_index'),
+            ),
+            encodedEvent: EncodedEvent(
+              kind: row.field<String>('kind'),
+              bytes: row.field<Uint8List>('detail'),
+            ),
+            occuredAt: _date(row.field<int>('occured_at')),
+            version: row.field<int>('stream_version'),
+            position: row.field<int>('log_position'),
           ),
-          encodedEvent: EncodedEvent(
-            kind: row.field<String>('kind'),
-            bytes: row.field<Uint8List>('detail'),
-          ),
-          occuredAt: _date(row.field<int>('occured_at')),
-          version: row.field<int>('stream_version'),
-          position: row.field<int>('log_position'),
-        ),
-    ];
-    return PaginatedResult(
-      data: events,
-      next: events.isEmpty ? null : events.last.version + 1,
-    );
-  });
+      ];
+      return PaginatedResult(
+        data: events,
+        next: events.isEmpty ? null : events.last.version + 1,
+      );
+    });
+  }
 
   @override
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) =>
-      _transaction('Failed to get log events', (tx) {
-        if (fromPosition < 0) {
-          throw ArgumentError('fromPosition must be non-negative');
-        }
-        final rows = tx.query(
-          '''SELECT
+  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) {
+    final pageSize = _eventFetchPageSize;
+    return _transaction('Failed to get log events', (tx) {
+      if (fromPosition < 0) {
+        throw ArgumentError('fromPosition must be non-negative');
+      }
+      final rows = tx.query(
+        '''SELECT
         id_actor, id_sequence, id_index, stream_path, kind, detail, occured_at, stream_version, log_position
       FROM event
       WHERE log_position >= ?
       ORDER BY log_position ASC
       LIMIT ?''',
-          [fromPosition, _eventFetchPageSize],
-        );
-        final events = [
-          for (final row in rows)
-            StoredEvent(
-              streamPath: row.field<String>('stream_path'),
-              eventId: EventId(
-                row.field<String>('id_actor'),
-                row.field<int>('id_sequence'),
-                row.field<int>('id_index'),
-              ),
-              encodedEvent: EncodedEvent(
-                kind: row.field<String>('kind'),
-                bytes: row.field<Uint8List>('detail'),
-              ),
-              occuredAt: _date(row.field<int>('occured_at')),
-              version: row.field<int>('stream_version'),
-              position: row.field<int>('log_position'),
+        [fromPosition, pageSize],
+      );
+      final events = [
+        for (final row in rows)
+          StoredEvent(
+            streamPath: row.field<String>('stream_path'),
+            eventId: EventId(
+              row.field<String>('id_actor'),
+              row.field<int>('id_sequence'),
+              row.field<int>('id_index'),
             ),
-        ];
-        return PaginatedResult(
-          data: events,
-          next: events.isEmpty ? null : events.last.position + 1,
-        );
-      });
+            encodedEvent: EncodedEvent(
+              kind: row.field<String>('kind'),
+              bytes: row.field<Uint8List>('detail'),
+            ),
+            occuredAt: _date(row.field<int>('occured_at')),
+            version: row.field<int>('stream_version'),
+            position: row.field<int>('log_position'),
+          ),
+      ];
+      return PaginatedResult(
+        data: events,
+        next: events.isEmpty ? null : events.last.position + 1,
+      );
+    });
+  }
 
   @override
   Future<StoredCommand?> getStoredCommand(CommandId commandId) =>
@@ -219,9 +246,11 @@ class SqliteEventStore implements EventStore {
       });
 
   @override
-  Future<void> saveChanges(CommandChanges changes) {
-    return _transaction('Failed to append command batch', (tx) {
-      if (changes.events.isEmpty) return;
+  Future<void> saveChanges(CommandChanges changes) async {
+    final commandId = await _transaction('Failed to append command batch', (
+      tx,
+    ) {
+      if (changes.events.isEmpty) return null;
       if (!changes.isValid()) {
         throw ArgumentError('every appended event must have one stream lock');
       }
@@ -238,137 +267,148 @@ class SqliteEventStore implements EventStore {
       }
 
       final sequence = state.logVersion.value(changes.actor) + 1;
+      final commandId = CommandId(changes.actor, sequence);
       _append(
         tx,
-        commandId: CommandId(changes.actor, sequence),
+        commandId: commandId,
         dependency: changes.dependency,
         occuredAt: changes.occuredAt,
         events: changes.events,
       );
+      return commandId;
     });
+    if (commandId == null) return;
+    _publishChanges(ChangeOrigin.local, commandId, [
+      for (final event in changes.events) event.streamPath,
+    ]);
   }
 
   @override
-  Future<bool> addStoredCommand(StoredCommand command) =>
-      _transaction('Failed to add stored command', (tx) {
-        if (command.events.isEmpty) {
-          throw ArgumentError('stored command must contain events');
-        }
-        final frontier = _getState(tx).logVersion;
-        if (!frontier.contains(command.dependency) ||
-            frontier.value(command.commandId.actor) + 1 !=
-                command.commandId.sequence) {
-          return false;
-        }
-        _append(
-          tx,
-          commandId: command.commandId,
-          dependency: command.dependency,
-          occuredAt: command.occuredAt,
-          events: [
-            for (final event in command.events)
-              EventAppend(
-                streamPath: event.streamPath,
-                encodedEvent: event.encodedEvent,
-                occuredAt: event.occuredAt,
-              ),
-          ],
-        );
-        return true;
-      });
+  Future<bool> addStoredCommand(StoredCommand command) async {
+    final added = await _transaction('Failed to add stored command', (tx) {
+      if (command.events.isEmpty) {
+        throw ArgumentError('stored command must contain events');
+      }
+      final frontier = _getState(tx).logVersion;
+      if (!frontier.contains(command.dependency) ||
+          frontier.value(command.commandId.actor) + 1 !=
+              command.commandId.sequence) {
+        return false;
+      }
+      _append(
+        tx,
+        commandId: command.commandId,
+        dependency: command.dependency,
+        occuredAt: command.occuredAt,
+        events: [
+          for (final event in command.events)
+            EventAppend(
+              streamPath: event.streamPath,
+              encodedEvent: event.encodedEvent,
+              occuredAt: event.occuredAt,
+            ),
+        ],
+      );
+      return true;
+    });
+    if (added) {
+      _publishChanges(ChangeOrigin.remote, command.commandId, [
+        for (final event in command.events) event.streamPath,
+      ]);
+    }
+    return added;
+  }
+}
 
-  EventDatabaseState _getState(SyncContext tx) {
-    final counters = tx.queryRow('''SELECT
+EventDatabaseState _getState(SyncContext tx) {
+  final counters = tx.queryRow('''SELECT
       (SELECT MAX(log_position) FROM command) AS command_position,
       (SELECT MAX(log_position) FROM event) AS event_position''')!;
-    final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence
+  final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence
       FROM command
       GROUP BY id_actor
       ORDER BY id_actor;''');
-    return EventDatabaseState(
-      lastCommandLogPosition: counters.field<int?>('command_position'),
-      lastEventLogPosition: counters.field<int?>('event_position'),
-      logVersion: CommandDependency({
-        for (final row in vectors)
-          row.field<String>('id_actor'): row.field<int>('id_sequence'),
-      }),
-    );
-  }
+  return EventDatabaseState(
+    lastCommandLogPosition: counters.field<int?>('command_position'),
+    lastEventLogPosition: counters.field<int?>('event_position'),
+    logVersion: CommandDependency({
+      for (final row in vectors)
+        row.field<String>('id_actor'): row.field<int>('id_sequence'),
+    }),
+  );
+}
 
-  int? _getStreamVersion(SyncContext tx, String streamPath) => tx
-      .queryRow('SELECT version FROM stream WHERE stream_path = ?', [
-        streamPath,
-      ])
-      ?.field<int>('version');
+int? _getStreamVersion(SyncContext tx, String streamPath) => tx
+    .queryRow('SELECT version FROM stream WHERE stream_path = ?', [streamPath])
+    ?.field<int>('version');
 
-  void _append(
-    SyncContext tx, {
-    required CommandId commandId,
-    required CommandDependency dependency,
-    required DateTime occuredAt,
-    required List<EventAppend> events,
-  }) {
-    tx.execute(
-      '''INSERT INTO command(log_position, id_actor, id_sequence,
+void _append(
+  SyncContext tx, {
+  required CommandId commandId,
+  required CommandDependency dependency,
+  required DateTime occuredAt,
+  required List<EventAppend> events,
+}) {
+  tx.execute(
+    '''INSERT INTO command(log_position, id_actor, id_sequence,
       dependency, occured_at, event_count)
       VALUES (?, ?, ?, ?, ?, ?);''',
-      [
-        _nextLogPosition(tx, 'command'),
-        commandId.actor,
-        commandId.sequence,
-        _encodeDependency(dependency),
-        occuredAt.millisecondsSinceEpoch,
-        events.length,
-      ],
-    );
-    _insertLogEvents(tx, commandId, events);
-  }
+    [
+      _nextLogPosition(tx, 'command'),
+      commandId.actor,
+      commandId.sequence,
+      _encodeDependency(dependency),
+      occuredAt.millisecondsSinceEpoch,
+      events.length,
+    ],
+  );
+  _insertLogEvents(tx, commandId, events);
+}
 
-  int _nextLogPosition(SyncContext tx, String table) {
-    final highest = tx
-        .queryRow('SELECT MAX(log_position) AS position FROM $table')!
-        .field<int?>('position');
-    return highest == null ? 0 : highest + 1;
-  }
+int _nextLogPosition(SyncContext tx, String table) {
+  final highest = tx
+      .queryRow('SELECT MAX(log_position) AS position FROM $table')!
+      .field<int?>('position');
+  return highest == null ? 0 : highest + 1;
+}
 
-  void _insertLogEvents(
-    SyncContext tx,
-    CommandId commandId,
-    List<EventAppend> events,
-  ) {
-    var logPosition = _nextLogPosition(tx, 'event');
+void _insertLogEvents(
+  SyncContext tx,
+  CommandId commandId,
+  List<EventAppend> events,
+) {
+  var logPosition = _nextLogPosition(tx, 'event');
 
-    for (final (index, event) in events.indexed) {
-      final version = (_getStreamVersion(tx, event.streamPath) ?? -1) + 1;
-      tx.execute(
-        '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
+  for (final (index, event) in events.indexed) {
+    final version = (_getStreamVersion(tx, event.streamPath) ?? -1) + 1;
+    tx.execute(
+      '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
         stream_path, stream_version, kind, detail, occured_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
-        [
-          logPosition++,
-          commandId.actor,
-          commandId.sequence,
-          index,
-          event.streamPath,
-          version,
-          event.encodedEvent.kind,
-          event.encodedEvent.bytes,
-          event.occuredAt.millisecondsSinceEpoch,
-        ],
-      );
-      _updateStreamVersion(tx, event.streamPath, version);
-    }
+      [
+        logPosition++,
+        commandId.actor,
+        commandId.sequence,
+        index,
+        event.streamPath,
+        version,
+        event.encodedEvent.kind,
+        event.encodedEvent.bytes,
+        event.occuredAt.millisecondsSinceEpoch,
+      ],
+    );
+    _updateStreamVersion(tx, event.streamPath, version);
   }
+}
 
-  void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
-    tx.execute(
-      '''INSERT INTO stream(stream_path, version)
+void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
+  tx.execute(
+    '''INSERT INTO stream(stream_path, version)
       VALUES (?, ?)
       ON CONFLICT(stream_path)
         DO UPDATE SET version = excluded.version;''',
-      [streamPath, version],
-    );
-  }
+    [streamPath, version],
+  );
 }
 
 DateTime _date(int value) =>

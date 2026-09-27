@@ -17,7 +17,34 @@ class EventDatabaseState {
   });
 }
 
+enum ChangeOrigin {
+  /// triggered on saveChanges
+  local,
+
+  /// triggered on addStoredCommand
+  remote,
+}
+
+/// Notification about a command being added to the event store.
+final class CommandChange {
+  final ChangeOrigin origin;
+  final CommandId commandId;
+
+  const CommandChange({required this.origin, required this.commandId});
+}
+
+/// Notification about an event being added to the event store.
+final class EventChange {
+  /// Stream path of the saved event.
+  final String stream;
+
+  const EventChange({required this.stream});
+}
+
 abstract interface class EventStoreReplication {
+  /// Broadcasts commands saved after listening begins.
+  Stream<CommandChange> get commandChanges;
+
   /// A small summary of the current state of the event store.
   Future<EventDatabaseState> getState();
 
@@ -33,6 +60,9 @@ abstract interface class EventStoreReplication {
 }
 
 abstract interface class EventStore implements EventStoreReplication {
+  /// Broadcasts one change per event saved after listening begins.
+  Stream<EventChange> get eventChanges;
+
   /// Quick latest lookup of the last stream's version.
   Future<int?> getStreamVersion(String streamPath);
 
