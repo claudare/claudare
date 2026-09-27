@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 // ignore: avoid_relative_lib_imports
 import '../lib/base58.dart';
+
 import 'package:test/test.dart';
 
 void main() {

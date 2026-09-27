@@ -15,42 +15,41 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: FutureBuilder<StatisticsState>(
         future: application.query.statistics(),
-        builder:
-            (context, snapshot) => ListView(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.note),
-                  title: const Text('Active Note Count'),
-                  subtitle: Text(
-                    snapshot.hasError
-                        ? 'Error: ${snapshot.error}'
-                        : snapshot.hasData
-                        ? '${snapshot.data!.activeCount}'
-                        : 'Loading…',
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.event),
-                  title: const Text('Event Count'),
-                  subtitle: Text(
-                    snapshot.hasError
-                        ? 'Error: ${snapshot.error}'
-                        : snapshot.hasData
-                        ? '${snapshot.data!.eventCount}'
-                        : 'Loading…',
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.delete_forever),
-                  title: const Text('Reset database'),
-                  onTap: () async {
-                    if (await confirmDatabaseReset(context)) {
-                      await eventStoreProvider.reset();
-                    }
-                  },
-                ),
-              ],
+        builder: (context, snapshot) => ListView(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.note),
+              title: const Text('Active Note Count'),
+              subtitle: Text(
+                snapshot.hasError
+                    ? 'Error: ${snapshot.error}'
+                    : snapshot.hasData
+                    ? '${snapshot.data!.activeCount}'
+                    : 'Loading…',
+              ),
             ),
+            ListTile(
+              leading: const Icon(Icons.event),
+              title: const Text('Event Count'),
+              subtitle: Text(
+                snapshot.hasError
+                    ? 'Error: ${snapshot.error}'
+                    : snapshot.hasData
+                    ? '${snapshot.data!.eventCount}'
+                    : 'Loading…',
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_forever),
+              title: const Text('Reset database'),
+              onTap: () async {
+                if (await confirmDatabaseReset(context)) {
+                  await eventStoreProvider.reset();
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

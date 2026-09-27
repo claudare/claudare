@@ -46,39 +46,38 @@ class _LoadingScreenState extends State<LoadingScreen> {
     final error = _error;
     return Scaffold(
       body: Center(
-        child:
-            error == null
-                ? const CircularProgressIndicator()
-                : Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 56,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Could not open Notes',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      SelectableText('$error', textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () async {
-                          if (await confirmDatabaseReset(context)) {
-                            await widget.onReset();
-                          }
-                        },
-                        child: const Text('Reset database'),
-                      ),
-                    ],
-                  ),
+        child: error == null
+            ? const CircularProgressIndicator()
+            : Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      size: 56,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Could not open Notes',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    SelectableText('$error', textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () async {
+                        if (await confirmDatabaseReset(context)) {
+                          await widget.onReset();
+                        }
+                      },
+                      child: const Text('Reset database'),
+                    ),
+                  ],
                 ),
+              ),
       ),
     );
   }

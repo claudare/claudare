@@ -54,9 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => SettingsScreen()));
     if (mounted) await _controller.reloadNotes();
   }
 
@@ -77,12 +76,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body:
-          _controller.loadError == null
-              ? NoteList(noteData: _controller.noteData, openNote: _openNote)
-              : Center(
-                child: Text('Error loading notes: ${_controller.loadError}'),
-              ),
+      body: _controller.loadError == null
+          ? NoteList(noteData: _controller.noteData, openNote: _openNote)
+          : Center(
+              child: Text('Error loading notes: ${_controller.loadError}'),
+            ),
     );
   }
 }

@@ -9,34 +9,33 @@ void main() {
   final editedAt = DateTime.utc(2026, 1, 3);
   final trashedAt = DateTime.utc(2026, 1, 4);
 
-  NoteListState replayNotes() =>
-      AggregateTester(noteListAggregate())
-          .withEvent(
-            'other/ignored',
-            const NoteCreated(noteId: 'ignored'),
-            occuredAt: firstAt,
-          )
-          .withEvent(
-            'note/one',
-            const NoteCreated(noteId: 'one'),
-            occuredAt: firstAt,
-          )
-          .withEvent(
-            'note/two',
-            const NoteCreated(noteId: 'two'),
-            occuredAt: secondAt,
-          )
-          .withEvent(
-            'note/one',
-            const NoteTitleUpdated(noteId: 'one', newTitle: 'One'),
-            occuredAt: editedAt,
-          )
-          .withEvent(
-            'note/two',
-            const NoteTrashed(noteId: 'two'),
-            occuredAt: trashedAt,
-          )
-          .run();
+  NoteListState replayNotes() => AggregateTester(noteListAggregate())
+      .withEvent(
+        'other/ignored',
+        const NoteCreated(noteId: 'ignored'),
+        occuredAt: firstAt,
+      )
+      .withEvent(
+        'note/one',
+        const NoteCreated(noteId: 'one'),
+        occuredAt: firstAt,
+      )
+      .withEvent(
+        'note/two',
+        const NoteCreated(noteId: 'two'),
+        occuredAt: secondAt,
+      )
+      .withEvent(
+        'note/one',
+        const NoteTitleUpdated(noteId: 'one', newTitle: 'One'),
+        occuredAt: editedAt,
+      )
+      .withEvent(
+        'note/two',
+        const NoteTrashed(noteId: 'two'),
+        occuredAt: trashedAt,
+      )
+      .run();
 
   test('collects note streams and counts active notes', () {
     final state = replayNotes();
@@ -49,14 +48,13 @@ void main() {
   });
 
   test('keys notes from event data when stream path differs', () {
-    final state =
-        AggregateTester(noteListAggregate())
-            .withEvent(
-              'note/one',
-              const NoteCreated(noteId: 'two'),
-              occuredAt: firstAt,
-            )
-            .run();
+    final state = AggregateTester(noteListAggregate())
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'two'),
+          occuredAt: firstAt,
+        )
+        .run();
 
     expect(state.notes.keys, ['two']);
     expect(state.notes['two']!.noteId, 'two');
@@ -111,24 +109,23 @@ void main() {
   });
 
   test('restoring a note returns it to the active list', () {
-    final state =
-        AggregateTester(noteListAggregate())
-            .withEvent(
-              'note/one',
-              const NoteCreated(noteId: 'one'),
-              occuredAt: firstAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTrashed(noteId: 'one'),
-              occuredAt: secondAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteRestored(noteId: 'one'),
-              occuredAt: editedAt,
-            )
-            .run();
+    final state = AggregateTester(noteListAggregate())
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'one'),
+          occuredAt: firstAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTrashed(noteId: 'one'),
+          occuredAt: secondAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteRestored(noteId: 'one'),
+          occuredAt: editedAt,
+        )
+        .run();
 
     expect(state.activeCount, 1);
     expect(state.toSortedList().single.noteId, 'one');

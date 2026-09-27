@@ -31,14 +31,13 @@ class NoteListState implements AggregateState<NoteEvent> {
     NoteCategory category = NoteCategory.active,
     NoteSortOrder order = NoteSortOrder.createdAtDescending,
   }) {
-    final list =
-        notes.values.where((note) {
-          return switch (category) {
-            NoteCategory.all => true,
-            NoteCategory.active => !note.isTrashed,
-            NoteCategory.trashed => note.isTrashed,
-          };
-        }).toList();
+    final list = notes.values.where((note) {
+      return switch (category) {
+        NoteCategory.all => true,
+        NoteCategory.active => !note.isTrashed,
+        NoteCategory.trashed => note.isTrashed,
+      };
+    }).toList();
 
     list.sort((a, b) {
       final chronological = switch (order) {

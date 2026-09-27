@@ -40,8 +40,8 @@ class CommandDependency {
   }
 
   Map<String, int> toJson() {
-    final entries =
-        _values.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
+    final entries = _values.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
     return {for (final entry in entries) entry.key: entry.value};
   }
 

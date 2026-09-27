@@ -10,41 +10,39 @@ void main() {
   final laterAt = DateTime.utc(2026, 1, 3);
 
   test('starts absent and ignores another note stream', () {
-    final state =
-        AggregateTester(noteAggregate('one'))
-            .withEvent(
-              'note/two',
-              const NoteCreated(noteId: 'two'),
-              occuredAt: createdAt,
-            )
-            .run();
+    final state = AggregateTester(noteAggregate('one'))
+        .withEvent(
+          'note/two',
+          const NoteCreated(noteId: 'two'),
+          occuredAt: createdAt,
+        )
+        .run();
 
     expect(state.exists, isFalse);
     expect(state.noteId, 'one');
   });
 
   test('replays creation, title, and content with timestamps', () {
-    final state =
-        AggregateTester(noteAggregate('one'))
-            .withEvent(
-              'note/one',
-              const NoteCreated(noteId: 'one'),
-              occuredAt: createdAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTitleUpdated(noteId: 'one', newTitle: 'Title'),
-              occuredAt: editedAt,
-            )
-            .withEvent(
-              'note/one',
-              NoteContentUpdated(
-                noteId: 'one',
-                change: CrdtTextTestUtils.singleChange('Text'),
-              ),
-              occuredAt: laterAt,
-            )
-            .run();
+    final state = AggregateTester(noteAggregate('one'))
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'one'),
+          occuredAt: createdAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTitleUpdated(noteId: 'one', newTitle: 'Title'),
+          occuredAt: editedAt,
+        )
+        .withEvent(
+          'note/one',
+          NoteContentUpdated(
+            noteId: 'one',
+            change: CrdtTextTestUtils.singleChange('Text'),
+          ),
+          occuredAt: laterAt,
+        )
+        .run();
 
     expect(state.exists, isTrue);
     expect(state.title, 'Title');
@@ -55,50 +53,48 @@ void main() {
   });
 
   test('keeps the title with the latest timestamp', () {
-    final state =
-        AggregateTester(noteAggregate('one'))
-            .withEvent(
-              'note/one',
-              const NoteCreated(noteId: 'one'),
-              occuredAt: createdAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTitleUpdated(noteId: 'one', newTitle: 'Newer'),
-              occuredAt: laterAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTitleUpdated(noteId: 'one', newTitle: 'Older'),
-              occuredAt: editedAt,
-            )
-            .run();
+    final state = AggregateTester(noteAggregate('one'))
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'one'),
+          occuredAt: createdAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTitleUpdated(noteId: 'one', newTitle: 'Newer'),
+          occuredAt: laterAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTitleUpdated(noteId: 'one', newTitle: 'Older'),
+          occuredAt: editedAt,
+        )
+        .run();
 
     expect(state.title, 'Newer');
     expect(state.updatedAt, editedAt);
   });
 
   test('uses the greater actor when title timestamps tie', () {
-    final state =
-        AggregateTester(noteAggregate('one'))
-            .withEvent(
-              'note/one',
-              const NoteCreated(noteId: 'one'),
-              occuredAt: createdAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTitleUpdated(noteId: 'one', newTitle: 'First'),
-              actor: 'b',
-              occuredAt: editedAt,
-            )
-            .withEvent(
-              'note/one',
-              const NoteTitleUpdated(noteId: 'one', newTitle: 'Second'),
-              actor: 'a',
-              occuredAt: editedAt,
-            )
-            .run();
+    final state = AggregateTester(noteAggregate('one'))
+        .withEvent(
+          'note/one',
+          const NoteCreated(noteId: 'one'),
+          occuredAt: createdAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTitleUpdated(noteId: 'one', newTitle: 'First'),
+          actor: 'b',
+          occuredAt: editedAt,
+        )
+        .withEvent(
+          'note/one',
+          const NoteTitleUpdated(noteId: 'one', newTitle: 'Second'),
+          actor: 'a',
+          occuredAt: editedAt,
+        )
+        .run();
 
     expect(state.title, 'First');
   });
@@ -121,14 +117,13 @@ void main() {
     expect(trashed.trashedAt, editedAt);
     expect(trashed.updatedAt, createdAt);
 
-    final restored =
-        tester
-            .withEvent(
-              'note/one',
-              const NoteRestored(noteId: 'one'),
-              occuredAt: laterAt,
-            )
-            .run();
+    final restored = tester
+        .withEvent(
+          'note/one',
+          const NoteRestored(noteId: 'one'),
+          occuredAt: laterAt,
+        )
+        .run();
     expect(restored.isTrashed, isFalse);
     expect(restored.trashedAt, isNull);
     expect(restored.updatedAt, createdAt);

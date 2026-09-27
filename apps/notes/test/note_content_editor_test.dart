@@ -24,8 +24,9 @@ void main() {
       await tester.tap(find.byType(TextField).first);
       await _pressSaveShortcut(tester);
       await tester.pumpAndSettle();
-      final editor =
-          tester.widget<TextField>(find.byType(TextField).first).controller!;
+      final editor = tester
+          .widget<TextField>(find.byType(TextField).first)
+          .controller!;
       expect(editor.text, 'Remote title');
       expect(find.text('Nothing to save'), findsOneWidget);
       expect((await app.query.note(id)).title, 'Remote title');

@@ -59,9 +59,8 @@ void main() {
     final database = MemoryEventStore();
     late CommandContextApi context;
 
-    await _executor(
-      database,
-    ).execute(_CallbackCommand((value) async => context = value));
+    await _executor(database)
+        .execute(_CallbackCommand((value) async => context = value));
 
     expect(() => context.stream<_Event>('new'), throwsStateError);
   });
@@ -97,8 +96,8 @@ CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
   return CommandExecutor(
     actor: 'test-actor',
     eventStore: eventStore ?? database,
-    streamReader:
-        CqrsTestRuntime(eventStore: eventStore ?? database).streamReader,
+    streamReader: CqrsTestRuntime(eventStore: eventStore ?? database)
+        .streamReader,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     eventRegistry: registry,
     logger: const NoopLogger(),

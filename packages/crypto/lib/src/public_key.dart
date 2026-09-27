@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:base58/base58.dart';
 
 const publicKeyLength = 32;

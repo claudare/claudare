@@ -18,65 +18,63 @@ void main() {
     });
 
     test('sums deposits and withdrawals across account streams', () {
-      final state =
-          AggregateTester(totalBalanceAggregate())
-              .withEvent(
-                'account/one',
-                const AccountAtmDeposited(accountId: 'one', amount: 100),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountAtmDeposited(accountId: 'two', amount: 50),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountAtmWithdrawn(accountId: 'one', amount: 10),
-                occuredAt: withdrawnAt,
-              )
-              .run();
+      final state = AggregateTester(totalBalanceAggregate())
+          .withEvent(
+            'account/one',
+            const AccountAtmDeposited(accountId: 'one', amount: 100),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountAtmDeposited(accountId: 'two', amount: 50),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountAtmWithdrawn(accountId: 'one', amount: 10),
+            occuredAt: withdrawnAt,
+          )
+          .run();
 
       expect(state.balance, 140);
     });
 
     test('ignores account metadata and internal transfers', () {
-      final state =
-          AggregateTester(totalBalanceAggregate())
-              .withEvent(
-                'account/one',
-                const AccountAtmDeposited(accountId: 'one', amount: 25),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountOpened(accountId: 'two', name: 'Two'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountInnerTransfer(
-                  accountId: 'one',
-                  fromAccountId: 'two',
-                  amount: -5,
-                ),
-                occuredAt: transferredAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountInnerTransfer(
-                  accountId: 'two',
-                  fromAccountId: 'one',
-                  amount: 5,
-                ),
-                occuredAt: transferredAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountRenamed(accountId: 'one', newName: 'Renamed'),
-                occuredAt: transferredAt,
-              )
-              .run();
+      final state = AggregateTester(totalBalanceAggregate())
+          .withEvent(
+            'account/one',
+            const AccountAtmDeposited(accountId: 'one', amount: 25),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountOpened(accountId: 'two', name: 'Two'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountInnerTransfer(
+              accountId: 'one',
+              fromAccountId: 'two',
+              amount: -5,
+            ),
+            occuredAt: transferredAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountInnerTransfer(
+              accountId: 'two',
+              fromAccountId: 'one',
+              amount: 5,
+            ),
+            occuredAt: transferredAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountRenamed(accountId: 'one', newName: 'Renamed'),
+            occuredAt: transferredAt,
+          )
+          .run();
 
       expect(state.balance, 25);
     });

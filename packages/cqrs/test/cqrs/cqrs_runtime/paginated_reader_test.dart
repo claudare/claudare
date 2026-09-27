@@ -31,8 +31,10 @@ void main() {
 
     test('starts stream replay at the supplied version across pages', () async {
       await _appendCount(store, 5);
-      final events =
-          await runtime.streamReader('test', fromVersion: 1).scan().toList();
+      final events = await runtime
+          .streamReader('test', fromVersion: 1)
+          .scan()
+          .toList();
       expect(events.map((event) => event.version), [1, 2, 3, 4]);
     });
 

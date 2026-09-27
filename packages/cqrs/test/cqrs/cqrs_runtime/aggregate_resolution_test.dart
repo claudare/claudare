@@ -159,10 +159,9 @@ void main() {
 Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
     Aggregate(
       name: 'Events $path',
-      filter:
-          path.endsWith('/')
-              ? PatternFilter.startsWith(path)
-              : PatternFilter.exact(path),
+      filter: path.endsWith('/')
+          ? PatternFilter.startsWith(path)
+          : PatternFilter.exact(path),
       state: _EnvelopeState(),
     );
 

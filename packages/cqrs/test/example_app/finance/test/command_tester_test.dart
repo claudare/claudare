@@ -16,13 +16,12 @@ void main() {
 
     setUp(() {
       timeProvider = FakeTimeProviderStatic.unixMilliseconds(0);
-      commandTester =
-          CommandTester(timeProvider: timeProvider)
-            ..registerEvent(const AccountAtmDepositedCodec())
-            ..registerEvent(const AccountAtmWithdrawnCodec())
-            ..registerEvent(const AccountInnerTransferCodec())
-            ..registerEvent(const AccountOpenedCodec())
-            ..registerEvent(const AccountRenamedCodec());
+      commandTester = CommandTester(timeProvider: timeProvider)
+        ..registerEvent(const AccountAtmDepositedCodec())
+        ..registerEvent(const AccountAtmWithdrawnCodec())
+        ..registerEvent(const AccountInnerTransferCodec())
+        ..registerEvent(const AccountOpenedCodec())
+        ..registerEvent(const AccountRenamedCodec());
     });
 
     test('happy path', () async {
@@ -53,9 +52,9 @@ void main() {
       );
       await tester.run(AtmDeposit(accountId: '123', amount: 42));
       expect(
-        (await store.getStoredCommand(
-          CommandId('test-actor', 2),
-        ))!.events.length,
+        (await store.getStoredCommand(CommandId('test-actor', 2)))!
+            .events
+            .length,
         1,
       );
     });

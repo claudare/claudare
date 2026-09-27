@@ -74,9 +74,9 @@ void main() {
     final trashedList = await application.query.noteList();
     expect(trashedList, isEmpty);
     expect(
-      (await application.query.noteList(
-        category: NoteCategory.trashed,
-      )).single.noteId,
+      (await application.query.noteList(category: NoteCategory.trashed))
+          .single
+          .noteId,
       noteId,
     );
     expect((await application.query.note(noteId)).isTrashed, isTrue);
@@ -139,9 +139,8 @@ void main() {
       ['two', 'one'],
     );
     expect(
-      (await application.query.noteList(
-        category: NoteCategory.trashed,
-      )).map((note) => note.noteId),
+      (await application.query.noteList(category: NoteCategory.trashed))
+          .map((note) => note.noteId),
       ['one'],
     );
   });

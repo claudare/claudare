@@ -103,16 +103,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home:
-          ready == null
-              ? LoadingScreen(
-                key: ValueKey(widget.bootstrap),
-                initialization: _initialization,
-                logger: widget.bootstrap.logger,
-                onReady: _onReady,
-                onReset: reset,
-              )
-              : const HomeScreen(),
+      home: ready == null
+          ? LoadingScreen(
+              key: ValueKey(widget.bootstrap),
+              initialization: _initialization,
+              logger: widget.bootstrap.logger,
+              onReady: _onReady,
+              onReset: reset,
+            )
+          : const HomeScreen(),
     );
     if (ready == null) return app;
     return NoteApplicationProvider(

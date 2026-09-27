@@ -13,13 +13,12 @@ import 'package:time_provider/time_provider.dart';
 
 void main() {
   CommandTester createTester() {
-    final tester =
-        CommandTester(timeProvider: FakeTimeProviderStatic.zero())
-          ..registerEvent(const NoteContentUpdatedCodec())
-          ..registerEvent(const NoteCreatedCodec())
-          ..registerEvent(const NoteRestoredCodec())
-          ..registerEvent(const NoteTitleUpdatedCodec())
-          ..registerEvent(const NoteTrashedCodec());
+    final tester = CommandTester(timeProvider: FakeTimeProviderStatic.zero())
+      ..registerEvent(const NoteContentUpdatedCodec())
+      ..registerEvent(const NoteCreatedCodec())
+      ..registerEvent(const NoteRestoredCodec())
+      ..registerEvent(const NoteTitleUpdatedCodec())
+      ..registerEvent(const NoteTrashedCodec());
     return tester;
   }
 
@@ -34,9 +33,8 @@ void main() {
   });
 
   test('create rejects an existing note', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
 
     await expectLater(
       tester.run(const CreateNote(noteId: 'one')),
@@ -45,9 +43,8 @@ void main() {
   });
 
   test('title update writes the supplied value', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
 
     await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
 
@@ -58,9 +55,8 @@ void main() {
   });
 
   test('content update writes the supplied value', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
 
     await tester.run(
       UpdateNoteContent(
@@ -96,9 +92,8 @@ void main() {
   });
 
   test('trash writes an event for an active note', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
 
     await tester.run(const TrashNote(noteId: 'one'));
 
@@ -108,10 +103,9 @@ void main() {
   });
 
   test('trash rejects a note that is already trashed', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
-          ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
+      ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
 
     await expectLater(
       tester.run(const TrashNote(noteId: 'one')),
@@ -127,10 +121,9 @@ void main() {
   });
 
   test('restore writes an event for a trashed note', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
-          ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
+      ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
 
     await tester.run(const RestoreNote(noteId: 'one'));
 
@@ -140,9 +133,8 @@ void main() {
   });
 
   test('restore rejects a note that is not trashed', () async {
-    final tester =
-        createTester()
-          ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+    final tester = createTester()
+      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
 
     await expectLater(
       tester.run(const RestoreNote(noteId: 'one')),

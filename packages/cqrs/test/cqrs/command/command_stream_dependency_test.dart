@@ -139,9 +139,10 @@ void main() {
       );
 
       expect(
-        await CqrsTestRuntime(
-          eventStore: eventStore,
-        ).streamReader('unrelated').scan().toList(),
+        await CqrsTestRuntime(eventStore: eventStore)
+            .streamReader('unrelated')
+            .scan()
+            .toList(),
         hasLength(1),
       );
     },

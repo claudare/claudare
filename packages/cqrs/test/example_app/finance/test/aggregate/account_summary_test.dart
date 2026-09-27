@@ -16,14 +16,13 @@ void main() {
 
       expect(tester.run().accountId, isEmpty);
 
-      final state =
-          tester
-              .withEvent(
-                'account/one',
-                const AccountOpened(accountId: 'one', name: 'Checking'),
-                occuredAt: openedAt,
-              )
-              .run();
+      final state = tester
+          .withEvent(
+            'account/one',
+            const AccountOpened(accountId: 'one', name: 'Checking'),
+            occuredAt: openedAt,
+          )
+          .run();
 
       expect(state.accountId, 'one');
       expect(state.name, 'Checking');
@@ -33,38 +32,37 @@ void main() {
     });
 
     test('applies deposits, withdrawals, transfers, and renaming', () {
-      final state =
-          AggregateTester(accountSummaryAggregate('one'))
-              .withEvent(
-                'account/one',
-                const AccountOpened(accountId: 'one', name: 'Checking'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountAtmDeposited(accountId: 'one', amount: 100),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountAtmWithdrawn(accountId: 'one', amount: 20),
-                occuredAt: withdrawnAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountInnerTransfer(
-                  accountId: 'one',
-                  fromAccountId: 'two',
-                  amount: 15,
-                ),
-                occuredAt: transferredAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountRenamed(accountId: 'one', newName: 'Savings'),
-                occuredAt: transferredAt,
-              )
-              .run();
+      final state = AggregateTester(accountSummaryAggregate('one'))
+          .withEvent(
+            'account/one',
+            const AccountOpened(accountId: 'one', name: 'Checking'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountAtmDeposited(accountId: 'one', amount: 100),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountAtmWithdrawn(accountId: 'one', amount: 20),
+            occuredAt: withdrawnAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountInnerTransfer(
+              accountId: 'one',
+              fromAccountId: 'two',
+              amount: 15,
+            ),
+            occuredAt: transferredAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountRenamed(accountId: 'one', newName: 'Savings'),
+            occuredAt: transferredAt,
+          )
+          .run();
 
       expect(state.name, 'Savings');
       expect(state.balance, 95);
@@ -73,24 +71,23 @@ void main() {
     });
 
     test('skips events from another account', () {
-      final state =
-          AggregateTester(accountSummaryAggregate('one'))
-              .withEvent(
-                'account/one',
-                const AccountOpened(accountId: 'one', name: 'One'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountOpened(accountId: 'two', name: 'Two'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountAtmDeposited(accountId: 'two', amount: 500),
-                occuredAt: depositedAt,
-              )
-              .run();
+      final state = AggregateTester(accountSummaryAggregate('one'))
+          .withEvent(
+            'account/one',
+            const AccountOpened(accountId: 'one', name: 'One'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountOpened(accountId: 'two', name: 'Two'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountAtmDeposited(accountId: 'two', amount: 500),
+            occuredAt: depositedAt,
+          )
+          .run();
 
       expect(state.accountId, 'one');
       expect(state.name, 'One');

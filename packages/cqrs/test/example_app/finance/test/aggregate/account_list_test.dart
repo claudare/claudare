@@ -13,34 +13,33 @@ void main() {
     late AccountListState state;
 
     setUp(() {
-      state =
-          AggregateTester(accountListAggregate())
-              .withEvent(
-                'account/one',
-                const AccountOpened(accountId: 'one', name: 'Zeta'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountOpened(accountId: 'two', name: 'Alpha'),
-                occuredAt: openedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountAtmDeposited(accountId: 'one', amount: 10),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/two',
-                const AccountAtmDeposited(accountId: 'two', amount: 30),
-                occuredAt: depositedAt,
-              )
-              .withEvent(
-                'account/one',
-                const AccountRenamed(accountId: 'one', newName: 'Beta'),
-                occuredAt: renamedAt,
-              )
-              .run();
+      state = AggregateTester(accountListAggregate())
+          .withEvent(
+            'account/one',
+            const AccountOpened(accountId: 'one', name: 'Zeta'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountOpened(accountId: 'two', name: 'Alpha'),
+            occuredAt: openedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountAtmDeposited(accountId: 'one', amount: 10),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/two',
+            const AccountAtmDeposited(accountId: 'two', amount: 30),
+            occuredAt: depositedAt,
+          )
+          .withEvent(
+            'account/one',
+            const AccountRenamed(accountId: 'one', newName: 'Beta'),
+            occuredAt: renamedAt,
+          )
+          .run();
     });
 
     test('collects account streams', () {

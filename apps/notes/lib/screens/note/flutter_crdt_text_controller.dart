@@ -14,10 +14,9 @@ class FlutterCrdtTextController implements crdt.CrdtTextController {
       text: value.text,
       selectionBase: value.selection.baseOffset,
       selectionExtent: value.selection.extentOffset,
-      affinity:
-          value.selection.affinity == TextAffinity.upstream
-              ? crdt.TextAffinity.upstream
-              : crdt.TextAffinity.downstream,
+      affinity: value.selection.affinity == TextAffinity.upstream
+          ? crdt.TextAffinity.upstream
+          : crdt.TextAffinity.downstream,
       isDirectional: value.selection.isDirectional,
       composingStart: value.composing.start,
       composingEnd: value.composing.end,
@@ -31,10 +30,9 @@ class FlutterCrdtTextController implements crdt.CrdtTextController {
       selection: TextSelection(
         baseOffset: value.selectionBase,
         extentOffset: value.selectionExtent,
-        affinity:
-            value.affinity == crdt.TextAffinity.upstream
-                ? TextAffinity.upstream
-                : TextAffinity.downstream,
+        affinity: value.affinity == crdt.TextAffinity.upstream
+            ? TextAffinity.upstream
+            : TextAffinity.downstream,
         isDirectional: value.isDirectional,
       ),
       composing: TextRange(

@@ -8,8 +8,9 @@ abstract interface class AggregateState<TEvent extends Object> {
   void apply(EventEnvelope<TEvent> envelope);
 }
 
-typedef ApplyEnvelope<TEvent extends Object> =
-    void Function(EventEnvelope<TEvent> envelope);
+typedef ApplyEnvelope<TEvent extends Object> = void Function(
+  EventEnvelope<TEvent> envelope,
+);
 
 /// Defines event selection, mutable state, and sequence tracking for aggregate
 /// resolution.

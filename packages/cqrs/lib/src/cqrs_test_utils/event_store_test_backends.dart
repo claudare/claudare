@@ -20,10 +20,9 @@ class MemoryEventStoreTestBackend implements EventStoreTestBackend {
 
   @override
   Future<EventStoreTestSession> open() async {
-    final store =
-        eventFetchPageSize == null
-            ? MemoryEventStore()
-            : MemoryEventStore(eventFetchPageSize: eventFetchPageSize!);
+    final store = eventFetchPageSize == null
+        ? MemoryEventStore()
+        : MemoryEventStore(eventFetchPageSize: eventFetchPageSize!);
     return _MemoryEventStoreTestSession(store);
   }
 }
@@ -40,13 +39,9 @@ class SqliteEventStoreTestBackend implements EventStoreTestBackend {
     final sqlite = IsolateSqlite();
     await sqlite.openInMemory();
     try {
-      final store =
-          eventFetchPageSize == null
-              ? SqliteEventStore(sqlite)
-              : SqliteEventStore(
-                sqlite,
-                eventFetchPageSize: eventFetchPageSize!,
-              );
+      final store = eventFetchPageSize == null
+          ? SqliteEventStore(sqlite)
+          : SqliteEventStore(sqlite, eventFetchPageSize: eventFetchPageSize!);
       await store.migrate();
       return _SqliteEventStoreTestSession(store);
     } catch (_) {

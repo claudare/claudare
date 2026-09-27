@@ -302,9 +302,8 @@ class _NoteScreenState extends State<NoteScreen> {
   void _onSimulationError(Exception error) {
     if (!mounted) return;
     setState(() {});
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Error simulating edit: $error')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Error simulating edit: $error')));
   }
 
   Future<void> _refreshAfterSimulatedEdit() async {
@@ -354,11 +353,10 @@ class _NoteScreenState extends State<NoteScreen> {
     return Shortcuts(
       shortcuts: const {
         SingleActivator(
-              LogicalKeyboardKey.keyS,
-              control: true,
-              includeRepeats: false,
-            ):
-            _SaveNoteIntent(),
+          LogicalKeyboardKey.keyS,
+          control: true,
+          includeRepeats: false,
+        ): _SaveNoteIntent(),
       },
       child: Actions(
         actions: {
@@ -371,8 +369,8 @@ class _NoteScreenState extends State<NoteScreen> {
         },
         child: PopScope(
           canPop: _allowPop,
-          onPopInvokedWithResult:
-              (didPop, _) => _onPopInvokedWithResult(didPop),
+          onPopInvokedWithResult: (didPop, _) =>
+              _onPopInvokedWithResult(didPop),
           child: Scaffold(
             appBar: AppBar(
               title: Text(
@@ -384,30 +382,29 @@ class _NoteScreenState extends State<NoteScreen> {
                   icon: const Icon(Icons.refresh),
                   onPressed:
                       _controller.exists &&
-                              !_controller.isLoading &&
-                              _refreshInProgress == null
-                          ? _refreshNote
-                          : null,
+                          !_controller.isLoading &&
+                          _refreshInProgress == null
+                      ? _refreshNote
+                      : null,
                 ),
                 _controller.isTrashed
                     ? IconButton(
-                      icon: Icon(Icons.restore),
-                      onPressed:
-                          _controller.isTrashed ? () => _restoreNote() : null,
-                    )
+                        icon: Icon(Icons.restore),
+                        onPressed: _controller.isTrashed
+                            ? () => _restoreNote()
+                            : null,
+                      )
                     : IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed:
-                          _controller.exists && !_controller.isLoading
-                              ? () => _trashNote()
-                              : null,
-                    ),
+                        icon: Icon(Icons.delete),
+                        onPressed: _controller.exists && !_controller.isLoading
+                            ? () => _trashNote()
+                            : null,
+                      ),
               ],
             ),
-            body:
-                _loadError == null
-                    ? _buildEditor()
-                    : Center(child: Text('Error loading note: $_loadError')),
+            body: _loadError == null
+                ? _buildEditor()
+                : Center(child: Text('Error loading note: $_loadError')),
           ),
         ),
       ),
@@ -453,10 +450,10 @@ class _NoteScreenState extends State<NoteScreen> {
             value: _simulation.isRunning,
             onChanged:
                 _controller.exists &&
-                        !_controller.isLoading &&
-                        !_controller.isTrashed
-                    ? _toggleSimulation
-                    : null,
+                    !_controller.isLoading &&
+                    !_controller.isTrashed
+                ? _toggleSimulation
+                : null,
           ),
           Wrap(
             spacing: 8.0,

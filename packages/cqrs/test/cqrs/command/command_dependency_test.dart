@@ -94,19 +94,18 @@ void main() {
   });
 
   test('builder retains the greatest sequence for each actor', () {
-    final builder =
-        CommandDependencyBuilder()
-          ..apply(const CommandId('alice', 2))
-          ..apply(const CommandId('bob', 3))
-          ..apply(const CommandId('alice', 1))
-          ..apply(const CommandId('alice', 2))
-          ..apply(const CommandId('alice', 4));
+    final builder = CommandDependencyBuilder()
+      ..apply(const CommandId('alice', 2))
+      ..apply(const CommandId('bob', 3))
+      ..apply(const CommandId('alice', 1))
+      ..apply(const CommandId('alice', 2))
+      ..apply(const CommandId('alice', 4));
     expect(builder.finish(), CommandDependency({'alice': 4, 'bob': 3}));
   });
 
   test('builder returns independent immutable snapshots', () {
-    final builder =
-        CommandDependencyBuilder()..apply(const CommandId('alice', 1));
+    final builder = CommandDependencyBuilder()
+      ..apply(const CommandId('alice', 1));
     final snapshot = builder.finish();
     builder.apply(const CommandId('alice', 2));
     expect(snapshot, CommandDependency({'alice': 1}));

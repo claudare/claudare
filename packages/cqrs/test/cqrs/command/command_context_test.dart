@@ -194,8 +194,8 @@ void main() {
   });
 
   test('records the yielded prefix when decoding fails', () async {
-    final failingRegistry =
-        EventRegistry()..add(const _EventCodec(failOnValue: 1));
+    final failingRegistry = EventRegistry()
+      ..add(const _EventCodec(failOnValue: 1));
     final failingContext = createContext(eventRegistry: failingRegistry);
 
     await expectLater(
@@ -209,8 +209,8 @@ void main() {
   });
 
   test('lockLatest collects dependencies without decoding', () async {
-    final failingRegistry =
-        EventRegistry()..add(const _EventCodec(failOnValue: 0));
+    final failingRegistry = EventRegistry()
+      ..add(const _EventCodec(failOnValue: 0));
     final failingContext = createContext(eventRegistry: failingRegistry);
 
     await failingContext.stream<_Event>('existing').lockLatest();

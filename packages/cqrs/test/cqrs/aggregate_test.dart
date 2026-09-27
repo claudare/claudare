@@ -30,15 +30,9 @@ void main() {
   });
 
   test('AggregateTester passes an explicit actor', () {
-    final state =
-        AggregateTester(_recordingAggregate())
-            .withEvent(
-              'account/one',
-              'opened',
-              actor: 'b',
-              occuredAt: occuredAt,
-            )
-            .run();
+    final state = AggregateTester(_recordingAggregate())
+        .withEvent('account/one', 'opened', actor: 'b', occuredAt: occuredAt)
+        .run();
 
     expect(state.values, ['b:account/one:opened']);
   });
