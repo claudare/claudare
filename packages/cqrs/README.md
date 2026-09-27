@@ -2,15 +2,11 @@
 
 CQRS implementation for the Claudare workspace.
 
-`MemoryNotificationBus` delivers in-process notifications synchronously to
-listeners whose stream filters match. Subscriptions can be canceled;
-notifications are not persisted or replayed.
-
-`NotificationBusListener.stream` exposes matching paths as an asynchronous,
-single-subscription stream. Canceling its listener unregisters from the bus.
-The callback-based `listen` API remains synchronous. `CqrsRuntime.subscribe`
-exposes notifications without resolving aggregates; callers choose when to
-query or resolve state.
+`MemoryNotificationBus` delivers matching in-process notifications through
+asynchronous, single-subscription streams. Listening registers with the bus;
+canceling the stream subscription unregisters. Notifications are not persisted
+or replayed. `CqrsRuntime.subscribe` exposes notifications without resolving
+aggregates; callers choose when to query or resolve state.
 
 `EventStore` is implemented by `MemoryEventStore` and `SqliteEventStore`.
 The memory store is ready on construction. Call `SqliteEventStore.migrate()`
