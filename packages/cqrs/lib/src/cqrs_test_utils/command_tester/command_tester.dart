@@ -26,6 +26,7 @@ class CommandTester {
       eventStore: _eventStore,
       timeProvider: timeProvider,
       logger: const NoopLogger(),
+      notificationBus: MemoryNotificationBus(),
     );
   }
 

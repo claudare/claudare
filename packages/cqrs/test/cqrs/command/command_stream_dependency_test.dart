@@ -15,6 +15,7 @@ import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
+import 'package:cqrs/src/cqrs/notification_bus/memory_notification_bus.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -181,6 +182,7 @@ Future<void> _execute(
     streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
     timeProvider: FakeTimeProviderStatic.zero(),
     eventRegistry: eventRegistry,
+    notificationBus: MemoryNotificationBus(),
     logger: const NoopLogger(),
   );
   await executor.execute(_Command(handle));

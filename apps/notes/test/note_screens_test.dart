@@ -8,8 +8,52 @@ import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
+import 'package:time_provider/time_provider.dart';
 
 void main() {
+  testWidgets('home shows new notes without navigation or manual reload', (
+    tester,
+  ) async {
+    final application = NoteApplication(cqrsRuntime: CqrsTestRuntime());
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: application,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await application.command.createNote('new');
+    await application.command.updateNoteTitle('new', 'Live note');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Live note'), findsOneWidget);
+  });
+
+  testWidgets('home updates an existing title while it stays open', (
+    tester,
+  ) async {
+    final application = NoteApplication(
+      cqrsRuntime: CqrsTestRuntime(timeProvider: _AdvancingTimeProvider()),
+    );
+    await application.command.createNote('one');
+    await application.command.updateNoteTitle('one', 'Before');
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: application,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Before'), findsOneWidget);
+
+    await application.command.updateNoteTitle('one', 'After');
+    await tester.pumpAndSettle();
+
+    expect(find.text('After'), findsOneWidget);
+    expect(find.text('Before'), findsNothing);
+  });
+
   testWidgets('home list refreshes after saving a new note and returning', (
     tester,
   ) async {
@@ -162,4 +206,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(resets, 1);
   });
+}
+
+final class _AdvancingTimeProvider implements TimeProvider {
+  var _tick = 0;
+
+  @override
+  DateTime now() => DateTime.fromMillisecondsSinceEpoch(_tick++, isUtc: true);
 }

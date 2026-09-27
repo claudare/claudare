@@ -10,6 +10,7 @@ import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
+import 'package:cqrs/src/cqrs/notification_bus/memory_notification_bus.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -101,6 +102,7 @@ CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
         CqrsTestRuntime(eventStore: eventStore ?? database).streamReader,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     eventRegistry: registry,
+    notificationBus: MemoryNotificationBus(),
     logger: const NoopLogger(),
   );
 }

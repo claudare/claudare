@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
@@ -97,6 +99,34 @@ void main() {
 
     expect(before, isEmpty);
     expect(after.map((note) => note.noteId), [noteId]);
+  });
+
+  test('note-list notifications do not refetch queried data', () async {
+    await application.command.createNote('one');
+    await application.command.updateNoteTitle('one', 'First');
+    final before = await application.query.noteList();
+    final changes = StreamIterator(application.query.noteListChanges());
+    addTearDown(changes.cancel);
+    final changed = changes.moveNext();
+
+    await application.command.updateNoteTitle('one', 'Second');
+    expect(await changed, isTrue);
+
+    expect(changes.current, 'note/one');
+    expect(before.single.title, 'First');
+    expect((await application.query.noteList()).single.title, 'Second');
+  });
+
+  test('note-list notifications filter unrelated streams', () async {
+    final changes = StreamIterator(application.query.noteListChanges());
+    addTearDown(changes.cancel);
+    final changed = changes.moveNext();
+
+    runtime.notificationBus.notify('other/one');
+    runtime.notificationBus.notify('note/one');
+
+    expect(await changed, isTrue);
+    expect(changes.current, 'note/one');
   });
 
   test('list query applies category and sort order', () async {

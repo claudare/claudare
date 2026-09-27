@@ -1,17 +1,108 @@
+import 'dart:async';
+
 import 'package:cqrs/cqrs.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const accountMessage = NotificationBusMessage(
-    stream: 'account/1',
-    position: 7,
-    version: 2,
+  const accountMessage = 'account/1';
+  const userMessage = 'user/1';
+
+  test('stream registers only when listened to and does not replay', () async {
+    final bus = _RecordingBus();
+    final stream = bus.stream(const PatternFilter.any());
+    expect(bus.registrations, 0);
+    bus.notify('before-listening');
+    final received = <String>[];
+    final subscription = stream.listen(received.add);
+    addTearDown(subscription.cancel);
+    expect(bus.registrations, 1);
+
+    bus.notify(accountMessage);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(received, [accountMessage]);
+  });
+
+  test('stream delivers matching paths in notification order', () async {
+    final bus = MemoryNotificationBus();
+    final received = <String>[];
+    final subscription = bus
+        .stream(const PatternFilter.startsWith('account/'))
+        .listen(received.add);
+    addTearDown(subscription.cancel);
+
+    bus.notify(accountMessage);
+    bus.notify(userMessage);
+    bus.notify('account/2');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(received, [accountMessage, 'account/2']);
+  });
+
+  test('stream cancellation unregisters its bus callback', () async {
+    final bus = _RecordingBus();
+    final received = <String>[];
+    final subscription = bus
+        .stream(const PatternFilter.any())
+        .listen(received.add);
+    bus.notify(accountMessage);
+    await Future<void>.delayed(Duration.zero);
+
+    await subscription.cancel();
+    await subscription.cancel();
+    bus.notify(userMessage);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(bus.deliveries, 1);
+    expect(received, [accountMessage]);
+  });
+
+  test('canceling one stream leaves other subscriptions active', () async {
+    final bus = MemoryNotificationBus();
+    final first = bus.stream(const PatternFilter.any()).listen((_) {});
+    final second = StreamIterator(bus.stream(const PatternFilter.any()));
+    addTearDown(second.cancel);
+    final next = second.moveNext();
+
+    await first.cancel();
+    bus.notify(accountMessage);
+
+    expect(await next, isTrue);
+    expect(second.current, accountMessage);
+  });
+
+  test(
+    'listen stays synchronous alongside asynchronous stream delivery',
+    () async {
+      final bus = MemoryNotificationBus();
+      final received = <String>[];
+      final stream = bus
+          .stream(const PatternFilter.any())
+          .listen((_) => received.add('stream'));
+      addTearDown(stream.cancel);
+      final callback = bus.listen(
+        const PatternFilter.any(),
+        (_) => received.add('listen'),
+      );
+      addTearDown(callback.cancel);
+
+      bus.notify(accountMessage);
+      expect(received, ['listen']);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(received, ['listen', 'stream']);
+    },
   );
-  const userMessage = NotificationBusMessage(
-    stream: 'user/1',
-    position: 8,
-    version: 1,
-  );
+
+  test('each stream allows one listener', () async {
+    final bus = _RecordingBus();
+    final stream = bus.stream(const PatternFilter.any());
+    final subscription = stream.listen((_) {});
+    addTearDown(subscription.cancel);
+
+    expect(() => stream.listen((_) {}), throwsStateError);
+    expect(bus.registrations, 1);
+  });
 
   test('delivers to every matching filter in registration order', () {
     final bus = MemoryNotificationBus();
@@ -35,16 +126,16 @@ void main() {
     expect(received, ['exact', 'prefix', 'any']);
   });
 
-  test('forwards the notification without changing its fields', () {
+  test('forwards the notified stream path', () {
     final bus = MemoryNotificationBus();
-    NotificationBusMessage? received;
+    String? received;
     bus.listen(const PatternFilter.any(), (message) {
       received = message;
     });
 
     bus.notify(accountMessage);
 
-    expect(received, same(accountMessage));
+    expect(received, accountMessage);
   });
 
   test('cancel stops later delivery and is idempotent', () {
@@ -65,7 +156,7 @@ void main() {
   test('duplicate callbacks can be canceled independently', () {
     final bus = MemoryNotificationBus();
     var count = 0;
-    void callback(NotificationBusMessage message) => count++;
+    void callback(String stream) => count++;
 
     final first = bus.listen(const PatternFilter.any(), callback);
     bus.listen(const PatternFilter.any(), callback);
@@ -127,6 +218,23 @@ void main() {
 
       expect(() => bus.notify(accountMessage), returnsNormally);
       expect(received, ['second']);
+    });
+  }
+}
+
+class _RecordingBus extends MemoryNotificationBus {
+  var registrations = 0;
+  var deliveries = 0;
+
+  @override
+  NotificationBusSubscription listen(
+    PatternFilter filter,
+    void Function(String stream) callback,
+  ) {
+    registrations++;
+    return super.listen(filter, (stream) {
+      deliveries++;
+      callback(stream);
     });
   }
 }

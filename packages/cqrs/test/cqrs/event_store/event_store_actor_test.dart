@@ -222,6 +222,7 @@ CqrsRuntime _runtime(EventStore store, String actor) => CqrsRuntime(
   actor: actor,
   logger: const NoopLogger(),
   timeProvider: FakeTimeProviderStatic.zero(),
+  notificationBus: MemoryNotificationBus(),
 )..eventRegistry.add(const _StringCodec());
 
 class _Append implements Command {

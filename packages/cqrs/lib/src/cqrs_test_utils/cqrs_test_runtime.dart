@@ -34,6 +34,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
         eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
+        notificationBus: MemoryNotificationBus(),
       );
 
   /// Saves [events] in order using codecs in [eventRegistry].

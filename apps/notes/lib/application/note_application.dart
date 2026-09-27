@@ -15,6 +15,7 @@ import 'package:notes/command/update_note_title.dart';
 import 'package:notes/command/test_simulate_external_note_content_append.dart';
 import 'package:notes/command/test_simulate_external_note_content_random_insert.dart';
 import 'package:notes/event/note.dart';
+import 'package:notes/stream_route/note_stream_route.dart';
 
 export 'package:notes/aggregate/note.dart' show NoteState;
 export 'package:notes/aggregate/note_list.dart'
@@ -121,6 +122,10 @@ class NoteQueries {
   Future<void> catchupNote(Aggregate<NoteEvent, NoteState> aggregate) async {
     await _runtime.resolve(aggregate);
   }
+
+  /// Notifies callers of note stream updates so they can choose when to query.
+  Stream<String> noteListChanges() =>
+      _runtime.subscribe(noteStreamRoute.filter);
 
   /// Returns sorted references to notes in the cached aggregate.
   /// A later catchup can update the returned [NoteState] objects.

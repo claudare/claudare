@@ -1,18 +1,5 @@
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
-/// Identifies a stream update available in the global log.
-class NotificationBusMessage {
-  final String stream;
-  final int position;
-  final int version;
-
-  const NotificationBusMessage({
-    required this.stream,
-    required this.position,
-    required this.version,
-  });
-}
-
 /// Cancels a single registration with a [NotificationBusListener].
 abstract interface class NotificationBusSubscription {
   /// Stops future deliveries. Repeated calls have no effect.
@@ -21,15 +8,20 @@ abstract interface class NotificationBusSubscription {
 
 /// Registers callbacks for matching notifications.
 abstract interface class NotificationBusListener {
+  /// Creates a single-subscription stream of matching paths, delivered
+  /// asynchronously. Listening registers with the bus; cancellation unregisters.
+  /// Notifications before listening are not replayed.
+  Stream<String> stream(PatternFilter filter);
+
   NotificationBusSubscription listen(
     PatternFilter filter,
-    void Function(NotificationBusMessage) callback,
+    void Function(String stream) callback,
   );
 }
 
 /// Sends notifications to matching listeners.
 abstract interface class NotificationBusNotifier {
-  void notify(NotificationBusMessage message);
+  void notify(String stream);
 }
 
 /// Combines notification sending and filtered listening.

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cqrs/src/cqrs/notification_bus/notification_bus.dart';
 import 'package:cqrs/src/cqrs/pattern_filter.dart';
 
@@ -6,9 +8,20 @@ class MemoryNotificationBus implements NotificationBus {
   final List<_MemoryNotificationBusSubscription> _subscriptions = [];
 
   @override
+  Stream<String> stream(PatternFilter filter) {
+    late final StreamController<String> controller;
+    late final NotificationBusSubscription subscription;
+    controller = StreamController<String>(
+      onListen: () => subscription = listen(filter, controller.add),
+      onCancel: () => subscription.cancel(),
+    );
+    return controller.stream;
+  }
+
+  @override
   NotificationBusSubscription listen(
     PatternFilter filter,
-    void Function(NotificationBusMessage) callback,
+    void Function(String stream) callback,
   ) {
     final subscription = _MemoryNotificationBusSubscription(
       this,
@@ -20,17 +33,16 @@ class MemoryNotificationBus implements NotificationBus {
   }
 
   @override
-  void notify(NotificationBusMessage message) {
+  void notify(String stream) {
     for (final subscription in List<_MemoryNotificationBusSubscription>.of(
       _subscriptions,
     )) {
-      if (!subscription._active ||
-          !subscription.filter.doesMatchPath(message.stream)) {
+      if (!subscription._active || !subscription.filter.doesMatchPath(stream)) {
         continue;
       }
 
       try {
-        subscription.callback(message);
+        subscription.callback(stream);
       } on Object catch (_) {
         // A listener failure must not stop delivery to other listeners.
       }
@@ -42,7 +54,7 @@ class _MemoryNotificationBusSubscription
     implements NotificationBusSubscription {
   final MemoryNotificationBus _bus;
   final PatternFilter filter;
-  final void Function(NotificationBusMessage) callback;
+  final void Function(String stream) callback;
   bool _active = true;
 
   _MemoryNotificationBusSubscription(this._bus, this.filter, this.callback);

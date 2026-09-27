@@ -35,12 +35,15 @@ class NoteBootstrap {
       await _sqlite.open(eventsDbFilepath);
       opened = true;
 
+      final notificationBus = MemoryNotificationBus();
+
       final eventStore = SqliteEventStore(_sqlite);
       final runtime = CqrsRuntime(
         eventStore: eventStore,
         actor: devActor,
         logger: logger,
         timeProvider: timeProvider,
+        notificationBus: notificationBus,
       );
       final application = NoteApplication(cqrsRuntime: runtime);
 

@@ -1,21 +1,26 @@
+import 'dart:async';
+
 import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes/application/note_application.dart';
 
+/// Keeps the visible note list current while the controller is alive.
 class NoteListController extends ChangeNotifier {
   final NoteApplication application;
 
   List<NoteState> _noteData = [];
+  StreamSubscription<void>? _changes;
+  Future<void>? _initialization;
+  late final AsyncTrailingRunner _reloadRunner = AsyncTrailingRunner(
+    _reloadOnce,
+  );
   NoteCategory _category = NoteCategory.all;
   NoteSortOrder _order = NoteSortOrder.createdAtDescending;
   bool _isLoading = false;
   Exception? _loadError;
   bool _disposed = false;
-  late final AsyncTrailingRunner _reloadRunner;
 
-  NoteListController(this.application) {
-    _reloadRunner = AsyncTrailingRunner(_reloadOnce);
-  }
+  NoteListController(this.application);
 
   List<NoteState> get noteData => _noteData;
   bool get isLoading => _isLoading;
@@ -37,9 +42,22 @@ class NoteListController extends ChangeNotifier {
     await reloadNotes();
   }
 
+  Future<void> initialize() => _initialization ??= _initialize();
+
+  Future<void> _initialize() async {
+    if (_disposed) return;
+
+    _changes = application.query.noteListChanges().listen(
+      (_) => unawaited(reloadNotes()),
+    );
+
+    await reloadNotes();
+  }
+
   Future<void> reloadNotes() => _reloadRunner.run();
 
   Future<void> _reloadOnce() async {
+    if (_disposed) return;
     _isLoading = true;
     _notify();
 
@@ -60,12 +78,8 @@ class NoteListController extends ChangeNotifier {
   }
 
   Future<void> deleteNotes(List<String> noteIds) async {
-    try {
-      for (final noteId in noteIds) {
-        await application.command.trashNote(noteId);
-      }
-    } finally {
-      await reloadNotes();
+    for (final noteId in noteIds) {
+      await application.command.trashNote(noteId);
     }
   }
 
@@ -76,6 +90,7 @@ class NoteListController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_changes?.cancel());
     super.dispose();
   }
 }

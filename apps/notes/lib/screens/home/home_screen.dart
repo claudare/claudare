@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _application = application;
     _controller = NoteListController(application);
     _controller.addListener(_onControllerChanged);
-    unawaited(_controller.reloadNotes());
+    unawaited(_controller.initialize());
   }
 
   void _onControllerChanged() {
@@ -50,14 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => NoteScreen(noteId: noteId)));
-    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _openSettings() async {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => SettingsScreen()));
-    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _newNote() async {

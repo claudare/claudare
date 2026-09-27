@@ -4,6 +4,7 @@ import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/notification_bus/notification_bus.dart';
 import 'package:time_provider/time_provider.dart';
 
 class CommandExecutor {
@@ -12,6 +13,7 @@ class CommandExecutor {
   final StreamReader _streamReader;
   final TimeProvider _timeProvider;
   final EventRegistry _eventRegistry;
+  final NotificationBusNotifier _notificationBus;
   final Logger _logger;
 
   const CommandExecutor({
@@ -20,13 +22,15 @@ class CommandExecutor {
     required StreamReader streamReader,
     required TimeProvider timeProvider,
     required EventRegistry eventRegistry,
+    required NotificationBusNotifier notificationBus,
     required Logger logger,
   }) : _eventRegistry = eventRegistry,
        _actor = actor,
        _logger = logger,
        _timeProvider = timeProvider,
        _streamReader = streamReader,
-       _eventStore = eventStore;
+       _eventStore = eventStore,
+       _notificationBus = notificationBus;
 
   Future<void> execute(Command command) async {
     final context = CommandContext(
@@ -42,6 +46,13 @@ class CommandExecutor {
 
     final changes = context.finish();
     if (changes.events.isEmpty) return;
+
     await _eventStore.saveChanges(changes);
+
+    // changes were successful, notify the bus
+    for (final event in changes.events) {
+      // no debounce for now, its okay
+      _notificationBus.notify(event.streamPath);
+    }
   }
 }

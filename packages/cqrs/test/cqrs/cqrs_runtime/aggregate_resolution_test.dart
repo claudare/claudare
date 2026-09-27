@@ -21,6 +21,7 @@ void main() {
       eventStore: eventStore,
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
+      notificationBus: MemoryNotificationBus(),
     );
     runtime.eventRegistry
       ..add(const _TestEventCodec())
@@ -113,6 +114,7 @@ void main() {
       eventStore: eventStore,
       logger: logger,
       timeProvider: FakeTimeProviderStatic.zero(),
+      notificationBus: MemoryNotificationBus(),
     );
     observed.eventRegistry
       ..add(const _TestEventCodec())
