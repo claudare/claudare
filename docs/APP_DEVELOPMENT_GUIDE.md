@@ -16,7 +16,7 @@ event store checks stream versions when saving, so a stale concurrent command
 can fail with `ConcurrencyProblem`. A successful command has stored its events.
 
 Queries resolve aggregates from stored events. Notes uses this for note details,
-lists, and counts. The UI refreshes its queries after local commands and when
+lists, and counts. The notes list refreshes after note stream changes and when
 returning from another screen. The Notes application has no separate search or
 projection database.
 

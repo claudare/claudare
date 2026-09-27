@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes/application/note_application.dart';
@@ -12,9 +14,13 @@ class NoteListController extends ChangeNotifier {
   Exception? _loadError;
   bool _disposed = false;
   late final AsyncTrailingRunner _reloadRunner;
+  late final StreamSubscription<void> _noteListChanges;
 
   NoteListController(this.application) {
     _reloadRunner = AsyncTrailingRunner(_reloadOnce);
+    _noteListChanges = application.query.noteListChanges().listen((_) {
+      unawaited(reloadNotes());
+    });
   }
 
   List<NoteState> get noteData => _noteData;
@@ -76,6 +82,7 @@ class NoteListController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_noteListChanges.cancel());
     super.dispose();
   }
 }

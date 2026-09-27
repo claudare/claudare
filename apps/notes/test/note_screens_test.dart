@@ -5,11 +5,57 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/event_store_provider.dart';
+import 'package:notes/event/note.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
 void main() {
+  testWidgets('home list updates after an external stored command', (
+    tester,
+  ) async {
+    final store = MemoryEventStore();
+    final runtime = CqrsTestRuntime(eventStore: store);
+    final application = NoteApplication(cqrsRuntime: runtime);
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
+    await application.command.updateNoteTitle(noteId, 'Before');
+
+    await tester.pumpWidget(
+      NoteApplicationProvider(
+        application: application,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Before'), findsOneWidget);
+
+    final time = DateTime.utc(2026);
+    expect(
+      await store.addStoredCommand(
+        StoredCommand(
+          commandId: const CommandId('remote', 1),
+          dependency: CommandDependency(),
+          occuredAt: time,
+          events: [
+            StoredCommandEvent(
+              streamPath: 'note/$noteId',
+              encodedEvent: runtime.eventRegistry.encode(
+                NoteTitleUpdated(noteId: noteId, newTitle: 'After'),
+              ),
+              occuredAt: time,
+            ),
+          ],
+        ),
+      ),
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('After'), findsOneWidget);
+    expect(find.text('Before'), findsNothing);
+  });
+
   testWidgets('home list refreshes after saving a new note and returning', (
     tester,
   ) async {

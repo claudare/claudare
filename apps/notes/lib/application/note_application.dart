@@ -7,6 +7,7 @@ import 'package:mutex/mutex.dart' show Mutex;
 import 'package:notes/aggregate/note.dart';
 import 'package:notes/aggregate/note_list.dart';
 import 'package:notes/aggregate/statistics.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/command/create_note.dart';
 import 'package:notes/command/restore_note.dart';
 import 'package:notes/command/trash_note.dart';
@@ -133,6 +134,9 @@ class NoteQueries {
       return _noteList.state.toSortedList(category: category, order: order);
     });
   }
+
+  /// Notifies callers of note stream updates so they can choose when to query.
+  Stream<void> noteListChanges() => _runtime.subscribe(allNotesFilter);
 
   Future<StatisticsState> statistics() async {
     final v = await _runtime.resolve(statisticsAggregate());

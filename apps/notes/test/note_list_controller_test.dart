@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/screens/home/note_list_controller.dart';
@@ -14,14 +16,18 @@ void main() {
 
   tearDown(() => controller.dispose());
 
-  test('reload reads notes created by a local command', () async {
+  test('a note change refreshes the list automatically', () async {
     await controller.reloadNotes();
     final noteId = application.generateNoteId();
+    final updated = Completer<void>();
+    controller.addListener(() {
+      if (!updated.isCompleted &&
+          controller.noteData.any((note) => note.noteId == noteId)) {
+        updated.complete();
+      }
+    });
     await application.command.createNote(noteId);
-
-    expect(controller.noteData, isEmpty);
-
-    await controller.reloadNotes();
+    await updated.future;
 
     expect(controller.noteData.map((note) => note.noteId), [noteId]);
   });
