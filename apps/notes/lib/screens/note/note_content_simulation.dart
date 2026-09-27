@@ -5,18 +5,13 @@ import 'package:notes/screens/note/note_controller.dart';
 /// Runs simulated external edits while this note editor enables them.
 class NoteContentSimulation {
   final NoteController controller;
-  final Future<void> Function() onPersisted;
   final void Function(Exception) onError;
 
   Timer? _timer;
   bool _writing = false;
   bool _disposed = false;
 
-  NoteContentSimulation({
-    required this.controller,
-    required this.onPersisted,
-    required this.onError,
-  });
+  NoteContentSimulation({required this.controller, required this.onError});
 
   bool get isRunning => _timer != null;
 
@@ -43,7 +38,6 @@ class NoteContentSimulation {
     _writing = true;
     try {
       await controller.simulateExternalEdit();
-      if (!_disposed) await onPersisted();
     } on Exception catch (error) {
       if (!_disposed) {
         stop();

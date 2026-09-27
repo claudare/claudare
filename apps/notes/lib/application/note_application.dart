@@ -138,6 +138,10 @@ class NoteQueries {
   /// Notifies callers of note stream updates so they can choose when to query.
   Stream<void> noteListChanges() => _runtime.subscribe(allNotesFilter);
 
+  /// Notifies callers of changes to one note stream.
+  Stream<void> noteChanges(String noteId) =>
+      _runtime.subscribe(noteStreamFilter(noteId));
+
   Future<StatisticsState> statistics() async {
     final v = await _runtime.resolve(statisticsAggregate());
     return v.state;

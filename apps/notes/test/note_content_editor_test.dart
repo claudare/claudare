@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/aggregate/note.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
+import 'package:notes/application/paths.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/event/note.dart';
@@ -21,17 +22,56 @@ void main() {
       await app.command.createNote(id);
       await _open(tester, app, id);
       await app.command.updateNoteTitle(id, 'Remote title');
-      await tester.tap(find.byType(TextField).first);
-      await _pressSaveShortcut(tester);
       await tester.pumpAndSettle();
       final editor = tester
           .widget<TextField>(find.byType(TextField).first)
           .controller!;
       expect(editor.text, 'Remote title');
+      await tester.tap(find.byType(TextField).first);
+      await _pressSaveShortcut(tester);
+      await tester.pumpAndSettle();
       expect(find.text('Nothing to save'), findsOneWidget);
       expect((await app.query.note(id)).title, 'Remote title');
     },
   );
+
+  testWidgets('open note updates after an external stored command', (
+    tester,
+  ) async {
+    final store = MemoryEventStore();
+    final runtime = CqrsTestRuntime(eventStore: store);
+    final app = NoteApplication(cqrsRuntime: runtime);
+    final id = app.generateNoteId();
+    await app.command.createNote(id);
+    await _open(tester, app, id);
+    final time = DateTime.utc(2026);
+
+    expect(
+      await store.addStoredCommand(
+        StoredCommand(
+          commandId: const CommandId('remote', 1),
+          dependency: CommandDependency(),
+          occuredAt: time,
+          events: [
+            StoredCommandEvent(
+              streamPath: noteStream(id),
+              encodedEvent: runtime.eventRegistry.encode(
+                NoteTitleUpdated(noteId: id, newTitle: 'External title'),
+              ),
+              occuredAt: time,
+            ),
+          ],
+        ),
+      ),
+      isTrue,
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      'External title',
+    );
+  });
 
   testWidgets('title edits made during saving persist in a subsequent batch', (
     tester,
@@ -180,7 +220,7 @@ void main() {
     expect(_content(tester).text, '');
   });
 
-  testWidgets('refresh merges external edits with an unsaved UI draft', (
+  testWidgets('external edits merge automatically with an unsaved UI draft', (
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
@@ -203,8 +243,6 @@ void main() {
       ' two',
       actorId: 'remote',
     );
-    expect(_content(tester).text, 'Local Base');
-    await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(_content(tester).text, 'Local Base one two');
     expect((await app.query.note(id)).content, 'Base one two');
@@ -216,7 +254,7 @@ void main() {
     expect(_content(tester).text, 'Local Base one two');
   });
 
-  testWidgets('refresh preserves selection before externally appended text', (
+  testWidgets('automatic refresh preserves selection before appended text', (
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
@@ -234,12 +272,11 @@ void main() {
       'X',
       actorId: 'remote',
     );
-    await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(_content(tester).selection.baseOffset, 2);
   });
 
-  testWidgets('refresh waits for composition before updating the field', (
+  testWidgets('automatic refresh waits for composition before field update', (
     tester,
   ) async {
     final app = NoteApplication(cqrsRuntime: CqrsTestRuntime());
@@ -262,7 +299,6 @@ void main() {
       'X',
       actorId: 'remote',
     );
-    await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(controller.text, 'abc');
     controller.value = controller.value.copyWith(composing: TextRange.empty);

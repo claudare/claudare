@@ -13,7 +13,7 @@ Content editing uses CRDT changes with focus-loss and navigation saves. Ctrl+S
 saves the open note and reports when there are no changes. Refresh merges
 persisted edits into an open draft. For visual testing, the simulation toggle
 inserts external text at a random position every five seconds. The editor
-refreshes after each simulated edit is saved.
+refreshes when the event store reports a change to the open note.
 
 ## Run
 
