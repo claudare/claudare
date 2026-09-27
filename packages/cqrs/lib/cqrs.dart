@@ -11,6 +11,8 @@ export 'src/cqrs/event_store/memory_event_store.dart';
 export 'src/cqrs/event_store/sqlite_event_store.dart';
 
 // event
+export 'src/cqrs/notification_bus/notification_bus.dart';
+export 'src/cqrs/notification_bus/memory_notification_bus.dart';
 export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/encoded_event.dart';
 export 'src/cqrs/event/event_registry.dart';

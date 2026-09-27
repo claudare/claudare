@@ -2,6 +2,10 @@
 
 CQRS implementation for the Claudare workspace.
 
+`MemoryNotificationBus` delivers in-process notifications synchronously to
+listeners whose stream filters match. Subscriptions can be canceled;
+notifications are not persisted or replayed.
+
 `EventStore` is implemented by `MemoryEventStore` and `SqliteEventStore`.
 The memory store is ready on construction. Call `SqliteEventStore.migrate()`
 before using SQLite; the concrete SQLite store also owns database close.
