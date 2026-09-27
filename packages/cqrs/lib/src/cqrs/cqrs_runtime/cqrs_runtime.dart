@@ -164,4 +164,9 @@ class CqrsRuntime {
 
     return aggregate;
   }
+
+  /// Observes matching stream change notifications without resolving any state.
+  Stream<void> subscribe(PatternFilter filter) => _eventStore.eventChanges
+      .where((change) => filter.doesMatchPath(change.stream))
+      .map<void>((_) {});
 }
