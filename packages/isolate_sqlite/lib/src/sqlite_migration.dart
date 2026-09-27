@@ -18,8 +18,7 @@ class SqliteMigrations {
   final String _migrationTable;
   final List<SqliteMigration> _migrations = [];
 
-  SqliteMigrations({required String migrationTable})
-    : _migrationTable = migrationTable;
+  SqliteMigrations({required this._migrationTable});
 
   void add(SqliteMigration migration) {
     _migrations.add(migration);

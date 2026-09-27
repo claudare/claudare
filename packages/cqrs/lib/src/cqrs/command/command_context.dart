@@ -29,18 +29,13 @@ class CommandContext implements CommandContextApi {
   bool _finished = false;
 
   CommandContext({
-    required EventStore eventStore,
-    required String actor,
-    required StreamReader streamReader,
-    required EventRegistry eventRegistry,
+    required this._eventStore,
+    required this._actor,
+    required this._streamReader,
+    required this._eventRegistry,
     required TimeProvider timeProvider,
-    required Logger logger,
-  }) : _eventStore = eventStore,
-       _actor = actor,
-       _streamReader = streamReader,
-       _eventRegistry = eventRegistry,
-       _timeProvider = timeProvider,
-       _logger = logger,
+    required this._logger,
+  }) : _timeProvider = timeProvider,
        _occuredAt = timeProvider.now();
 
   @override

@@ -23,14 +23,11 @@ class CqrsRuntime {
   late final CommandExecutor _commandExecutor;
 
   CqrsRuntime({
-    required EventStore eventStore,
-    required String actor,
-    required Logger logger,
-    required TimeProvider timeProvider,
-  }) : _timeProvider = timeProvider,
-       _actor = actor,
-       _logger = logger,
-       _eventStore = eventStore {
+    required this._eventStore,
+    required this._actor,
+    required this._logger,
+    required this._timeProvider,
+  }) {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
       actor: _actor,

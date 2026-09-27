@@ -10,8 +10,7 @@ import 'rows.dart';
 class SyncContext {
   final Database _db;
   final bool _isDatabaseTransaction;
-  const SyncContext(this._db, {required bool isDatabaseTransaction})
-    : _isDatabaseTransaction = isDatabaseTransaction;
+  const SyncContext(this._db, {required this._isDatabaseTransaction});
 
   Database get db => _db;
   bool get isDatabaseTransaction => _isDatabaseTransaction;

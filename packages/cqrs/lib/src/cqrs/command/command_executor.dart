@@ -15,18 +15,13 @@ class CommandExecutor {
   final Logger _logger;
 
   const CommandExecutor({
-    required EventStore eventStore,
-    required String actor,
-    required StreamReader streamReader,
-    required TimeProvider timeProvider,
-    required EventRegistry eventRegistry,
-    required Logger logger,
-  }) : _eventRegistry = eventRegistry,
-       _actor = actor,
-       _logger = logger,
-       _timeProvider = timeProvider,
-       _streamReader = streamReader,
-       _eventStore = eventStore;
+    required this._eventStore,
+    required this._actor,
+    required this._streamReader,
+    required this._timeProvider,
+    required this._eventRegistry,
+    required this._logger,
+  });
 
   Future<void> execute(Command command) async {
     final context = CommandContext(
