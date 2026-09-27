@@ -20,12 +20,15 @@ void main() {
     final release = Completer<void>();
     final runner = AsyncTrailingRunner(() => release.future);
 
+    expect(runner.activeRun, isNull);
     final first = runner.run();
     final second = runner.run();
 
     expect(identical(first, second), isTrue);
+    expect(runner.activeRun, same(first));
     release.complete();
     await first;
+    expect(runner.activeRun, isNull);
   });
 
   test('work never overlaps', () async {

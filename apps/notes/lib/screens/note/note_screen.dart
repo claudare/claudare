@@ -36,7 +36,6 @@ class _NoteScreenState extends State<NoteScreen> {
   late NoteContentSimulation _simulation;
   StreamSubscription<void>? _noteChanges;
   late AsyncTrailingRunner _refreshRunner;
-  Future<void>? _refreshInProgress;
 
   Future<bool>? _flushInProgress;
   bool _flushAgain = false;
@@ -94,7 +93,6 @@ class _NoteScreenState extends State<NoteScreen> {
       () => _runRefresh(controller, _flushInProgress),
     );
     _flushInProgress = null;
-    _refreshInProgress = null;
     _flushAgain = false;
     _allowPop = false;
     _leaving = false;
@@ -167,7 +165,7 @@ class _NoteScreenState extends State<NoteScreen> {
 
   Future<bool> _flushChanges({bool showNothingToSave = false}) async {
     final controller = _controller;
-    await _refreshInProgress;
+    await _refreshRunner.activeRun;
     if (!mounted || !identical(controller, _controller)) return false;
     final active = _flushInProgress;
     if (active != null) {
@@ -324,17 +322,15 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _refreshNote() async {
-    final refresh = _refreshRunner.run();
-    if (_refreshInProgress != null) return refresh;
-    setState(() {
-      _refreshInProgress = refresh;
-    });
+    final runner = _refreshRunner;
+    final wasRunning = runner.activeRun != null;
+    final refresh = runner.run();
+    if (wasRunning) return refresh;
+    setState(() {});
     try {
       await refresh;
     } finally {
-      if (mounted && identical(_refreshInProgress, refresh)) {
-        setState(() => _refreshInProgress = null);
-      }
+      if (mounted && identical(_refreshRunner, runner)) setState(() {});
     }
   }
 
@@ -392,7 +388,7 @@ class _NoteScreenState extends State<NoteScreen> {
                   onPressed:
                       _controller.exists &&
                           !_controller.isLoading &&
-                          _refreshInProgress == null
+                          _refreshRunner.activeRun == null
                       ? _refreshNote
                       : null,
                 ),

@@ -8,6 +8,9 @@ final class AsyncTrailingRunner {
 
   AsyncTrailingRunner(this._callback);
 
+  /// The current run, including queued trailing work, or null when idle.
+  Future<void>? get activeRun => _activeRun;
+
   Future<void> run() {
     final activeRun = _activeRun;
     if (activeRun != null) {
