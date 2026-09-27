@@ -24,12 +24,24 @@ class EventDatabaseState {
   });
 }
 
-abstract interface class EventStore {
-  /// Various statistics about the event store.
-  Future<GetStatisticsResult> getStatistics();
-
+abstract interface class EventStoreReplication {
   /// A small summary of the current state of the event store.
   Future<EventDatabaseState> getState();
+
+  /// Adds (appends) a command with events. Returns true on successful save.
+  /// Returns false when the command's dependencies are not satisfied or the
+  /// command is out of order.
+  /// This accepts commands received from other actors.
+  Future<bool> addStoredCommand(StoredCommand command);
+
+  /// Returns a stored command by command ID, or null when absent.
+  /// This is used for retrieving commands for syncing.
+  Future<StoredCommand?> getStoredCommand(CommandId commandId);
+}
+
+abstract interface class EventStore implements EventStoreReplication {
+  /// Various statistics about the event store.
+  Future<GetStatisticsResult> getStatistics();
 
   /// Quick latest lookup of the last stream's version.
   Future<int?> getStreamVersion(String streamPath);
@@ -47,14 +59,4 @@ abstract interface class EventStore {
 
   /// Saves results of command execution into the event store.
   Future<void> saveChanges(CommandChanges changes);
-
-  /// Adds (appends) a command with events. Returns true on successful save.
-  /// Returns false when the command's dependencies are not satisfied or the
-  /// command is out of order.
-  /// This accepts commands received from other actors.
-  Future<bool> addStoredCommand(StoredCommand command);
-
-  /// Returns a stored command by command ID, or null when absent.
-  /// This is used for retrieving commands for syncing.
-  Future<StoredCommand?> getStoredCommand(CommandId commandId);
 }
