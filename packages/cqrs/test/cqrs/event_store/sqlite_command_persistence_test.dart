@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
@@ -132,7 +133,7 @@ void main() {
 
     final results = await Future.wait([save(store), save(otherStore)]);
     expect(results.where((saved) => saved), hasLength(1));
-    expect((await store.getStatistics()).eventCount, 1);
+    expect(await EventStoreTestUtils.getEventCount(store), 1);
     expect(
       (await otherStore.getState()).logVersion,
       CommandDependency({'test-actor': 1}),
@@ -197,9 +198,9 @@ void main() {
       imported.toJson(),
     );
     expect(
-      (await second.getStoredCommand(
-        CommandId('test-actor', 1),
-      ))!.commandId.actor,
+      (await second.getStoredCommand(CommandId('test-actor', 1)))!
+          .commandId
+          .actor,
       'test-actor',
     );
     expect(
@@ -216,15 +217,15 @@ void main() {
       CommandDependency({'test-actor': 2, 'actor-160': 2, 'actor-42': 1}),
     );
     expect(
-      (await second.getStoredCommand(
-        CommandId('actor-160', 2),
-      ))!.commandId.actor,
+      (await second.getStoredCommand(CommandId('actor-160', 2)))!
+          .commandId
+          .actor,
       imported.commandId.actor,
     );
     expect(
-      (await second.getStoredCommand(
-        CommandId('actor-42', 1),
-      ))!.commandId.actor,
+      (await second.getStoredCommand(CommandId('actor-42', 1)))!
+          .commandId
+          .actor,
       'actor-42',
     );
   });

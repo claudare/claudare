@@ -74,8 +74,9 @@ class MemoryEventStore implements EventStore {
       _read('Failed to get state', _getState);
 
   EventDatabaseState _getState() => EventDatabaseState(
-    lastCommandLogPosition:
-        _commands.isEmpty ? null : _commands.last.logPosition,
+    lastCommandLogPosition: _commands.isEmpty
+        ? null
+        : _commands.last.logPosition,
     lastEventLogPosition: _events.isEmpty ? null : _events.last.logPosition,
     logVersion: _logVersion(),
   );
@@ -155,18 +156,6 @@ class MemoryEventStore implements EventStore {
           next: events.isEmpty ? null : events.last.position + 1,
         );
       });
-
-  @override
-  Future<GetStatisticsResult> getStatistics() => _read(
-    'Failed to get statistics',
-    () => GetStatisticsResult(
-      eventCount: _events.length,
-      storageSize: _events.fold(
-        0,
-        (total, event) => total + event.encodedEvent.bytes.length,
-      ),
-    ),
-  );
 
   @override
   Future<StoredCommand?> getStoredCommand(CommandId commandId) =>

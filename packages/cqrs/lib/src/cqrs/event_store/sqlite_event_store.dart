@@ -14,45 +14,44 @@ import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
-final eventDatabaseMigrations = SqliteMigrations(
-  migrationTable: 'migrations_event_database',
-)..add(
-  SqliteMigration(1, (tx) {
-    tx.execute('''CREATE TABLE command(
-            log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            id_actor TEXT NOT NULL,
-            id_sequence INTEGER NOT NULL,
-            dependency BLOB NOT NULL,
-            occured_at INTEGER NOT NULL,
-            event_count INTEGER NOT NULL CHECK(event_count > 0),
-            UNIQUE(id_actor, id_sequence)
-          );''');
-    tx.execute(
-      'CREATE INDEX idx_command_id ON command(id_actor, id_sequence);',
+final eventDatabaseMigrations =
+    SqliteMigrations(migrationTable: 'migrations_event_database')..add(
+      SqliteMigration(1, (tx) {
+        tx.execute('''CREATE TABLE command(
+          log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
+          id_actor TEXT NOT NULL,
+          id_sequence INTEGER NOT NULL,
+          dependency BLOB NOT NULL,
+          occured_at INTEGER NOT NULL,
+          event_count INTEGER NOT NULL CHECK(event_count > 0),
+          UNIQUE(id_actor, id_sequence)
+        );''');
+        tx.execute(
+          'CREATE INDEX idx_command_id ON command(id_actor, id_sequence);',
+        );
+        tx.execute('''CREATE TABLE stream(
+          stream_path TEXT PRIMARY KEY NOT NULL,
+          version INTEGER NOT NULL
+        );''');
+        tx.execute('''CREATE TABLE event(
+          log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
+          id_actor TEXT NOT NULL,
+          id_sequence INTEGER NOT NULL,
+          id_index INTEGER NOT NULL CHECK(id_index >= 0),
+          stream_path TEXT NOT NULL,
+          stream_version INTEGER NOT NULL CHECK(stream_version >= 0),
+          kind TEXT NOT NULL,
+          detail BLOB NOT NULL,
+          occured_at INTEGER NOT NULL,
+          UNIQUE(id_actor, id_sequence, id_index)
+        );''');
+        tx.execute(
+          'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
+        );
+        tx.execute('''CREATE UNIQUE INDEX idx_log_event_stream_version
+          ON event(stream_path, stream_version);''');
+      }),
     );
-    tx.execute('''CREATE TABLE stream(
-            stream_path TEXT PRIMARY KEY NOT NULL,
-            version INTEGER NOT NULL
-          );''');
-    tx.execute('''CREATE TABLE event(
-            log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
-            id_actor TEXT NOT NULL,
-            id_sequence INTEGER NOT NULL,
-            id_index INTEGER NOT NULL CHECK(id_index >= 0),
-            stream_path TEXT NOT NULL,
-            stream_version INTEGER NOT NULL CHECK(stream_version >= 0),
-            kind TEXT NOT NULL,
-            detail BLOB NOT NULL,
-            occured_at INTEGER NOT NULL,
-            UNIQUE(id_actor, id_sequence, id_index)
-          );''');
-    tx.execute(
-      'CREATE INDEX idx_event_stream ON event(stream_path, stream_version);',
-    );
-    tx.execute('''CREATE UNIQUE INDEX idx_log_event_stream_version
-      ON event(stream_path, stream_version);''');
-  }),
-);
 
 /// Stores commands and events in SQLite transactions.
 class SqliteEventStore implements EventStore {
@@ -181,18 +180,6 @@ class SqliteEventStore implements EventStore {
       });
 
   @override
-  Future<GetStatisticsResult>
-  getStatistics() => _transaction('Failed to get statistics', (tx) {
-    final row = tx.queryRow(
-      'SELECT COUNT(*) AS event_count, COALESCE(SUM(LENGTH(detail)), 0) AS storage_size FROM event;',
-    );
-    return GetStatisticsResult(
-      eventCount: row!.field<int>('event_count'),
-      storageSize: row.field<int>('storage_size'),
-    );
-  });
-
-  @override
   Future<StoredCommand?> getStoredCommand(CommandId commandId) =>
       _transaction('Failed to get stored command $commandId', (tx) {
         final row = tx.queryRow(
@@ -291,8 +278,7 @@ class SqliteEventStore implements EventStore {
       });
 
   EventDatabaseState _getState(SyncContext tx) {
-    final counters =
-        tx.queryRow('''SELECT
+    final counters = tx.queryRow('''SELECT
       (SELECT MAX(log_position) FROM command) AS command_position,
       (SELECT MAX(log_position) FROM event) AS event_position''')!;
     final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence

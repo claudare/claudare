@@ -5,13 +5,6 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 
-class GetStatisticsResult {
-  final int eventCount;
-  final int storageSize; // bytes
-
-  GetStatisticsResult({required this.eventCount, required this.storageSize});
-}
-
 class EventDatabaseState {
   final int? lastCommandLogPosition;
   final int? lastEventLogPosition;
@@ -40,9 +33,6 @@ abstract interface class EventStoreReplication {
 }
 
 abstract interface class EventStore implements EventStoreReplication {
-  /// Various statistics about the event store.
-  Future<GetStatisticsResult> getStatistics();
-
   /// Quick latest lookup of the last stream's version.
   Future<int?> getStreamVersion(String streamPath);
 

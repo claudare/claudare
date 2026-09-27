@@ -25,11 +25,9 @@ void main() {
         expect(await store.getStreamVersion('missing'), isNull);
       });
 
-      test('counts stored events and payload bytes', () async {
+      test('counts stored events', () async {
         await store.saveChanges(_changes('one', count: 3));
-        final statistics = await store.getStatistics();
-        expect(statistics.eventCount, 3);
-        expect(statistics.storageSize, 6);
+        expect(await EventStoreTestUtils.getEventCount(store), 3);
       });
 
       test('empty changes do not allocate a command', () async {
@@ -85,7 +83,7 @@ void main() {
 
         final results = await Future.wait([save(), save()]);
         expect(results.where((saved) => saved), hasLength(1));
-        expect((await store.getStatistics()).eventCount, 3);
+        expect(await EventStoreTestUtils.getEventCount(store), 3);
         expect((await store.getState()).lastCommandLogPosition, 0);
         await store.saveChanges(_changes('one', version: 2));
         final state = await store.getState();
@@ -116,10 +114,11 @@ void main() {
 
       test('duplicate bundles leave the log unchanged', () async {
         await store.saveChanges(_changes('one'));
-        final bundle =
-            (await store.getStoredCommand(CommandId('test-actor', 1)))!;
+        final bundle = (await store.getStoredCommand(
+          CommandId('test-actor', 1),
+        ))!;
         expect(await store.addStoredCommand(bundle), isFalse);
-        expect((await store.getStatistics()).eventCount, 1);
+        expect(await EventStoreTestUtils.getEventCount(store), 1);
         expect(
           (await store.getState()).logVersion,
           CommandDependency({'test-actor': 1}),
@@ -147,10 +146,9 @@ void main() {
             'pages ${stream ? 'stream' : 'log'} with inclusive cursors',
             () async {
               final expectedSize = pageSize ?? 10;
-              Future<PaginatedResult<StoredEvent>> read(int cursor) =>
-                  stream
-                      ? store.getStreamEvents('one', cursor)
-                      : store.getLogEvents(cursor);
+              Future<PaginatedResult<StoredEvent>> read(int cursor) => stream
+                  ? store.getStreamEvents('one', cursor)
+                  : store.getLogEvents(cursor);
               final first = await read(1);
               expect(first.data, hasLength(expectedSize));
               expect(first.data.first.position, 1);

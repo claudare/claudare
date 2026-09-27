@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
@@ -44,7 +45,7 @@ void main() {
       'Persisted title',
     );
     expect(await reopened.application.query.noteList(), hasLength(1));
-    expect((await reopened.eventStore.getStatistics()).eventCount, 2);
+    expect(await EventStoreTestUtils.getEventCount(reopened.eventStore), 2);
   });
 
   test('closes SQLite when event database migration fails', () async {

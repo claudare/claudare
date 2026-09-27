@@ -66,7 +66,7 @@ void main() {
           ),
           isNull,
         );
-        expect((await session.store.getStatistics()).eventCount, 0);
+        expect(await EventStoreTestUtils.getEventCount(session.store), 0);
 
         expect(
           await store.addStoredCommand(_bundle(CommandId('actor-1', 1))),
@@ -92,10 +92,7 @@ void main() {
           Future.sync(() => store.addStoredCommand(invalid)),
           throwsArgumentError,
         );
-        expect(
-          await store.getStoredCommand(valid.commandId),
-          isNull,
-        );
+        expect(await store.getStoredCommand(valid.commandId), isNull);
       });
 
       test('keeps log positions and stream versions contiguous', () async {
@@ -156,8 +153,10 @@ void main() {
         await store.addStoredCommand(
           _bundle(CommandId('actor-1', 2), paths: ['one']),
         );
-        final events =
-            await runtime.streamReader('one', fromVersion: 1).scan().toList();
+        final events = await runtime
+            .streamReader('one', fromVersion: 1)
+            .scan()
+            .toList();
         expect(events.single.version, 1);
         expect(events.single.eventId.commandId, CommandId('actor-1', 2));
       });

@@ -9,7 +9,7 @@ void main() {
     final session = await const MemoryEventStoreTestBackend().open();
     addTearDown(session.close);
     expect((await session.store.getState()).lastEventLogPosition, null);
-    expect((await session.store.getStatistics()).eventCount, 0);
+    expect(await EventStoreTestUtils.getEventCount(session.store), 0);
   });
 
   test('SQLite backend closes its database', () async {
@@ -48,10 +48,10 @@ void main() {
         expect(await database.getStreamVersion('two'), 1);
         final one = await database.getStreamEvents('one', 1);
         expect(one.data.map((event) => event.version), [1, 2]);
-        final all =
-            await CqrsTestRuntime(
-              eventStore: database,
-            ).logReader(0).scan().toList();
+        final all = await CqrsTestRuntime(eventStore: database)
+            .logReader(0)
+            .scan()
+            .toList();
         expect(all.map((event) => event.streamPath), [
           'one',
           'two',
@@ -61,9 +61,9 @@ void main() {
         ]);
         expect(all.map((event) => event.position), [0, 1, 2, 3, 4]);
         expect(
-          (await database.getStoredCommand(
-            CommandId('actor-1', 2),
-          ))!.events.length,
+          (await database.getStoredCommand(CommandId('actor-1', 2)))!
+              .events
+              .length,
           2,
         );
       });

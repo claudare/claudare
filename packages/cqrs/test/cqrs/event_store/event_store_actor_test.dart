@@ -134,7 +134,7 @@ void main() {
           store.addStoredCommand(command),
         ]);
         expect(results.where((accepted) => accepted), hasLength(1));
-        expect((await store.getStatistics()).eventCount, 1);
+        expect(await EventStoreTestUtils.getEventCount(store), 1);
       });
 
       test('concurrent actors allocate independent first sequences', () async {
@@ -195,10 +195,9 @@ void main() {
               dependency: CommandDependency({'alice': 1, 'bob': 1}),
             ),
           );
-          final original =
-              (await source.store.getStoredCommand(
-                const CommandId('writer/actor', 1),
-              ))!;
+          final original = (await source.store.getStoredCommand(
+            const CommandId('writer/actor', 1),
+          ))!;
           final transferred = StoredCommand.fromJson(
             jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>,
           );
