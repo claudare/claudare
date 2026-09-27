@@ -10,15 +10,19 @@ void main() {
     'runtime subscriptions forward notifications without reading events',
     () async {
       final store = _CountingEventStore();
-      final runtime = CqrsTestRuntime(eventStore: store);
+      final notificationBus = MemoryNotificationBus();
+      final runtime = CqrsTestRuntime(
+        eventStore: store,
+        notificationBus: notificationBus,
+      );
       final notifications = StreamIterator(
         runtime.subscribe(const PatternFilter.exact('account/one')),
       );
       addTearDown(notifications.cancel);
       final next = notifications.moveNext();
 
-      runtime.notificationBus.notify('other/one');
-      runtime.notificationBus.notify('account/one');
+      notificationBus.notify('other/one');
+      notificationBus.notify('account/one');
 
       expect(await next, isTrue);
       expect(notifications.current, 'account/one');

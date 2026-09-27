@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:id_generator/id_generator.dart';
@@ -9,10 +10,12 @@ import 'package:test/test.dart';
 
 void main() {
   late CqrsTestRuntime runtime;
+  late MemoryNotificationBus notificationBus;
   late NoteApplication application;
 
   setUp(() {
-    runtime = CqrsTestRuntime();
+    notificationBus = MemoryNotificationBus();
+    runtime = CqrsTestRuntime(notificationBus: notificationBus);
     application = NoteApplication(cqrsRuntime: runtime);
   });
 
@@ -122,8 +125,8 @@ void main() {
     addTearDown(changes.cancel);
     final changed = changes.moveNext();
 
-    runtime.notificationBus.notify('other/one');
-    runtime.notificationBus.notify('note/one');
+    notificationBus.notify('other/one');
+    notificationBus.notify('note/one');
 
     expect(await changed, isTrue);
     expect(changes.current, 'note/one');

@@ -17,7 +17,7 @@ class CqrsRuntime {
   final String _actor;
   final Logger _logger;
   final TimeProvider _timeProvider;
-  final NotificationBus notificationBus;
+  final NotificationBus _notificationBus;
   final EventRegistry _eventRegistry = EventRegistry();
 
   late final CommandExecutor _commandExecutor;
@@ -27,18 +27,19 @@ class CqrsRuntime {
     required String actor,
     required Logger logger,
     required TimeProvider timeProvider,
-    required this.notificationBus,
+    required NotificationBus notificationBus,
   }) : _timeProvider = timeProvider,
        _actor = actor,
        _logger = logger,
-       _eventStore = eventStore {
+       _eventStore = eventStore,
+       _notificationBus = notificationBus {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
       actor: _actor,
       streamReader: streamReader,
       timeProvider: _timeProvider,
       eventRegistry: _eventRegistry,
-      notificationBus: notificationBus,
+      notificationBus: _notificationBus,
       logger: _logger,
     );
   }
@@ -172,5 +173,5 @@ class CqrsRuntime {
 
   /// Observes matching stream notifications without resolving any state.
   Stream<String> subscribe(PatternFilter filter) =>
-      notificationBus.stream(filter);
+      _notificationBus.stream(filter);
 }

@@ -12,12 +12,17 @@ void main() {
   late NoteApplication application;
   late NoteListController controller;
   late CqrsTestRuntime runtime;
+  late MemoryNotificationBus notificationBus;
   late _ControlledEventStore store;
   late bool disposed;
 
   setUp(() {
     store = _ControlledEventStore();
-    runtime = CqrsTestRuntime(eventStore: store);
+    notificationBus = MemoryNotificationBus();
+    runtime = CqrsTestRuntime(
+      eventStore: store,
+      notificationBus: notificationBus,
+    );
     application = NoteApplication(cqrsRuntime: runtime);
     controller = NoteListController(application);
     disposed = false;
@@ -236,8 +241,8 @@ void main() {
       await read.entered.future;
 
       await application.command.createNote('during-query');
-      runtime.notificationBus.notify('note/during-query');
-      runtime.notificationBus.notify('note/during-query');
+      notificationBus.notify('note/during-query');
+      notificationBus.notify('note/during-query');
       await _settle();
       read.resume();
       await initialization;

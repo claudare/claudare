@@ -18,23 +18,26 @@ final class CqrsTestRuntime extends CqrsRuntime {
     EventStore? eventStore,
     Logger? logger,
     TimeProvider? timeProvider,
+    NotificationBus? notificationBus,
   }) => CqrsTestRuntime._(
     eventStore ?? MemoryEventStore(),
     logger ?? const NoopLogger(),
     timeProvider ?? FakeTimeProviderStatic.zero(),
+    notificationBus ?? MemoryNotificationBus(),
   );
 
   CqrsTestRuntime._(
     EventStore eventStore,
     Logger logger,
     TimeProvider timeProvider,
+    NotificationBus notificationBus,
   ) : _eventStore = eventStore,
       super(
         actor: _testActor,
         eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
-        notificationBus: MemoryNotificationBus(),
+        notificationBus: notificationBus,
       );
 
   /// Saves [events] in order using codecs in [eventRegistry].
