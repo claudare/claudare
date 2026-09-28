@@ -115,6 +115,41 @@ class SqliteEventStore implements EventStore {
       _transaction('Failed to get state', _getState);
 
   @override
+  Future<List<CommandId>> getNextCommandIds(
+    CommandDependency dependency,
+    int count,
+  ) => _transaction('Failed to get next command IDs', (tx) {
+    if (count <= 0) {
+      throw ArgumentError.value(count, 'count', 'must be positive');
+    }
+    final batchSize = count * 2;
+    final ids = <CommandId>[];
+    var position = -1;
+    while (ids.length < count) {
+      final rows = tx.query(
+        '''SELECT log_position, id_actor, id_sequence
+        FROM command
+        WHERE log_position > ?
+        ORDER BY log_position ASC
+        LIMIT ?;''',
+        [position, batchSize],
+      );
+      for (final row in rows) {
+        position = row.field<int>('log_position');
+        final id = CommandId(
+          row.field<String>('id_actor'),
+          row.field<int>('id_sequence'),
+        );
+        if (id.sequence <= dependency.value(id.actor)) continue;
+        ids.add(id);
+        if (ids.length == count) break;
+      }
+      if (rows.length < batchSize) break;
+    }
+    return ids;
+  });
+
+  @override
   Future<int?> getStreamVersion(String streamPath) => _transaction(
     "Failed to get stream version for '$streamPath'",
     (tx) => _getStreamVersion(tx, streamPath),

@@ -96,6 +96,24 @@ class MemoryEventStore implements EventStore {
   Future<EventDatabaseState> getState() =>
       _read('Failed to get state', _getState);
 
+  @override
+  Future<List<CommandId>> getNextCommandIds(
+    CommandDependency dependency,
+    int count,
+  ) => _read('Failed to get next command IDs', () {
+    if (count <= 0) {
+      throw ArgumentError.value(count, 'count', 'must be positive');
+    }
+    final ids = <CommandId>[];
+    for (final command in _commands) {
+      final id = command.commandId;
+      if (id.sequence <= dependency.value(id.actor)) continue;
+      ids.add(id);
+      if (ids.length == count) break;
+    }
+    return ids;
+  });
+
   EventDatabaseState _getState() => EventDatabaseState(
     lastCommandLogPosition: _commands.isEmpty
         ? null

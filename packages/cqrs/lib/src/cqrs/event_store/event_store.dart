@@ -57,6 +57,14 @@ abstract interface class EventStoreReplication {
   /// Returns a stored command by command ID, or null when absent.
   /// This is used for retrieving commands for syncing.
   Future<StoredCommand?> getStoredCommand(CommandId commandId);
+
+  /// Returns at most [count] command IDs not covered by [dependency].
+  /// Local command log order ensures each ID can advance [dependency] without
+  /// holes and each command's dependencies precede it or are already covered.
+  Future<List<CommandId>> getNextCommandIds(
+    CommandDependency dependency,
+    int count,
+  );
 }
 
 abstract interface class EventStore implements EventStoreReplication {
