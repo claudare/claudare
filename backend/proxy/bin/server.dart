@@ -41,20 +41,29 @@ Handler _actorHandler = (Request request) {
     });
     if (unsub == null) {
       print('[$thisActor] Already subscribed');
+      channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
     channel.stream.listen(
       (message) {
         print('[$thisActor] sent: $message');
 
-        final decoded = ProxyMessage.fromJson(jsonDecode(message));
+        try {
+          final decoded = ProxyMessage.fromJson(jsonDecode(message));
 
-        pubsub.publish(
-          decoded.actor,
-          jsonEncode(
-            ProxyMessage(actor: thisActor, data: decoded.data).toJson(),
-          ),
-        );
+          pubsub.publish(
+            decoded.actor,
+            jsonEncode(
+              ProxyMessage(actor: thisActor, data: decoded.data).toJson(),
+            ),
+          );
+        } catch (error) {
+          print('[$thisActor] bad request: $error');
+          channel.sink.close(
+            WebSocketStatus.invalidFramePayloadData,
+            'Bad request',
+          );
+        }
       },
       onDone: () {
         unsub();
@@ -62,6 +71,7 @@ Handler _actorHandler = (Request request) {
       },
       onError: (error) {
         print('[$thisActor] error: $error');
+        channel.sink.close(WebSocketStatus.internalServerError, 'Stream error');
       },
       cancelOnError: true,
     );
