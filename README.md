@@ -15,7 +15,8 @@ interface are examples, not the architectural center of the repository.
 The current code supports local event-sourced application development. It does
 not implement network transport, device identity or enrollment, multi-device
 convergence, encryption, blob storage, or backup. The `cqrs` package can store
-and retrieve complete stored commands, but synchronization is not implemented.
+and retrieve complete stored commands and transfer them continuously between
+two event stores through an in-memory channel within one process.
 
 ## Documentation
 

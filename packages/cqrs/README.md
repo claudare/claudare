@@ -13,6 +13,13 @@ identify commands and their causal dependencies using those strings.
 Command sequences start at one. Actors have no public-key validation or
 registration.
 
+`InMemoryReplication` connects two event stores for continuous command transfer
+within one process. Each writer must have a unique actor string. Either peer
+can opt out of receiving commands. Observe the future returned by `run()` for
+session failures, and call `close()` to stop. Rejected writes, including
+duplicates, end the connection. There is no network transport, automatic
+reconnection, authentication, or multi-device convergence guarantee.
+
 Test helpers `CqrsTestRuntime` and `CommandTester` use an internal test actor and
 need no initialization. Injected SQLite stores must already be migrated.
 

@@ -10,6 +10,13 @@ export 'src/cqrs/event/event_id.dart';
 export 'src/cqrs/event_store/memory_event_store.dart';
 export 'src/cqrs/event_store/sqlite_event_store.dart';
 
+// replication
+export 'src/cqrs/replication/in_memory_replication.dart';
+export 'src/cqrs/replication/message.dart';
+export 'src/cqrs/replication/replication_channel.dart';
+export 'src/cqrs/replication/replication_exception.dart';
+export 'src/cqrs/replication/replicator.dart';
+
 // event
 export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/encoded_event.dart';
