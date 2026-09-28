@@ -1,9 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
+
+import 'pubsub.dart';
+import 'protocol.dart';
+
+final pubsub = MemoryPubSub();
 
 // Configure routes.
 final _router = Router()
@@ -25,23 +31,39 @@ Handler _actorHandler = (Request request) {
     return Response.notFound('Invalid path');
   }
 
-  final actor = segments.first;
+  final thisActor = segments.first;
 
   final wsHandler = webSocketHandler((channel, protocol) {
-    print('[$actor] connected');
+    print('[$thisActor] connected');
 
+    final unsub = pubsub.subscribe(thisActor, (message) {
+      channel.sink.add(message);
+    });
+    if (unsub == null) {
+      print('[$thisActor] Already subscribed');
+      return;
+    }
     channel.stream.listen(
       (message) {
-        print('[$actor] received: $message');
+        print('[$thisActor] sent: $message');
 
-        channel.sink.add('[$actor] $message');
+        final decoded = ProxyMessage.fromJson(jsonDecode(message));
+
+        pubsub.publish(
+          decoded.actor,
+          jsonEncode(
+            ProxyMessage(actor: thisActor, data: decoded.data).toJson(),
+          ),
+        );
       },
       onDone: () {
-        print('[$actor] disconnected');
+        unsub();
+        print('[$thisActor] disconnected');
       },
       onError: (error) {
-        print('[$actor] error: $error');
+        print('[$thisActor] error: $error');
       },
+      cancelOnError: true,
     );
   });
 
