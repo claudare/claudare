@@ -13,16 +13,12 @@ final pubsub = MemoryPubSub();
 
 // Configure routes.
 final _router = Router()
-  ..get('/', _rootHandler)
+  ..get('/', _healthHandler)
   ..get('/health', _healthHandler)
   ..get('/<actor>', _actorHandler);
 
-Response _rootHandler(Request req) {
-  return Response.ok('Nothing to see here!\n');
-}
-
 Response _healthHandler(Request req) {
-  return Response.ok('ok');
+  return Response.ok('Ok');
 }
 
 Handler _actorHandler = (Request request) {
