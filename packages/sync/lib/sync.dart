@@ -1,5 +1,9 @@
 library;
 
+// actor
+export 'src/actor/actor_identity_store.dart';
+export 'src/actor/sqlite_actor_identity_store.dart';
+
 // replication
 export 'src/replication/in_memory_replication.dart';
 export 'src/replication/replication_message.dart';
