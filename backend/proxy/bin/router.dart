@@ -12,7 +12,7 @@ import 'protocol.dart';
 final pubsub = MemoryPubSub();
 
 // Configure routes.
-final _router = Router()
+final router = Router()
   ..get('/', _healthHandler)
   ..get('/health', _healthHandler)
   ..get('/<actor>', _actorHandler);
@@ -75,18 +75,3 @@ Handler _actorHandler = (Request request) {
 
   return wsHandler(request);
 };
-
-void main(List<String> args) async {
-  // Use any available host or container IP (usually `0.0.0.0`).
-  final ip = InternetAddress.anyIPv4;
-
-  // Configure a pipeline that logs requests.
-  final handler = Pipeline()
-      .addMiddleware(logRequests())
-      .addHandler(_router.call);
-
-  // For running in containers, we respect the PORT environment variable.
-  final port = int.parse(Platform.environment['PORT'] ?? '8080');
-  final server = await serve(handler, ip, port);
-  print('Proxy server listening on port ${server.port}');
-}

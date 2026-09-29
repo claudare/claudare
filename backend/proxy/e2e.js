@@ -1,5 +1,9 @@
+const baseUrl = `ws://localhost:${process.env.PORT ?? "7000"}`;
+
+console.log("connecting to", baseUrl);
+
 async function runClient(thisActor, peerActor, data) {
-  const ws = new WebSocket("http://localhost:8080/" + thisActor);
+  const ws = new WebSocket(`${baseUrl}/${thisActor}`);
   ws.addEventListener("message", (ev) => {
     const json = JSON.parse(ev.data);
     console.log("got message from", json.actor, "with data", json.data);
