@@ -11,6 +11,7 @@ dependencies:
   claudare_logging: ^1.0.0
   claudare_crypto: ^1.0.0
   cqrs: ^1.0.0
+  isolate_sqlite: ^0.3.1
   stream_channel: ^2.1.4
   web_socket_channel: ^3.0.3
 

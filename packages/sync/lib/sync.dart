@@ -1,5 +1,7 @@
 library;
 
+export 'src/test_utils/sync_test_helper.dart';
+
 // actor
 export 'src/actor/actor_identity_store.dart';
 export 'src/actor/sqlite_actor_identity_store.dart';
