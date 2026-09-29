@@ -11,6 +11,7 @@ dependencies:
   claudare_logging: ^1.0.0
   cqrs: ^1.0.0
   stream_channel: ^2.1.4
+  web_socket_channel: ^3.0.3
 
 dev_dependencies:
   lints: ^6.0.0
