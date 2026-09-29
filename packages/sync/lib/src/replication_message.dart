@@ -1,6 +1,4 @@
-import 'package:cqrs/src/cqrs/command/command_dependency.dart';
-import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/command/stored_command.dart';
+import 'package:cqrs/cqrs.dart';
 
 /// A message exchanged within one replication session.
 sealed class ReplicationMessage {

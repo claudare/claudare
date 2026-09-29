@@ -1,12 +1,8 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/src/cqrs/command/command_dependency.dart';
-import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/replication/message.dart';
-import 'package:cqrs/src/cqrs/replication/replication_channel.dart';
-import 'package:cqrs/src/cqrs/replication/replication_exception.dart';
+import 'package:cqrs/cqrs.dart';
+import 'package:sync/sync.dart';
 
 /// Continuously exchanges stored commands over one [ReplicationChannel].
 ///

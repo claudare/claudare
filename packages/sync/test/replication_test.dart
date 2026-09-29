@@ -5,6 +5,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:sync/sync.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:test/test.dart';
 

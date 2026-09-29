@@ -1,5 +1,5 @@
-import 'package:cqrs/src/cqrs/replication/message.dart';
 import 'package:stream_channel/stream_channel.dart';
+import 'package:sync/sync.dart';
 
 /// An ordered connection without transport duplicates in either direction.
 ///

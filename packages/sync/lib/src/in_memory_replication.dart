@@ -1,8 +1,8 @@
-import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/replication/message.dart';
-import 'package:cqrs/src/cqrs/replication/replicator.dart';
 import 'package:stream_channel/stream_channel.dart';
+import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs.dart';
+
+import 'package:sync/sync.dart';
 
 /// Connects two [Replicator]s through an asynchronous in-memory channel.
 class InMemoryReplication {
