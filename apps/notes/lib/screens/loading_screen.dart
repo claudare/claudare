@@ -7,7 +7,7 @@ class LoadingScreen extends StatefulWidget {
   final Future<void> initialization;
   final Logger logger;
   final VoidCallback onReady;
-  final Future<void> Function() onReset;
+  final Future<void> Function(bool restart) onReset;
 
   const LoadingScreen({
     super.key,
@@ -68,8 +68,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: () async {
-                        if (await confirmDatabaseReset(context)) {
-                          await widget.onReset();
+                        final restart = await confirmDatabaseReset(context);
+                        if (restart != null) {
+                          await widget.onReset(restart);
                         }
                       },
                       child: const Text('Reset database'),

@@ -178,7 +178,7 @@ void main() {
         application: application,
         child: EventStoreProvider(
           eventStore: eventStore,
-          reset: () async => resets++,
+          reset: (restart) async => resets++,
           child: MaterialApp(
             theme: ThemeData(platform: TargetPlatform.iOS),
             home: const SettingsScreen(),

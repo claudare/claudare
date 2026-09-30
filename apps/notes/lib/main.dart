@@ -133,8 +133,11 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final ready = _ready;
-    Future<void> reset() =>
-        resetAndRestartNotes(widget.bootstrap, widget.applicationDirectory);
+    Future<void> reset(bool restart) => resetApplication(
+      widget.bootstrap,
+      widget.applicationDirectory,
+      restart: restart,
+    );
     final app = MaterialApp(
       title: 'Notes App',
       theme: ThemeData(

@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 /// Gives Settings access to event statistics and the root reset action.
 class EventStoreProvider extends InheritedWidget {
   final EventStore eventStore;
-  final Future<void> Function() reset;
+  final Future<void> Function(bool restart) reset;
 
   const EventStoreProvider({
     super.key,

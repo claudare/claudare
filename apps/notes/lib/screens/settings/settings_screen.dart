@@ -43,8 +43,9 @@ class SettingsScreen extends StatelessWidget {
               leading: const Icon(Icons.delete_forever),
               title: const Text('Reset database'),
               onTap: () async {
-                if (await confirmDatabaseReset(context)) {
-                  await eventStoreProvider.reset();
+                final restart = await confirmDatabaseReset(context);
+                if (restart != null) {
+                  await eventStoreProvider.reset(restart);
                 }
               },
             ),
