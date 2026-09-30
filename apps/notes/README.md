@@ -3,11 +3,18 @@
 Notes is a Flutter prototype for local event-sourced notes. It creates, edits,
 trashes, and restores notes. Note queries support active and trashed filtering
 and chronological sorting. Settings shows active-note and event counts and can
-reset local event history after confirmation. Reset requires a fresh launch.
+reset all local data after confirmation. Reset requires a fresh launch and
+repeats setup.
 
-The application stores note events in `events.sqlite`. Note details and lists
-are rebuilt from that history when queried. It does not provide text search,
-replication, encryption, or backup.
+On first launch, ActorSetup chooses a local public key and SyncSetup configures
+a replication server URL. Completed steps are preserved across restarts. Actor
+identity, peer pairings, server configuration, and note events share
+`main.sqlite`. Resetting the database clears them all. The configured server is
+not contacted yet.
+
+New events use the local public key as their actor identity. Note details and
+lists are rebuilt from that history when queried. It does not provide text
+search, replication, encryption, or backup.
 
 Content editing uses CRDT changes with focus-loss and navigation saves. Ctrl+S
 saves the open note and reports when there are no changes. Refresh merges

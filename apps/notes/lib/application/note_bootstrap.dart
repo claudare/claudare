@@ -1,19 +1,22 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
+import 'package:kv/kv.dart';
 import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_system.dart';
+import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
 
-const devActor = 'notes-dev';
-
-/// Opens the event database and owns its lifetime.
+/// Opens the Notes database and owns its lifetime.
 class NoteBootstrap {
   final Logger logger;
   final TimeProvider timeProvider;
   final IsolateSqlite _sqlite;
 
-  Future<NoteBootstrapResult>? _initialization;
+  Future<NoteSystem>? _systemInitialization;
+  Future<NoteApplication>? _initialization;
   Future<void>? _closing;
+  bool _opened = false;
 
   NoteBootstrap({
     required this.logger,
@@ -21,78 +24,88 @@ class NoteBootstrap {
     IsolateSqlite? sqlite,
   }) : _sqlite = sqlite ?? IsolateSqlite();
 
-  /// Opens and migrates [eventsDbFilepath] once.
-  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
-    if (_closing != null) {
-      throw StateError('Notes bootstrap is closed');
-    }
-    return _initialization ??= _initialize(eventsDbFilepath);
+  /// Opens and migrates all stores in [dbFilepath] once.
+  Future<NoteSystem> initializeSystem({required String dbFilepath}) {
+    if (_closing != null) throw StateError('Notes bootstrap is closed');
+    return _systemInitialization ??= _initializeSystem(dbFilepath);
   }
 
-  Future<NoteBootstrapResult> _initialize(String eventsDbFilepath) async {
-    var opened = false;
+  Future<NoteSystem> _initializeSystem(String filepath) async {
     try {
-      await _sqlite.open(eventsDbFilepath);
-      opened = true;
-
+      await _sqlite.open(filepath);
+      _opened = true;
+      final identities = SqliteActorIdentityStore(_sqlite);
+      final kv = SqliteKv(_sqlite);
       final eventStore = SqliteEventStore(_sqlite);
-      final runtime = CqrsRuntime(
-        eventStore: eventStore,
-        actor: devActor,
-        logger: logger,
-        timeProvider: timeProvider,
-      );
-      final application = NoteApplication(cqrsRuntime: runtime);
-
+      await identities.migrate();
+      await kv.migrate();
       await eventStore.migrate();
-      // resolve the notelist so that its snapshot is resolved on startup
-      // also, this will catch any migration replacement issues right away
-      await application.query.noteList();
-
-      return NoteBootstrapResult(
-        application: application,
-        eventStore: eventStore,
-      );
+      return NoteSystem(identities: identities, kv: kv, eventStore: eventStore);
     } catch (error, stackTrace) {
-      if (opened) {
-        try {
-          await _sqlite.close();
-        } catch (closeError, closeStackTrace) {
-          logger.error(
-            'Failed to close the event database after initialization failed',
-            closeError,
-            closeStackTrace,
-          );
-        }
+      try {
+        await _closeDatabase();
+      } catch (closeError, closeStackTrace) {
+        logger.error(
+          'Failed to close the database after initialization failed',
+          closeError,
+          closeStackTrace,
+        );
       }
       Error.throwWithStackTrace(error, stackTrace);
     }
+  }
+
+  /// Creates Notes over the migrated [system] after actor setup.
+  Future<NoteApplication> initialize({
+    required NoteSystem system,
+    required String actor,
+  }) {
+    if (_closing != null) throw StateError('Notes bootstrap is closed');
+    return _initialization ??= _initialize(system, actor);
+  }
+
+  Future<NoteApplication> _initialize(NoteSystem system, String actor) async {
+    final runtime = CqrsRuntime(
+      eventStore: system.eventStore,
+      actor: actor,
+      logger: logger,
+      timeProvider: timeProvider,
+    );
+    final application = NoteApplication(cqrsRuntime: runtime);
+    // preload the note list for speed and to reveal any schema-breaking changes
+    await application.query.noteList();
+    return application;
+  }
+
+  Future<void> _closeDatabase() async {
+    if (!_opened) return;
+    _opened = false;
+    await _sqlite.close();
   }
 
   /// Closes SQLite after any initialization in progress has settled.
   Future<void> close() => _closing ??= _close();
 
   Future<void> _close() async {
-    final initialization = _initialization;
-    if (initialization != null) {
-      try {
-        await initialization;
-      } catch (_) {
-        // Initialization already attempted to close SQLite.
-        return;
+    try {
+      final systemInitialization = _systemInitialization;
+      if (systemInitialization != null) {
+        try {
+          await systemInitialization;
+        } catch (_) {
+          // System initialization already attempted cleanup.
+        }
       }
+      final initialization = _initialization;
+      if (initialization != null) {
+        try {
+          await initialization;
+        } catch (_) {
+          // Application initialization reports its error to the caller.
+        }
+      }
+    } finally {
+      await _closeDatabase();
     }
-    await _sqlite.close();
   }
-}
-
-/// The application and event store opened by one [NoteBootstrap].
-class NoteBootstrapResult {
-  final NoteApplication application;
-  final EventStore eventStore;
-
-  const NoteBootstrapResult({
-    required this.application,
-    required this.eventStore,
-  });
 }

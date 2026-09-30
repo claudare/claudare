@@ -1,0 +1,110 @@
+import 'package:claudare_logging/claudare_logging.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:notes/application/note_application.dart';
+import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_system.dart';
+import 'package:notes/main.dart';
+import 'package:notes/screens/home/home_screen.dart';
+import 'package:notes/screens/setup/actor_setup.dart';
+import 'package:notes/screens/setup/sync_setup.dart';
+import 'package:time_provider/time_provider.dart';
+
+import 'setup_test_helpers.dart';
+
+void main() {
+  for (final actor in [false, true]) {
+    for (final server in [false, true]) {
+      testWidgets('startup with actor=$actor and server=$server', (
+        tester,
+      ) async {
+        final system = testSystem(actor: actor, server: server);
+        final bootstrap = _SetupBootstrap(system);
+        await tester.pumpWidget(
+          MyApp(
+            bootstrap: bootstrap,
+            applicationDirectory: () async => 'unused',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(ActorSetup), actor ? findsNothing : findsOneWidget);
+        expect(
+          find.byType(SyncSetup),
+          actor && !server ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.byType(HomeScreen),
+          actor && server ? findsOneWidget : findsNothing,
+        );
+        expect(bootstrap.eventInitializations, actor && server ? 1 : 0);
+
+        if (!actor) {
+          await tester.tap(find.text('Populate from static value'));
+          await tester.pump();
+          await tester.tap(find.text('Continue'));
+          await tester.pumpAndSettle();
+        }
+        if (!server) {
+          expect(find.byType(SyncSetup), findsOneWidget);
+          await tester.tap(find.text('Continue'));
+          await tester.pumpAndSettle();
+        }
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(bootstrap.eventInitializations, 1);
+        expect(
+          bootstrap.writer,
+          (await system.identities.getLocal())!.publicKey.toString(),
+        );
+      });
+    }
+  }
+
+  testWidgets('relaunch after actor setup shows only server setup', (
+    tester,
+  ) async {
+    final system = testSystem(actor: false, server: false);
+    await tester.pumpWidget(
+      MyApp(
+        bootstrap: _SetupBootstrap(system),
+        applicationDirectory: () async => 'unused',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      MyApp(
+        bootstrap: _SetupBootstrap(system),
+        applicationDirectory: () async => 'unused',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(ActorSetup), findsNothing);
+    expect(find.byType(SyncSetup), findsOneWidget);
+  });
+}
+
+class _SetupBootstrap extends NoteBootstrap {
+  final NoteSystem system;
+  int eventInitializations = 0;
+  String? writer;
+
+  _SetupBootstrap(this.system)
+    : super(
+        logger: const NoopLogger(),
+        timeProvider: FakeTimeProviderStatic.zero(),
+      );
+
+  @override
+  Future<NoteSystem> initializeSystem({required String dbFilepath}) async =>
+      system;
+
+  @override
+  Future<NoteApplication> initialize({
+    required NoteSystem system,
+    required String actor,
+  }) async {
+    eventInitializations++;
+    writer = actor;
+    return super.initialize(system: system, actor: actor);
+  }
+}

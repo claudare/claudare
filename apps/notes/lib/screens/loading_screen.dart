@@ -1,13 +1,12 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
-import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/screens/confirm_database_reset.dart';
 
 /// Displays startup progress and any initialization error.
 class LoadingScreen extends StatefulWidget {
-  final Future<NoteBootstrapResult> initialization;
+  final Future<void> initialization;
   final Logger logger;
-  final ValueChanged<NoteBootstrapResult> onReady;
+  final VoidCallback onReady;
   final Future<void> Function() onReset;
 
   const LoadingScreen({
@@ -33,8 +32,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
   Future<void> _waitForInitialization() async {
     try {
-      final application = await widget.initialization;
-      if (mounted) widget.onReady(application);
+      await widget.initialization;
+      if (mounted) widget.onReady();
     } catch (error, stackTrace) {
       widget.logger.error('Failed to initialize Notes', error, stackTrace);
       if (mounted) setState(() => _error = error);

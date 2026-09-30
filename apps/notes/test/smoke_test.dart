@@ -8,10 +8,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_system.dart';
 import 'package:notes/main.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
 import 'package:time_provider/time_provider.dart';
+
+import 'setup/setup_test_helpers.dart';
 
 void main() {
   testWidgets('shows loading until the application is ready', (tester) async {
@@ -74,7 +77,7 @@ void main() {
 }
 
 class _ControlledBootstrap extends NoteBootstrap {
-  final Completer<NoteBootstrapResult> _application = Completer();
+  final Completer<NoteApplication> _application = Completer();
   int initializeCount = 0;
 
   _ControlledBootstrap()
@@ -84,7 +87,14 @@ class _ControlledBootstrap extends NoteBootstrap {
       );
 
   @override
-  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
+  Future<NoteSystem> initializeSystem({required String dbFilepath}) async =>
+      testSystem();
+
+  @override
+  Future<NoteApplication> initialize({
+    required NoteSystem system,
+    required String actor,
+  }) {
     initializeCount++;
     return _application.future;
   }
@@ -92,12 +102,7 @@ class _ControlledBootstrap extends NoteBootstrap {
   void complete() {
     final eventStore = MemoryEventStore();
     _application.complete(
-      NoteBootstrapResult(
-        application: NoteApplication(
-          cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
-        ),
-        eventStore: eventStore,
-      ),
+      NoteApplication(cqrsRuntime: CqrsTestRuntime(eventStore: eventStore)),
     );
   }
 }
@@ -109,7 +114,7 @@ class _FailingBootstrap extends NoteBootstrap {
     : super(logger: logger, timeProvider: FakeTimeProviderStatic.zero());
 
   @override
-  Future<NoteBootstrapResult> initialize({required String eventsDbFilepath}) {
+  Future<NoteSystem> initializeSystem({required String dbFilepath}) {
     initializeCount++;
     return Future.error(StateError('startup failed'));
   }

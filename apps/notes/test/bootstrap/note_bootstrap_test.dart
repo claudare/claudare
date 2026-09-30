@@ -12,25 +12,26 @@ void main() {
   test('keeps note history readable after SQLite is reopened', () async {
     final directory = await Directory.systemTemp.createTemp('notes-bootstrap-');
     addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'events.sqlite');
+    final filepath = path.join(directory.path, 'main.sqlite');
 
     final first = NoteBootstrap(
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
     );
     addTearDown(first.close);
-    final application = await first.initialize(eventsDbFilepath: filepath);
+    final system = await first.initializeSystem(dbFilepath: filepath);
+    final application = await first.initialize(
+      system: system,
+      actor: 'test-actor',
+    );
     expect(
-      await first.initialize(eventsDbFilepath: filepath),
+      await first.initialize(system: system, actor: 'test-actor'),
       same(application),
     );
 
-    final noteId = application.application.generateNoteId();
-    await application.application.command.createNote(noteId);
-    await application.application.command.updateNoteTitle(
-      noteId,
-      'Persisted title',
-    );
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
+    await application.command.updateNoteTitle(noteId, 'Persisted title');
     await first.close();
 
     final second = NoteBootstrap(
@@ -38,20 +39,24 @@ void main() {
       timeProvider: FakeTimeProviderStatic.zero(),
     );
     addTearDown(second.close);
-    final reopened = await second.initialize(eventsDbFilepath: filepath);
-
-    expect(
-      (await reopened.application.query.note(noteId)).title,
-      'Persisted title',
+    final reopenedSystem = await second.initializeSystem(dbFilepath: filepath);
+    final reopened = await second.initialize(
+      system: reopenedSystem,
+      actor: 'test-actor',
     );
-    expect(await reopened.application.query.noteList(), hasLength(1));
-    expect(await EventStoreTestUtils.getEventCount(reopened.eventStore), 2);
+
+    expect((await reopened.query.note(noteId)).title, 'Persisted title');
+    expect(await reopened.query.noteList(), hasLength(1));
+    expect(
+      await EventStoreTestUtils.getEventCount(reopenedSystem.eventStore),
+      2,
+    );
   });
 
   test('closes SQLite when event database migration fails', () async {
     final directory = await Directory.systemTemp.createTemp('notes-migration-');
     addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'events.sqlite');
+    final filepath = path.join(directory.path, 'main.sqlite');
     final sqlite = IsolateSqlite();
     await sqlite.open(filepath);
     await sqlite.execute('CREATE TABLE migrations_event_database (wrong INT)');
@@ -64,7 +69,7 @@ void main() {
       sqlite: tracked,
     );
     await expectLater(
-      bootstrap.initialize(eventsDbFilepath: filepath),
+      bootstrap.initializeSystem(dbFilepath: filepath),
       throwsA(isA<Exception>()),
     );
     expect(tracked.closeCount, 1);
@@ -81,7 +86,7 @@ void main() {
     );
 
     await expectLater(
-      bootstrap.initialize(eventsDbFilepath: 'unused'),
+      bootstrap.initializeSystem(dbFilepath: 'unused'),
       throwsA(same(sqlite.openError)),
     );
     expect(sqlite.closeCount, 0);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Confirms deletion of the local event history.
+/// Confirms deletion of all local Notes data.
 Future<bool> confirmDatabaseReset(BuildContext context) async =>
     await showDialog<bool>(
       context: context,
@@ -8,9 +8,10 @@ Future<bool> confirmDatabaseReset(BuildContext context) async =>
         title: const Text('Reset database?'),
         content: Text(
           Theme.of(context).platform == TargetPlatform.iOS
-              ? 'This deletes all notes and event history. Close and '
+              ? 'This deletes all notes, event history, settings, and pairings. '
+                    'Close and '
                     'reopen Notes if it does not restart automatically.'
-              : 'This deletes all notes and event history.',
+              : 'This deletes all notes, event history, settings, and pairings.',
         ),
         actions: [
           TextButton(

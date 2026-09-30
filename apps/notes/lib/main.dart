@@ -3,14 +3,19 @@ import 'dart:async';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
 import 'package:notes/application/note_application_provider.dart';
+import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_bootstrap.dart';
-import 'package:notes/application/reset_event_database.dart';
+import 'package:notes/application/note_system.dart';
+import 'package:notes/application/reset_database.dart';
 import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
+import 'package:notes/screens/setup/actor_setup.dart';
+import 'package:notes/screens/setup/sync_setup.dart';
 import 'package:notes/util/get_application_directory.dart';
 import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
+import 'package:sync/sync.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,8 +42,12 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  late Future<NoteBootstrapResult> _initialization;
-  NoteBootstrapResult? _ready;
+  late Future<void> _initialization;
+  NoteApplication? _ready;
+  NoteSystem? _system;
+  LocalActorIdentity? _identity;
+  String? _serverUrl;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -54,19 +63,49 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
     unawaited(_closeBootstrap(oldWidget.bootstrap));
     _ready = null;
+    _system = null;
+    _identity = null;
+    _serverUrl = null;
+    _loading = true;
     _initialization = _initialize();
   }
 
-  Future<NoteBootstrapResult> _initialize() async {
+  Future<void> _initialize() async {
+    final bootstrap = widget.bootstrap;
     final directory = await widget.applicationDirectory();
-    return widget.bootstrap.initialize(
-      eventsDbFilepath: path.join(directory, 'events.sqlite'),
+    final system = await bootstrap.initializeSystem(
+      dbFilepath: path.join(directory, 'main.sqlite'),
     );
+    final identity = await system.identities.getLocal();
+    final serverUrl = await system.kv.get(NoteSystem.serverUrlKey);
+    if (!mounted || !identical(bootstrap, widget.bootstrap)) return;
+    _system = system;
+    _identity = identity;
+    _serverUrl = serverUrl;
+    if (identity != null && serverUrl != null) await _openApplication();
   }
 
-  void _onReady(NoteBootstrapResult ready) {
+  Future<void> _openApplication() async {
+    final bootstrap = widget.bootstrap;
+    final ready = await bootstrap.initialize(
+      system: _system!,
+      actor: _identity!.publicKey.toString(),
+    );
+    if (mounted && identical(bootstrap, widget.bootstrap)) _ready = ready;
+  }
+
+  void _onReady() {
     if (!mounted) return;
-    setState(() => _ready = ready);
+    setState(() => _loading = false);
+  }
+
+  void _advanceSetup() {
+    setState(() {
+      if (_identity != null && _serverUrl != null) {
+        _loading = true;
+        _initialization = _openApplication();
+      }
+    });
   }
 
   Future<void> _closeBootstrap(NoteBootstrap bootstrap) async {
@@ -103,21 +142,37 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: ready == null
+      home: _loading
           ? LoadingScreen(
-              key: ValueKey(widget.bootstrap),
+              key: ValueKey(_initialization),
               initialization: _initialization,
               logger: widget.bootstrap.logger,
               onReady: _onReady,
               onReset: reset,
             )
+          : _identity == null
+          ? ActorSetup(
+              identities: _system!.identities,
+              onSaved: (identity) {
+                _identity = identity;
+                _advanceSetup();
+              },
+            )
+          : _serverUrl == null
+          ? SyncSetup(
+              kv: _system!.kv,
+              onSaved: (url) {
+                _serverUrl = url;
+                _advanceSetup();
+              },
+            )
           : const HomeScreen(),
     );
     if (ready == null) return app;
     return NoteApplicationProvider(
-      application: ready.application,
+      application: ready,
       child: EventStoreProvider(
-        eventStore: ready.eventStore,
+        eventStore: _system!.eventStore,
         reset: reset,
         child: app,
       ),

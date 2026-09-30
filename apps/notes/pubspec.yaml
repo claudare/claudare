@@ -38,6 +38,9 @@ dependencies:
   claudare_logging: ^1.0.0
   common: ^1.0.0
   cqrs: ^1.0.0
+  sync: ^1.0.0
+  kv: ^1.0.0
+  claudare_crypto: ^1.0.0
   crdt: ^1.0.0
   id_generator: ^1.0.0
   time_provider: ^1.0.0
