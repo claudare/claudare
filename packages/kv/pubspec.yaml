@@ -1,0 +1,15 @@
+name: kv
+description: SQLite storage for string keys and values.
+version: 1.0.0
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  isolate_sqlite: ^0.3.1
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
