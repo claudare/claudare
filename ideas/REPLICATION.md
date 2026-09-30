@@ -1,63 +1,9 @@
 # Replication overview
 
 This is an ideation document. It describes future boundaries and illustrative
-API shapes only. None of these packages, protocols, or transports is
-implemented.
+API shapes only. None of these protocols, or transports is implemented.
 
-## Package boundaries
-
-| Package | Owns | Does not own |
-| --- | --- | --- |
-| `device_identity` | Device public keys and persistent local ID mappings | CQRS event storage, transport connections, peer registration, or replication |
-| `networking` | Transport connections, connection addresses, factory selection, hosting, broadcasting, and inbound connection streams | Device identity, enrollment, retry policy, or replication protocol |
-| `peers` | Peer registration, peer connection, public-key preambles, and host/broadcast coordination | Identity persistence, transport implementation, or replication |
-| system storage | One separate SQLite handle shared by system subsystems, plus one adapter and migration table per subsystem | CQRS/runtime storage or application event history |
-| `cqrs` | Local event storage and database-local integer device IDs used by commands and version vectors | Stable device identity, enrollment, discovery, or transport |
-| future replication layer | Identity-map exchange, local-ID translation, and transfer protocol coordination | Transport implementation, identity persistence, or retry policy |
-
-The replication layer sits above `networking` and `device_identity`. It must
-translate all received device IDs and version-vector keys through stable public
-keys before giving records to local CQRS storage.
-
-## Identity
-
-```dart
-/// A 32-byte public key encoded as a base64url string.
-final class DevicePublicKey {
-  const DevicePublicKey(String base64Url);
-
-  String get base64Url;
-}
-
-/// Persistently maps device public keys to local CQRS integer IDs.
-///
-/// ID `0` identifies the local device. Allocated IDs are never reused.
-abstract interface class DeviceIdentityStore {
-  /// The public key for the local device, whose local ID is `0`.
-  DevicePublicKey get localPublicKey;
-
-  /// Persists [publicKey] and returns its local ID.
-  Future<int> register(DevicePublicKey publicKey);
-
-  /// Returns the local ID previously registered for [publicKey].
-  int idFor(DevicePublicKey publicKey);
-
-  /// Returns the public key previously registered for [deviceId].
-  DevicePublicKey publicKeyFor(int deviceId);
-}
-```
-
-```dart
-/// Exchanges a peer's local ID-to-key mappings before replication.
-///
-/// Entries may include identities relayed by another device. Recipients use the
-/// keys to translate device IDs and version-vector keys into local IDs.
-final class DeviceIdentityMap {
-  const DeviceIdentityMap(Map<int, DevicePublicKey> entries);
-
-  Map<int, DevicePublicKey> get entries;
-}
-```
+Currently, we are using a central server for replication.
 
 ## System storage
 
@@ -67,8 +13,6 @@ per subsystem.
 
 ## Networking
 
-`networking` owns transport connections and discovery. It does not own identity,
-enrollment, or replication.
 
 ```dart
 /// Describes a transport address for a connection attempt.
@@ -119,13 +63,11 @@ abstract interface class ConnectionFactoryRegistry {
 }
 ```
 
-Retry policy and the decision to host or broadcast belong above networking.
+Networking layer owns retry policy and the decision to host or broadcast.
 
-## Peers
+## Pairing and communicating
 
-`peers` composes `device_identity` and `networking` without merging their
-ownership. It maintains one shared hosting and broadcast lifecycle while
-registration is active. Unknown inbound peers are registered and disconnected;
+Unknown inbound peers are disconnected;
 known inbound peers are passed to the connection system as active channels.
 
 ```dart
