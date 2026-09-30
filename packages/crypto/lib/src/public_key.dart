@@ -7,7 +7,7 @@ const publicKeyLength = 32;
 
 /// A public key of 256 bits.
 /// Stringified length is 32-44 bytes in Base58 encoding.
-/// To store/load as String, use [toString] and [PublicKey.fromString].
+/// In UI and logs use [toString] to display nicely formatted keys.
 class PublicKey implements Comparable<PublicKey> {
   final Uint8List bytes;
 
