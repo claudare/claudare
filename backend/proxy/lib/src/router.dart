@@ -6,7 +6,8 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 
 import 'pubsub.dart';
-import 'protocol.dart';
+import 'proxy_init.dart';
+import 'proxy_message.dart';
 
 final pubsub = MemoryPubSub();
 
