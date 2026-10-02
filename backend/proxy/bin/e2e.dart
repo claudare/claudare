@@ -42,14 +42,19 @@ Future<void> runClient(
     logger.info('[$thisActor] connected');
     timer = Timer.periodic(const Duration(seconds: 3), (_) {
       channel.sink.add(
-        jsonEncode(ProxyMessage(actor: peerActor, data: data).toJson()),
+        jsonEncode(ProxyDirectMessage(actor: peerActor, data: data).toJson()),
       );
     });
     await for (final message in channel.stream) {
       final decoded = ProxyMessage.fromJson(
         jsonDecode(message as String) as Map<String, dynamic>,
       );
-      logger.info('[$thisActor] received message from ${decoded.actor}');
+      switch (decoded) {
+        case ProxyDirectMessage(:final actor):
+          logger.info('[$thisActor] received message from $actor');
+        case ProxyBroadcastMessage():
+          throw UnimplementedError('Group messages are not implemented');
+      }
     }
   } finally {
     timer?.cancel();

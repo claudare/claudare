@@ -52,12 +52,17 @@ Handler _actorHandler = (Request request) {
         try {
           final decoded = ProxyMessage.fromJson(jsonDecode(message));
 
-          pubsub.publish(
-            decoded.actor,
-            jsonEncode(
-              ProxyMessage(actor: thisActor, data: decoded.data).toJson(),
-            ),
-          );
+          switch (decoded) {
+            case ProxyDirectMessage(:final actor, :final data):
+              pubsub.publish(
+                actor,
+                jsonEncode(
+                  ProxyDirectMessage(actor: thisActor, data: data).toJson(),
+                ),
+              );
+            case ProxyBroadcastMessage():
+              throw UnimplementedError('Group messages are not implemented');
+          }
         } catch (error) {
           printScoped('Bad message: $error');
           channel.sink.close(
