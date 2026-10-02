@@ -1,9 +1,8 @@
 import 'dart:io';
 
+import 'package:proxy/proxy.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
-
-import 'router.dart';
 
 void main(List<String> args) async {
   // Use any available host or container IP (usually `0.0.0.0`).
