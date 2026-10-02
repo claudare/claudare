@@ -12,36 +12,42 @@ final pubsub = MemoryPubSub();
 
 // Configure routes.
 final router = Router()
-  ..get('/', _healthHandler)
   ..get('/health', _healthHandler)
-  ..get('/<actor>', _actorHandler);
+  ..get('/', _actorHandler);
 
 Response _healthHandler(Request req) {
   return Response.ok('Ok');
 }
 
 Handler _actorHandler = (Request request) {
-  final segments = request.url.pathSegments;
-  if (segments.length != 1 || segments.first.isEmpty) {
-    return Response.notFound('Invalid path');
+  final ProxyInit init;
+  try {
+    init = ProxyInit.fromHeaders(request.headers);
+  } on FormatException {
+    return Response.badRequest(body: 'Invalid init');
   }
 
-  final thisActor = segments.first;
-
   final wsHandler = webSocketHandler((channel, protocol) {
-    print('[$thisActor] connected');
+    final thisActor = init.actor;
+    final group = init.group;
+
+    void printScoped(String msg) {
+      print('[$group/$thisActor] $msg');
+    }
+
+    printScoped('Connected');
 
     final unsub = pubsub.subscribe(thisActor, (message) {
       channel.sink.add(message);
     });
     if (unsub == null) {
-      print('[$thisActor] Already subscribed');
+      printScoped('Already subscribed');
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
     channel.stream.listen(
       (message) {
-        print('[$thisActor] sent: $message');
+        printScoped('Sent: $message');
 
         try {
           final decoded = ProxyMessage.fromJson(jsonDecode(message));
@@ -53,19 +59,19 @@ Handler _actorHandler = (Request request) {
             ),
           );
         } catch (error) {
-          print('[$thisActor] bad request: $error');
+          printScoped('Bad message: $error');
           channel.sink.close(
             WebSocketStatus.invalidFramePayloadData,
-            'Bad request',
+            'Bad message',
           );
         }
       },
       onDone: () {
         unsub();
-        print('[$thisActor] disconnected');
+        printScoped('Disconnected');
       },
       onError: (error) {
-        print('[$thisActor] error: $error');
+        printScoped('Error: $error');
         channel.sink.close(WebSocketStatus.internalServerError, 'Stream error');
       },
       cancelOnError: true,
