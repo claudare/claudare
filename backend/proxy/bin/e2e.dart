@@ -5,7 +5,7 @@ import 'dart:io';
 // This development tester intentionally uses dev dependencies from bin.
 // ignore: depend_on_referenced_packages
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:proxy/proxy.dart';
+import 'package:sync/sync.dart';
 // ignore: depend_on_referenced_packages
 import 'package:web_socket_channel/io.dart';
 
@@ -42,17 +42,23 @@ Future<void> runClient(
     logger.info('[$thisActor] connected');
     timer = Timer.periodic(const Duration(seconds: 3), (_) {
       channel.sink.add(
-        jsonEncode(ProxyDirectMessage(actor: peerActor, data: data).toJson()),
+        jsonEncode(
+          ProxyMessage(
+            type: ProxyMessageType.direct,
+            actor: peerActor,
+            data: data,
+          ).toJson(),
+        ),
       );
     });
     await for (final message in channel.stream) {
       final decoded = ProxyMessage.fromJson(
         jsonDecode(message as String) as Map<String, dynamic>,
       );
-      switch (decoded) {
-        case ProxyDirectMessage(:final actor):
-          logger.info('[$thisActor] received message from $actor');
-        case ProxyBroadcastMessage():
+      switch (decoded.type) {
+        case ProxyMessageType.direct:
+          logger.info('[$thisActor] received message from ${decoded.actor}');
+        case ProxyMessageType.broadcast:
           throw UnimplementedError('Group messages are not implemented');
       }
     }

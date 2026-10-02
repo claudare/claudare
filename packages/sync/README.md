@@ -1,5 +1,9 @@
-# package_template
+# Sync
 
-A template for the package. Clone this to make a new package.
+Owns the shared proxy protocol types `ProxyMessage`, `ProxyMessageType`, and
+`ProxyInit`, exported by `package:sync/sync.dart`.
 
-This was created with `dart create --template package`.
+Proxy messages carry direct or broadcast payloads. Connection initialization
+uses actor and group HTTP headers. These types do not provide authentication
+or encryption. The proxy server and its development e2e tester live in
+`backend/proxy`.

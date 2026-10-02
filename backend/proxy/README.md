@@ -5,6 +5,9 @@ authentication is implemented. An actor can only connect once.
 Connections require nonempty `Claudare-Actor` and `Claudare-Group` HTTP
 headers.
 
+The shared `ProxyMessage` and `ProxyInit` types belong to `sync` and are
+exported by `package:sync/sync.dart`. The development e2e tester stays here.
+
 # Running it
 
 ```sh

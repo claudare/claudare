@@ -10,6 +10,7 @@ dependencies:
   shelf: ^1.4.2
   shelf_router: ^1.1.2
   shelf_web_socket: ^3.0.0
+  sync: ^1.0.0
 
 dev_dependencies:
   claudare_logging: ^1.0.0

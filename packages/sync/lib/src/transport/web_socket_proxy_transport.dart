@@ -6,18 +6,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:sync/sync.dart';
 
-class _ProxyMessage {
-  final String actor;
-  final String data;
-
-  const _ProxyMessage({required this.actor, required this.data});
-
-  Map<String, dynamic> toJson() => {'actor': actor, 'data': data};
-
-  factory _ProxyMessage.fromJson(Map<String, dynamic> json) =>
-      _ProxyMessage(actor: json['actor'], data: json['data']);
-}
-
 class WebSocketProxyTransport {
   final String _baseUrl;
   final String _thisActor;
@@ -77,7 +65,11 @@ class _ReplicationMessageEncoder
       },
     };
     return jsonEncode(
-      _ProxyMessage(actor: peerActor, data: jsonEncode(data)).toJson(),
+      ProxyMessage(
+        type: ProxyMessageType.direct,
+        actor: peerActor,
+        data: jsonEncode(data),
+      ).toJson(),
     );
   }
 }
@@ -90,7 +82,7 @@ class _ReplicationMessageDecoder
 
   @override
   ReplicationMessage convert(dynamic input) {
-    final proxy = _ProxyMessage.fromJson(
+    final proxy = ProxyMessage.fromJson(
       jsonDecode(input as String) as Map<String, dynamic>,
     );
     if (proxy.actor != peerActor) {

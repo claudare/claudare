@@ -4,12 +4,11 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:sync/sync.dart';
 
 import 'pubsub.dart';
 import 'memory_direct_pubsub.dart';
 import 'memory_broadcast_pubsub.dart';
-import 'proxy_init.dart';
-import 'proxy_message.dart';
 
 final directPubsub = MemoryDirectPubSub();
 final broadcastPubsub = MemoryBroadcastPubSub();
@@ -51,7 +50,9 @@ Handler _actorHandler = (Request request) {
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
-    final Unsubscribe unsubBroadcast = broadcastPubsub.subscribe(group, (message) {
+    final Unsubscribe unsubBroadcast = broadcastPubsub.subscribe(group, (
+      message,
+    ) {
       channel.sink.add(message);
     });
 
@@ -62,19 +63,27 @@ Handler _actorHandler = (Request request) {
         try {
           final decoded = ProxyMessage.fromJson(jsonDecode(message));
 
-          switch (decoded) {
-            case ProxyDirectMessage(:final actor, :final data):
+          switch (decoded.type) {
+            case ProxyMessageType.direct:
               directPubsub.publish(
-                actor,
+                decoded.actor,
                 jsonEncode(
-                  ProxyDirectMessage(actor: thisActor, data: data).toJson(),
+                  ProxyMessage(
+                    type: decoded.type,
+                    actor: thisActor,
+                    data: decoded.data,
+                  ).toJson(),
                 ),
               );
-            case ProxyBroadcastMessage(:final data):
+            case ProxyMessageType.broadcast:
               broadcastPubsub.publish(
                 group,
                 jsonEncode(
-                  ProxyBroadcastMessage(actor: thisActor, data: data).toJson(),
+                  ProxyMessage(
+                    type: decoded.type,
+                    actor: thisActor,
+                    data: decoded.data,
+                  ).toJson(),
                 ),
               );
           }

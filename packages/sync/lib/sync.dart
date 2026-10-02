@@ -6,6 +6,10 @@ export 'src/test_utils/sync_test_helper.dart';
 export 'src/actor/actor_identity_store.dart';
 export 'src/actor/sqlite_actor_identity_store.dart';
 
+// proxy
+export 'src/proxy/proxy_init.dart';
+export 'src/proxy/proxy_message.dart';
+
 // replication
 export 'src/replication/in_memory_replication.dart';
 export 'src/replication/replication_message.dart';

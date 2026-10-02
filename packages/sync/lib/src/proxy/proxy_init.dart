@@ -1,9 +1,9 @@
 /// Connection initialization carried in HTTP headers.
 class ProxyInit {
-  /// the public key of the connecting app
+  /// the public key of the connecting app, used for direct messages.
   final String actor;
 
-  /// The group it belongs to. Group routing is not implemented.
+  /// The group this app belongs to, used for broadcasting messages.
   final String group;
 
   const ProxyInit({required this.actor, required this.group});
