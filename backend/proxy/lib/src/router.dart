@@ -6,10 +6,11 @@ import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
 
 import 'pubsub.dart';
+import 'memory_direct_pubsub.dart';
 import 'proxy_init.dart';
 import 'proxy_message.dart';
 
-final pubsub = MemoryPubSub();
+final pubsub = MemoryDirectPubSub();
 
 // Configure routes.
 final router = Router()
@@ -38,14 +39,17 @@ Handler _actorHandler = (Request request) {
 
     printScoped('Connected');
 
-    final unsub = pubsub.subscribe(thisActor, (message) {
-      channel.sink.add(message);
-    });
-    if (unsub == null) {
+    late final Unsubscribe unsub;
+    try {
+      unsub = pubsub.subscribe(thisActor, (message) {
+        channel.sink.add(message);
+      });
+    } catch (_) {
       printScoped('Already subscribed');
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
+
     channel.stream.listen(
       (message) {
         printScoped('Sent: $message');
