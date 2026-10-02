@@ -7,10 +7,12 @@ import 'package:shelf_web_socket/shelf_web_socket.dart';
 
 import 'pubsub.dart';
 import 'memory_direct_pubsub.dart';
+import 'memory_broadcast_pubsub.dart';
 import 'proxy_init.dart';
 import 'proxy_message.dart';
 
-final pubsub = MemoryDirectPubSub();
+final directPubsub = MemoryDirectPubSub();
+final broadcastPubsub = MemoryBroadcastPubSub();
 
 // Configure routes.
 final router = Router()
@@ -39,9 +41,9 @@ Handler _actorHandler = (Request request) {
 
     printScoped('Connected');
 
-    late final Unsubscribe unsub;
+    late final Unsubscribe unsubDirect;
     try {
-      unsub = pubsub.subscribe(thisActor, (message) {
+      unsubDirect = directPubsub.subscribe(thisActor, (message) {
         channel.sink.add(message);
       });
     } catch (_) {
@@ -49,6 +51,9 @@ Handler _actorHandler = (Request request) {
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
+    final Unsubscribe unsubBroadcast = broadcastPubsub.subscribe(group, (message) {
+      channel.sink.add(message);
+    });
 
     channel.stream.listen(
       (message) {
@@ -59,14 +64,19 @@ Handler _actorHandler = (Request request) {
 
           switch (decoded) {
             case ProxyDirectMessage(:final actor, :final data):
-              pubsub.publish(
+              directPubsub.publish(
                 actor,
                 jsonEncode(
                   ProxyDirectMessage(actor: thisActor, data: data).toJson(),
                 ),
               );
-            case ProxyBroadcastMessage():
-              throw UnimplementedError('Group messages are not implemented');
+            case ProxyBroadcastMessage(:final data):
+              broadcastPubsub.publish(
+                group,
+                jsonEncode(
+                  ProxyBroadcastMessage(actor: thisActor, data: data).toJson(),
+                ),
+              );
           }
         } catch (error) {
           printScoped('Bad message: $error');
@@ -77,7 +87,8 @@ Handler _actorHandler = (Request request) {
         }
       },
       onDone: () {
-        unsub();
+        unsubDirect();
+        unsubBroadcast();
         printScoped('Disconnected');
       },
       onError: (error) {

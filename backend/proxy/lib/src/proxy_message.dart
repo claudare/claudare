@@ -8,9 +8,9 @@ sealed class ProxyMessage {
       'actor': actor,
       'data': data,
     },
-    ProxyBroadcastMessage(:final group, :final data) => {
+    ProxyBroadcastMessage(:final actor, :final data) => {
       'type': 'broadcast',
-      'group': group,
+      'actor': actor,
       'data': data,
     },
   };
@@ -38,11 +38,11 @@ class ProxyDirectMessage extends ProxyMessage {
 
 /// A payload addressed to a group.
 class ProxyBroadcastMessage extends ProxyMessage {
-  final String group;
+  final String actor;
   final String data;
 
-  const ProxyBroadcastMessage({required this.group, required this.data});
+  const ProxyBroadcastMessage({required this.actor, required this.data});
 
   factory ProxyBroadcastMessage.fromJson(Map<String, dynamic> json) =>
-      ProxyBroadcastMessage(group: json['group'], data: json['data']);
+      ProxyBroadcastMessage(actor: json['actor'], data: json['data']);
 }
