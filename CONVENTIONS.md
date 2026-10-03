@@ -44,3 +44,8 @@ the shared packages but does not define their architecture or APIs.
   not hide unrelated failures.
 - Throw `Error` when the implemented systems are misused in consumer. If unsure
   about these boundaries, please ask.
+
+## Tests
+
+- Limit encoding and decoding tests to round trips for each message type and a
+  few representative error cases.
