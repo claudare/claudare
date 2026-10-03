@@ -1,55 +1,31 @@
 import 'dart:convert';
 
-import 'package:sync/sync.dart';
+import 'package:sync/src/replication/replication_message.dart';
 
-class ReplicationMessageCodec extends Codec<ReplicationMessage, dynamic> {
-  final String peerActor;
-
-  const ReplicationMessageCodec(this.peerActor);
-
-  @override
-  Converter<dynamic, ReplicationMessage> get decoder =>
-      _ReplicationMessageDecoder(peerActor);
+/// Encodes one peer's [ReplicationMessage]s as JSON strings.
+class ReplicationMessageCodec extends Codec<ReplicationMessage, String> {
+  const ReplicationMessageCodec();
 
   @override
-  Converter<ReplicationMessage, dynamic> get encoder =>
-      _ReplicationMessageEncoder(peerActor);
+  Converter<String, ReplicationMessage> get decoder =>
+      const _ReplicationMessageDecoder();
+
+  @override
+  Converter<ReplicationMessage, String> get encoder =>
+      const _ReplicationMessageEncoder();
 }
 
-class _ReplicationMessageEncoder
-    extends Converter<ReplicationMessage, dynamic> {
-  final String peerActor;
-
-  const _ReplicationMessageEncoder(this.peerActor);
+class _ReplicationMessageEncoder extends Converter<ReplicationMessage, String> {
+  const _ReplicationMessageEncoder();
 
   @override
-  String convert(ReplicationMessage input) {
-    return jsonEncode(
-      ProxyMessage(
-        type: ProxyMessageType.direct,
-        actor: peerActor,
-        data: jsonEncode(input.toJson()),
-      ).toJson(),
-    );
-  }
+  String convert(ReplicationMessage input) => jsonEncode(input.toJson());
 }
 
-class _ReplicationMessageDecoder
-    extends Converter<dynamic, ReplicationMessage> {
-  final String peerActor;
-
-  const _ReplicationMessageDecoder(this.peerActor);
+class _ReplicationMessageDecoder extends Converter<String, ReplicationMessage> {
+  const _ReplicationMessageDecoder();
 
   @override
-  ReplicationMessage convert(dynamic input) {
-    final proxy = ProxyMessage.fromJson(
-      jsonDecode(input as String) as Map<String, dynamic>,
-    );
-    if (proxy.actor != peerActor) {
-      throw FormatException('Unexpected peer: ${proxy.actor}');
-    }
-    return ReplicationMessage.fromJson(
-      jsonDecode(proxy.data) as Map<String, dynamic>,
-    );
-  }
+  ReplicationMessage convert(String input) =>
+      ReplicationMessage.fromJson(jsonDecode(input) as Map<String, dynamic>);
 }

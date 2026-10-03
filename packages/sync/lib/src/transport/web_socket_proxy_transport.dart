@@ -1,29 +1,39 @@
-import 'dart:convert';
-
-import 'package:stream_channel/stream_channel.dart';
-import 'package:sync/src/replication/replication_message_codec.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 
 import 'package:sync/sync.dart';
 
-class WebSocketProxyTransport {
+class WebSocketProxyTransport implements Transport {
   final String _baseUrl;
   final String _thisActor;
+  final String _group;
 
   const WebSocketProxyTransport({
     required this._baseUrl,
     required this._thisActor,
+    required this._group,
   });
 
-  Uri get _connectUri => Uri.parse('$_baseUrl/$_thisActor');
+  @override
+  Future<void> close() {
+    // TODO: implement close
+    throw UnimplementedError();
+  }
 
-  Future<ReplicationChannel> connect(String peerActor) async {
-    final channel = WebSocketChannel.connect(_connectUri);
+  @override
+  // TODO: implement peerTransports
+  Stream<PeerTransport> get peerTransports => throw UnimplementedError();
+
+  @override
+  Future<void> start() async {
+    // TODO: implement start
+
+    final channel = IOWebSocketChannel.connect(
+      _baseUrl,
+      headers: ProxyInit(actor: _thisActor, group: _group).toHeaders(),
+    );
 
     await channel.ready;
 
-    return channel.transform(
-      StreamChannelTransformer.fromCodec(ReplicationMessageCodec(peerActor)),
-    );
+    throw UnimplementedError();
   }
 }
