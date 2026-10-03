@@ -1,8 +1,8 @@
 # id_generator
 
-128-bit ID generators for the Claudare workspace.
+String ID generators for the Claudare workspace.
 
-`id_generator.dart` exports the `IdGenerator` contract and secure, seeded,
-sequential, and static implementations. Every implementation produces 16-byte
-values and 22-character unpadded base64url IDs. Use the secure implementation
-for production and the deterministic implementations for tests and fixtures.
+`id_generator.dart` exports the `IdGenerator` contract and random, sequential,
+and static implementations. Random IDs are UUID v4 strings. Sequential IDs are
+decimal strings starting at `1`. Static IDs repeat the configured string.
+Use sequential or static generators for deterministic tests and fixtures.

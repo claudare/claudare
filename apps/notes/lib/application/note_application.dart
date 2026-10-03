@@ -30,7 +30,7 @@ class NoteApplication {
   late final String actor;
 
   NoteApplication({required CqrsRuntime cqrsRuntime, IdGenerator? idGenerator})
-    : _idGenerator = idGenerator ?? IdGeneratorSecure(),
+    : _idGenerator = idGenerator ?? IdGeneratorRandom(),
       command = NoteCommands(cqrsRuntime),
       query = NoteQueries(cqrsRuntime) {
     cqrsRuntime.eventRegistry

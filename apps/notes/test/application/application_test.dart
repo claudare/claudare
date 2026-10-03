@@ -1,6 +1,5 @@
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
-import 'package:id_generator/id_generator.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/event/note.dart';
 import 'package:test/test.dart';
@@ -23,7 +22,14 @@ void main() {
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
 
-    expect(noteId, hasLength(IdGenerator.stringLength));
+    expect(
+      noteId,
+      matches(
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        ),
+      ),
+    );
     final note = await application.query.note(noteId);
     expect(note.exists, isTrue);
     expect(note.noteId, noteId);

@@ -2,92 +2,68 @@ import 'package:id_generator/id_generator.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('IdGeneratorSecure', () {
-    test('produces 16-byte base64url identifiers', () {
-      final IdGenerator generator = IdGeneratorSecure();
+  group('IdGeneratorRandom', () {
+    test('produces UUID v4 identifiers', () {
+      final IdGenerator generator = IdGeneratorRandom();
 
-      final bytes = generator.generateBytes();
-      final id = generator.generateId();
-
-      expect(bytes, hasLength(IdGenerator.byteLength));
-      expect(id, hasLength(IdGenerator.stringLength));
-      expect(id, matches(RegExp(r'^[A-Za-z0-9_-]{22}$')));
-      expect(IdGenerator.stringToBytes(id), hasLength(IdGenerator.byteLength));
+      expect(
+        generator.generateId(),
+        matches(
+          RegExp(
+            r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+          ),
+        ),
+      );
     });
-  });
 
-  group('IdGeneratorSeeded', () {
-    test('produces deterministic identifiers', () {
-      final IdGenerator generator = IdGeneratorSeeded(0);
+    test('produces distinct identifiers', () {
+      final IdGenerator generator = IdGeneratorRandom();
 
-      expect(generator.generateId(), 'jwEcs37HXgmZafciKLgzfg');
-      expect(generator.generateId(), 'we2AndvvXh2ESinwvOr-fg');
+      final ids = List.generate(100, (_) => generator.generateId());
+
+      expect(ids.toSet(), hasLength(ids.length));
     });
   });
 
   group('IdGeneratorSequential', () {
-    test('produces fixed-width identifiers starting at zero', () {
+    test('produces increasing decimal identifiers starting at one', () {
       final IdGenerator generator = IdGeneratorSequential();
 
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAA');
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAQ');
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAg');
+      expect(List.generate(12, (_) => generator.generateId()), [
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12',
+      ]);
     });
 
-    test('produces 16-byte big-endian values', () {
-      final IdGenerator generator = IdGeneratorSequential();
+    test('keeps each generator sequence independent', () {
+      final IdGenerator first = IdGeneratorSequential();
+      final IdGenerator second = IdGeneratorSequential();
 
-      expect(generator.generateBytes(), List<int>.filled(16, 0));
-      expect(generator.generateBytes(), [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-      ]);
+      first.generateId();
+      first.generateId();
+
+      expect(second.generateId(), '1');
     });
   });
 
   group('IdGeneratorStatic', () {
-    test('repeats its configured value', () {
-      final IdGenerator generator = IdGeneratorStatic(1);
+    for (final value in ['fixed-id', '1', '']) {
+      test('repeats its configured value "$value"', () {
+        final IdGenerator generator = IdGeneratorStatic(value);
 
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAQ');
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAQ');
-      expect(generator.generateBytes().last, 1);
-      expect(generator.generateBytes().last, 1);
-    });
-
-    test('can set its configured value', () {
-      final IdGenerator generator = IdGeneratorStatic(0)..set(2);
-
-      expect(generator.generateId(), 'AAAAAAAAAAAAAAAAAAAAAg');
-    });
-
-    test('rejects negative values', () {
-      expect(() => IdGeneratorStatic(-1), throwsRangeError);
-      expect(() => IdGeneratorStatic(0)..set(-1), throwsRangeError);
-    });
-
-    test('rejects values greater than 128 bits', () {
-      final dynamic tooLarge = BigInt.one << 128;
-
-      expect(() => IdGeneratorStatic(tooLarge), throwsA(isA<TypeError>()));
-      expect(
-        () => IdGeneratorStatic(0)..set(tooLarge),
-        throwsA(isA<TypeError>()),
-      );
-    });
+        expect(generator.generateId(), value);
+        expect(generator.generateId(), value);
+      });
+    }
   });
 }
