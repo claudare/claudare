@@ -19,8 +19,11 @@ sealed class ReplicationMessage {
     },
   };
 
-  factory ReplicationMessage.fromJson(Map<String, dynamic> json) =>
-      switch (json['type']) {
+  /// Rejects malformed JSON, including nested command fields, with [FormatException].
+  factory ReplicationMessage.fromJson(Object? value) {
+    try {
+      final json = value as Map<String, dynamic>;
+      return switch (json['type']) {
         'dependency' => ReplicationMessageDependency(
           CommandDependency.fromJson(
             json['dependencies'] as Map<String, dynamic>,
@@ -36,6 +39,14 @@ sealed class ReplicationMessage {
           'Unknown replication message type: ${json['type']}',
         ),
       };
+    } on TypeError catch (_, stack) {
+      // Nested CQRS decoders use casts. Translate only at this wire boundary.
+      Error.throwWithStackTrace(
+        const FormatException('Invalid replication message fields'),
+        stack,
+      );
+    }
+  }
 }
 
 /// Subscribes to missing and future commands using the receiver's history.

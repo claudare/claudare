@@ -27,23 +27,37 @@ sealed class TransportMessage {
     },
   };
 
-  factory TransportMessage.fromJson(Map<String, dynamic> json) =>
-      switch (json['type']) {
-        'discovery' => const TransportMessageDiscovery(),
-        'handshake' => TransportMessageHandshake(json['sessionId'] as String),
-        'handshakeAck' => TransportMessageHandshakeAck(
-          json['sessionId'] as String,
-        ),
+  /// Rejects malformed JSON values with [FormatException].
+  factory TransportMessage.fromJson(Object? value) {
+    try {
+      final json = value as Map<String, dynamic>;
+      if (json['type'] == 'discovery') {
+        return const TransportMessageDiscovery();
+      }
+      final sessionId = json['sessionId'] as String;
+      if (sessionId.isEmpty) {
+        throw const FormatException('Transport sessionId must be nonempty');
+      }
+      return switch (json['type']) {
+        'handshake' => TransportMessageHandshake(sessionId),
+        'handshakeAck' => TransportMessageHandshakeAck(sessionId),
         'data' => TransportMessageData(
-          sessionId: json['sessionId'] as String,
+          sessionId: sessionId,
           data: json['data'] as String,
         ),
-        'keepalive' => TransportMessageKeepalive(json['sessionId'] as String),
-        'close' => TransportMessageClose(json['sessionId'] as String),
+        'keepalive' => TransportMessageKeepalive(sessionId),
+        'close' => TransportMessageClose(sessionId),
         _ => throw FormatException(
           'Unknown transport message type: ${json['type']}',
         ),
       };
+    } on TypeError catch (_, stack) {
+      Error.throwWithStackTrace(
+        const FormatException('Invalid transport message fields'),
+        stack,
+      );
+    }
+  }
 }
 
 /// Requests discovery of peers through a broadcast.

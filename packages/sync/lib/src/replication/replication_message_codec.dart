@@ -20,6 +20,9 @@ class _ReplicationMessageEncoder extends Converter<ReplicationMessage, String> {
 
   @override
   String convert(ReplicationMessage input) => jsonEncode(input.toJson());
+
+  @override
+  Stream<String> bind(Stream<ReplicationMessage> stream) => stream.map(convert);
 }
 
 class _ReplicationMessageDecoder extends Converter<String, ReplicationMessage> {
@@ -27,5 +30,8 @@ class _ReplicationMessageDecoder extends Converter<String, ReplicationMessage> {
 
   @override
   ReplicationMessage convert(String input) =>
-      ReplicationMessage.fromJson(jsonDecode(input) as Map<String, dynamic>);
+      ReplicationMessage.fromJson(jsonDecode(input));
+
+  @override
+  Stream<ReplicationMessage> bind(Stream<String> stream) => stream.map(convert);
 }

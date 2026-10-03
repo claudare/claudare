@@ -19,13 +19,25 @@ class ProxyMessage {
     'data': data,
   };
 
-  factory ProxyMessage.fromJson(Map<String, dynamic> json) => ProxyMessage(
-    type: switch (json['type']) {
-      'direct' => ProxyMessageType.direct,
-      'broadcast' => ProxyMessageType.broadcast,
-      _ => throw FormatException('Unknown proxy message type: ${json['type']}'),
-    },
-    actor: json['actor'],
-    data: json['data'],
-  );
+  /// Rejects malformed JSON values with [FormatException].
+  factory ProxyMessage.fromJson(Object? json) {
+    if (json is! Map<String, dynamic> ||
+        json['actor'] is! String ||
+        json['data'] is! String) {
+      throw const FormatException(
+        'Proxy message requires String actor and data',
+      );
+    }
+    return ProxyMessage(
+      type: switch (json['type']) {
+        'direct' => ProxyMessageType.direct,
+        'broadcast' => ProxyMessageType.broadcast,
+        _ => throw FormatException(
+          'Unknown proxy message type: ${json['type']}',
+        ),
+      },
+      actor: json['actor'],
+      data: json['data'],
+    );
+  }
 }

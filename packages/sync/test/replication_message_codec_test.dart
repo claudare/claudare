@@ -42,6 +42,10 @@ void main() {
     expect(() => codec.decode('{}'), throwsFormatException);
   });
 
+  test('non-object JSON throws FormatException', () {
+    expect(() => codec.decode('[]'), throwsFormatException);
+  });
+
   test('bad message type throws FormatException', () {
     expect(() => codec.decode('{"type":"bad"}'), throwsFormatException);
   });

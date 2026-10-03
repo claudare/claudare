@@ -4,6 +4,17 @@ import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 
 void main() {
+  for (final (description, json) in <(String, Object?)>[
+    ('non-object', []),
+    ('missing session', {'type': 'handshake'}),
+    ('empty session', {'type': 'keepalive', 'sessionId': ''}),
+    ('invalid payload', {'type': 'data', 'sessionId': 's', 'data': 42}),
+  ]) {
+    test('$description throws FormatException', () {
+      expect(() => TransportMessage.fromJson(json), throwsFormatException);
+    });
+  }
+
   for (final message in const <TransportMessage>[
     TransportMessageDiscovery(),
     TransportMessageHandshake('session-1'),

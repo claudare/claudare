@@ -6,6 +6,41 @@ import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 
 void main() {
+  for (final (description, json) in <(String, Object?)>[
+    ('non-object', []),
+    ('missing command', {'type': 'command'}),
+    (
+      'invalid dependency sequence',
+      {
+        'type': 'dependency',
+        'dependencies': {'a': 'one'},
+      },
+    ),
+    (
+      'invalid ACK fields',
+      {
+        'type': 'commandAck',
+        'commandId': ['a', null],
+      },
+    ),
+    (
+      'invalid nested event',
+      {
+        'type': 'command',
+        'command': {
+          'commandId': ['a', 1],
+          'dependency': <String, dynamic>{},
+          'occuredAt': '2026-10-03T00:00:00Z',
+          'events': [null],
+        },
+      },
+    ),
+  ]) {
+    test('$description throws FormatException', () {
+      expect(() => ReplicationMessage.fromJson(json), throwsFormatException);
+    });
+  }
+
   for (final values in <Map<String, int>>[
     {},
     {'local': 2, 'remote': 5},

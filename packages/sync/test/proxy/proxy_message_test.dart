@@ -4,6 +4,16 @@ import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 
 void main() {
+  for (final (description, json) in <(String, Object?)>[
+    ('non-object', []),
+    ('missing actor', {'type': 'direct', 'data': 'payload'}),
+    ('invalid payload', {'type': 'broadcast', 'actor': 'sender', 'data': 42}),
+  ]) {
+    test('$description throws FormatException', () {
+      expect(() => ProxyMessage.fromJson(json), throwsFormatException);
+    });
+  }
+
   for (final (type, wireType) in [
     (ProxyMessageType.direct, 'direct'),
     (ProxyMessageType.broadcast, 'broadcast'),
