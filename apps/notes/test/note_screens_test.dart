@@ -171,22 +171,12 @@ void main() {
     final trashedId = application.generateNoteId();
     await application.command.createNote(trashedId);
     await application.command.trashNote(trashedId);
-    var resets = 0;
-
-    await tester.pumpWidget(
-      NoteApplicationProvider(
-        application: application,
-        child: EventStoreProvider(
-          eventStore: eventStore,
-          reset: (restart) async => resets++,
-          child: MaterialApp(
-            theme: ThemeData(platform: TargetPlatform.iOS),
-            home: const SettingsScreen(),
-          ),
-        ),
-      ),
+    await _pumpSettings(
+      tester,
+      application: application,
+      eventStore: eventStore,
+      reset: (_) async {},
     );
-    await tester.pumpAndSettle();
 
     expect(find.text('Active Note Count'), findsOneWidget);
     expect(find.text('1'), findsOneWidget);
@@ -194,18 +184,83 @@ void main() {
     expect(find.text('3'), findsOneWidget);
     expect(find.text('Rerun projections'), findsNothing);
     expect(find.text('Reset database'), findsOneWidget);
+  });
+
+  testWidgets('canceling database reset does not reset the database', (
+    tester,
+  ) async {
+    final resets = <bool>[];
+    await _pumpSettings(tester, reset: (restart) async => resets.add(restart));
 
     await tester.tap(find.text('Reset database'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Close and reopen Notes'), findsOneWidget);
+    expect(
+      find.text(
+        'This deletes all notes, event history, settings, and pairings.',
+      ),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(resets, 0);
-
-    await tester.tap(find.text('Reset database'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Reset'));
-    await tester.pumpAndSettle();
-    expect(resets, 1);
+    expect(resets, isEmpty);
+    expect(find.byType(AlertDialog), findsNothing);
   });
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final restart in [false, true]) {
+      testWidgets('settings reset with restart=$restart on ${platform.name}', (
+        tester,
+      ) async {
+        final resets = <bool>[];
+        await _pumpSettings(
+          tester,
+          platform: platform,
+          reset: (restart) async => resets.add(restart),
+        );
+
+        await tester.tap(find.text('Reset database'));
+        await tester.pumpAndSettle();
+        final button = find.widgetWithText(
+          TextButton,
+          restart ? 'Reset and restart' : 'Reset',
+        );
+        final enabled = !restart || platform != TargetPlatform.iOS;
+        expect(tester.widget<TextButton>(button).enabled, enabled);
+
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+        expect(resets, enabled ? [restart] : isEmpty);
+        expect(
+          find.byType(AlertDialog),
+          enabled ? findsNothing : findsOneWidget,
+        );
+      });
+    }
+  }
+}
+
+Future<void> _pumpSettings(
+  WidgetTester tester, {
+  NoteApplication? application,
+  MemoryEventStore? eventStore,
+  TargetPlatform platform = TargetPlatform.iOS,
+  required Future<void> Function(bool restart) reset,
+}) async {
+  final store = eventStore ?? MemoryEventStore();
+  await tester.pumpWidget(
+    NoteApplicationProvider(
+      application:
+          application ??
+          NoteApplication(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
+      child: EventStoreProvider(
+        eventStore: store,
+        reset: reset,
+        child: MaterialApp(
+          theme: ThemeData(platform: platform),
+          home: const SettingsScreen(),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
