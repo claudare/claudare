@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:cqrs/cqrs.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -50,25 +49,11 @@ class _ReplicationMessageEncoder
 
   @override
   String convert(ReplicationMessage input) {
-    final data = switch (input) {
-      ReplicationMessageDependency(:final dependencies) => {
-        'type': 'dependency',
-        'dependencies': dependencies.toJson(),
-      },
-      ReplicationMessageCommand(:final command) => {
-        'type': 'command',
-        'command': command.toJson(),
-      },
-      ReplicationMessageCommandAck(:final commandId) => {
-        'type': 'commandAck',
-        'commandId': commandId.toJson(),
-      },
-    };
     return jsonEncode(
       ProxyMessage(
         type: ProxyMessageType.direct,
         actor: peerActor,
-        data: jsonEncode(data),
+        data: jsonEncode(input.toJson()),
       ).toJson(),
     );
   }
@@ -88,22 +73,8 @@ class _ReplicationMessageDecoder
     if (proxy.actor != peerActor) {
       throw FormatException('Unexpected peer: ${proxy.actor}');
     }
-    final data = jsonDecode(proxy.data) as Map<String, dynamic>;
-    return switch (data['type']) {
-      'dependency' => ReplicationMessageDependency(
-        CommandDependency.fromJson(
-          data['dependencies'] as Map<String, dynamic>,
-        ),
-      ),
-      'command' => ReplicationMessageCommand(
-        StoredCommand.fromJson(data['command'] as Map<String, dynamic>),
-      ),
-      'commandAck' => ReplicationMessageCommandAck(
-        CommandId.fromJson(data['commandId'] as List<dynamic>),
-      ),
-      _ => throw FormatException(
-        'Unknown replication message type: ${data['type']}',
-      ),
-    };
+    return ReplicationMessage.fromJson(
+      jsonDecode(proxy.data) as Map<String, dynamic>,
+    );
   }
 }

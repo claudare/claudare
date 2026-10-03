@@ -105,11 +105,11 @@ class Replicator {
 
   Future<void> _receive(ReplicationMessage message) async {
     switch (message) {
-      case ReplicationMessageDependency(:final dependencies):
+      case ReplicationMessageDependency(:final version):
         if (_peerSubscribed) {
           throw const ReplicationException('Repeated subscription');
         }
-        _merge(dependencies);
+        _merge(version);
         _peerSubscribed = true;
       case ReplicationMessageCommand(:final command):
         // Record knowledge before saving can publish a store change.

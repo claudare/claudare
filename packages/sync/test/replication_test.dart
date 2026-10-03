@@ -157,7 +157,7 @@ void main() {
 
       final message = await peer.next<ReplicationMessageDependency>();
 
-      expect(message.dependencies, CommandDependency({'local': 1}));
+      expect(message.version, CommandDependency({'local': 1}));
     });
 
     test('sends only one command until its matching ACK', () async {
