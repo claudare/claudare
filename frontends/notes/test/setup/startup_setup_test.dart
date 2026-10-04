@@ -1,6 +1,7 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kv/kv.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
@@ -14,49 +15,100 @@ import 'setup_test_helpers.dart';
 
 void main() {
   for (final actor in [false, true]) {
-    for (final server in [false, true]) {
-      testWidgets('startup with actor=$actor and server=$server', (
-        tester,
-      ) async {
-        final system = await testSystem(actor: actor, server: server);
-        final bootstrap = _SetupBootstrap(system);
+    for (final enabled in <bool?>[null, false, true]) {
+      for (final server in [false, true]) {
+        for (final group in [false, true]) {
+          testWidgets('startup with actor=$actor, enabled=$enabled, '
+              'server=$server, group=$group', (tester) async {
+            final system = await testSystem(
+              actor: actor,
+              syncEnabled: enabled,
+              server: server,
+              group: group,
+            );
+            final bootstrap = _SetupBootstrap(system);
+            final syncComplete =
+                enabled == false || (enabled == true && server && group);
+            await tester.pumpWidget(
+              MyApp(
+                bootstrap: bootstrap,
+                applicationDirectory: () async => 'unused',
+              ),
+            );
+            await tester.pumpAndSettle();
+            expect(
+              find.byType(ActorSetup),
+              actor ? findsNothing : findsOneWidget,
+            );
+            expect(
+              find.byType(SyncSetup),
+              actor && !syncComplete ? findsOneWidget : findsNothing,
+            );
+            expect(
+              find.byType(HomeScreen),
+              actor && syncComplete ? findsOneWidget : findsNothing,
+            );
+            expect(
+              bootstrap.eventInitializations,
+              actor && syncComplete ? 1 : 0,
+            );
+
+            if (!actor) {
+              await tester.tap(find.text('Populate from static value'));
+              await tester.pump();
+              await tester.tap(find.text('Continue'));
+              await tester.pumpAndSettle();
+            }
+            if (!syncComplete) {
+              expect(find.byType(SyncSetup), findsOneWidget);
+              await tester.tap(find.text('Continue'));
+              await tester.pumpAndSettle();
+            }
+            expect(find.byType(HomeScreen), findsOneWidget);
+            expect(bootstrap.eventInitializations, 1);
+            expect(
+              bootstrap.writer,
+              (await system.identities.getLocal())!.publicKey.toString(),
+            );
+          });
+        }
+      }
+    }
+  }
+
+  for (final configured in [false, true]) {
+    testWidgets(
+      'skip persists across relaunch with configuration=$configured',
+      (tester) async {
+        final system = await testSystem(
+          syncEnabled: null,
+          server: configured,
+          group: configured,
+        );
         await tester.pumpWidget(
           MyApp(
-            bootstrap: bootstrap,
+            bootstrap: _SetupBootstrap(system),
             applicationDirectory: () async => 'unused',
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(ActorSetup), actor ? findsNothing : findsOneWidget);
-        expect(
-          find.byType(SyncSetup),
-          actor && !server ? findsOneWidget : findsNothing,
-        );
-        expect(
-          find.byType(HomeScreen),
-          actor && server ? findsOneWidget : findsNothing,
-        );
-        expect(bootstrap.eventInitializations, actor && server ? 1 : 0);
-
-        if (!actor) {
-          await tester.tap(find.text('Populate from static value'));
-          await tester.pump();
-          await tester.tap(find.text('Continue'));
-          await tester.pumpAndSettle();
-        }
-        if (!server) {
-          expect(find.byType(SyncSetup), findsOneWidget);
-          await tester.tap(find.text('Continue'));
-          await tester.pumpAndSettle();
-        }
+        expect(find.byType(SyncSetup), findsOneWidget);
+        await tester.tap(find.text('Skip'));
+        await tester.pumpAndSettle();
         expect(find.byType(HomeScreen), findsOneWidget);
-        expect(bootstrap.eventInitializations, 1);
-        expect(
-          bootstrap.writer,
-          (await system.identities.getLocal())!.publicKey.toString(),
+        expect(await system.kv.getBool(NoteSystem.syncEnabledKey), isFalse);
+
+        await tester.pumpWidget(
+          MyApp(
+            bootstrap: _SetupBootstrap(system),
+            applicationDirectory: () async => 'unused',
+          ),
         );
-      });
-    }
+        await tester.pumpAndSettle();
+        expect(find.byType(SyncSetup), findsNothing);
+        expect(find.byType(HomeScreen), findsOneWidget);
+      },
+    );
   }
 
   testWidgets('missing group preserves the server URL during setup', (

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
 
-/// Configures the replication server and group without opening a connection.
+/// Enables or skips server configuration without opening a connection.
 class SyncSetup extends StatefulWidget {
   final Kv kv;
   final void Function(String serverUrl, String group) onSaved;
+  final VoidCallback onSkipped;
   final String initialServerUrl;
   final String initialGroup;
 
@@ -13,6 +14,7 @@ class SyncSetup extends StatefulWidget {
     super.key,
     required this.kv,
     required this.onSaved,
+    required this.onSkipped,
     this.initialServerUrl = 'ws://localhost:7000',
     this.initialGroup = '0',
   });
@@ -36,6 +38,7 @@ class _SyncSetupState extends State<SyncSetup> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final value = _url.text.trim();
     final group = _group.text;
     final uri = Uri.tryParse(value);
@@ -45,17 +48,34 @@ class _SyncSetupState extends State<SyncSetup> {
       setState(() => _inputError = 'Enter a ws or wss URL with a host');
       return;
     }
+    await _persist(
+      () => widget.kv.setAll({
+        NoteSystem.syncEnabledKey: true,
+        NoteSystem.serverUrlKey: value,
+        NoteSystem.groupKey: group,
+      }),
+      () => widget.onSaved(value, group),
+    );
+  }
+
+  Future<void> _skip() => _persist(
+    () => widget.kv.setBool(NoteSystem.syncEnabledKey, false),
+    widget.onSkipped,
+  );
+
+  Future<void> _persist(
+    Future<void> Function() save,
+    VoidCallback onSaved,
+  ) async {
+    if (_saving) return;
     setState(() {
       _inputError = null;
       _saveError = null;
       _saving = true;
     });
     try {
-      await widget.kv.setAllStrings({
-        NoteSystem.serverUrlKey: value,
-        NoteSystem.groupKey: group,
-      });
-      if (mounted) widget.onSaved(value, group);
+      await save();
+      if (mounted) onSaved();
     } on Exception {
       if (mounted) {
         setState(() {
@@ -91,6 +111,10 @@ class _SyncSetupState extends State<SyncSetup> {
         FilledButton(
           onPressed: _saving ? null : _save,
           child: Text(_saving ? 'Saving…' : 'Continue'),
+        ),
+        TextButton(
+          onPressed: _saving ? null : _skip,
+          child: const Text('Skip'),
         ),
       ],
     ),

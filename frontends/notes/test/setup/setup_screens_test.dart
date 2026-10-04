@@ -21,7 +21,7 @@ void main() {
 
   Future<void> showSync(WidgetTester tester, Kv store) => tester.pumpWidget(
     MaterialApp(
-      home: SyncSetup(kv: store, onSaved: (_, _) {}),
+      home: SyncSetup(kv: store, onSaved: (_, _) {}, onSkipped: () {}),
     ),
   );
 
@@ -178,7 +178,11 @@ void main() {
       String? savedGroup;
       await tester.pumpWidget(
         MaterialApp(
-          home: SyncSetup(kv: store, onSaved: (_, value) => savedGroup = value),
+          home: SyncSetup(
+            kv: store,
+            onSaved: (_, value) => savedGroup = value,
+            onSkipped: () {},
+          ),
         ),
       );
       await tester.enterText(find.widgetWithText(TextField, 'Group'), group);
@@ -221,53 +225,156 @@ void main() {
     });
   }
 
-  testWidgets('server save failure permits retry without advancing', (
+  testWidgets('Continue saves enabled sync with its configuration', (
     tester,
   ) async {
-    final store = TestKv()..saveError = Exception('save failed');
-    var advanced = false;
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SyncSetup(kv: store, onSaved: (_, _) => advanced = true),
-      ),
-    );
+    final store = MemoryKv();
+    await showSync(tester, store);
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(advanced, isFalse);
+
     expect(
-      find.text('Could not save sync settings. Try again.'),
-      findsOneWidget,
+      {
+        for (final key in await store.listKeys(''))
+          key: await store.getString(key),
+      },
+      {
+        NoteSystem.syncEnabledKey: 'true',
+        NoteSystem.serverUrlKey: 'ws://localhost:7000',
+        NoteSystem.groupKey: '0',
+      },
     );
-    expect(await store.listKeys(''), isEmpty);
-    store.saveError = null;
-    await tester.tap(find.text('Continue'));
-    await tester.pumpAndSettle();
-    expect(advanced, isTrue);
   });
 
-  testWidgets('server submission waits for persistence', (tester) async {
-    final pending = Completer<void>();
-    final store = TestKv()..saveDelay = pending.future;
-    var advanced = false;
+  testWidgets('Skip bypasses invalid server input', (tester) async {
+    final store = MemoryKv();
+    var skipped = false;
+    var saved = false;
     await tester.pumpWidget(
       MaterialApp(
-        home: SyncSetup(kv: store, onSaved: (_, _) => advanced = true),
+        home: SyncSetup(
+          kv: store,
+          onSaved: (_, _) => saved = true,
+          onSkipped: () => skipped = true,
+        ),
       ),
     );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Replication server URL'),
+      'invalid',
+    );
     await tester.tap(find.text('Continue'));
-    await tester.pump();
-    expect(
-      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
-      isNull,
-    );
-    expect(advanced, isFalse);
-    expect(await store.listKeys(''), isEmpty);
-    expect(
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Group')).enabled,
-      isFalse,
-    );
-    pending.complete();
     await tester.pumpAndSettle();
-    expect(advanced, isTrue);
+    expect(find.text('Enter a ws or wss URL with a host'), findsOneWidget);
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(skipped, isTrue);
+    expect(saved, isFalse);
+    expect(await store.getBool(NoteSystem.syncEnabledKey), isFalse);
+    expect(await store.listKeys(''), [NoteSystem.syncEnabledKey]);
+    expect(find.text('Enter a ws or wss URL with a host'), findsNothing);
   });
+
+  testWidgets('Skip preserves saved configuration instead of unsaved edits', (
+    tester,
+  ) async {
+    final store = MemoryKv();
+    await store.setAll({
+      NoteSystem.syncEnabledKey: true,
+      NoteSystem.serverUrlKey: 'wss://saved.test',
+      NoteSystem.groupKey: 'saved group',
+    });
+    await showSync(tester, store);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Replication server URL'),
+      'wss://unsaved.test',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Group'),
+      'unsaved group',
+    );
+    await tester.tap(find.text('Skip'));
+    await tester.pumpAndSettle();
+
+    expect(
+      {
+        for (final key in await store.listKeys(''))
+          key: await store.getString(key),
+      },
+      {
+        NoteSystem.syncEnabledKey: 'false',
+        NoteSystem.serverUrlKey: 'wss://saved.test',
+        NoteSystem.groupKey: 'saved group',
+      },
+    );
+  });
+
+  for (final action in ['Continue', 'Skip']) {
+    testWidgets('$action save failure permits retry without advancing', (
+      tester,
+    ) async {
+      final store = TestKv()..saveError = Exception('save failed');
+      var advanced = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSetup(
+            kv: store,
+            onSaved: (_, _) => advanced = true,
+            onSkipped: () => advanced = true,
+          ),
+        ),
+      );
+      await tester.tap(find.text(action));
+      await tester.pumpAndSettle();
+      expect(advanced, isFalse);
+      expect(
+        find.text('Could not save sync settings. Try again.'),
+        findsOneWidget,
+      );
+      expect(await store.listKeys(''), isEmpty);
+      store.saveError = null;
+      await tester.tap(find.text(action));
+      await tester.pumpAndSettle();
+      expect(advanced, isTrue);
+    });
+
+    testWidgets('$action submission waits for persistence', (tester) async {
+      final pending = Completer<void>();
+      final store = TestKv()..saveDelay = pending.future;
+      var advanced = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSetup(
+            kv: store,
+            onSaved: (_, _) => advanced = true,
+            onSkipped: () => advanced = true,
+          ),
+        ),
+      );
+      await tester.tap(find.text(action));
+      await tester.pump();
+      expect(
+        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        isNull,
+      );
+      expect(advanced, isFalse);
+      expect(await store.listKeys(''), isEmpty);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, 'Skip'))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<TextField>(find.widgetWithText(TextField, 'Group'))
+            .enabled,
+        isFalse,
+      );
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(advanced, isTrue);
+    });
+  }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
+import 'package:kv/kv.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
@@ -49,7 +50,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   LocalActorIdentity? _identity;
   String? _serverUrl;
   String? _group;
+  bool? _syncEnabled;
   bool _loading = true;
+
+  bool get _syncSetupComplete =>
+      _syncEnabled == false ||
+      (_syncEnabled == true && _serverUrl != null && _group != null);
+
+  bool get _setupComplete => _identity != null && _syncSetupComplete;
 
   @override
   void initState() {
@@ -69,6 +77,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _identity = null;
     _serverUrl = null;
     _group = null;
+    _syncEnabled = null;
     _loading = true;
     _initialization = _initialize();
   }
@@ -82,12 +91,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final identity = await system.identities.getLocal();
     final serverUrl = await system.kv.getString(NoteSystem.serverUrlKey);
     final group = await system.kv.getString(NoteSystem.groupKey);
+    final syncEnabled = await system.kv.getBool(NoteSystem.syncEnabledKey);
     if (!mounted || !identical(bootstrap, widget.bootstrap)) return;
     _system = system;
     _identity = identity;
     _serverUrl = serverUrl;
     _group = group;
-    if (identity != null && serverUrl != null && group != null) {
+    _syncEnabled = syncEnabled;
+    if (_setupComplete) {
       await _openApplication();
     }
   }
@@ -108,7 +119,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _advanceSetup() {
     setState(() {
-      if (_identity != null && _serverUrl != null && _group != null) {
+      if (_setupComplete) {
         _loading = true;
         _initialization = _openApplication();
       }
@@ -168,14 +179,19 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 _advanceSetup();
               },
             )
-          : _serverUrl == null || _group == null
+          : !_syncSetupComplete
           ? SyncSetup(
               kv: _system!.kv,
               initialServerUrl: _serverUrl ?? 'ws://localhost:7000',
               initialGroup: _group ?? '0',
               onSaved: (url, group) {
+                _syncEnabled = true;
                 _serverUrl = url;
                 _group = group;
+                _advanceSetup();
+              },
+              onSkipped: () {
+                _syncEnabled = false;
                 _advanceSetup();
               },
             )

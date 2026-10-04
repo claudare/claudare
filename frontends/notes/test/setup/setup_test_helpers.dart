@@ -39,8 +39,12 @@ Future<NoteSystem> testSystem({
   bool actor = true,
   bool server = true,
   bool group = true,
+  bool? syncEnabled = true,
 }) async {
   final kv = MemoryKv();
+  if (syncEnabled != null) {
+    await kv.setBool(NoteSystem.syncEnabledKey, syncEnabled);
+  }
   if (server) {
     await kv.setString(NoteSystem.serverUrlKey, 'ws://localhost:7000');
   }
