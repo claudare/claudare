@@ -44,29 +44,27 @@ class TestKv implements Kv {
   Future<void>? saveDelay;
 
   @override
-  Future<String?> get(String key) async => values[key];
+  Future<String?> getString(String key) async => values[key];
 
   @override
-  Future<void> set(String key, String value) async {
+  Future<void> setString(String key, String value) async {
     await saveDelay;
     if (saveError != null) throw saveError!;
     values[key] = value;
   }
 
   @override
-  Future<void> setAll(List<KeyValue> entries) async {
+  Future<void> setAllStrings(Map<String, String> entries) async {
     await saveDelay;
     if (saveError != null) throw saveError!;
-    for (final entry in entries) {
-      values[entry.key] = entry.value;
-    }
+    values.addAll(entries);
   }
 
   @override
   Future<void> delete(String key) async => values.remove(key);
 
   @override
-  Future<List<KeyValue>> list(String prefix) => throw UnimplementedError();
+  Future<List<String>> listKeys(String prefix) => throw UnimplementedError();
 }
 
 NoteSystem testSystem({

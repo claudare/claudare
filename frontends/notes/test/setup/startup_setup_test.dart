@@ -63,7 +63,7 @@ void main() {
     tester,
   ) async {
     final system = testSystem(group: false);
-    await system.kv.set(NoteSystem.serverUrlKey, 'wss://example.test');
+    await system.kv.setString(NoteSystem.serverUrlKey, 'wss://example.test');
     final bootstrap = _SetupBootstrap(system);
     await tester.pumpWidget(
       MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
@@ -76,8 +76,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Group'), 'my-notes');
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(await system.kv.get(NoteSystem.serverUrlKey), 'wss://example.test');
-    expect(await system.kv.get(NoteSystem.groupKey), 'my-notes');
+    expect(
+      await system.kv.getString(NoteSystem.serverUrlKey),
+      'wss://example.test',
+    );
+    expect(await system.kv.getString(NoteSystem.groupKey), 'my-notes');
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
@@ -103,7 +106,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(await system.kv.get(NoteSystem.groupKey), 'my-notes');
+    expect(await system.kv.getString(NoteSystem.groupKey), 'my-notes');
   });
 
   testWidgets('relaunch after actor setup shows only server setup', (

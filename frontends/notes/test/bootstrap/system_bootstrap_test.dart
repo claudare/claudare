@@ -38,7 +38,10 @@ void main() {
           );
         }
         if (server) {
-          await system.kv.set(NoteSystem.serverUrlKey, 'wss://example.test');
+          await system.kv.setString(
+            NoteSystem.serverUrlKey,
+            'wss://example.test',
+          );
         }
         await first.close();
 
@@ -50,7 +53,7 @@ void main() {
           actor ? PublicKey.staticValue(12) : null,
         );
         expect(
-          await reopened.kv.get(NoteSystem.serverUrlKey),
+          await reopened.kv.getString(NoteSystem.serverUrlKey),
           server ? 'wss://example.test' : null,
         );
       });
@@ -164,7 +167,7 @@ void main() {
       final peer = PeerActorIdentity(publicKey: PublicKey.staticValue(46));
       await system.identities.setLocal(identity);
       await system.identities.addPeer(peer);
-      await system.kv.set(NoteSystem.serverUrlKey, 'ws://localhost:7000');
+      await system.kv.setString(NoteSystem.serverUrlKey, 'ws://localhost:7000');
       final application = await first.initialize(
         system: system,
         actor: identity.publicKey.toString(),
@@ -186,7 +189,7 @@ void main() {
         peer.publicKey,
       );
       expect(
-        await copied.kv.get(NoteSystem.serverUrlKey),
+        await copied.kv.getString(NoteSystem.serverUrlKey),
         'ws://localhost:7000',
       );
       final restored = await second.initialize(
@@ -211,7 +214,7 @@ void main() {
       await system.identities.addPeer(
         PeerActorIdentity(publicKey: PublicKey.staticValue(46)),
       );
-      await system.kv.set(NoteSystem.serverUrlKey, 'ws://localhost:7000');
+      await system.kv.setString(NoteSystem.serverUrlKey, 'ws://localhost:7000');
       final application = await first.initialize(
         system: system,
         actor: identity.publicKey.toString(),
@@ -225,7 +228,7 @@ void main() {
       final reopened = await second.initializeSystem(dbFilepath: filepath);
       expect(await reopened.identities.getLocal(), isNull);
       expect(await reopened.identities.allPeers(), isEmpty);
-      expect(await reopened.kv.list(''), isEmpty);
+      expect(await reopened.kv.listKeys(''), isEmpty);
       expect(
         (await reopened.eventStore.getState()).lastEventLogPosition,
         isNull,

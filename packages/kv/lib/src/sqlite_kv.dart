@@ -24,25 +24,26 @@ class SqliteKv implements Kv {
   Future<void> close() => _database.close();
 
   @override
-  Future<String?> get(String key) => _database.transaction((tx) {
+  Future<String?> getString(String key) => _database.transaction((tx) {
     final row = tx.queryRow('SELECT value FROM kv_entry WHERE key = ?;', [key]);
     return row?.field<String>('value');
   });
 
   @override
-  Future<void> set(String key, String value) =>
-      setAll([KeyValue(key: key, value: value)]);
+  Future<void> setString(String key, String value) =>
+      setAllStrings({key: value});
 
   @override
-  Future<void> setAll(List<KeyValue> values) => _database.transaction((tx) {
-    for (final entry in values) {
-      tx.execute(
-        '''INSERT INTO kv_entry(key, value) VALUES (?, ?)
+  Future<void> setAllStrings(Map<String, String> values) =>
+      _database.transaction((tx) {
+        for (final entry in values.entries) {
+          tx.execute(
+            '''INSERT INTO kv_entry(key, value) VALUES (?, ?)
         ON CONFLICT(key) DO UPDATE SET value = excluded.value;''',
-        [entry.key, entry.value],
-      );
-    }
-  });
+            [entry.key, entry.value],
+          );
+        }
+      });
 
   @override
   Future<void> delete(String key) => _database.transaction((tx) {
@@ -50,17 +51,11 @@ class SqliteKv implements Kv {
   });
 
   @override
-  Future<List<KeyValue>> list(String prefix) => _database.transaction((tx) {
+  Future<List<String>> listKeys(String prefix) => _database.transaction((tx) {
     final rows = tx.query(
-      'SELECT key, value FROM kv_entry WHERE instr(key, ?) = 1 ORDER BY key;',
+      'SELECT key FROM kv_entry WHERE instr(key, ?) = 1 ORDER BY key;',
       [prefix],
     );
-    return [
-      for (final row in rows)
-        KeyValue(
-          key: row.field<String>('key'),
-          value: row.field<String>('value'),
-        ),
-    ];
+    return [for (final row in rows) row.field<String>('key')];
   });
 }

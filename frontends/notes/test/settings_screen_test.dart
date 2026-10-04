@@ -240,8 +240,8 @@ class _ControlledKv extends TestKv {
   int reads = 0;
 
   @override
-  Future<String?> get(String key) {
+  Future<String?> getString(String key) {
     reads++;
-    return read?.call(key) ?? super.get(key);
+    return read?.call(key) ?? super.getString(key);
   }
 }

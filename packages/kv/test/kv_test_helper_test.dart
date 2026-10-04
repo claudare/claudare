@@ -6,7 +6,7 @@ void main() {
     final store = await KvTestHelper.createMemoryKv();
     addTearDown(store.close);
 
-    expect(await store.list(''), isEmpty);
+    expect(await store.listKeys(''), isEmpty);
   });
 
   test('memory helper creates independent databases', () async {
@@ -14,9 +14,9 @@ void main() {
     addTearDown(first.close);
     final second = await KvTestHelper.createMemoryKv();
     addTearDown(second.close);
-    await first.set('a', 'one');
+    await first.setString('a', 'one');
 
-    expect(await second.get('a'), isNull);
+    expect(await second.getString('a'), isNull);
   });
 
   test('closing a helper store closes its database', () async {
@@ -24,6 +24,6 @@ void main() {
 
     await store.close();
 
-    await expectLater(store.get('a'), throwsStateError);
+    await expectLater(store.getString('a'), throwsStateError);
   });
 }

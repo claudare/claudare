@@ -80,8 +80,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       dbFilepath: path.join(directory, 'main.sqlite'),
     );
     final identity = await system.identities.getLocal();
-    final serverUrl = await system.kv.get(NoteSystem.serverUrlKey);
-    final group = await system.kv.get(NoteSystem.groupKey);
+    final serverUrl = await system.kv.getString(NoteSystem.serverUrlKey);
+    final group = await system.kv.getString(NoteSystem.groupKey);
     if (!mounted || !identical(bootstrap, widget.bootstrap)) return;
     _system = system;
     _identity = identity;

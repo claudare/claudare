@@ -51,10 +51,10 @@ class _SyncSetupState extends State<SyncSetup> {
       _saving = true;
     });
     try {
-      await widget.kv.setAll([
-        KeyValue(key: NoteSystem.serverUrlKey, value: value),
-        KeyValue(key: NoteSystem.groupKey, value: group),
-      ]);
+      await widget.kv.setAllStrings({
+        NoteSystem.serverUrlKey: value,
+        NoteSystem.groupKey: group,
+      });
       if (mounted) widget.onSaved(value, group);
     } on Exception {
       if (mounted) {

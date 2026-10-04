@@ -97,8 +97,8 @@ class _SettingsData {
     NoteSystem system,
   ) async {
     final (group, serverUrl, statistics) = await (
-      system.kv.get(NoteSystem.groupKey),
-      system.kv.get(NoteSystem.serverUrlKey),
+      system.kv.getString(NoteSystem.groupKey),
+      system.kv.getString(NoteSystem.serverUrlKey),
       application.query.statistics(),
     ).wait;
     return _SettingsData(
