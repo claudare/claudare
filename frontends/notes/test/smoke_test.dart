@@ -50,9 +50,13 @@ void main() {
 
     expect(find.text('This device actor key'), findsOneWidget);
     expect(find.text('test-actor'), findsOneWidget);
-    expect(find.text('Group'), findsOneWidget);
-    expect(find.text('0'), findsWidgets);
-    expect(find.text('Server URL'), findsOneWidget);
+    expect(find.text('Transport'), findsOneWidget);
+    expect(find.text('ws://localhost:7000 @ 0'), findsOneWidget);
+    await tester.tap(find.text('ws://localhost:7000 @ 0'));
+    await tester.pumpAndSettle();
+    expect(find.text('Transport settings'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Group'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'Server URL'), findsOneWidget);
     expect(find.text('ws://localhost:7000'), findsOneWidget);
   });
 

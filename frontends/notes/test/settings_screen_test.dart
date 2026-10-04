@@ -17,11 +17,10 @@ import 'package:time_provider/time_provider.dart';
 import 'package:sync/sync.dart';
 
 void main() {
-  testWidgets('device and sync details are selectable and read-only', (
-    tester,
-  ) async {
+  testWidgets('enabled transport displays URL at group', (tester) async {
     final kv = _ControlledKv();
     await kv.setAllStrings({
+      NoteSystem.syncEnabledKey: 'true',
       NoteSystem.groupKey: '001-notes',
       NoteSystem.serverUrlKey: 'wss://example.test/notes',
     });
@@ -32,37 +31,51 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_value(tester, 'This device actor key'), actor);
-    expect(_value(tester, 'Group'), '001-notes');
-    expect(_value(tester, 'Server URL'), 'wss://example.test/notes');
+    expect(_value(tester, 'Transport'), 'wss://example.test/notes @ 001-notes');
     expect(find.byType(TextField), findsNothing);
     expect(
       {for (final key in await kv.listKeys('')) key: await kv.getString(key)},
       {
+        NoteSystem.syncEnabledKey: 'true',
         NoteSystem.groupKey: '001-notes',
         NoteSystem.serverUrlKey: 'wss://example.test/notes',
       },
     );
   });
 
-  testWidgets('missing saved settings are shown as not configured', (
+  testWidgets('missing enabled flag displays disabled transport', (
     tester,
   ) async {
     final system = _system(MemoryKv());
     await tester.pumpWidget(_screen(system, _application(system)));
     await tester.pumpAndSettle();
 
-    expect(_value(tester, 'Group'), 'Not configured');
-    expect(_value(tester, 'Server URL'), 'Not configured');
+    expect(_value(tester, 'Transport'), 'Disabled');
   });
 
-  testWidgets('an empty saved group is preserved', (tester) async {
+  testWidgets('disabled transport retains saved fields in its editor', (
+    tester,
+  ) async {
     final kv = MemoryKv();
+    await kv.setBool(NoteSystem.syncEnabledKey, false);
+    await kv.setString(NoteSystem.serverUrlKey, 'wss://saved.test');
     await kv.setString(NoteSystem.groupKey, '');
     final system = _system(kv);
     await tester.pumpWidget(_screen(system, _application(system)));
     await tester.pumpAndSettle();
 
-    expect(_value(tester, 'Group'), '');
+    expect(_value(tester, 'Transport'), 'Disabled');
+    await tester.tap(find.text('Disabled'));
+    await tester.pumpAndSettle();
+    expect(find.text('Transport settings'), findsOneWidget);
+    expect(find.text('wss://saved.test'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'Group'))
+          .controller!
+          .text,
+      '',
+    );
   });
 
   testWidgets('pending reads keep all data loading and reset available', (
@@ -77,19 +90,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_value(tester, 'This device actor key'), 'Loading…');
-    expect(_value(tester, 'Group'), 'Loading…');
-    expect(_value(tester, 'Server URL'), 'Loading…');
-    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(5));
+    expect(_value(tester, 'Transport'), 'Loading…');
+    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(4));
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Transport')).onTap,
+      isNull,
+    );
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsOneWidget);
     await tester.tap(find.text('Cancel'));
-    pending.complete('saved value');
+    pending.complete(null);
     await tester.pumpAndSettle();
 
-    expect(_value(tester, 'Group'), 'saved value');
-    expect(_value(tester, 'Server URL'), 'saved value');
+    expect(_value(tester, 'Transport'), 'Disabled');
     expect(_value(tester, 'This device actor key'), application.actor);
     expect(find.widgetWithText(ListTile, '1'), findsNWidgets(2));
   });
@@ -105,12 +120,11 @@ void main() {
     await tester.pumpWidget(_screen(system, application));
     await tester.pumpAndSettle();
 
-    expect(_value(tester, 'Group'), 'Could not load settings');
-    expect(_value(tester, 'Server URL'), 'Could not load settings');
+    expect(_value(tester, 'Transport'), 'Could not load settings');
     expect(find.textContaining('private settings data'), findsNothing);
     expect(
       find.widgetWithText(ListTile, 'Could not load settings'),
-      findsNWidgets(5),
+      findsNWidgets(4),
     );
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
@@ -120,20 +134,22 @@ void main() {
 
   testWidgets('widget rebuilds reload the saved settings', (tester) async {
     final kv = _ControlledKv();
+    await kv.setBool(NoteSystem.syncEnabledKey, true);
+    await kv.setString(NoteSystem.serverUrlKey, 'wss://saved.test');
     await kv.setString(NoteSystem.groupKey, 'before');
     final system = _system(kv);
     final application = _application(system);
     await tester.pumpWidget(_screen(system, application));
     await tester.pumpAndSettle();
-    expect(kv.reads, 2);
-    expect(_value(tester, 'Group'), 'before');
+    expect(kv.reads, 3);
+    expect(_value(tester, 'Transport'), 'wss://saved.test @ before');
 
     await kv.setString(NoteSystem.groupKey, 'after');
     await tester.pumpWidget(_screen(system, application));
     await tester.pumpAndSettle();
 
-    expect(kv.reads, 4);
-    expect(_value(tester, 'Group'), 'after');
+    expect(kv.reads, 6);
+    expect(_value(tester, 'Transport'), 'wss://saved.test @ after');
   });
 
   testWidgets('a replacement system discards late results from old reads', (
@@ -148,22 +164,21 @@ void main() {
 
     final newKv = _ControlledKv();
     await newKv.setAllStrings({
+      NoteSystem.syncEnabledKey: 'true',
       NoteSystem.groupKey: 'new group',
       NoteSystem.serverUrlKey: 'wss://new.test',
     });
     final newSystem = _system(newKv);
     await tester.pumpWidget(_screen(newSystem, application));
     await tester.pumpAndSettle();
-    expect(_value(tester, 'Group'), 'new group');
-    expect(_value(tester, 'Server URL'), 'wss://new.test');
+    expect(_value(tester, 'Transport'), 'wss://new.test @ new group');
 
-    pending.complete('old value');
+    pending.complete(null);
     await tester.pumpAndSettle();
 
-    expect(_value(tester, 'Group'), 'new group');
-    expect(_value(tester, 'Server URL'), 'wss://new.test');
+    expect(_value(tester, 'Transport'), 'wss://new.test @ new group');
     expect(find.text('old value'), findsNothing);
-    expect(newKv.reads, 2);
+    expect(newKv.reads, 3);
   });
 
   testWidgets('replacement application updates the displayed actor', (
@@ -195,6 +210,8 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final url = 'wss://example.test/${'long-path/' * 12}';
     final kv = MemoryKv();
+    await kv.setBool(NoteSystem.syncEnabledKey, true);
+    await kv.setString(NoteSystem.groupKey, 'notes');
     await kv.setString(NoteSystem.serverUrlKey, url);
     final system = _system(kv);
     final actor = PublicKey.staticValue(42).toString();
@@ -204,8 +221,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_value(tester, 'This device actor key'), actor);
-    expect(_value(tester, 'Server URL'), url);
+    expect(_value(tester, 'Transport'), '$url @ notes');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('back after saving transport settings refreshes the tile', (
+    tester,
+  ) async {
+    final kv = MemoryKv();
+    final system = _system(kv);
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Transport'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Server URL'),
+      'ws://saved.test',
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Group'), 'notes');
+    await tester.pump();
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Transport settings'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Group'), 'unsaved');
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Transport'), 'ws://saved.test @ notes');
   });
 }
 
@@ -236,14 +280,12 @@ Widget _screen(NoteSystem system, NotesApp application) => NotesAppProvider(
   ),
 );
 
-String _value(WidgetTester tester, String label) => tester
-    .widget<SelectableText>(
-      find.descendant(
-        of: find.widgetWithText(ListTile, label),
-        matching: find.byType(SelectableText),
-      ),
-    )
-    .data!;
+String _value(WidgetTester tester, String label) {
+  final subtitle = tester
+      .widget<ListTile>(find.widgetWithText(ListTile, label))
+      .subtitle!;
+  return subtitle is Text ? subtitle.data! : (subtitle as SelectableText).data!;
+}
 
 class _ControlledKv extends MemoryKv {
   Future<String?> Function(String key)? read;

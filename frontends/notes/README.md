@@ -12,7 +12,9 @@ controls whether server configuration is required, even when a URL and group
 are already stored. Completed steps are preserved across restarts. Actor
 identity, peer pairings, sync configuration, and note events share
 `main.sqlite`. Resetting the database clears them all. The configured server
-is not contacted yet.
+can be changed or disabled from Transport settings without clearing its saved
+URL or group. Settings also provides a manual connection test using the
+server's `/health` endpoint. Notes does not open a replication connection.
 
 New events use the local public key as their actor identity. Note details and
 lists are rebuilt from that history when queried. It does not provide text
