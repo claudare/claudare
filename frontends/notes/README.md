@@ -18,7 +18,8 @@ server's `/health` endpoint. Notes does not open a replication connection.
 
 Settings shows the saved peer count and allows adding and removing peer public
 keys. New peer keys can be entered directly or populated from a static integer
-value. Existing peer keys are read-only.
+value. Existing peer keys are read-only. Settings also shows active note, stored
+event, and stored command counts.
 
 New events use the local public key as their actor identity. Note details and
 lists are rebuilt from that history when queried. It does not provide text

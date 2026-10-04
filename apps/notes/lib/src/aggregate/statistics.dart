@@ -43,19 +43,16 @@ class MakeshiftCrdt {
   }
 }
 
-/// Counts events and active notes across all streams.
+/// Counts active notes across all streams.
 class StatisticsState implements AggregateState<Object> {
   final MakeshiftCrdt _crdt;
 
-  int eventCount = 0;
   int get activeCount => _crdt.activeCount;
 
   StatisticsState() : _crdt = MakeshiftCrdt({});
 
   @override
   void apply(EventEnvelope<Object> envelope) {
-    eventCount++;
-
     final event = envelope.event;
     final occuredAt = envelope.occuredAt;
 

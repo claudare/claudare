@@ -149,7 +149,12 @@ class _SettingsBodyState extends State<_SettingsBody> {
           ListTile(
             leading: const Icon(Icons.event),
             title: const Text('Event Count'),
-            subtitle: Text(display(data?.statistics.eventCount.toString())),
+            subtitle: Text(display(data?.eventCount.toString())),
+          ),
+          ListTile(
+            leading: const Icon(Icons.terminal),
+            title: const Text('Command Count'),
+            subtitle: Text(display(data?.commandCount.toString())),
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever),
@@ -170,6 +175,8 @@ class _SettingsBodyState extends State<_SettingsBody> {
 class _SettingsData {
   final String actor;
   final int peerCount;
+  final int eventCount;
+  final int commandCount;
   final bool enabled;
   final String? group;
   final String? serverUrl;
@@ -178,6 +185,8 @@ class _SettingsData {
   const _SettingsData({
     required this.actor,
     required this.peerCount,
+    required this.eventCount,
+    required this.commandCount,
     required this.enabled,
     required this.group,
     required this.serverUrl,
@@ -188,16 +197,19 @@ class _SettingsData {
     NotesApp application,
     NoteSystem system,
   ) async {
-    final (enabled, group, serverUrl, statistics, peers) = await (
+    final (enabled, group, serverUrl, statistics, peers, storeState) = await (
       system.kv.getBool(NoteSystem.syncEnabledKey),
       system.kv.getString(NoteSystem.groupKey),
       system.kv.getString(NoteSystem.serverUrlKey),
       application.query.statistics(),
       system.identities.allPeers(),
+      system.eventStore.getState(),
     ).wait;
     return _SettingsData(
       actor: application.actor,
       peerCount: peers.length,
+      eventCount: (storeState.lastEventLogPosition ?? -1) + 1,
+      commandCount: (storeState.lastCommandLogPosition ?? -1) + 1,
       enabled: enabled ?? false,
       group: group,
       serverUrl: serverUrl,

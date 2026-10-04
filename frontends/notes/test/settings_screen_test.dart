@@ -92,7 +92,9 @@ void main() {
     expect(_value(tester, 'This device actor key'), 'Loading…');
     expect(_value(tester, 'Transport'), 'Loading…');
     expect(_value(tester, 'Peers'), 'Loading…');
-    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(5));
+    expect(_value(tester, 'Event Count'), 'Loading…');
+    expect(_value(tester, 'Command Count'), 'Loading…');
+    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(6));
     expect(
       tester.widget<ListTile>(find.widgetWithText(ListTile, 'Peers')).onTap,
       isNull,
@@ -111,7 +113,9 @@ void main() {
 
     expect(_value(tester, 'Transport'), 'Disabled');
     expect(_value(tester, 'This device actor key'), application.actor);
-    expect(find.widgetWithText(ListTile, '1'), findsNWidgets(2));
+    expect(_value(tester, 'Active Note Count'), '1');
+    expect(_value(tester, 'Event Count'), '1');
+    expect(_value(tester, 'Command Count'), '1');
   });
 
   testWidgets('read failures show one error state and leave reset available', (
@@ -129,7 +133,7 @@ void main() {
     expect(find.textContaining('private settings data'), findsNothing);
     expect(
       find.widgetWithText(ListTile, 'Could not load settings'),
-      findsNWidgets(5),
+      findsNWidgets(6),
     );
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
@@ -326,12 +330,76 @@ void main() {
     );
     expect(find.textContaining('private data'), findsNothing);
   });
+
+  for (final (eventPosition, commandPosition, events, commands) in [
+    (null, null, '0', '0'),
+    (0, 0, '1', '1'),
+    (4, 1, '5', '2'),
+  ]) {
+    testWidgets(
+      'store log positions $eventPosition/$commandPosition determine counts',
+      (tester) async {
+        final store = _ControlledEventStore()
+          ..readState = () async => EventDatabaseState(
+            lastEventLogPosition: eventPosition,
+            lastCommandLogPosition: commandPosition,
+            logVersion: CommandDependency(),
+          );
+        final system = _system(MemoryKv(), eventStore: store);
+        await tester.pumpWidget(_screen(system, _application(system)));
+        await tester.pumpAndSettle();
+
+        expect(_value(tester, 'Event Count'), events);
+        expect(_value(tester, 'Command Count'), commands);
+        expect(_value(tester, 'Active Note Count'), '0');
+      },
+    );
+  }
+
+  testWidgets('pending store state keeps event and command counts loading', (
+    tester,
+  ) async {
+    final pending = Completer<EventDatabaseState>();
+    final store = _ControlledEventStore()..readState = () => pending.future;
+    final system = _system(MemoryKv(), eventStore: store);
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Event Count'), 'Loading…');
+    expect(_value(tester, 'Command Count'), 'Loading…');
+    pending.complete(
+      EventDatabaseState(
+        lastEventLogPosition: 2,
+        lastCommandLogPosition: 1,
+        logVersion: CommandDependency(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_value(tester, 'Event Count'), '3');
+    expect(_value(tester, 'Command Count'), '2');
+  });
+
+  testWidgets('store state failure shows generic count errors', (tester) async {
+    final store = _ControlledEventStore()
+      ..readState = () async => throw Exception('private store data');
+    final system = _system(MemoryKv(), eventStore: store);
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Event Count'), 'Could not load settings');
+    expect(_value(tester, 'Command Count'), 'Could not load settings');
+    expect(find.textContaining('private store data'), findsNothing);
+  });
 }
 
-NoteSystem _system(Kv kv, {ActorIdentityStore? identities}) => NoteSystem(
+NoteSystem _system(
+  Kv kv, {
+  ActorIdentityStore? identities,
+  EventStore? eventStore,
+}) => NoteSystem(
   identities: identities ?? MemoryActorIdentityStore(),
   kv: kv,
-  eventStore: MemoryEventStore(),
+  eventStore: eventStore ?? MemoryEventStore(),
 );
 
 NotesApp _application(NoteSystem system, {String actor = 'local'}) => NotesApp(
@@ -377,4 +445,12 @@ class _FailingIdentities extends MemoryActorIdentityStore {
   @override
   Future<List<PeerActorIdentity>> allPeers() async =>
       throw Exception('private data');
+}
+
+class _ControlledEventStore extends MemoryEventStore {
+  Future<EventDatabaseState> Function()? readState;
+
+  @override
+  Future<EventDatabaseState> getState() =>
+      readState?.call() ?? super.getState();
 }

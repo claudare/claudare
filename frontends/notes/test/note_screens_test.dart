@@ -149,7 +149,9 @@ void main() {
     expect(await second.query.noteList(), hasLength(1));
   });
 
-  testWidgets('settings displays active notes and event count', (tester) async {
+  testWidgets('settings displays active notes, events, and commands', (
+    tester,
+  ) async {
     final eventStore = MemoryEventStore();
     final application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
@@ -165,10 +167,19 @@ void main() {
       reset: (_) async {},
     );
 
-    expect(find.text('Active Note Count'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
-    expect(find.text('Event Count'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
+    for (final (label, value) in [
+      ('Active Note Count', '1'),
+      ('Event Count', '3'),
+      ('Command Count', '3'),
+    ]) {
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, label),
+          matching: find.text(value),
+        ),
+        findsOneWidget,
+      );
+    }
     expect(find.text('Rerun projections'), findsNothing);
     expect(find.text('Reset database'), findsOneWidget);
   });

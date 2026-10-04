@@ -4,7 +4,7 @@ import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('statistics counts events and active notes', () {
+  test('statistics counts active notes', () {
     final state = AggregateTester(statisticsAggregate())
         .withEvent(
           'note/one',
@@ -18,7 +18,6 @@ void main() {
         )
         .run();
 
-    expect(state.eventCount, 2);
     expect(state.activeCount, 2);
   });
 
@@ -42,7 +41,6 @@ void main() {
         )
         .run();
 
-    expect(state.eventCount, 3);
     expect(state.activeCount, 1);
   });
 
