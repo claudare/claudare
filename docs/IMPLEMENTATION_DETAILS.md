@@ -1,20 +1,21 @@
 # Implementation Details
 
-The packages under `packages/*` are application-independent. Notes consumes them
-as a Flutter prototype and does not define their shared APIs.
+The packages under `packages/*` are application-independent. The Dart Notes core
+in `apps/notes` consumes them, and the Flutter prototype in `frontends/notes`
+consumes that core. Neither defines shared package APIs.
 
 ## Package ownership
 
-| Package            | Ownership                                                       |
-| ------------------ | --------------------------------------------------------------- |
-| `cqrs`             | Commands, event codecs and storage, aggregates, and the runtime |
-| `common`           | Async, pagination, and serialization primitives                 |
-| `crdt`             | Text CRDT, editor binding, and timestamp-based value helpers    |
-| `id_generator`     | ID generation                                                   |
-| `time_provider`    | System and deterministic clocks                                 |
-| `isolate_sqlite`   | SQLite library                                                  |
-| `claudare_logging` | Explicit logging contracts and implementations                  |
-| `package_template` | Scaffold for another workspace package                          |
+| Package | Ownership |
+| --- | --- |
+| `cqrs` | Commands, event codecs and storage, aggregates, and runtime |
+| `common` | Async, pagination, and serialization primitives |
+| `crdt` | Text CRDT, editor binding, and timestamp-based value helpers |
+| `id_generator` | ID generation |
+| `time_provider` | System and deterministic clocks |
+| `isolate_sqlite` | SQLite library |
+| `claudare_logging` | Explicit logging contracts and implementations |
+| `package_template` | Scaffold for another workspace package |
 
 Shared packages do not depend on applications. Consumers use public package
 entrypoints. Coding rules are in [CONVENTIONS.md](../CONVENTIONS.md).

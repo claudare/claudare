@@ -7,6 +7,7 @@ environment:
 workspace:
   - apps/*
   - backend/*
+  - frontends/*
   - packages/*
 
 dev_dependencies:

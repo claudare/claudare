@@ -1,7 +1,7 @@
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
-import 'package:notes/aggregate/note.dart';
-import 'package:notes/event/note.dart';
+import 'package:notes_app/src/aggregate/note.dart';
+import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
 
 void main() {

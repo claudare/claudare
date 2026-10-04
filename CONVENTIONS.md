@@ -1,7 +1,8 @@
 # Coding conventions
 
 These conventions apply to new and modified shared code. `apps/notes` consumes
-the shared packages but does not define their architecture or APIs.
+the shared packages, and `frontends/notes` consumes the Notes core. Neither
+defines the architecture or APIs of shared packages.
 
 ## Contracts and implementations
 

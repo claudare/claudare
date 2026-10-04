@@ -1,16 +1,16 @@
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
-import 'package:notes/application/note_application.dart';
-import 'package:notes/event/note.dart';
+import 'package:notes_app/notes_app.dart';
+import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
 
 void main() {
   late CqrsTestRuntime runtime;
-  late NoteApplication application;
+  late NotesApp application;
 
   setUp(() {
     runtime = CqrsTestRuntime();
-    application = NoteApplication(cqrsRuntime: runtime);
+    application = NotesApp(cqrsRuntime: runtime);
   });
 
   test('returns absent state for a note that was never created', () async {

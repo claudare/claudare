@@ -8,9 +8,10 @@ encrypted data between devices controlled by the user.
 ## Current status
 
 Claudare is a development prototype, not a finished local-first product.
-`apps/notes` is the first Flutter application and exists to exercise the shared
-packages through a real consumer. Its note domain, storage layout, and user
-interface are examples, not the architectural center of the repository.
+`apps/notes` is a Dart package for note behavior. The Flutter prototype in
+`frontends/notes` consumes it and exercises the shared packages through a real
+application. The note domain, storage layout, and user interface are examples,
+not the architectural center of the repository.
 
 The current code supports local event-sourced application development. It does
 not implement network transport, device identity or enrollment, multi-device
@@ -46,7 +47,7 @@ fvm flutter doctor
 Run the notes prototype:
 
 ```sh
-cd apps/notes
+cd frontends/notes
 fvm flutter run
 ```
 

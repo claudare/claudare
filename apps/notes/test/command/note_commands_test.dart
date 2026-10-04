@@ -1,13 +1,13 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
-import 'package:notes/command/create_note.dart';
-import 'package:notes/command/restore_note.dart';
-import 'package:notes/command/trash_note.dart';
-import 'package:notes/command/update_note_content.dart';
-import 'package:notes/command/update_note_title.dart';
-import 'package:notes/event/note.dart';
-import 'package:notes/application/paths.dart';
+import 'package:notes_app/src/command/create_note.dart';
+import 'package:notes_app/src/command/restore_note.dart';
+import 'package:notes_app/src/command/trash_note.dart';
+import 'package:notes_app/src/command/update_note_content.dart';
+import 'package:notes_app/src/command/update_note_title.dart';
+import 'package:notes_app/src/event/note.dart';
+import 'package:notes_app/src/application/paths.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 

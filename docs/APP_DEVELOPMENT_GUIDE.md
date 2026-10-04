@@ -1,8 +1,9 @@
 # App Development Guide
 
-Applications in `apps/*` own product behavior and compose the shared packages.
-`apps/notes` is one example. Its note events, commands, aggregates, and UI are
-application-specific.
+Dart packages in `apps/*` own product behavior and compose the shared packages.
+Flutter applications in `frontends/*` own their UI and platform setup.
+`apps/notes` owns note events, commands, and aggregates;
+`frontends/notes` consumes that behavior.
 
 ## Event-sourced flow
 
@@ -22,11 +23,11 @@ projection database.
 
 ## Application composition
 
-Keep storage lifecycle at the application boundary. The Notes bootstrap opens
-and migrates `events.sqlite`, constructs the event store and `CqrsRuntime`, and
-closes the SQLite connection on shutdown or failed initialization.
-`NoteApplication` registers the note event codecs and exposes `command` and
-`query` methods. Controllers depend on that application API.
+Keep storage lifecycle at the frontend boundary. The Notes bootstrap opens and
+migrates local SQLite storage, constructs the event store and `CqrsRuntime`, and
+closes the SQLite connection on shutdown or failed initialization. `NotesApp`
+registers note event codecs and exposes `command` and `query` methods.
+Controllers depend on that application API.
 
 Prefer an `InheritedWidget` provider for dependencies shared by screens, read
 with `of(context)`. Constructor injection is also fine when it is simpler,

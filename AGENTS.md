@@ -11,16 +11,17 @@ These instructions apply to the entire repository.
 
 ## Workspace
 
-- `apps/*` contains Flutter applications. Use short package names and
-  `com.claudare.<app>` for every platform application identifier.
+- `apps/*` contains Dart-only application cores. `frontends/*` contains Flutter
+  applications. Use short frontend package names and `com.claudare.<app>` for
+  every platform application identifier.
 - Shared packages own their respective concerns: `cqrs` owns CQRS and domain
   infrastructure; `common` owns shared async, causal, pagination, and
   serialization primitives; `id_generator` owns IDs; `time_provider` owns time;
   `crdt` owns CRDT helpers; `isolate_sqlite` owns SQLite isolation; and
   `claudare_logging` owns logging. `queue` and `package_template` are support
   packages.
-- Shared packages must not depend on applications. `apps/notes` is a prototype
-  consumer, not the architectural center.
+- Shared packages must not depend on application cores or frontends.
+  `apps/notes` consumes shared packages; `frontends/notes` consumes that core.
 - Keep repository-wide, documentation in `docs`. Keep package- and app-specific
   documentation beside its owner. Do not use `ideas` as maintained
   documentation.
