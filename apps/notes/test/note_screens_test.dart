@@ -5,10 +5,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/event_store_provider.dart';
+import 'package:notes/application/note_system.dart';
+import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/event/note.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
+
+import 'setup/setup_test_helpers.dart';
 
 void main() {
   testWidgets('home list updates after an external stored command', (
@@ -192,6 +196,7 @@ void main() {
     final resets = <bool>[];
     await _pumpSettings(tester, reset: (restart) async => resets.add(restart));
 
+    await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
     await tester.pumpAndSettle();
     expect(
@@ -218,6 +223,7 @@ void main() {
           reset: (restart) async => resets.add(restart),
         );
 
+        await tester.ensureVisible(find.text('Reset database'));
         await tester.tap(find.text('Reset database'));
         await tester.pumpAndSettle();
         final button = find.widgetWithText(
@@ -252,12 +258,19 @@ Future<void> _pumpSettings(
       application:
           application ??
           NoteApplication(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
-      child: EventStoreProvider(
-        eventStore: store,
-        reset: reset,
-        child: MaterialApp(
-          theme: ThemeData(platform: platform),
-          home: const SettingsScreen(),
+      child: NoteSystemProvider(
+        system: NoteSystem(
+          identities: TestIdentities(),
+          kv: TestKv(),
+          eventStore: store,
+        ),
+        child: EventStoreProvider(
+          eventStore: store,
+          reset: reset,
+          child: MaterialApp(
+            theme: ThemeData(platform: platform),
+            home: const SettingsScreen(),
+          ),
         ),
       ),
     ),

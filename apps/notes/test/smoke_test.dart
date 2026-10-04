@@ -36,6 +36,26 @@ void main() {
     expect(bootstrap.initializeCount, 1);
   });
 
+  testWidgets('settings can read the saved sync values through navigation', (
+    tester,
+  ) async {
+    final bootstrap = _ControlledBootstrap();
+    await tester.pumpWidget(
+      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+    );
+    bootstrap.complete();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.settings));
+    await tester.pumpAndSettle();
+
+    expect(find.text('This device actor key'), findsOneWidget);
+    expect(find.text('test-actor'), findsOneWidget);
+    expect(find.text('Group'), findsOneWidget);
+    expect(find.text('0'), findsWidgets);
+    expect(find.text('Server URL'), findsOneWidget);
+    expect(find.text('ws://localhost:7000'), findsOneWidget);
+  });
+
   testWidgets('shows a startup error inline and initializes only once', (
     tester,
   ) async {

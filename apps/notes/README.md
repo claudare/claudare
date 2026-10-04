@@ -2,9 +2,7 @@
 
 Notes is a Flutter prototype for local event-sourced notes. It creates, edits,
 trashes, and restores notes. Note queries support active and trashed filtering
-and chronological sorting. Settings shows active-note and event counts and can
-reset all local data after confirmation. Reset requires a fresh launch and
-repeats setup.
+and chronological sorting.
 
 On first launch, ActorSetup chooses a local public key and SyncSetup configures
 a replication server URL and a string group, defaulting to `"0"`. Completed

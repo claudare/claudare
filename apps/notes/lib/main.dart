@@ -6,6 +6,7 @@ import 'package:notes/application/note_application_provider.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/application/reset_database.dart';
 import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
@@ -183,10 +184,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (ready == null) return app;
     return NoteApplicationProvider(
       application: ready,
-      child: EventStoreProvider(
-        eventStore: _system!.eventStore,
-        reset: reset,
-        child: app,
+      // TODO: this is a bit redundant...
+      // Probably, each dep needs to be its own provider.
+      child: NoteSystemProvider(
+        system: _system!,
+        child: EventStoreProvider(
+          eventStore: _system!.eventStore,
+          reset: reset,
+          child: app,
+        ),
       ),
     );
   }
