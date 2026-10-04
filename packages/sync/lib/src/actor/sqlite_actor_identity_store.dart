@@ -89,6 +89,13 @@ class SqliteActorIdentityStore implements ActorIdentityStore {
       });
 
   @override
+  Future<void> deletePeer(PublicKey publicKey) => _database.transaction((tx) {
+    tx.execute('DELETE FROM sync_peer_actor_identity WHERE public_key = ?;', [
+      publicKey.bytes,
+    ]);
+  });
+
+  @override
   Future<void> deleteAllPeers() => _database.transaction((tx) {
     tx.execute('DELETE FROM sync_peer_actor_identity;');
   });

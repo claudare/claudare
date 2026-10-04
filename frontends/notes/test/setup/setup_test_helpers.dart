@@ -32,6 +32,9 @@ class TestIdentities implements ActorIdentityStore {
       throw UnimplementedError();
 
   @override
+  Future<void> deletePeer(PublicKey publicKey) async {}
+
+  @override
   Future<void> deleteAllPeers() => throw UnimplementedError();
 }
 

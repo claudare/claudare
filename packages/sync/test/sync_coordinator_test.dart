@@ -513,6 +513,10 @@ class _Identities implements ActorIdentityStore {
   }
 
   @override
+  Future<void> deletePeer(PublicKey publicKey) async =>
+      peers.removeWhere((peer) => peer.publicKey == publicKey);
+
+  @override
   Future<void> deleteAllPeers() async => peers.clear();
 
   @override

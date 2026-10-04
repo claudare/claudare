@@ -35,6 +35,9 @@ abstract interface class ActorIdentityStore {
   /// Throws when peer with the given identity already exists.
   Future<void> addPeer(PeerActorIdentity identity);
 
+  /// Deletes the peer with [publicKey], if present.
+  Future<void> deletePeer(PublicKey publicKey);
+
   /// Delete all peers from the store.
   /// This function is convenient in dev environment.
   Future<void> deleteAllPeers();
