@@ -28,6 +28,9 @@ abstract interface class ActorIdentityStore {
   /// Get a list of all peer identities.
   Future<List<PeerActorIdentity>> allPeers();
 
+  /// Gets the peer with [publicKey], or null if it is unknown.
+  Future<PeerActorIdentity?> getPeer(PublicKey publicKey);
+
   /// Adds a peer to the identity store. Double addition is not allowed.
   /// Throws when peer with the given identity already exists.
   Future<void> addPeer(PeerActorIdentity identity);

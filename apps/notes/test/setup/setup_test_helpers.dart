@@ -25,6 +25,9 @@ class TestIdentities implements ActorIdentityStore {
   Future<List<PeerActorIdentity>> allPeers() async => [];
 
   @override
+  Future<PeerActorIdentity?> getPeer(PublicKey publicKey) async => null;
+
+  @override
   Future<void> addPeer(PeerActorIdentity identity) =>
       throw UnimplementedError();
 

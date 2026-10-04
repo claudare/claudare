@@ -66,6 +66,20 @@ class SqliteActorIdentityStore implements ActorIdentityStore {
   });
 
   @override
+  Future<PeerActorIdentity?> getPeer(
+    PublicKey publicKey,
+  ) => _database.transaction((tx) {
+    final row = tx.queryRow(
+      'SELECT public_key FROM sync_peer_actor_identity WHERE public_key = ?;',
+      [publicKey.bytes],
+    );
+    if (row == null) return null;
+    return PeerActorIdentity(
+      publicKey: PublicKey(row.field<Uint8List>('public_key')),
+    );
+  });
+
+  @override
   Future<void> addPeer(PeerActorIdentity identity) =>
       _database.transaction((tx) {
         tx.execute(

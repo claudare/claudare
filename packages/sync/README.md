@@ -27,3 +27,15 @@ Use `StreamChannelTransformer.fromCodec` to apply it to a peer channel, and
 create a new `Replicator` for each replacement channel. These are development
 primitives, not a complete synchronization system. Transport delivery is
 live-only, and detection of a lost peer is delayed until timeout.
+
+`SyncCoordinator` owns transport and peer-session lifetimes while leaving its
+injected stores caller-owned. It admits known peer actors at session creation;
+removing an identity does not end an active session. Transport failure or
+closure schedules a fresh transport after a configurable delay, defaulting to
+five seconds. Replication failures close only the affected session.
+
+Start a coordinator once. Its idempotent `close()` initiates cleanup promptly
+without waiting for startup, identity lookups, or active store operations.
+Already-running store operations may finish afterwards. Restart requires a new
+coordinator. Silent WebSocket failures and transport-internal fatal callback
+errors are not recovered by the coordinator.

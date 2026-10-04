@@ -68,6 +68,35 @@ void main() {
       expect((await store.allPeers()).map((peer) => peer.publicKey), [key]);
     });
 
+    test('gets a peer by public key value', () async {
+      final key = PublicKey.staticValue(1);
+      for (final value in [1, 2]) {
+        await store.addPeer(
+          PeerActorIdentity(publicKey: PublicKey.staticValue(value)),
+        );
+      }
+
+      final peer = await store.getPeer(PublicKey.fromString(key.toString()));
+
+      expect(peer?.publicKey, key);
+    });
+
+    test('returns null for an unknown peer', () async {
+      await store.addPeer(
+        PeerActorIdentity(publicKey: PublicKey.staticValue(1)),
+      );
+
+      expect(await store.getPeer(PublicKey.staticValue(2)), isNull);
+    });
+
+    test('returns null for a removed peer', () async {
+      final key = PublicKey.staticValue(1);
+      await store.addPeer(PeerActorIdentity(publicKey: key));
+      await store.deleteAllPeers();
+
+      expect(await store.getPeer(key), isNull);
+    });
+
     test('deletes all peers', () async {
       for (final value in [1, 2]) {
         await store.addPeer(
