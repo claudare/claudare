@@ -8,6 +8,7 @@ import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/screens/confirm_database_reset.dart';
+import 'package:notes/screens/settings/peers_screen.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
 
 /// Displays saved device and sync details, statistics, and database reset.
@@ -77,6 +78,19 @@ class _SettingsBodyState extends State<_SettingsBody> {
     }
   }
 
+  Future<void> _openPeers() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => PeersScreen(identities: widget.system.identities),
+      ),
+    );
+    if (mounted) {
+      setState(() {
+        _data = _load();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<_SettingsData>(
     future: _data,
@@ -96,6 +110,17 @@ class _SettingsBodyState extends State<_SettingsBody> {
             leading: const Icon(Icons.key),
             title: const Text('This device actor key'),
             subtitle: SelectableText(display(data?.actor)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.group),
+            title: const Text('Peers'),
+            subtitle: Text(display(data?.peerCount.toString())),
+            onTap:
+                snapshot.connectionState == ConnectionState.done &&
+                    !snapshot.hasError &&
+                    data != null
+                ? _openPeers
+                : null,
           ),
           ListTile(
             leading: const Icon(Icons.dns),
@@ -144,6 +169,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
 
 class _SettingsData {
   final String actor;
+  final int peerCount;
   final bool enabled;
   final String? group;
   final String? serverUrl;
@@ -151,6 +177,7 @@ class _SettingsData {
 
   const _SettingsData({
     required this.actor,
+    required this.peerCount,
     required this.enabled,
     required this.group,
     required this.serverUrl,
@@ -161,14 +188,16 @@ class _SettingsData {
     NotesApp application,
     NoteSystem system,
   ) async {
-    final (enabled, group, serverUrl, statistics) = await (
+    final (enabled, group, serverUrl, statistics, peers) = await (
       system.kv.getBool(NoteSystem.syncEnabledKey),
       system.kv.getString(NoteSystem.groupKey),
       system.kv.getString(NoteSystem.serverUrlKey),
       application.query.statistics(),
+      system.identities.allPeers(),
     ).wait;
     return _SettingsData(
       actor: application.actor,
+      peerCount: peers.length,
       enabled: enabled ?? false,
       group: group,
       serverUrl: serverUrl,

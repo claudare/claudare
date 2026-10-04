@@ -91,7 +91,12 @@ void main() {
 
     expect(_value(tester, 'This device actor key'), 'Loading…');
     expect(_value(tester, 'Transport'), 'Loading…');
-    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(4));
+    expect(_value(tester, 'Peers'), 'Loading…');
+    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(5));
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Peers')).onTap,
+      isNull,
+    );
     expect(
       tester.widget<ListTile>(find.widgetWithText(ListTile, 'Transport')).onTap,
       isNull,
@@ -124,7 +129,7 @@ void main() {
     expect(find.textContaining('private settings data'), findsNothing);
     expect(
       find.widgetWithText(ListTile, 'Could not load settings'),
-      findsNWidgets(4),
+      findsNWidgets(5),
     );
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
@@ -251,10 +256,80 @@ void main() {
 
     expect(_value(tester, 'Transport'), 'ws://saved.test @ notes');
   });
+
+  testWidgets('Peers appears below the device key with its saved count', (
+    tester,
+  ) async {
+    final system = _system(MemoryKv());
+    for (final value in [1, 2]) {
+      await system.identities.addPeer(
+        PeerActorIdentity(publicKey: PublicKey.staticValue(value)),
+      );
+    }
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Peers'), '2');
+    final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
+    expect((tiles[0].title as Text).data, 'This device actor key');
+    expect((tiles[1].title as Text).data, 'Peers');
+    expect(tiles[1].subtitle, isA<Text>());
+  });
+
+  for (final remove in [false, true]) {
+    testWidgets('returning from Peers refreshes count after remove=$remove', (
+      tester,
+    ) async {
+      final system = _system(MemoryKv());
+      final key = PublicKey.staticValue(42);
+      if (remove) {
+        await system.identities.addPeer(PeerActorIdentity(publicKey: key));
+      }
+      await tester.pumpWidget(_screen(system, _application(system)));
+      await tester.pumpAndSettle();
+      final subtitle = find.descendant(
+        of: find.widgetWithText(ListTile, 'Peers'),
+        matching: find.text(remove ? '1' : '0'),
+      );
+      await tester.tap(subtitle);
+      await tester.pumpAndSettle();
+      expect(find.text('Peers'), findsOneWidget);
+      if (remove) {
+        await tester.tap(find.text('Remove'));
+      } else {
+        await tester.enterText(
+          find.widgetWithText(TextField, 'Public key'),
+          key.toString(),
+        );
+        await tester.tap(find.text('Add'));
+      }
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+
+      expect(_value(tester, 'Peers'), remove ? '0' : '1');
+    });
+  }
+
+  testWidgets('peer read failure leaves Peers unavailable with generic error', (
+    tester,
+  ) async {
+    final identities = _FailingIdentities();
+    final system = _system(MemoryKv(), identities: identities);
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Peers'), 'Could not load settings');
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Peers')).onTap,
+      isNull,
+    );
+    expect(find.textContaining('private data'), findsNothing);
+  });
 }
 
-NoteSystem _system(Kv kv) => NoteSystem(
-  identities: MemoryActorIdentityStore(),
+NoteSystem _system(Kv kv, {ActorIdentityStore? identities}) => NoteSystem(
+  identities: identities ?? MemoryActorIdentityStore(),
   kv: kv,
   eventStore: MemoryEventStore(),
 );
@@ -296,4 +371,10 @@ class _ControlledKv extends MemoryKv {
     reads++;
     return read?.call(key) ?? super.getString(key);
   }
+}
+
+class _FailingIdentities extends MemoryActorIdentityStore {
+  @override
+  Future<List<PeerActorIdentity>> allPeers() async =>
+      throw Exception('private data');
 }
