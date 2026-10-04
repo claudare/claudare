@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:claudare_crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kv/kv.dart';
+import 'package:sync/sync.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/screens/setup/actor_setup.dart';
 import 'package:notes/screens/setup/sync_setup.dart';
@@ -10,14 +12,14 @@ import 'package:notes/screens/setup/sync_setup.dart';
 import 'setup_test_helpers.dart';
 
 void main() {
-  Future<void> showActor(WidgetTester tester, TestIdentities store) =>
+  Future<void> showActor(WidgetTester tester, ActorIdentityStore store) =>
       tester.pumpWidget(
         MaterialApp(
           home: ActorSetup(identities: store, onSaved: (_) {}),
         ),
       );
 
-  Future<void> showSync(WidgetTester tester, TestKv store) => tester.pumpWidget(
+  Future<void> showSync(WidgetTester tester, Kv store) => tester.pumpWidget(
     MaterialApp(
       home: SyncSetup(kv: store, onSaved: (_, _) {}),
     ),
@@ -26,13 +28,13 @@ void main() {
   testWidgets('actor key is read-only and starts as a random candidate', (
     tester,
   ) async {
-    final store = TestIdentities();
+    final store = MemoryActorIdentityStore();
     await showActor(tester, store);
     final key = tester
         .widget<SelectableText>(find.byType(SelectableText))
         .data!;
     expect(PublicKey.fromString(key).bytes, hasLength(32));
-    expect(store.local, isNull);
+    expect(await store.getLocal(), isNull);
     expect(find.byType(TextField), findsOneWidget);
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
@@ -43,7 +45,7 @@ void main() {
   testWidgets('random regeneration replaces the unsaved candidate', (
     tester,
   ) async {
-    final store = TestIdentities();
+    final store = MemoryActorIdentityStore();
     await showActor(tester, store);
     final before = tester
         .widget<SelectableText>(find.byType(SelectableText))
@@ -54,14 +56,14 @@ void main() {
       tester.widget<SelectableText>(find.byType(SelectableText)).data,
       isNot(before),
     );
-    expect(store.local, isNull);
+    expect(await store.getLocal(), isNull);
   });
 
   for (final value in [0, 17, -1]) {
     testWidgets('static value $value is persisted only on Continue', (
       tester,
     ) async {
-      final store = TestIdentities();
+      final store = MemoryActorIdentityStore();
       await showActor(tester, store);
       await tester.enterText(find.byType(TextField), '$value');
       await tester.tap(find.text('Populate from static value'));
@@ -70,17 +72,17 @@ void main() {
         find.text(PublicKey.staticValue(value).toString()),
         findsOneWidget,
       );
-      expect(store.local, isNull);
+      expect(await store.getLocal(), isNull);
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(store.local!.publicKey, PublicKey.staticValue(value));
+      expect((await store.getLocal())!.publicKey, PublicKey.staticValue(value));
     });
   }
 
   testWidgets('invalid static input leaves the candidate unchanged', (
     tester,
   ) async {
-    await showActor(tester, TestIdentities());
+    await showActor(tester, MemoryActorIdentityStore());
     final before = tester
         .widget<SelectableText>(find.byType(SelectableText))
         .data;
@@ -129,14 +131,14 @@ void main() {
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
       isNull,
     );
-    expect(store.local, isNull);
+    expect(await store.getLocal(), isNull);
     pending.complete();
     await tester.pumpAndSettle();
-    expect(store.local, isNotNull);
+    expect(await store.getLocal(), isNotNull);
   });
 
   testWidgets('server URL defaults to localhost', (tester) async {
-    final store = TestKv();
+    final store = MemoryKv();
     await showSync(tester, store);
     expect(
       tester
@@ -149,11 +151,14 @@ void main() {
     );
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(store.values[NoteSystem.serverUrlKey], 'ws://localhost:7000');
+    expect(
+      await store.getString(NoteSystem.serverUrlKey),
+      'ws://localhost:7000',
+    );
   });
 
   testWidgets('group defaults to the string zero', (tester) async {
-    final store = TestKv();
+    final store = MemoryKv();
     await showSync(tester, store);
     expect(
       tester
@@ -164,12 +169,12 @@ void main() {
     );
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(store.values[NoteSystem.groupKey], '0');
+    expect(await store.getString(NoteSystem.groupKey), '0');
   });
 
   for (final group in ['notes-team', '001', '']) {
     testWidgets('saves group "$group" as a string', (tester) async {
-      final store = TestKv();
+      final store = MemoryKv();
       String? savedGroup;
       await tester.pumpWidget(
         MaterialApp(
@@ -179,14 +184,14 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Group'), group);
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
-      expect(store.values[NoteSystem.groupKey], group);
+      expect(await store.getString(NoteSystem.groupKey), group);
       expect(savedGroup, group);
     });
   }
 
   for (final value in ['', 'http://localhost:7000', 'ws:', 'wss:///']) {
     testWidgets('server URL rejects "$value"', (tester) async {
-      final store = TestKv();
+      final store = MemoryKv();
       await showSync(tester, store);
       await tester.enterText(
         find.widgetWithText(TextField, 'Replication server URL'),
@@ -195,13 +200,13 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
       expect(find.text('Enter a ws or wss URL with a host'), findsOneWidget);
-      expect(store.values, isEmpty);
+      expect(await store.listKeys(''), isEmpty);
     });
   }
 
   for (final scheme in ['ws', 'wss']) {
     testWidgets('server URL accepts and trims $scheme', (tester) async {
-      final store = TestKv();
+      final store = MemoryKv();
       await showSync(tester, store);
       await tester.enterText(
         find.widgetWithText(TextField, 'Replication server URL'),
@@ -210,7 +215,7 @@ void main() {
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
       expect(
-        store.values[NoteSystem.serverUrlKey],
+        await store.getString(NoteSystem.serverUrlKey),
         '$scheme://example.test:7000/path',
       );
     });
@@ -233,7 +238,7 @@ void main() {
       find.text('Could not save sync settings. Try again.'),
       findsOneWidget,
     );
-    expect(store.values, isEmpty);
+    expect(await store.listKeys(''), isEmpty);
     store.saveError = null;
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
@@ -256,7 +261,7 @@ void main() {
       isNull,
     );
     expect(advanced, isFalse);
-    expect(store.values, isEmpty);
+    expect(await store.listKeys(''), isEmpty);
     expect(
       tester.widget<TextField>(find.widgetWithText(TextField, 'Group')).enabled,
       isFalse,

@@ -11,7 +11,9 @@ import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
-import 'setup/setup_test_helpers.dart';
+import 'package:kv/kv.dart';
+import 'package:sync/sync.dart';
+
 import 'support/remote_note_update.dart';
 
 void main() {
@@ -241,8 +243,8 @@ Future<void> _pumpSettings(
           NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
       child: NoteSystemProvider(
         system: NoteSystem(
-          identities: TestIdentities(),
-          kv: TestKv(),
+          identities: MemoryActorIdentityStore(),
+          kv: MemoryKv(),
           eventStore: store,
         ),
         child: EventStoreProvider(

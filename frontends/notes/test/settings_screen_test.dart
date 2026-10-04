@@ -14,15 +14,17 @@ import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 import 'package:time_provider/time_provider.dart';
 
-import 'setup/setup_test_helpers.dart';
+import 'package:sync/sync.dart';
 
 void main() {
   testWidgets('device and sync details are selectable and read-only', (
     tester,
   ) async {
-    final kv = _ControlledKv()
-      ..values[NoteSystem.groupKey] = '001-notes'
-      ..values[NoteSystem.serverUrlKey] = 'wss://example.test/notes';
+    final kv = _ControlledKv();
+    await kv.setAllStrings({
+      NoteSystem.groupKey: '001-notes',
+      NoteSystem.serverUrlKey: 'wss://example.test/notes',
+    });
     final system = _system(kv);
     final actor = PublicKey.staticValue(42).toString();
     final application = _application(system, actor: actor);
@@ -33,16 +35,19 @@ void main() {
     expect(_value(tester, 'Group'), '001-notes');
     expect(_value(tester, 'Server URL'), 'wss://example.test/notes');
     expect(find.byType(TextField), findsNothing);
-    expect(kv.values, {
-      NoteSystem.groupKey: '001-notes',
-      NoteSystem.serverUrlKey: 'wss://example.test/notes',
-    });
+    expect(
+      {for (final key in await kv.listKeys('')) key: await kv.getString(key)},
+      {
+        NoteSystem.groupKey: '001-notes',
+        NoteSystem.serverUrlKey: 'wss://example.test/notes',
+      },
+    );
   });
 
   testWidgets('missing saved settings are shown as not configured', (
     tester,
   ) async {
-    final system = _system(TestKv());
+    final system = _system(MemoryKv());
     await tester.pumpWidget(_screen(system, _application(system)));
     await tester.pumpAndSettle();
 
@@ -51,7 +56,8 @@ void main() {
   });
 
   testWidgets('an empty saved group is preserved', (tester) async {
-    final kv = TestKv()..values[NoteSystem.groupKey] = '';
+    final kv = MemoryKv();
+    await kv.setString(NoteSystem.groupKey, '');
     final system = _system(kv);
     await tester.pumpWidget(_screen(system, _application(system)));
     await tester.pumpAndSettle();
@@ -113,7 +119,8 @@ void main() {
   });
 
   testWidgets('widget rebuilds reload the saved settings', (tester) async {
-    final kv = _ControlledKv()..values[NoteSystem.groupKey] = 'before';
+    final kv = _ControlledKv();
+    await kv.setString(NoteSystem.groupKey, 'before');
     final system = _system(kv);
     final application = _application(system);
     await tester.pumpWidget(_screen(system, application));
@@ -121,7 +128,7 @@ void main() {
     expect(kv.reads, 2);
     expect(_value(tester, 'Group'), 'before');
 
-    kv.values[NoteSystem.groupKey] = 'after';
+    await kv.setString(NoteSystem.groupKey, 'after');
     await tester.pumpWidget(_screen(system, application));
     await tester.pumpAndSettle();
 
@@ -139,9 +146,11 @@ void main() {
     await tester.pumpWidget(_screen(oldSystem, application));
     await tester.pumpAndSettle();
 
-    final newKv = _ControlledKv()
-      ..values[NoteSystem.groupKey] = 'new group'
-      ..values[NoteSystem.serverUrlKey] = 'wss://new.test';
+    final newKv = _ControlledKv();
+    await newKv.setAllStrings({
+      NoteSystem.groupKey: 'new group',
+      NoteSystem.serverUrlKey: 'wss://new.test',
+    });
     final newSystem = _system(newKv);
     await tester.pumpWidget(_screen(newSystem, application));
     await tester.pumpAndSettle();
@@ -160,7 +169,7 @@ void main() {
   testWidgets('replacement application updates the displayed actor', (
     tester,
   ) async {
-    final system = _system(TestKv());
+    final system = _system(MemoryKv());
     final firstActor = PublicKey.staticValue(1).toString();
     final secondActor = PublicKey.staticValue(2).toString();
     await tester.pumpWidget(
@@ -185,7 +194,8 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final url = 'wss://example.test/${'long-path/' * 12}';
-    final kv = TestKv()..values[NoteSystem.serverUrlKey] = url;
+    final kv = MemoryKv();
+    await kv.setString(NoteSystem.serverUrlKey, url);
     final system = _system(kv);
     final actor = PublicKey.staticValue(42).toString();
     await tester.pumpWidget(
@@ -200,7 +210,7 @@ void main() {
 }
 
 NoteSystem _system(Kv kv) => NoteSystem(
-  identities: TestIdentities(),
+  identities: MemoryActorIdentityStore(),
   kv: kv,
   eventStore: MemoryEventStore(),
 );
@@ -235,7 +245,7 @@ String _value(WidgetTester tester, String label) => tester
     )
     .data!;
 
-class _ControlledKv extends TestKv {
+class _ControlledKv extends MemoryKv {
   Future<String?> Function(String key)? read;
   int reads = 0;
 

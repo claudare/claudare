@@ -18,7 +18,7 @@ void main() {
       testWidgets('startup with actor=$actor and server=$server', (
         tester,
       ) async {
-        final system = testSystem(actor: actor, server: server);
+        final system = await testSystem(actor: actor, server: server);
         final bootstrap = _SetupBootstrap(system);
         await tester.pumpWidget(
           MyApp(
@@ -62,7 +62,7 @@ void main() {
   testWidgets('missing group preserves the server URL during setup', (
     tester,
   ) async {
-    final system = testSystem(group: false);
+    final system = await testSystem(group: false);
     await system.kv.setString(NoteSystem.serverUrlKey, 'wss://example.test');
     final bootstrap = _SetupBootstrap(system);
     await tester.pumpWidget(
@@ -87,7 +87,7 @@ void main() {
   testWidgets('relaunch preserves a configured group and skips setup', (
     tester,
   ) async {
-    final system = testSystem(server: false, group: false);
+    final system = await testSystem(server: false, group: false);
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),
@@ -112,7 +112,7 @@ void main() {
   testWidgets('relaunch after actor setup shows only server setup', (
     tester,
   ) async {
-    final system = testSystem(actor: false, server: false);
+    final system = await testSystem(actor: false, server: false);
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),

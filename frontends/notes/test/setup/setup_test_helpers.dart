@@ -4,83 +4,55 @@ import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:sync/sync.dart';
 
-class TestIdentities implements ActorIdentityStore {
-  LocalActorIdentity? local;
+class TestIdentities extends MemoryActorIdentityStore {
   Exception? saveError;
   Future<void>? saveDelay;
-
-  TestIdentities({this.local});
-
-  @override
-  Future<LocalActorIdentity?> getLocal() async => local;
 
   @override
   Future<LocalActorIdentity> setLocal(LocalActorIdentity identity) async {
     await saveDelay;
     if (saveError != null) throw saveError!;
-    return local = identity;
+    return super.setLocal(identity);
   }
-
-  @override
-  Future<List<PeerActorIdentity>> allPeers() async => [];
-
-  @override
-  Future<PeerActorIdentity?> getPeer(PublicKey publicKey) async => null;
-
-  @override
-  Future<void> addPeer(PeerActorIdentity identity) =>
-      throw UnimplementedError();
-
-  @override
-  Future<void> deletePeer(PublicKey publicKey) async {}
-
-  @override
-  Future<void> deleteAllPeers() => throw UnimplementedError();
 }
 
-class TestKv implements Kv {
-  final values = <String, String>{};
+class TestKv extends MemoryKv {
   Exception? saveError;
   Future<void>? saveDelay;
-
-  @override
-  Future<String?> getString(String key) async => values[key];
 
   @override
   Future<void> setString(String key, String value) async {
     await saveDelay;
     if (saveError != null) throw saveError!;
-    values[key] = value;
+    await super.setString(key, value);
   }
 
   @override
   Future<void> setAllStrings(Map<String, String> entries) async {
     await saveDelay;
     if (saveError != null) throw saveError!;
-    values.addAll(entries);
+    await super.setAllStrings(entries);
   }
-
-  @override
-  Future<void> delete(String key) async => values.remove(key);
-
-  @override
-  Future<List<String>> listKeys(String prefix) => throw UnimplementedError();
 }
 
-NoteSystem testSystem({
+Future<NoteSystem> testSystem({
   bool actor = true,
   bool server = true,
   bool group = true,
-}) {
-  final kv = TestKv();
-  if (server) kv.values[NoteSystem.serverUrlKey] = 'ws://localhost:7000';
-  if (group) kv.values[NoteSystem.groupKey] = '0';
+}) async {
+  final kv = MemoryKv();
+  if (server) {
+    await kv.setString(NoteSystem.serverUrlKey, 'ws://localhost:7000');
+  }
+  if (group) await kv.setString(NoteSystem.groupKey, '0');
+  final identities = MemoryActorIdentityStore();
+  if (actor) {
+    await identities.setLocal(
+      LocalActorIdentity(publicKey: PublicKey.staticValue(42)),
+    );
+  }
   return NoteSystem(
-    identities: TestIdentities(
-      local: actor
-          ? LocalActorIdentity(publicKey: PublicKey.staticValue(42))
-          : null,
-    ),
+    identities: identities,
     kv: kv,
     eventStore: MemoryEventStore(),
   );

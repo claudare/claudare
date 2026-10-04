@@ -13,7 +13,7 @@ import 'transport/proxy_transport_test_helper.dart'
 
 void main() {
   test('known peers exchange stored commands through the codec', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
     expect(peer.messages.single, isA<ReplicationMessageDependency>());
@@ -32,7 +32,7 @@ void main() {
   });
 
   test('unknown peers are closed without starting replication', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final peer = h.discover(actor: PublicKey.staticValue(3).toString());
     await flushMessages();
     expect(peer.closed, isTrue);
@@ -44,7 +44,7 @@ void main() {
     StateError('private data'),
   ]) {
     test('identity lookup failure $failure closes only that session', () async {
-      final h = _Harness();
+      final h = await _Harness.create();
       h.identities.lookup = () async => throw failure;
       final peer = h.discover();
       await flushMessages();
@@ -56,7 +56,7 @@ void main() {
   }
 
   test('identity removal leaves active sessions open', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
     await h.identities.deleteAllPeers();
@@ -67,7 +67,7 @@ void main() {
   });
 
   test('identity removal blocks a later admission', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     h.discover();
     await flushMessages();
     await h.identities.deleteAllPeers();
@@ -79,7 +79,7 @@ void main() {
 
   for (final cause in ['factory', 'startup', 'stream error', 'stream done']) {
     test('$cause schedules exactly one delayed replacement', () async {
-      final h = _Harness(start: false);
+      final h = await _Harness.create(start: false);
       final starting = Completer<void>();
       if (cause == 'factory') h.factoryFailure = Exception('private data');
       if (cause == 'startup') h.onStart = () => starting.future;
@@ -112,26 +112,26 @@ void main() {
   }
 
   test('recovery retires active and pending sessions', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final active = h.discover();
     await flushMessages();
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final pending = h.discover(
-      actor: h.identities.peers.last.publicKey.toString(),
+      actor: (await h.identities.allPeers()).last.publicKey.toString(),
     );
     await flushMessages();
     h.transports.single.discovery.addError(Exception('disconnected'));
     await flushMessages();
     expect(active.closed, isTrue);
     expect(pending.closed, isTrue);
-    lookup.complete(h.identities.peers.last);
+    lookup.complete((await h.identities.allPeers()).last);
     await flushMessages();
     expect(pending.messages, isEmpty);
   });
 
   test('recovery uses the configured delay', () async {
-    final h = _Harness(reconnectDelay: const Duration(seconds: 2));
+    final h = await _Harness.create(reconnectDelay: const Duration(seconds: 2));
     h.transports.single.discovery.addError(Exception('disconnected'));
     await flushMessages();
     await h.clock.elapse(const Duration(seconds: 1));
@@ -141,7 +141,7 @@ void main() {
   });
 
   test('late startup failure cannot restart a replacement transport', () async {
-    final h = _Harness(start: false);
+    final h = await _Harness.create(start: false);
     final starting = Completer<void>();
     h.onStart = () => starting.future;
     h.coordinator.start();
@@ -160,10 +160,10 @@ void main() {
     StateError('private data'),
   ]) {
     test('replication failure $failure is contained to one session', () async {
-      final h = _Harness();
+      final h = await _Harness.create();
       final first = h.discover();
       final second = h.discover(
-        actor: h.identities.peers.last.publicKey.toString(),
+        actor: (await h.identities.allPeers()).last.publicKey.toString(),
       );
       await flushMessages();
       h.store.readState = () async => throw failure;
@@ -182,7 +182,7 @@ void main() {
   }
 
   test('malformed replication data closes only its session', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
     peer.channel.foreign.sink.add('private data');
@@ -193,7 +193,7 @@ void main() {
   });
 
   test('superseded admission cannot replace the current session', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final old = h.discover();
@@ -201,7 +201,7 @@ void main() {
     h.identities.lookup = null;
     final current = h.discover();
     await flushMessages();
-    lookup.complete(h.identities.peers.first);
+    lookup.complete((await h.identities.allPeers()).first);
     await flushMessages();
     expect(old.closed, isTrue);
     expect(old.messages, isEmpty);
@@ -210,41 +210,41 @@ void main() {
   });
 
   test('channel closure during admission prevents replication', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final peer = h.discover();
     await flushMessages();
     await peer.channel.foreign.sink.close();
     await flushMessages();
-    lookup.complete(h.identities.peers.first);
+    lookup.complete((await h.identities.allPeers()).first);
     await flushMessages();
     expect(peer.messages, isEmpty);
     expect(h.store.stateReads, 0);
   });
 
   test('messages received during admission are retained', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final peer = h.discover();
     peer.send(ReplicationMessageDependency(CommandDependency()));
     await flushMessages();
-    lookup.complete(h.identities.peers.first);
+    lookup.complete((await h.identities.allPeers()).first);
     await flushMessages();
     expect(peer.closed, isFalse);
     expect(peer.messages.single, isA<ReplicationMessageDependency>());
   });
 
   test('channel errors during admission prevent replication', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final peer = h.discover();
     await flushMessages();
     peer.channel.foreign.sink.addError(StateError('private data'));
     await flushMessages();
-    lookup.complete(h.identities.peers.first);
+    lookup.complete((await h.identities.allPeers()).first);
     await flushMessages();
     expect(peer.closed, isTrue);
     expect(h.store.stateReads, 0);
@@ -252,7 +252,7 @@ void main() {
   });
 
   test('old replication completion cannot retire its replacement', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final read = Completer<EventDatabaseState>();
     h.store.readState = () => read.future;
     final old = h.discover();
@@ -271,7 +271,7 @@ void main() {
   });
 
   test('close during startup is prompt and closes a late startup', () async {
-    final h = _Harness(start: false);
+    final h = await _Harness.create(start: false);
     final starting = Completer<void>();
     h.onStart = () => starting.future;
     h.coordinator.start();
@@ -284,7 +284,7 @@ void main() {
   });
 
   test('close cancels the reconnect delay', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     h.transports.single.discovery.addError(Exception('disconnected'));
     await flushMessages();
     await _closePromptly(h);
@@ -295,7 +295,7 @@ void main() {
 
   for (final fails in [false, true]) {
     test('close during identity lookup ignores late result: $fails', () async {
-      final h = _Harness();
+      final h = await _Harness.create();
       final lookup = Completer<PeerActorIdentity?>();
       h.identities.lookup = () => lookup.future;
       final peer = h.discover();
@@ -304,7 +304,7 @@ void main() {
       if (fails) {
         lookup.completeError(StateError('private data'));
       } else {
-        lookup.complete(h.identities.peers.first);
+        lookup.complete((await h.identities.allPeers()).first);
       }
       await flushMessages();
       expect(peer.closed, isTrue);
@@ -314,7 +314,7 @@ void main() {
   }
 
   test('close during a blocked store write prevents a late ACK', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final save = Completer<bool>();
     h.store.save = (_) => save.future;
     final peer = h.discover();
@@ -331,7 +331,7 @@ void main() {
   });
 
   test('replacement proceeds while the old store write is blocked', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final save = Completer<bool>();
     h.store.save = (_) => save.future;
     final old = h.discover();
@@ -350,7 +350,7 @@ void main() {
   });
 
   test('blocked peer cleanup does not delay shutdown', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     final cancelled = Completer<void>();
     var cancellationStarted = false;
     final incoming = StreamController<String>(
@@ -363,7 +363,7 @@ void main() {
     final outgoing = StreamController<String>();
     h.transports.single.discovery.add(
       PeerTransport(
-        actor: h.identities.peers.first.publicKey.toString(),
+        actor: (await h.identities.allPeers()).first.publicKey.toString(),
         channel: StreamChannel(incoming.stream, outgoing.sink),
       ),
     );
@@ -384,7 +384,7 @@ void main() {
   test(
     'blocked cleanup does not delay close and late failures are observed',
     () async {
-      final h = _Harness();
+      final h = await _Harness.create();
       await flushMessages();
       final closing = Completer<void>();
       final cancelling = Completer<void>();
@@ -405,7 +405,7 @@ void main() {
   );
 
   test('repeated closure is safe and leaves injected stores usable', () async {
-    final h = _Harness();
+    final h = await _Harness.create();
     await flushMessages();
     await h.coordinator.close();
     await h.coordinator.close();
@@ -414,13 +414,13 @@ void main() {
     expect(await h.store.addStoredCommand(_command()), isTrue);
   });
 
-  test('repeated startup throws', () {
-    final h = _Harness();
+  test('repeated startup throws', () async {
+    final h = await _Harness.create();
     expect(h.coordinator.start, throwsStateError);
   });
 
   test('startup after closure throws', () async {
-    final h = _Harness(start: false);
+    final h = await _Harness.create(start: false);
     await h.coordinator.close();
     expect(h.coordinator.start, throwsStateError);
     expect(h.attempts, 0);
@@ -438,7 +438,7 @@ class _Harness {
   int attempts = 0;
   late final SyncCoordinator coordinator;
 
-  _Harness({bool start = true, Duration? reconnectDelay}) {
+  _Harness._({Duration? reconnectDelay}) {
     coordinator = SyncCoordinator(
       eventStore: store,
       identityStore: identities,
@@ -454,7 +454,20 @@ class _Harness {
       },
     );
     addTearDown(coordinator.close);
-    if (start) coordinator.start();
+  }
+
+  static Future<_Harness> create({
+    bool start = true,
+    Duration? reconnectDelay,
+  }) async {
+    final harness = _Harness._(reconnectDelay: reconnectDelay);
+    for (final value in [1, 2]) {
+      await harness.identities.addPeer(
+        PeerActorIdentity(publicKey: PublicKey.staticValue(value)),
+      );
+    }
+    if (start) harness.coordinator.start();
+    return harness;
   }
 
   _Peer discover({String? actor}) {
@@ -493,41 +506,12 @@ class _Transport implements Transport {
   }
 }
 
-class _Identities implements ActorIdentityStore {
-  final peers = [
-    PeerActorIdentity(publicKey: PublicKey.staticValue(1)),
-    PeerActorIdentity(publicKey: PublicKey.staticValue(2)),
-  ];
+class _Identities extends MemoryActorIdentityStore {
   Future<PeerActorIdentity?> Function()? lookup;
 
   @override
-  Future<List<PeerActorIdentity>> allPeers() async => List.of(peers);
-
-  @override
-  Future<PeerActorIdentity?> getPeer(PublicKey publicKey) async {
-    if (lookup != null) return await lookup!();
-    for (final peer in peers) {
-      if (peer.publicKey == publicKey) return peer;
-    }
-    return null;
-  }
-
-  @override
-  Future<void> deletePeer(PublicKey publicKey) async =>
-      peers.removeWhere((peer) => peer.publicKey == publicKey);
-
-  @override
-  Future<void> deleteAllPeers() async => peers.clear();
-
-  @override
-  Future<void> addPeer(PeerActorIdentity identity) async => peers.add(identity);
-
-  @override
-  Future<LocalActorIdentity?> getLocal() async => null;
-
-  @override
-  Future<LocalActorIdentity> setLocal(LocalActorIdentity identity) async =>
-      identity;
+  Future<PeerActorIdentity?> getPeer(PublicKey publicKey) =>
+      lookup?.call() ?? super.getPeer(publicKey);
 }
 
 class _Peer {
