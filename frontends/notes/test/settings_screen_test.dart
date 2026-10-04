@@ -12,11 +12,74 @@ import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
+import 'package:notes/screens/settings/system_settings_screen.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'package:sync/sync.dart';
 
 void main() {
+  testWidgets('Settings contains active notes and the wrench System submenu', (
+    tester,
+  ) async {
+    final system = _system(MemoryKv());
+    final application = _application(system);
+    await application.command.createNote(application.generateNoteId());
+    await tester.pumpWidget(
+      _screen(system, application, systemSettings: false),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Active Note Count'), '1');
+    expect(find.byType(ListTile), findsNWidgets(2));
+    expect(find.byIcon(Icons.build), findsOneWidget);
+    for (final label in [
+      'This device actor key',
+      'Peers',
+      'Transport',
+      'Event Count',
+      'Command Count',
+      'Reset database',
+    ]) {
+      expect(find.text(label), findsNothing);
+    }
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
+    expect(find.text('Active Note Count'), findsNothing);
+    expect(find.text('System'), findsOneWidget);
+    for (final label in [
+      'This device actor key',
+      'Peers',
+      'Transport',
+      'Event Count',
+      'Command Count',
+      'Reset database',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Settings'), findsOneWidget);
+    expect(_value(tester, 'Active Note Count'), '1');
+  });
+
+  testWidgets('system read failures leave the main app statistic available', (
+    tester,
+  ) async {
+    final kv = _ControlledKv()
+      ..read = (_) async => throw Exception('private data');
+    final system = _system(kv);
+    await tester.pumpWidget(
+      _screen(system, _application(system), systemSettings: false),
+    );
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Active Note Count'), '0');
+    expect(kv.reads, 0);
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
+    expect(_value(tester, 'Transport'), 'Could not load settings');
+  });
+
   testWidgets('enabled transport displays URL at group', (tester) async {
     final kv = _ControlledKv();
     await kv.setAllStrings({
@@ -94,7 +157,7 @@ void main() {
     expect(_value(tester, 'Peers'), 'Loading…');
     expect(_value(tester, 'Event Count'), 'Loading…');
     expect(_value(tester, 'Command Count'), 'Loading…');
-    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(6));
+    expect(find.widgetWithText(ListTile, 'Loading…'), findsNWidgets(5));
     expect(
       tester.widget<ListTile>(find.widgetWithText(ListTile, 'Peers')).onTap,
       isNull,
@@ -113,7 +176,6 @@ void main() {
 
     expect(_value(tester, 'Transport'), 'Disabled');
     expect(_value(tester, 'This device actor key'), application.actor);
-    expect(_value(tester, 'Active Note Count'), '1');
     expect(_value(tester, 'Event Count'), '1');
     expect(_value(tester, 'Command Count'), '1');
   });
@@ -133,7 +195,7 @@ void main() {
     expect(find.textContaining('private settings data'), findsNothing);
     expect(
       find.widgetWithText(ListTile, 'Could not load settings'),
-      findsNWidgets(6),
+      findsNWidgets(5),
     );
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
@@ -351,7 +413,6 @@ void main() {
 
         expect(_value(tester, 'Event Count'), events);
         expect(_value(tester, 'Command Count'), commands);
-        expect(_value(tester, 'Active Note Count'), '0');
       },
     );
   }
@@ -411,14 +472,22 @@ NotesApp _application(NoteSystem system, {String actor = 'local'}) => NotesApp(
   ),
 );
 
-Widget _screen(NoteSystem system, NotesApp application) => NotesAppProvider(
+Widget _screen(
+  NoteSystem system,
+  NotesApp application, {
+  bool systemSettings = true,
+}) => NotesAppProvider(
   application: application,
   child: NoteSystemProvider(
     system: system,
     child: EventStoreProvider(
       eventStore: system.eventStore,
       reset: (_) async {},
-      child: const MaterialApp(home: SettingsScreen()),
+      child: MaterialApp(
+        home: systemSettings
+            ? const SystemSettingsScreen()
+            : const SettingsScreen(),
+      ),
     ),
   ),
 );

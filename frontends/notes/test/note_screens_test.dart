@@ -164,11 +164,20 @@ void main() {
       tester,
       application: application,
       eventStore: eventStore,
+      openSystem: false,
       reset: (_) async {},
     );
 
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ListTile, 'Active Note Count'),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
     for (final (label, value) in [
-      ('Active Note Count', '1'),
       ('Event Count', '3'),
       ('Command Count', '3'),
     ]) {
@@ -244,6 +253,7 @@ Future<void> _pumpSettings(
   NotesApp? application,
   MemoryEventStore? eventStore,
   TargetPlatform platform = TargetPlatform.iOS,
+  bool openSystem = true,
   required Future<void> Function(bool restart) reset,
 }) async {
   final store = eventStore ?? MemoryEventStore();
@@ -270,4 +280,8 @@ Future<void> _pumpSettings(
     ),
   );
   await tester.pumpAndSettle();
+  if (openSystem) {
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
+  }
 }

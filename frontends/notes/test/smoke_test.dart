@@ -48,6 +48,10 @@ void main() {
     await tester.tap(find.byIcon(Icons.settings));
     await tester.pumpAndSettle();
 
+    expect(find.text('Active Note Count'), findsOneWidget);
+    await tester.tap(find.text('System'));
+    await tester.pumpAndSettle();
+
     expect(find.text('This device actor key'), findsOneWidget);
     expect(find.text('test-actor'), findsOneWidget);
     expect(find.text('Transport'), findsOneWidget);
