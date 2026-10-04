@@ -1,4 +1,5 @@
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_application.dart';
 import 'package:notes/application/note_bootstrap.dart';
@@ -57,6 +58,53 @@ void main() {
       });
     }
   }
+
+  testWidgets('missing group preserves the server URL during setup', (
+    tester,
+  ) async {
+    final system = testSystem(group: false);
+    await system.kv.set(NoteSystem.serverUrlKey, 'wss://example.test');
+    final bootstrap = _SetupBootstrap(system);
+    await tester.pumpWidget(
+      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(SyncSetup), findsOneWidget);
+    expect(find.text('wss://example.test'), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+    expect(bootstrap.eventInitializations, 0);
+    await tester.enterText(find.widgetWithText(TextField, 'Group'), 'my-notes');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(await system.kv.get(NoteSystem.serverUrlKey), 'wss://example.test');
+    expect(await system.kv.get(NoteSystem.groupKey), 'my-notes');
+    expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('relaunch preserves a configured group and skips setup', (
+    tester,
+  ) async {
+    final system = testSystem(server: false, group: false);
+    await tester.pumpWidget(
+      MyApp(
+        bootstrap: _SetupBootstrap(system),
+        applicationDirectory: () async => 'unused',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Group'), 'my-notes');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      MyApp(
+        bootstrap: _SetupBootstrap(system),
+        applicationDirectory: () async => 'unused',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(await system.kv.get(NoteSystem.groupKey), 'my-notes');
+  });
 
   testWidgets('relaunch after actor setup shows only server setup', (
     tester,

@@ -5,6 +5,7 @@ import 'package:sync/sync.dart';
 /// Notes, settings, and actor identities stored in one database.
 class NoteSystem {
   static const serverUrlKey = 'sync.serverUrl';
+  static const groupKey = 'sync.group';
 
   final ActorIdentityStore identities;
   final Kv kv;

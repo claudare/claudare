@@ -19,7 +19,7 @@ void main() {
 
   Future<void> showSync(WidgetTester tester, TestKv store) => tester.pumpWidget(
     MaterialApp(
-      home: SyncSetup(kv: store, onSaved: (_) {}),
+      home: SyncSetup(kv: store, onSaved: (_, _) {}),
     ),
   );
 
@@ -139,19 +139,59 @@ void main() {
     final store = TestKv();
     await showSync(tester, store);
     expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      tester
+          .widget<TextField>(
+            find.widgetWithText(TextField, 'Replication server URL'),
+          )
+          .controller!
+          .text,
       'ws://localhost:7000',
     );
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
-    expect(store.values, {NoteSystem.serverUrlKey: 'ws://localhost:7000'});
+    expect(store.values[NoteSystem.serverUrlKey], 'ws://localhost:7000');
   });
+
+  testWidgets('group defaults to the string zero', (tester) async {
+    final store = TestKv();
+    await showSync(tester, store);
+    expect(
+      tester
+          .widget<TextField>(find.widgetWithText(TextField, 'Group'))
+          .controller!
+          .text,
+      '0',
+    );
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(store.values[NoteSystem.groupKey], '0');
+  });
+
+  for (final group in ['notes-team', '001', '']) {
+    testWidgets('saves group "$group" as a string', (tester) async {
+      final store = TestKv();
+      String? savedGroup;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSetup(kv: store, onSaved: (_, value) => savedGroup = value),
+        ),
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Group'), group);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(store.values[NoteSystem.groupKey], group);
+      expect(savedGroup, group);
+    });
+  }
 
   for (final value in ['', 'http://localhost:7000', 'ws:', 'wss:///']) {
     testWidgets('server URL rejects "$value"', (tester) async {
       final store = TestKv();
       await showSync(tester, store);
-      await tester.enterText(find.byType(TextField), value);
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Replication server URL'),
+        value,
+      );
       await tester.tap(find.text('Continue'));
       await tester.pumpAndSettle();
       expect(find.text('Enter a ws or wss URL with a host'), findsOneWidget);
@@ -164,7 +204,7 @@ void main() {
       final store = TestKv();
       await showSync(tester, store);
       await tester.enterText(
-        find.byType(TextField),
+        find.widgetWithText(TextField, 'Replication server URL'),
         '  $scheme://example.test:7000/path  ',
       );
       await tester.tap(find.text('Continue'));
@@ -183,13 +223,17 @@ void main() {
     var advanced = false;
     await tester.pumpWidget(
       MaterialApp(
-        home: SyncSetup(kv: store, onSaved: (_) => advanced = true),
+        home: SyncSetup(kv: store, onSaved: (_, _) => advanced = true),
       ),
     );
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     expect(advanced, isFalse);
-    expect(find.text('Could not save server URL. Try again.'), findsOneWidget);
+    expect(
+      find.text('Could not save sync settings. Try again.'),
+      findsOneWidget,
+    );
+    expect(store.values, isEmpty);
     store.saveError = null;
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
@@ -202,7 +246,7 @@ void main() {
     var advanced = false;
     await tester.pumpWidget(
       MaterialApp(
-        home: SyncSetup(kv: store, onSaved: (_) => advanced = true),
+        home: SyncSetup(kv: store, onSaved: (_, _) => advanced = true),
       ),
     );
     await tester.tap(find.text('Continue'));
@@ -212,6 +256,11 @@ void main() {
       isNull,
     );
     expect(advanced, isFalse);
+    expect(store.values, isEmpty);
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Group')).enabled,
+      isFalse,
+    );
     pending.complete();
     await tester.pumpAndSettle();
     expect(advanced, isTrue);

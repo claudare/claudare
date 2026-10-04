@@ -51,7 +51,13 @@ class TestKv implements Kv {
   }
 
   @override
-  Future<void> setAll(List<KeyValue> entries) => throw UnimplementedError();
+  Future<void> setAll(List<KeyValue> entries) async {
+    await saveDelay;
+    if (saveError != null) throw saveError!;
+    for (final entry in entries) {
+      values[entry.key] = entry.value;
+    }
+  }
 
   @override
   Future<void> delete(String key) async => values.remove(key);
@@ -60,9 +66,14 @@ class TestKv implements Kv {
   Future<List<KeyValue>> list(String prefix) => throw UnimplementedError();
 }
 
-NoteSystem testSystem({bool actor = true, bool server = true}) {
+NoteSystem testSystem({
+  bool actor = true,
+  bool server = true,
+  bool group = true,
+}) {
   final kv = TestKv();
   if (server) kv.values[NoteSystem.serverUrlKey] = 'ws://localhost:7000';
+  if (group) kv.values[NoteSystem.groupKey] = '0';
   return NoteSystem(
     identities: TestIdentities(
       local: actor

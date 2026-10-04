@@ -47,6 +47,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   NoteSystem? _system;
   LocalActorIdentity? _identity;
   String? _serverUrl;
+  String? _group;
   bool _loading = true;
 
   @override
@@ -66,6 +67,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _system = null;
     _identity = null;
     _serverUrl = null;
+    _group = null;
     _loading = true;
     _initialization = _initialize();
   }
@@ -78,11 +80,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     );
     final identity = await system.identities.getLocal();
     final serverUrl = await system.kv.get(NoteSystem.serverUrlKey);
+    final group = await system.kv.get(NoteSystem.groupKey);
     if (!mounted || !identical(bootstrap, widget.bootstrap)) return;
     _system = system;
     _identity = identity;
     _serverUrl = serverUrl;
-    if (identity != null && serverUrl != null) await _openApplication();
+    _group = group;
+    if (identity != null && serverUrl != null && group != null) {
+      await _openApplication();
+    }
   }
 
   Future<void> _openApplication() async {
@@ -101,7 +107,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _advanceSetup() {
     setState(() {
-      if (_identity != null && _serverUrl != null) {
+      if (_identity != null && _serverUrl != null && _group != null) {
         _loading = true;
         _initialization = _openApplication();
       }
@@ -161,11 +167,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 _advanceSetup();
               },
             )
-          : _serverUrl == null
+          : _serverUrl == null || _group == null
           ? SyncSetup(
               kv: _system!.kv,
-              onSaved: (url) {
+              initialServerUrl: _serverUrl ?? 'ws://localhost:7000',
+              initialGroup: _group ?? '0',
+              onSaved: (url, group) {
                 _serverUrl = url;
+                _group = group;
                 _advanceSetup();
               },
             )

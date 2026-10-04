@@ -7,8 +7,9 @@ reset all local data after confirmation. Reset requires a fresh launch and
 repeats setup.
 
 On first launch, ActorSetup chooses a local public key and SyncSetup configures
-a replication server URL. Completed steps are preserved across restarts. Actor
-identity, peer pairings, server configuration, and note events share
+a replication server URL and a string group, defaulting to `"0"`. Completed
+steps are preserved across restarts. Actor identity, peer pairings, sync
+configuration, and note events share
 `main.sqlite`. Resetting the database clears them all. The configured server is
 not contacted yet.
 

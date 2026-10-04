@@ -2,19 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
 
-/// Configures the replication server without opening a connection.
+/// Configures the replication server and group without opening a connection.
 class SyncSetup extends StatefulWidget {
   final Kv kv;
-  final ValueChanged<String> onSaved;
+  final void Function(String serverUrl, String group) onSaved;
+  final String initialServerUrl;
+  final String initialGroup;
 
-  const SyncSetup({super.key, required this.kv, required this.onSaved});
+  const SyncSetup({
+    super.key,
+    required this.kv,
+    required this.onSaved,
+    this.initialServerUrl = 'ws://localhost:7000',
+    this.initialGroup = '0',
+  });
 
   @override
   State<SyncSetup> createState() => _SyncSetupState();
 }
 
 class _SyncSetupState extends State<SyncSetup> {
-  final _url = TextEditingController(text: 'ws://localhost:7000');
+  late final _url = TextEditingController(text: widget.initialServerUrl);
+  late final _group = TextEditingController(text: widget.initialGroup);
   String? _inputError;
   String? _saveError;
   bool _saving = false;
@@ -22,11 +31,13 @@ class _SyncSetupState extends State<SyncSetup> {
   @override
   void dispose() {
     _url.dispose();
+    _group.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final value = _url.text.trim();
+    final group = _group.text;
     final uri = Uri.tryParse(value);
     if (uri == null ||
         (uri.scheme != 'ws' && uri.scheme != 'wss') ||
@@ -40,12 +51,15 @@ class _SyncSetupState extends State<SyncSetup> {
       _saving = true;
     });
     try {
-      await widget.kv.set(NoteSystem.serverUrlKey, value);
-      if (mounted) widget.onSaved(value);
+      await widget.kv.setAll([
+        KeyValue(key: NoteSystem.serverUrlKey, value: value),
+        KeyValue(key: NoteSystem.groupKey, value: group),
+      ]);
+      if (mounted) widget.onSaved(value, group);
     } on Exception {
       if (mounted) {
         setState(() {
-          _saveError = 'Could not save server URL. Try again.';
+          _saveError = 'Could not save sync settings. Try again.';
           _saving = false;
         });
       }
@@ -66,6 +80,11 @@ class _SyncSetupState extends State<SyncSetup> {
             labelText: 'Replication server URL',
             errorText: _inputError,
           ),
+        ),
+        TextField(
+          controller: _group,
+          enabled: !_saving,
+          decoration: const InputDecoration(labelText: 'Group'),
         ),
         if (_saveError != null) Text(_saveError!),
         const SizedBox(height: 16),
