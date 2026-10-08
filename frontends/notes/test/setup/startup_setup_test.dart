@@ -5,15 +5,57 @@ import 'package:kv/kv.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/main.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/setup/actor_setup.dart';
 import 'package:notes/screens/setup/sync_setup.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:sync/sync.dart';
 
 import 'setup_test_helpers.dart';
+import '../sync_test_transport.dart';
 
 void main() {
+  testWidgets(
+    'saving transport settings replaces the runtime used by diagnostics',
+    (tester) async {
+      final system = await testSystem();
+      final bootstrap = _SetupBootstrap(system);
+      await tester.pumpWidget(
+        MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+      );
+      await tester.pumpAndSettle();
+      final previous = bootstrap.syncCoordinator!;
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('System'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Transport'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Group'),
+        'changed',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(previous.snapshot.connection, SyncConnectionState.closed);
+      expect(bootstrap.syncCoordinator, isNot(same(previous)));
+      expect(
+        tester
+            .widget<NoteSyncProvider>(find.byType(NoteSyncProvider))
+            .coordinator,
+        same(bootstrap.syncCoordinator),
+      );
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Replication'));
+      await tester.pumpAndSettle();
+      expect(find.text('Connected'), findsOneWidget);
+      expect(find.text('Closed'), findsNothing);
+    },
+  );
+
   for (final actor in [false, true]) {
     for (final enabled in <bool?>[null, false, true]) {
       for (final server in [false, true]) {
@@ -195,6 +237,8 @@ class _SetupBootstrap extends NoteBootstrap {
     : super(
         logger: const NoopLogger(),
         timeProvider: FakeTimeProviderStatic.zero(),
+        createTransport: ({required url, required actor, required group}) =>
+            TestTransport(),
       );
 
   @override

@@ -7,11 +7,13 @@ import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/screens/confirm_database_reset.dart';
 import 'package:notes/screens/settings/peers_screen.dart';
+import 'package:notes/screens/settings/replication_screen.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
 
-/// Displays device identity, peers, transport, store counts, and reset.
+/// Displays device identity, sync settings, diagnostics, and database controls.
 class SystemSettingsScreen extends StatelessWidget {
   const SystemSettingsScreen({super.key});
 
@@ -64,6 +66,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => TransportSettingsScreen(
+          onSaved: NoteSyncProvider.maybeOf(context)?.restartSync,
           kv: widget.system.kv,
           initialEnabled: data.enabled,
           initialServerUrl: data.serverUrl,
@@ -140,6 +143,16 @@ class _SettingsBodyState extends State<_SettingsBody> {
                     data != null
                 ? () => _openTransport(data)
                 : null,
+          ),
+          ListTile(
+            leading: const Icon(Icons.sync),
+            title: const Text('Replication'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push<void>(
+              MaterialPageRoute(
+                builder: (context) => const ReplicationScreen(),
+              ),
+            ),
           ),
           ListTile(
             leading: const Icon(Icons.event),

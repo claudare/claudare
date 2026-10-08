@@ -14,17 +14,26 @@ identity, peer pairings, sync configuration, and note events share
 `main.sqlite`. Resetting the database clears them all. The configured server
 can be changed or disabled from Transport settings without clearing its saved
 URL or group. Settings also provides a manual connection test using the
-server's `/health` endpoint. Notes does not open a replication connection.
+server's `/health` endpoint. When enabled and configured, Notes starts a
+background `SyncCoordinator` after setup. Saving Transport settings immediately
+restarts the connection, or stops it when disabled. Disconnected devices retry
+every 10 seconds, including when a connection attempt stalls. Connection
+failures do not prevent local note editing.
 
 Settings shows the active note count. Its System submenu groups device identity,
-peers, transport, stored event and command counts, and database reset.
+peers, transport, replication diagnostics, stored event and command counts,
+and database reset. Replication diagnostics show live connection status,
+active peer keys, and the latest failure. A connected status describes the
+transport connection, not synchronization progress.
 System shows the saved peer count and allows adding and removing peer public
 keys. New peer keys can be entered directly or populated from a static integer
 value. Existing peer keys are read-only.
 
 New events use the local public key as their actor identity. Note details and
 lists are rebuilt from that history when queried. It does not provide text
-search, replication, encryption, or backup.
+search, encryption, or backup. The replication integration is a development
+prototype, not a complete synchronization system. Peer identities are admitted
+when sessions start; removing a saved peer does not end an active session.
 
 Content editing uses CRDT changes with focus-loss and navigation saves. Ctrl+S
 saves the open note and reports when there are no changes. Refresh merges

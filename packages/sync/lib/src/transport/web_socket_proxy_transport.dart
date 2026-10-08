@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:id_generator/id_generator.dart';
@@ -9,6 +10,7 @@ import 'package:web_socket_channel/io.dart';
 
 import '../proxy/proxy_init.dart';
 import '../proxy/proxy_message.dart';
+import '../sync_defaults.dart';
 import 'transport.dart';
 import 'transport_message.dart';
 import 'web_socket_peer_session.dart';
@@ -31,7 +33,9 @@ class WebSocketProxyTransport implements Transport {
   final Logger _logger;
   final IdGenerator _idGenerator;
   final TimeProvider _timeProvider;
-  final ProxyConnectionOpener _openConnection;
+  final ProxyConnectionOpener? _openConnection;
+  final HttpClient Function() _createHttpClient;
+  HttpClient? _connectingClient;
   final TransportTimerFactory _timerFactory;
   final Duration _discoveryInterval;
   final Duration _keepaliveInterval;
@@ -52,11 +56,12 @@ class WebSocketProxyTransport implements Transport {
     required this._logger,
     required this._idGenerator,
     required this._timeProvider,
-    this._openConnection = _connect,
+    this._openConnection,
+    this._createHttpClient = HttpClient.new,
     this._timerFactory = Timer.new,
-    Duration discoveryInterval = const Duration(seconds: 5),
-    Duration keepaliveInterval = const Duration(seconds: 5),
-    Duration sessionTimeout = const Duration(seconds: 15),
+    Duration discoveryInterval = SyncDefaults.discoveryInterval,
+    Duration keepaliveInterval = SyncDefaults.keepaliveInterval,
+    Duration sessionTimeout = SyncDefaults.sessionTimeout,
   }) : _thisActor = thisActor,
        _group = group,
        _discoveryInterval = discoveryInterval,
@@ -75,17 +80,24 @@ class WebSocketProxyTransport implements Transport {
     _peers.onCancel = close;
   }
 
-  static Future<StreamChannel<Object?>> _connect(
+  Future<StreamChannel<Object?>> _connect(
     String url,
     Map<String, String> headers,
   ) async {
-    final socket = IOWebSocketChannel.connect(url, headers: headers);
+    final client = _connectingClient = _createHttpClient();
     try {
-      await socket.ready;
-      return socket.cast<Object?>();
-    } on Exception {
-      await socket.sink.close();
-      rethrow;
+      final socket = await WebSocket.connect(
+        url,
+        headers: headers,
+        customClient: client,
+      );
+      final channel = IOWebSocketChannel(socket);
+      await channel.ready;
+      // the cast is technically not needed
+      return channel.cast<Object?>();
+    } finally {
+      if (identical(_connectingClient, client)) _connectingClient = null;
+      client.close(force: true);
     }
   }
 
@@ -99,12 +111,19 @@ class WebSocketProxyTransport implements Transport {
     }
     _started = true;
     try {
-      final socket = await _openConnection(
+      final socket = await (_openConnection ?? _connect)(
         _baseUrl,
         ProxyInit(actor: _thisActor, group: _group).toHeaders(),
       );
       if (_closed) {
-        await socket.sink.close();
+        unawaited(_cleanup(socket.sink.close));
+        unawaited(
+          _cleanup(
+            () => socket.stream
+                .listen(null, onError: (Object error, StackTrace stack) {})
+                .cancel(),
+          ),
+        );
         return;
       }
       _socket = socket;
@@ -118,7 +137,7 @@ class WebSocketProxyTransport implements Transport {
       _discovery = _timerFactory(_discoveryInterval, _sendDiscovery);
       _logger.info('Proxy transport started');
     } on Exception {
-      await close();
+      unawaited(_cleanup(close));
       rethrow;
     }
   }
@@ -291,6 +310,8 @@ class WebSocketProxyTransport implements Transport {
   Future<void> close() {
     if (_closing != null) return _closing!;
     _closed = true;
+    _connectingClient?.close(force: true);
+    _connectingClient = null;
     _closing = Future<void>.microtask(() async {
       _discovery?.cancel();
       for (final session in _sessions.values.toList()) {

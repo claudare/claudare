@@ -12,6 +12,174 @@ import 'transport/proxy_transport_test_helper.dart'
     show TestClock, flushMessages;
 
 void main() {
+  test('failure timestamps update only when a new failure occurs', () async {
+    final h = await _Harness.create();
+    await flushMessages();
+    expect(h.coordinator.snapshot.lastFailureAt, isNull);
+    await h.clock.elapse(const Duration(seconds: 3));
+    h.transports.last.discovery.addError(Exception('offline'));
+    await flushMessages();
+    final firstFailureAt = h.clock.now();
+    expect(h.coordinator.snapshot.lastFailureAt, firstFailureAt);
+
+    await h.clock.elapse(SyncDefaults.reconnectInterval);
+    expect(h.coordinator.snapshot.connection, SyncConnectionState.connected);
+    expect(h.coordinator.snapshot.lastFailureAt, firstFailureAt);
+
+    h.transports.last.discovery.addError(Exception('offline again'));
+    await flushMessages();
+    expect(h.coordinator.snapshot.lastFailureAt, h.clock.now());
+    expect(h.coordinator.snapshot.lastFailureAt, isNot(firstFailureAt));
+  });
+
+  for (final interval in [Duration.zero, const Duration(seconds: -1)]) {
+    test('rejects nonpositive reconnect interval $interval', () {
+      expect(
+        () => _Harness._(reconnectInterval: interval),
+        throwsArgumentError,
+      );
+    });
+  }
+
+  for (final hangs in [false, true]) {
+    test('retries at ten-second intervals when startup hangs=$hangs', () async {
+      final h = await _Harness.create(start: false);
+      final pending = <Completer<void>>[];
+      h.onStart = () {
+        if (!hangs) return Future.error(Exception('offline'));
+        final attempt = Completer<void>();
+        pending.add(attempt);
+        return attempt.future;
+      };
+      h.coordinator.start();
+      await flushMessages();
+      expect(h.attempts, 1);
+      for (final attempts in [2, 3]) {
+        await h.clock.elapse(const Duration(seconds: 9));
+        expect(h.attempts, attempts - 1);
+        await h.clock.elapse(const Duration(seconds: 1));
+        expect(h.attempts, attempts);
+        expect(h.transports[attempts - 2].closes, greaterThanOrEqualTo(1));
+      }
+      if (hangs) {
+        expect(
+          h.coordinator.snapshot.lastFailure,
+          'Sync connection attempt timed out',
+        );
+      }
+      h.onStart = null;
+      await h.clock.elapse(const Duration(seconds: 10));
+      expect(h.attempts, 4);
+      expect(h.coordinator.snapshot.connection, SyncConnectionState.connected);
+      for (final attempt in pending) {
+        attempt.complete();
+      }
+      await flushMessages();
+      expect(h.transports.last.closes, 0);
+      await h.clock.elapse(const Duration(seconds: 30));
+      expect(h.attempts, 4);
+      expect(h.clock.activeTimers, 0);
+    });
+  }
+
+  test('late startup failure keeps the original attempt deadline', () async {
+    final h = await _Harness.create(start: false);
+    final starting = Completer<void>();
+    h.onStart = () => starting.future;
+    h.coordinator.start();
+    await h.clock.elapse(const Duration(seconds: 7));
+    starting.completeError(Exception('offline'));
+    await flushMessages();
+    h.onStart = null;
+    await h.clock.elapse(const Duration(seconds: 3));
+    expect(h.attempts, 2);
+    expect(h.coordinator.snapshot.connection, SyncConnectionState.connected);
+  });
+
+  test(
+    'diagnostics follow connection recovery and retain the last failure',
+    () async {
+      final h = await _Harness.create(start: false);
+      final snapshots = <SyncSnapshot>[];
+      final subscription = h.coordinator.changes.listen(snapshots.add);
+      addTearDown(subscription.cancel);
+      expect(h.coordinator.snapshot.connection, SyncConnectionState.idle);
+      h.coordinator.start();
+      expect(h.coordinator.snapshot.connection, SyncConnectionState.connecting);
+      await flushMessages();
+      expect(h.coordinator.snapshot.connection, SyncConnectionState.connected);
+
+      h.transports.single.discovery.addError(Exception('private data'));
+      await flushMessages();
+      expect(
+        h.coordinator.snapshot.connection,
+        SyncConnectionState.reconnecting,
+      );
+      final failure = h.coordinator.snapshot.lastFailure;
+      expect(failure, 'Sync transport ended; scheduling reconnect');
+      await h.clock.elapse(const Duration(seconds: 10));
+      expect(h.coordinator.snapshot.connection, SyncConnectionState.connected);
+      expect(h.coordinator.snapshot.lastFailure, failure);
+      await h.coordinator.close();
+      await flushMessages();
+      expect(snapshots.map((s) => s.connection), [
+        SyncConnectionState.connecting,
+        SyncConnectionState.connected,
+        SyncConnectionState.reconnecting,
+        SyncConnectionState.connecting,
+        SyncConnectionState.connected,
+        SyncConnectionState.closed,
+      ]);
+    },
+  );
+
+  test('diagnostics list admitted peers until their session closes', () async {
+    final h = await _Harness.create();
+    final lookup = Completer<PeerActorIdentity?>();
+    h.identities.lookup = () => lookup.future;
+    final peer = h.discover();
+    await flushMessages();
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+    final identity = (await h.identities.allPeers()).first;
+    lookup.complete(identity);
+    await flushMessages();
+    final admitted = h.coordinator.snapshot;
+    expect(admitted.activePeers, [identity.publicKey.toString()]);
+    expect(() => admitted.activePeers.clear(), throwsUnsupportedError);
+    await peer.channel.foreign.sink.close();
+    await flushMessages();
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+    expect(admitted.activePeers, hasLength(1));
+  });
+
+  test('unknown peers never appear in diagnostics', () async {
+    final h = await _Harness.create();
+    h.discover(actor: PublicKey.staticValue(3).toString());
+    await flushMessages();
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+    expect(h.coordinator.snapshot.lastFailure, isNull);
+  });
+
+  test('replication failures appear without exposing raw errors', () async {
+    final h = await _Harness.create();
+    h.store.readState = () async => throw Exception('private data');
+    h.discover();
+    await flushMessages();
+    expect(h.coordinator.snapshot.lastFailure, 'Sync replication failed');
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+  });
+
+  test('close publishes a final snapshot and closes diagnostics', () async {
+    final h = await _Harness.create();
+    h.discover();
+    await flushMessages();
+    final snapshots = h.coordinator.changes.toList();
+    await h.coordinator.close();
+    expect(h.coordinator.snapshot.connection, SyncConnectionState.closed);
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+    expect((await snapshots).last.connection, SyncConnectionState.closed);
+  });
+
   test('known peers exchange stored commands through the codec', () async {
     final h = await _Harness.create();
     final peer = h.discover();
@@ -99,7 +267,7 @@ void main() {
       await flushMessages();
       expect(h.clock.activeTimers, 1);
       final attempts = h.attempts;
-      await h.clock.elapse(const Duration(seconds: 4));
+      await h.clock.elapse(const Duration(seconds: 9));
       expect(h.attempts, attempts);
       h.factoryFailure = null;
       h.onStart = null;
@@ -130,8 +298,10 @@ void main() {
     expect(pending.messages, isEmpty);
   });
 
-  test('recovery uses the configured delay', () async {
-    final h = await _Harness.create(reconnectDelay: const Duration(seconds: 2));
+  test('recovery uses the configured interval', () async {
+    final h = await _Harness.create(
+      reconnectInterval: const Duration(seconds: 2),
+    );
     h.transports.single.discovery.addError(Exception('disconnected'));
     await flushMessages();
     await h.clock.elapse(const Duration(seconds: 1));
@@ -148,7 +318,7 @@ void main() {
     h.transports.single.discovery.addError(Exception('disconnected'));
     await flushMessages();
     h.onStart = null;
-    await h.clock.elapse(const Duration(seconds: 5));
+    await h.clock.elapse(const Duration(seconds: 10));
     starting.completeError(StateError('late startup failure'));
     await flushMessages();
     expect(h.clock.activeTimers, 0);
@@ -438,13 +608,14 @@ class _Harness {
   int attempts = 0;
   late final SyncCoordinator coordinator;
 
-  _Harness._({Duration? reconnectDelay}) {
+  _Harness._({Duration? reconnectInterval}) {
     coordinator = SyncCoordinator(
       eventStore: store,
       identityStore: identities,
       logger: logger,
+      timeProvider: clock,
       timerFactory: clock.schedule,
-      reconnectDelay: reconnectDelay ?? const Duration(seconds: 5),
+      reconnectInterval: reconnectInterval ?? SyncDefaults.reconnectInterval,
       createTransport: () {
         attempts++;
         if (factoryFailure != null) throw factoryFailure!;
@@ -458,9 +629,9 @@ class _Harness {
 
   static Future<_Harness> create({
     bool start = true,
-    Duration? reconnectDelay,
+    Duration? reconnectInterval,
   }) async {
-    final harness = _Harness._(reconnectDelay: reconnectDelay);
+    final harness = _Harness._(reconnectInterval: reconnectInterval);
     for (final value in [1, 2]) {
       await harness.identities.addPeer(
         PeerActorIdentity(publicKey: PublicKey.staticValue(value)),

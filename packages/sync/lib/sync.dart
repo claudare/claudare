@@ -1,6 +1,8 @@
 library;
 
 export 'src/sync_coordinator.dart';
+export 'src/sync_defaults.dart';
+export 'src/sync_snapshot.dart';
 export 'src/test_utils/sync_test_helper.dart';
 
 // actor

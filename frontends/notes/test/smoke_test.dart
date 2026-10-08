@@ -62,6 +62,12 @@ void main() {
     expect(find.widgetWithText(TextField, 'Group'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'Server URL'), findsOneWidget);
     expect(find.text('ws://localhost:7000'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Replication'));
+    await tester.pumpAndSettle();
+    expect(find.text('Replication'), findsOneWidget);
+    expect(find.text('Disabled'), findsOneWidget);
   });
 
   testWidgets('shows a startup error inline and initializes only once', (

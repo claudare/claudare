@@ -8,6 +8,7 @@ import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/application/reset_database.dart';
 import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
@@ -134,6 +135,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _restartSync() async {
+    final bootstrap = widget.bootstrap;
+    try {
+      await bootstrap.restartSync();
+    } finally {
+      if (mounted && identical(bootstrap, widget.bootstrap)) setState(() {});
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
@@ -207,7 +217,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         child: EventStoreProvider(
           eventStore: _system!.eventStore,
           reset: reset,
-          child: app,
+          child: NoteSyncProvider(
+            restartSync: _restartSync,
+            coordinator: widget.bootstrap.syncCoordinator,
+            unavailableReason: widget.bootstrap.syncUnavailableReason,
+            child: app,
+          ),
         ),
       ),
     );

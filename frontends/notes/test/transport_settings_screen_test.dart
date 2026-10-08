@@ -7,6 +7,82 @@ import 'package:notes/application/note_system.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
 
 void main() {
+  testWidgets('Save applies persisted settings before showing success', (
+    tester,
+  ) async {
+    final kv = MemoryKv();
+    var applied = 0;
+    await _show(
+      tester,
+      kv,
+      enabled: true,
+      url: 'ws://before.test',
+      group: 'old',
+      onSaved: () async {
+        expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://after.test');
+        expect(await kv.getString(NoteSystem.groupKey), 'new');
+        applied++;
+      },
+    );
+    await _edit(tester, url: 'ws://after.test', group: 'new');
+    expect(applied, 0);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(applied, 1);
+    expect(find.text('Transport settings saved and applied.'), findsOneWidget);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(applied, 2);
+  });
+
+  testWidgets('failed persistence does not apply transport settings', (
+    tester,
+  ) async {
+    final kv = _ControlledKv()
+      ..beforeWrite = () async {
+        throw Exception('save failed');
+      };
+    var applied = false;
+    await _show(
+      tester,
+      kv,
+      onSaved: () async {
+        applied = true;
+      },
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(applied, isFalse);
+    expect(
+      find.text('Could not save transport settings. Try again.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'application failure distinguishes saved settings from save failure',
+    (tester) async {
+      final kv = MemoryKv();
+      await _show(
+        tester,
+        kv,
+        onSaved: () async {
+          throw Exception('apply failed');
+        },
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(await kv.getBool(NoteSystem.syncEnabledKey), isFalse);
+      expect(
+        find.text(
+          'Transport settings saved, but could not apply them. Save again to retry.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Transport settings saved and applied.'), findsNothing);
+    },
+  );
+
   testWidgets('missing settings produce empty editable fields', (tester) async {
     await _show(tester, MemoryKv());
 
@@ -70,6 +146,8 @@ void main() {
     ]);
     expect(find.text('Transport settings'), findsOneWidget);
     expect(_button(tester, 'Save').onPressed, isNotNull);
+    expect(find.text('Saving applies changes immediately.'), findsOneWidget);
+    expect(find.text('Transport settings saved and applied.'), findsOneWidget);
   });
 
   testWidgets('Save trims URL and preserves entered group', (tester) async {
@@ -317,6 +395,7 @@ Future<void> _show(
   String? url,
   String? group,
   Future<bool> Function(Uri)? check,
+  Future<void> Function()? onSaved,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -331,6 +410,7 @@ Future<void> _show(
                   initialServerUrl: url,
                   initialGroup: group,
                   testConnection: check ?? (_) async => true,
+                  onSaved: onSaved,
                 ),
               ),
             ),

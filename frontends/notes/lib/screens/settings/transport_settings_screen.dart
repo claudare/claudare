@@ -10,6 +10,7 @@ class TransportSettingsScreen extends StatefulWidget {
   final String? initialServerUrl;
   final String? initialGroup;
   final Future<bool> Function(Uri) testConnection;
+  final Future<void> Function()? onSaved;
 
   TransportSettingsScreen({
     super.key,
@@ -17,6 +18,7 @@ class TransportSettingsScreen extends StatefulWidget {
     this.initialEnabled = false,
     this.initialServerUrl,
     this.initialGroup,
+    this.onSaved,
     Future<bool> Function(Uri)? testConnection,
   }) : testConnection = testConnection ?? TransportHealthCheck().call;
 
@@ -67,17 +69,20 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
       _saving = true;
       _saveError = null;
     });
+    var saved = false;
     try {
       await widget.kv.setAll({
         NoteSystem.syncEnabledKey: _enabled,
         NoteSystem.serverUrlKey: _url.text.trim(),
         NoteSystem.groupKey: _group.text,
       });
+      saved = true;
+      await widget.onSaved?.call();
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Transport settings saved'),
+            content: Text('Transport settings saved and applied.'),
             duration: Duration(seconds: 2),
           ),
         );
@@ -86,7 +91,9 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _saveError = 'Could not save transport settings. Try again.';
+          _saveError = saved
+              ? 'Transport settings saved, but could not apply them. Save again to retry.'
+              : 'Could not save transport settings. Try again.';
         });
       }
     }
@@ -167,6 +174,8 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
           ),
           if (_saveError != null) Text(_saveError!),
           const SizedBox(height: 16),
+          const Text('Saving applies changes immediately.'),
+          const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving || _testing ? null : _save,
             child: Text(_saving ? 'Saving…' : 'Save'),

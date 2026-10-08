@@ -25,7 +25,8 @@ time provider. Subscribe to `peerTransports` before calling `start()`. Each peer
 channel belongs to one session. Closing it ends that session. Actors must be
 unique among connected clients, and session IDs must be fresh across reconnects.
 Discovery and keepalive intervals default to 5 seconds, and inactivity timeouts
-to 15 seconds; all are configurable. Unanswered handshakes expire, allowing
+to 15 seconds; all are configurable. Named defaults are exported in
+`SyncDefaults`. Unanswered handshakes expire, allowing
 discovery to establish a fresh session.
 
 `ReplicationMessageCodec` converts between replication messages and String JSON.
@@ -36,9 +37,15 @@ live-only, and detection of a lost peer is delayed until timeout.
 
 `SyncCoordinator` owns transport and peer-session lifetimes while leaving its
 injected stores caller-owned. It admits known peer actors at session creation;
-removing an identity does not end an active session. Transport failure or
-closure schedules a fresh transport after a configurable delay, defaulting to
-five seconds. Replication failures close only the affected session.
+removing an identity does not end an active session. Connection attempts start
+immediately and repeat every 10 seconds while disconnected, including when an
+attempt has not completed. The configurable `reconnectInterval` also limits
+each attempt. An established connection closing schedules a retry after that
+interval. Replication failures close only the affected session.
+
+The coordinator exposes a current `SyncSnapshot` and a `changes` stream for
+connection state, active peer actors, and the latest failure description.
+These diagnostics describe the runtime, not synchronization progress.
 
 Start a coordinator once. Its idempotent `close()` initiates cleanup promptly
 without waiting for startup, identity lookups, or active store operations.
