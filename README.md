@@ -3,21 +3,18 @@
 Claudare is exploring a family of local-first applications for personal data.
 The long-term goal is software that works offline across mobile and desktop,
 does not require a central application server, and can eventually synchronize
-encrypted data between devices controlled by the user.
+data between devices controlled by the user.
 
 ## Current status
 
-Claudare is a development prototype, not a finished local-first product.
+Claudare is a development prototype, not a finished local-first app suite.
 `apps/notes` is a Dart package for note behavior. The Flutter prototype in
 `frontends/notes` consumes it and exercises the shared packages through a real
 application. The note domain, storage layout, and user interface are examples,
 not the architectural center of the repository.
 
-The current code supports local event-sourced application development. It does
-not implement network transport, device identity or enrollment, multi-device
-convergence, encryption, blob storage, or backup. The `cqrs` package can store
-and retrieve complete stored commands and transfer them continuously between
-two event stores through an in-memory channel within one process.
+The current code supports local event-sourced application development and
+central websocket proxy replication.
 
 ## Documentation
 
@@ -58,9 +55,7 @@ fvm dart analyze
 fvm dart run melos test
 ```
 
-After workspace or dependency changes, also verify discovery:
+## Contributing
 
-```sh
-fvm flutter pub get
-fvm dart pub workspace list
-```
+All development is performed on a `dev` branch. Please open PR's to it. The main
+branch is for stable code and CI/CD.
