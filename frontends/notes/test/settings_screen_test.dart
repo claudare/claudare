@@ -18,6 +18,27 @@ import 'package:time_provider/time_provider.dart';
 import 'package:sync/sync.dart';
 
 void main() {
+  testWidgets('Settings displays the app version last', (tester) async {
+    final system = _system(MemoryKv());
+    await tester.pumpWidget(
+      _screen(system, _application(system), systemSettings: false),
+    );
+    await tester.pumpAndSettle();
+
+    const channel = String.fromEnvironment(
+      'APP_CHANNEL',
+      defaultValue: 'nightly',
+    );
+    const labels = {
+      'main': '0.0.0 (build 1)',
+      'beta': '0.0.0-beta (build 1)',
+      'nightly': '0.0.0-nightly (build 1)',
+    };
+    expect(_value(tester, 'App version'), labels[channel]);
+    final lastTile = tester.widgetList<ListTile>(find.byType(ListTile)).last;
+    expect((lastTile.title as Text).data, 'App version');
+  });
+
   testWidgets('Settings contains active notes and the wrench System submenu', (
     tester,
   ) async {
@@ -30,7 +51,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_value(tester, 'Active Note Count'), '1');
-    expect(find.byType(ListTile), findsNWidgets(2));
+    expect(find.byType(ListTile), findsNWidgets(3));
     expect(find.byIcon(Icons.build), findsOneWidget);
     for (final label in [
       'This device actor key',

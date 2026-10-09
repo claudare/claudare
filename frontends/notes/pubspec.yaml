@@ -17,7 +17,7 @@ resolution: workspace
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 0.0.0
 
 environment:
   sdk: ^3.13.4
@@ -42,7 +42,7 @@ dependencies:
   kv: ^1.0.0
   claudare_crypto: ^1.0.0
   crdt: ^1.0.0
-  notes_app: ^1.0.0
+  notes_app: ^0.0.0
   time_provider: ^1.0.0
   path_provider: ^2.1.5
   path: ^1.9.1

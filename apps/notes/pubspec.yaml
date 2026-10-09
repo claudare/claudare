@@ -1,6 +1,6 @@
 name: notes_app
 description: Note application cqrs.
-version: 1.0.0
+version: 0.0.0
 publish_to: none
 resolution: workspace
 

@@ -20,14 +20,10 @@ restarts the connection, or stops it when disabled. Disconnected devices retry
 every 10 seconds, including when a connection attempt stalls. Connection
 failures do not prevent local note editing.
 
-Settings shows the active note count. Its System submenu groups device identity,
-peers, transport, replication diagnostics, stored event and command counts,
-and database reset. Replication diagnostics show live connection status,
-active peer keys, and the latest failure. A connected status describes the
-transport connection, not synchronization progress.
-System shows the saved peer count and allows adding and removing peer public
-keys. New peer keys can be entered directly or populated from a static integer
-value. Existing peer keys are read-only.
+The current base app version is `0.0.0`, following semantic versioning.
+The build channel defaults to `nightly`; builds can select `main`, `beta`, or
+`nightly` using `--dart-define=APP_CHANNEL=<channel>`. The platform version stays
+numeric.
 
 New events use the local public key as their actor identity. Note details and
 lists are rebuilt from that history when queried. It does not provide text

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:notes/application/app_version.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/screens/settings/system_settings_screen.dart';
 import 'package:notes_app/notes_app.dart';
 
-/// Displays app statistics and opens system settings.
+/// Displays the app version and statistics, and opens system settings.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
@@ -39,6 +40,11 @@ class SettingsScreen extends StatelessWidget {
                 builder: (context) => const SystemSettingsScreen(),
               ),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('App version'),
+            subtitle: Text(appVersionLabel()),
           ),
         ],
       ),
