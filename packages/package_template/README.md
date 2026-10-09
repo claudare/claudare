@@ -1,5 +1,3 @@
 # package_template
 
-A template for the package. Clone this to make a new package.
-
-This was created with `dart create --template package`.
+A starter for new workspace packages. Clone it and replace the sample API.

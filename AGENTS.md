@@ -73,8 +73,15 @@ These instructions apply to the entire repository.
   enrollment, encryption, blob storage, backup, or production security. They are
   not implemented.
 - Keep Markdown documentation concise and written for library or app users.
-- Library documentation describes only the public API, its usage, and
-  user-relevant contracts and limitations. Do not describe package internals.
+- Library READMEs explain when to use the package and how to begin using it.
+  Prefer a short usage example over lists of classes and methods.
+- Keep signatures, parameters, return values, and individual method behavior
+  in Dart API comments. Do not repeat them in Markdown.
+- Include only guidance that API comments cannot explain well, such as
+  choosing between APIs, combining them, or important usage constraints.
+- Omit details that are obvious from names or declarations. If the README
+  adds no useful guidance beyond the code, keep it to a short description.
+  Do not require public import statements.
 - App README files provide a short description of the app, its user-facing
   features, and significant limitations.
 - Do not add internal architecture, algorithms, lifecycle details, private

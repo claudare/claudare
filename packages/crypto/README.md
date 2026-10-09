@@ -1,5 +1,5 @@
-# package_template
+# claudare_crypto
 
-A template for the package. Clone this to make a new package.
+Public key values for representing and comparing actor identities.
 
-This was created with `dart create --template package`.
+This package does not provide key pairs, signing, encryption, or authentication.

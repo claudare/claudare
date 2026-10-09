@@ -1,22 +1,14 @@
 # Proxy server
 
-A simple, non-error handling server that proxies messages between peers. No
-authentication is implemented. An actor can only connect once.
-Connections require nonempty `Claudare-Actor` and `Claudare-Group` HTTP
-headers.
+Development server for direct and group-broadcast WebSocket messages. Connect
+at `/` with nonempty `Claudare-Actor` and `Claudare-Group` headers. Each actor
+can connect once. `GET /health` provides a health check.
 
-The shared `ProxyMessage` and `ProxyInit` types belong to `sync` and are
-exported by `package:sync/sync.dart`. The development e2e tester stays here.
-
-# Running it
+Run from this directory; the default port is `7000`:
 
 ```sh
-PORT=7000 dart run bin/main.dart
+PORT=7000 fvm dart run bin/main.dart
 ```
 
-Run the Dart tester in another terminal from this directory. It connects two
-actors and sends messages between them every three seconds until stopped.
-
-```sh
-PORT=7000 dart run bin/e2e.dart
-```
+The server does not provide authentication, encryption, or durable message
+storage.

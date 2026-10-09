@@ -1,7 +1,4 @@
 # time_provider
 
-Time provider contract and implementations for the Claudare workspace.
-
-`time_provider.dart` exports the `TimeProvider` contract, the system-clock
-implementation, and a deterministic static implementation for tests and
-fixtures.
+Inject a clock into time-dependent code. Use the system clock in the app and a
+fixed clock in tests to make results independent of the current time.

@@ -1,23 +1,13 @@
-# KV store
+# KV
 
-`kv` owns string key-value storage through `Kv`, `MemoryKv`, and `SqliteKv`.
-Missing keys return null, writes replace existing
-values, batch writes are atomic, and key listing matches literal key prefixes.
-`getString` and `setString` access stored strings. Conversion helpers support
-strings and booleans through `getBool`, `setBool`, `getTyped`, and `setTyped`.
-`setAllStrings` accepts a string map; `setAll` accepts a mixed string and boolean
-map and rejects unsupported values before writing. `listKeys` returns sorted
-keys without their values.
+Store small string and boolean values, such as application preferences. Use
+memory storage for temporary values or SQLite for persistence.
 
-`MemoryKv()` provides instance-local storage without setup or cleanup. Its
-values are lost when the instance is discarded.
+```dart
+final preferences = MemoryKv();
+await preferences.setBool('sync.enabled', false);
+final enabled = await preferences.getBool('sync.enabled');
+```
 
-Open an `IsolateSqlite`, inject it into `SqliteKv`, and call `migrate()` before
-use. Its schema and migration history are namespaced so other stores can share
-the database. The application owns the shared connection's lifetime;
-`SqliteKv.close()` closes that connection.
-
-`KvTestHelper.createMemoryKv()` creates a migrated store using in-memory
-SQLite. Callers must close it after use.
-
-This package provides local persistence without encryption or synchronization.
+For SQLite, open the database and migrate the store before use. Closing the
+store also closes its supplied database, so finish using shared consumers first.

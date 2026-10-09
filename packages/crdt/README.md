@@ -1,93 +1,12 @@
 # crdt
 
-Text CRDT and timestamp-based value helpers for the Claudare workspace. Import
-the text API through `package:crdt/crdt_text.dart`.
+Use collaborative text when concurrent edits should be combined, or a
+last-write-wins string when one complete value should win.
 
-## Text
+Edit through a context, persist its prepared changes, then apply them to the
+document. Each independent writer needs a distinct actor ID. Incoming text
+changes require causal delivery, and document snapshots exclude unsaved edits.
 
-`CrdtText()` is mutable document state with deterministic RGA merging. It
-accepts `CrdtTextChange` batches and supports complete JSON snapshots without
-requiring a local actor ID. It depends only on Dart SDK libraries.
-
-Call `document.fork()` to copy its history into an independent document.
-
-`CrdtTextEditContext(document: document, actorId: actorId)` observes the
-document and maintains a private draft with insert, delete, and replace
-operations.
-Supply an actor ID for each independent writer. Offsets and `length` use UTF-16,
-matching Dart strings and Flutter selections. Edits must fall on Unicode scalar
-boundaries; malformed strings and split surrogate pairs are rejected. Combining
-sequences are preserved without normalization or grapheme-level conflict rules.
-
-Use `updateText(context, newText)` when a caller supplies the complete text.
-This standalone helper preserves the common prefix and suffix and replaces the
-changed middle through the context.
-
-Incoming changes require causal delivery. Missing dependencies and conflicting
-operation IDs throw `CrdtTextException` without partially applying a batch.
-Exact duplicates are accepted. The caller provides delivery and persistence.
-
-Call `prepareChange()` on the context to obtain unsaved local edits, persist its
-data in the event log, then apply persisted changes to the source document with
-`document.applyChange(change)`. Attached contexts update automatically and
-acknowledge prepared edits once their operations are present in the document.
-Until acknowledgment, preparation returns the same immutable batch for retries.
-Edits made while saving remain pending for the next batch. Local edits do not
-update the source document, and replay does not create pending edits.
-
-`CrdtText.toJson()` and `CrdtText.fromJson()` preserve document history,
-including operation actor IDs and tombstones. Snapshots contain no local writer
-identity, pending edits, or prepared batch. A restored document can be edited
-through a fresh context for any actor.
-
-Contexts exist only in memory. Call `dispose()` to detach a context from its
-document when finished. Discarding one loses its unsaved edits. See the
-[usage example test](test/text/crdt_text_usage_example_test.dart) for editing,
-persistence, replay, and snapshot restoration without application dependencies.
-
-`CrdtTextTestUtils` provides helpers for text fixtures and simulated saves
-through source documents. Tests can delay or repeat deliveries to exercise
-concurrent editing without a transport.
-
-## Editors
-
-`CrdtTextBinding(editContext: context, controller: controller)` connects the
-editing draft to a `CrdtTextController`. This small interface exposes one
-complete editing value and listener registration. Its value includes text,
-selection, visual affinity, directionality, and composing range. A consumer's
-Flutter adapter maps these to `TextEditingController.value` and forwards its
-listener methods; this package does not import Flutter.
-
-Binding initializes the editor from the draft with the caret at the end.
-Selections follow character anchors through remote edits. During composition,
-draft-driven editor refreshes wait until composition ends while local and
-remote draft edits continue. Dispose the binding to detach its listeners; the
-caller retains ownership of the controller.
-
-## Limits and validation
-
-This package does not provide networking, CQRS integration, historical queries,
-rich text, compression, or a complete synchronization system. Operation history
-is retained, and large documents have not been optimized for time or memory.
-
-Tests cover editing, causal rejection, convergence, JSON persistence, save
-retries, and editor behavior using a pure Dart fake controller. Flutter platform
-and IME behavior has not been verified at runtime. From this package, run
-`fvm dart test --reporter failures-only`; run `fvm dart analyze` from the
-workspace root.
-
-## Value
-
-Import `package:crdt/crdt_string.dart` for `CrdtString`, an actor-aware LWW
-string. `CrdtStringEditContext` keeps local edits separate from persisted state
-and acknowledges prepared values through replay from the same actor. The caller
-supplies persistence timestamps. Unsaved local edits survive remote updates;
-after acknowledgment, the persisted LWW winner is authoritative.
-
-`CrdtStringBinding` connects this draft to the same `CrdtTextController` adapter
-used by text bindings. It preserves selection offsets where possible and delays
-remote editor updates during composition. Contexts and bindings are disposable
-and hold only in-memory editing state.
-
-`CrdtValueLatestWriteWins` and its value/timestamp pair remain available. Equal
-timestamps retain the incoming value; this helper has no actor tie-breaker.
+Editor bindings work with a consumer-supplied controller, without a Flutter
+dependency. The caller supplies persistence and change delivery; this package
+does not provide networking, rich text, or a complete synchronization system.
