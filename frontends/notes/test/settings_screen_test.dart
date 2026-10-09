@@ -6,6 +6,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kv/kv.dart';
+import 'package:notes/application/app_version.dart';
 import 'package:notes/application/event_store_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
@@ -25,18 +26,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    const channel = String.fromEnvironment(
-      'APP_CHANNEL',
-      defaultValue: 'nightly',
-    );
-    const labels = {
-      'main': '0.0.0 (build 1)',
-      'beta': '0.0.0-beta (build 1)',
-      'nightly': '0.0.0-nightly (build 1)',
-    };
-    expect(_value(tester, 'App version'), labels[channel]);
+    expect(_value(tester, 'App version'), appVersionLabel());
     final lastTile = tester.widgetList<ListTile>(find.byType(ListTile)).last;
     expect((lastTile.title as Text).data, 'App version');
+    expect(lastTile.subtitle, isA<SelectableText>());
   });
 
   testWidgets('Settings contains active notes and the wrench System submenu', (

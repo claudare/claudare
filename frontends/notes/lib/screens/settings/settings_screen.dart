@@ -44,7 +44,7 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: const Text('App version'),
-            subtitle: Text(appVersionLabel()),
+            subtitle: SelectableText(appVersionLabel()),
           ),
         ],
       ),
