@@ -1,0 +1,158 @@
+name: CI and nightly releases
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - run: fvm dart pub workspace list
+      - run: fvm dart analyze
+      - run: fvm dart run melos test
+
+  notes-linux:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+      - name: Build Notes
+        working-directory: frontends/notes
+        run: >-
+          fvm flutter build linux --release --no-pub
+          --build-number "$GITHUB_RUN_NUMBER"
+          --dart-define=APP_CHANNEL=nightly
+          --dart-define="APP_COMMIT=$GITHUB_SHA"
+      - name: Package complete Linux bundle
+        run: |
+          bundle=frontends/notes/build/linux/x64/release/bundle
+          test -x "$bundle/notes"
+          test -f "$bundle/lib/libapp.so"
+          test -d "$bundle/data/flutter_assets"
+          mkdir -p dist
+          bash .github/scripts/build-info.sh notes > dist/build-info.json
+          cp dist/build-info.json "$bundle/build-info.json"
+          tar -czf dist/notes-nightly-linux-x64.tar.gz -C "$bundle" .
+          tar -tzf dist/notes-nightly-linux-x64.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes-linux
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  notes-android:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: ./.github/actions/setup-flutter
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      - name: Decode persistent signing key
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for variable in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!variable}" ]]; then
+              echo "::error::Missing signing secret: $variable"
+              exit 1
+            fi
+          done
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/notes-release.jks"
+      - name: Build universal release APK
+        working-directory: frontends/notes
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/notes-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: >-
+          fvm flutter build apk --release --no-pub
+          --build-number "$GITHUB_RUN_NUMBER"
+          --dart-define=APP_CHANNEL=nightly
+          --dart-define="APP_COMMIT=$GITHUB_SHA"
+      - name: Verify APK signature and package
+        run: |
+          apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --verbose frontends/notes/build/app/outputs/flutter-apk/app-release.apk
+          mkdir -p dist
+          cp frontends/notes/build/app/outputs/flutter-apk/app-release.apk dist/notes-nightly-android.apk
+      - name: Remove signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/notes-release.jks"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes-android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  proxy-linux:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-flutter
+      - name: Build Proxy CLI bundle
+        working-directory: backend/proxy
+        run: fvm dart build cli --target bin/main.dart
+      - name: Package and check complete Linux bundle
+        run: |
+          bundle=backend/proxy/build/cli/linux_x64/bundle
+          test -x "$bundle/bin/main"
+          mkdir -p dist
+          bash .github/scripts/build-info.sh proxy > dist/build-info.json
+          cp dist/build-info.json "$bundle/build-info.json"
+          tar -czf dist/proxy-nightly-linux-x64.tar.gz -C "$bundle" .
+          tar -tzf dist/proxy-nightly-linux-x64.tar.gz
+          mkdir -p "$RUNNER_TEMP/proxy-check"
+          tar -xzf dist/proxy-nightly-linux-x64.tar.gz -C "$RUNNER_TEMP/proxy-check"
+          PORT=17000 "$RUNNER_TEMP/proxy-check/bin/main" &
+          proxy_pid=$!
+          trap 'kill "$proxy_pid"' EXIT
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://localhost:17000/health
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proxy-linux
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: [notes-linux, notes-android, proxy-linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    concurrency:
+      group: rolling-nightly-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Update rolling prereleases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/publish-nightly.sh
