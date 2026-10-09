@@ -72,15 +72,16 @@ These instructions apply to the entire repository.
 - Do not claim a working replication or synchronization system, device
   enrollment, encryption, blob storage, backup, or production security. They are
   not implemented.
-- Treat root and package `README.md` files and `docs/*.md` as orientation
-  overviews, not in-depth implementation guides. State ownership, supported
-  behavior, significant limitations, setup, security posture, and only
-  validation evidence that was actually collected in the relevant documentation.
-- During implementation work, update maintained documentation only when one of
-  those overview-level facts changes. Do not add internal details such as
-  algorithms, lifecycle transitions, coordination details, or similar
-  implementation specifics unless documentation was explicitly requested. When
-  unsure, ask before editing documentation.
+- Keep Markdown documentation concise and written for library or app users.
+- Library documentation describes only the public API, its usage, and
+  user-relevant contracts and limitations. Do not describe package internals.
+- App README files provide a short description of the app, its user-facing
+  features, and significant limitations.
+- Do not add internal architecture, algorithms, lifecycle details, private
+  types, implementation notes, or validation logs to Markdown documentation.
+- During implementation, update documentation only when the public API or
+  user-facing app information changes. Keep updates brief. When unsure, ask
+  before editing documentation.
 - Verify source before changing implementation status, and fix links when
   documents move.
 - Keep normative coding conventions in `CONVENTIONS.md` rather than duplicating
