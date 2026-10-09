@@ -4,6 +4,8 @@ runs:
   using: composite
   steps:
     - uses: dart-lang/setup-dart@v1
+      with:
+        problem-matcher: 'false'
     - name: Configure SDK cache
       shell: bash
       run: echo "FVM_CACHE_PATH=$RUNNER_TOOL_CACHE/fvm" >> "$GITHUB_ENV"
