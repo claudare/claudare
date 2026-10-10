@@ -5,6 +5,16 @@ The long-term goal is software that works offline across mobile and desktop,
 does not require a central application server, and can eventually synchronize
 data between devices controlled by the user.
 
+## Applications
+
+Only nightly builds are available. Currently, builds are provided for Linux
+x64 and Android.
+
+| App | Available builds | Downloads |
+| --- | --- | --- |
+| [Notes](frontends/notes/README.md) | Linux x64, Android | [Nightly][notes] |
+| [Proxy](backend/proxy/README.md) | Linux x64 | [Nightly][proxy] |
+
 ## Current status
 
 Claudare is a development prototype, not a finished local-first app suite.
@@ -59,3 +69,6 @@ fvm dart run melos test
 
 All development is performed on a `dev` branch. Please open PR's to it. The main
 branch is for stable code and CI/CD.
+
+[notes]: https://github.com/claudare/claudare/releases/tag/notes/nightly
+[proxy]: https://github.com/claudare/claudare/releases/tag/proxy/nightly
