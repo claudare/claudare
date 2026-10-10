@@ -1,5 +1,10 @@
 # Publishing
 
+## Docker image visibility
+
+After the first CI publication, open the `proxy` package settings on GitHub and
+set its visibility to **Public** to allow installation without signing in.
+
 ## Android signing keys
 
 Use a separate signing key and PKCS12 keystore for each Android app. This limits

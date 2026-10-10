@@ -1,21 +1,10 @@
-# Use latest stable channel SDK.
-FROM dart:stable AS build
+FROM gcr.io/distroless/cc-debian13:nonroot
 
-# Resolve app dependencies.
 WORKDIR /app
-COPY pubspec.* ./
-RUN dart pub get
+# The build comes from CI/CD.
+# May build here instead.
+COPY --chown=nonroot:nonroot bundle/ /app/
 
-# Copy app source code (except anything in .dockerignore) and AOT compile app.
-COPY . .
-RUN dart build cli --target bin/server.dart -o output
-
-# Build minimal serving image from AOT-compiled `/server`
-# and the pre-built AOT-runtime in the `/runtime/` directory of the base image.
-FROM scratch
-COPY --from=build /runtime/ /
-COPY --from=build /app/output/bundle/ /app/
-
-# Start server.
-EXPOSE 8080
-CMD ["/app/bin/server"]
+ENV PORT=7000
+EXPOSE 7000
+ENTRYPOINT ["/app/bin/main"]

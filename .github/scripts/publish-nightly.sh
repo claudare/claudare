@@ -8,7 +8,7 @@ if [[ "$head_sha" != "$GITHUB_SHA" ]]; then
   exit 0
 fi
 
-# Check every input before changing either release.
+# Check every input before publishing the image or changing either release.
 for app in notes proxy; do
   jq -e --arg app "$app" --arg sha "$GITHUB_SHA" \
     --argjson build "$GITHUB_RUN_NUMBER" --argjson attempt "$GITHUB_RUN_ATTEMPT" \
@@ -18,6 +18,16 @@ for app in notes proxy; do
   test -s "dist/$app-linux/$app-nightly-linux-x64.tar.gz"
 done
 test -s dist/notes-android/notes-nightly-android.apk
+test -s dist/proxy-container/proxy-container.tar
+
+container_owner="${GITHUB_REPOSITORY%%/*}"
+container_image="ghcr.io/${container_owner,,}/proxy:nightly"
+printf '%s' "$GH_TOKEN" | docker login ghcr.io \
+  --username "$GITHUB_ACTOR" --password-stdin
+trap 'docker logout ghcr.io' EXIT
+docker load --input dist/proxy-container/proxy-container.tar
+docker tag proxy-nightly:ci "$container_image"
+docker push "$container_image"
 
 for app in notes proxy; do
   tag="$app/nightly"

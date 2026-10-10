@@ -139,11 +139,48 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  proxy-container:
+    needs: proxy-linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: proxy-linux
+          path: artifacts
+      - name: Build container from the compiled Proxy bundle
+        run: |
+          mkdir -p container/bundle dist
+          tar -xzf artifacts/proxy-nightly-linux-x64.tar.gz -C container/bundle
+          cp backend/proxy/Dockerfile container/Dockerfile
+          container_version=$(jq -r '.version + "-" + .channel' container/bundle/build-info.json)
+          docker build --platform linux/amd64 --tag proxy-nightly:ci \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.version=$container_version" \
+            container
+      - name: Check container health
+        run: |
+          docker run --detach --name proxy-check \
+            --publish 127.0.0.1:17000:7000 proxy-nightly:ci
+          trap 'docker logs proxy-check; docker rm --force proxy-check' EXIT
+          test "$(curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://localhost:17000/health)" = Ok
+      - name: Save tested image
+        run: docker save --output dist/proxy-container.tar proxy-nightly:ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proxy-container
+          path: dist/proxy-container.tar
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   publish:
-    needs: [notes-linux, notes-android, proxy-linux]
+    needs: [notes-linux, notes-android, proxy-linux, proxy-container]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      packages: write
     concurrency:
       group: rolling-nightly-publication
       cancel-in-progress: false
@@ -152,7 +189,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: Update rolling prereleases
+      - name: Publish container and update rolling prereleases
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-nightly.sh

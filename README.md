@@ -13,7 +13,7 @@ x64 and Android.
 | App | Available builds | Downloads |
 | --- | --- | --- |
 | [Notes](frontends/notes/README.md) | Linux x64, Android | [Nightly][notes] |
-| [Proxy](backend/proxy/README.md) | Linux x64 | [Nightly][proxy] |
+| [Proxy][proxy-app] | Linux x64, Docker | [Nightly][proxy], [GHCR][ghcr] |
 
 ## Current status
 
@@ -72,3 +72,5 @@ branch is for stable code and CI/CD.
 
 [notes]: https://github.com/claudare/claudare/releases/tag/notes/nightly
 [proxy]: https://github.com/claudare/claudare/releases/tag/proxy/nightly
+[proxy-app]: backend/proxy/README.md
+[ghcr]: https://github.com/orgs/claudare/packages/container/package/proxy
