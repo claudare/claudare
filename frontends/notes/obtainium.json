@@ -4,6 +4,6 @@
     "url": "https://github.com/claudare/claudare",
     "author": "claudare",
     "name": "Notes Nightly",
-    "additionalSettings": "{\"includePrereleases\":true,\"filterReleaseTitlesByRegEx\":\"^Notes Nightly$\",\"apkFilterRegEx\":\"^notes-nightly-android\\\\.apk$\",\"verifyLatestTag\":false,\"sortMethodChoice\":\"date\",\"useLatestAssetDateAsReleaseDate\":true,\"releaseDateAsVersion\":true,\"versionDetection\":false,\"trackOnly\":false,\"includeZips\":false,\"includeTarballs\":false,\"autoApkFilterByArch\":false,\"fallbackToOlderReleases\":false}"
+    "additionalSettings": "{\"includePrereleases\":true,\"filterReleaseTitlesByRegEx\":\"^Notes Nightly$\",\"apkFilterRegEx\":\"^notes-nightly-android\\\\.apk$\",\"verifyLatestTag\":false,\"sortMethodChoice\":\"date\",\"useLatestAssetDateAsReleaseDate\":true,\"releaseDateAsVersion\":true,\"versionDetection\":false,\"trackOnly\":false,\"includeZips\":false,\"includeTarballs\":false,\"autoApkFilterByArch\":false,\"fallbackToOlderReleases\":true}"
   }
 ]
