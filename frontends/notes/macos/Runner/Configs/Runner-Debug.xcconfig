@@ -1,0 +1,4 @@
+#include "Runner.xcconfig"
+
+CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements
+SWIFT_OPTIMIZATION_LEVEL = -Onone

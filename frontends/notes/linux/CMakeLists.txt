@@ -8,6 +8,7 @@ set(BINARY_NAME "notes")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
 set(APPLICATION_ID "com.claudare.notes")
+set(APPLICATION_NAME "Notes")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -49,6 +50,15 @@ endfunction()
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
+
+if(FLUTTER_APP_FLAVOR STREQUAL "nightly")
+  set(APPLICATION_ID "com.claudare.notes.nightly")
+  set(APPLICATION_NAME "Notes (Nightly)")
+elseif(FLUTTER_APP_FLAVOR STREQUAL "dev")
+  set(APPLICATION_ID "com.claudare.notes.dev")
+elseif(DEFINED FLUTTER_APP_FLAVOR AND NOT FLUTTER_APP_FLAVOR STREQUAL "")
+  message(FATAL_ERROR "Unknown Notes flavor: ${FLUTTER_APP_FLAVOR}")
+endif()
 
 # System-level dependencies.
 find_package(PkgConfig REQUIRED)

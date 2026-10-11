@@ -1,9 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Notes Nightly
+Name=Notes (Nightly)
 Comment=Notes application
 Exec=claudare-notes
-Icon=com.claudare.notes
+Icon=com.claudare.notes.nightly
 Terminal=false
 Categories=Office;X-Claudare;
-StartupWMClass=com.claudare.notes
+StartupWMClass=com.claudare.notes.nightly

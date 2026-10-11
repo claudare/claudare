@@ -18,7 +18,7 @@ set its visibility to **Public** to allow installation without signing in.
 The application Flatpak repository uses this repository's GitHub Pages site.
 In **Settings > Pages > Build and deployment**, select **GitHub Actions** as
 the source. Keep the site public. If the `github-pages` environment has branch
-restrictions, allow deployments from `main`.
+restrictions, allow deployments from `nightly`.
 
 The repository URL is
 `https://claudare.github.io/claudare/flatpak/repo/`. Install descriptors are
@@ -69,15 +69,15 @@ and passphrase. Base64 is not encryption. Reuse the same key for subsequent
 publications. Replacing it requires updating the trust configuration of existing
 installations.
 
-Push to `main`, or rerun a failed workflow after configuring Pages and secrets.
+Push to `nightly`, or rerun a failed workflow after configuring Pages and secrets.
 After the first successful publication, open the Notes installation link from
 its README, or verify installation from a terminal:
 
 ```sh
 flatpak install --user \
   https://claudare.github.io/claudare/flatpak/notes-nightly.flatpakref
-flatpak run com.claudare.notes
-flatpak update --user com.claudare.notes
+flatpak run com.claudare.notes.nightly
+flatpak update --user com.claudare.notes.nightly
 ```
 
 The installer imports the public signing key. Keep signature verification
@@ -160,7 +160,7 @@ These secrets currently sign Notes. When adding another Android app, create
 dedicated secrets for its keystore and configure its workflow to use them.
 `ANDROID_KEYSTORE_PATH` is supplied by the workflow, not a repository secret.
 
-Push to `main`, or rerun a failed workflow after configuring the secrets. The
+Push to `nightly`, or rerun a failed workflow after configuring the secrets. The
 Android job builds the release APK and checks its signature.
 
 Keep a secure backup of the keystore and password. Keep keystores, Base64

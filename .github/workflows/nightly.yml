@@ -2,7 +2,7 @@ name: CI and nightly releases
 
 on:
   push:
-    branches: [main]
+    branches: [nightly]
 
 permissions:
   contents: read
@@ -30,13 +30,13 @@ jobs:
       - name: Build Notes
         working-directory: frontends/notes
         run: >-
-          fvm flutter build linux --release --no-pub
+          fvm flutter build linux --release --no-pub --flavor nightly
           --build-number "$GITHUB_RUN_NUMBER"
           --dart-define=APP_CHANNEL=nightly
           --dart-define="APP_COMMIT=$GITHUB_SHA"
       - name: Package complete Linux bundle
         run: |
-          bundle=frontends/notes/build/linux/x64/release/bundle
+          bundle=frontends/notes/build/linux/x64/nightly/release/bundle
           test -x "$bundle/notes"
           test -f "$bundle/lib/libapp.so"
           test -d "$bundle/data/flutter_assets"
@@ -74,13 +74,13 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.local/share/flatpak
-          key: flatpak-${{ runner.os }}-x86_64-gnome-51-${{ hashFiles('frontends/notes/flatpak/com.claudare.notes.json') }}
+          key: flatpak-${{ runner.os }}-x86_64-gnome-51-${{ hashFiles('frontends/notes/flatpak/com.claudare.notes.nightly.json') }}
           restore-keys: |
             flatpak-${{ runner.os }}-x86_64-gnome-51-
       - name: Validate desktop metadata
         run: |
-          desktop-file-validate frontends/notes/flatpak/com.claudare.notes.desktop
-          appstreamcli validate --no-net frontends/notes/flatpak/com.claudare.notes.metainfo.xml
+          desktop-file-validate frontends/notes/flatpak/com.claudare.notes.nightly.desktop
+          appstreamcli validate --no-net frontends/notes/flatpak/com.claudare.notes.nightly.metainfo.xml
       - name: Package and sign Notes Flatpak
         env:
           FLATPAK_GPG_PRIVATE_KEY_BASE64: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY_BASE64 }}
@@ -134,16 +134,16 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: >-
-          fvm flutter build apk --release --no-pub
+          fvm flutter build apk --release --no-pub --flavor nightly
           --build-number "$GITHUB_RUN_NUMBER"
           --dart-define=APP_CHANNEL=nightly
           --dart-define="APP_COMMIT=$GITHUB_SHA"
       - name: Verify APK signature and package
         run: |
           apksigner=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -n 1)
-          "$apksigner" verify --verbose frontends/notes/build/app/outputs/flutter-apk/app-release.apk
+          "$apksigner" verify --verbose frontends/notes/build/app/outputs/flutter-apk/app-nightly-release.apk
           mkdir -p dist
-          cp frontends/notes/build/app/outputs/flutter-apk/app-release.apk dist/notes-nightly-android.apk
+          cp frontends/notes/build/app/outputs/flutter-apk/app-nightly-release.apk dist/notes-nightly-android.apk
       - name: Remove signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/notes-release.jks"

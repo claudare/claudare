@@ -42,6 +42,20 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        resValue("string", "app_name", "Notes")
+    }
+
+    flavorDimensions += "channel"
+    productFlavors {
+        create("dev") {
+            dimension = "channel"
+            applicationIdSuffix = ".dev"
+        }
+        create("nightly") {
+            dimension = "channel"
+            applicationIdSuffix = ".nightly"
+            resValue("string", "app_name", "Notes (Nightly)")
+        }
     }
 
     signingConfigs {

@@ -3,9 +3,9 @@ set -euo pipefail
 
 echo 'publish=false' >> "$GITHUB_OUTPUT"
 repository="repos/$GITHUB_REPOSITORY"
-head_sha=$(gh api "$repository/commits/main" --jq .sha)
+head_sha=$(gh api "$repository/commits/nightly" --jq .sha)
 if [[ "$head_sha" != "$GITHUB_SHA" ]]; then
-  echo "Skipping publication: main has superseded $GITHUB_SHA."
+  echo "Skipping publication: nightly has superseded $GITHUB_SHA."
   exit 0
 fi
 
@@ -52,7 +52,7 @@ Run attempt: $GITHUB_RUN_ATTEMPT.
 [Workflow]($workflow_url)
 [Downloads]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$tag)
 
-Downloads are replaced after successful validation and builds on main.
+Downloads are replaced after successful validation and builds on nightly.
 EOF
 
   # Listing refs and releases lets API failures propagate instead of treating

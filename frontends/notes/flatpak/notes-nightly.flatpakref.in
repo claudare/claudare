@@ -1,7 +1,7 @@
 [Flatpak Ref]
-Name=com.claudare.notes
+Name=com.claudare.notes.nightly
 Branch=nightly
-Title=Notes Nightly
+Title=Notes (Nightly)
 Url=@REPO_URL@
 SuggestRemoteName=claudare-nightly
 RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo

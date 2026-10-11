@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>com.claudare.notes</id>
-  <name>Notes Nightly</name>
+  <id>com.claudare.notes.nightly</id>
+  <name>Notes (Nightly)</name>
   <summary>Edit and organize local notes</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>AGPL-3.0-only</project_license>
@@ -12,7 +12,7 @@
     <p>Claudare Notes Application.</p>
     <p>Nightly builds are experimental.</p>
   </description>
-  <launchable type="desktop-id">com.claudare.notes.desktop</launchable>
+  <launchable type="desktop-id">com.claudare.notes.nightly.desktop</launchable>
   <url type="homepage">https://github.com/claudare/claudare</url>
   <url type="bugtracker">https://github.com/claudare/claudare/issues</url>
   <content_rating type="oars-1.1"/>

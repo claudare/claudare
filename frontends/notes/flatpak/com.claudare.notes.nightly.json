@@ -1,5 +1,5 @@
 {
-  "app-id": "com.claudare.notes",
+  "app-id": "com.claudare.notes.nightly",
   "runtime": "org.gnome.Platform",
   "runtime-version": "51",
   "sdk": "org.gnome.Sdk",
@@ -24,9 +24,9 @@
         "mkdir -p /app/notes /app/bin",
         "cp -a bundle/. /app/notes/",
         "install -Dm755 notes.sh /app/bin/claudare-notes",
-        "install -Dm644 com.claudare.notes.desktop /app/share/applications/com.claudare.notes.desktop",
-        "install -Dm644 com.claudare.notes.metainfo.xml /app/share/metainfo/com.claudare.notes.metainfo.xml",
-        "install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/com.claudare.notes.png"
+        "install -Dm644 com.claudare.notes.nightly.desktop /app/share/applications/com.claudare.notes.nightly.desktop",
+        "install -Dm644 com.claudare.notes.nightly.metainfo.xml /app/share/metainfo/com.claudare.notes.nightly.metainfo.xml",
+        "install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/com.claudare.notes.nightly.png"
       ],
       "sources": [
         { "type": "dir", "path": "source" }

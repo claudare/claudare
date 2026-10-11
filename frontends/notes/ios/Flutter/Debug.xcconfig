@@ -1,1 +1,4 @@
 #include "Generated.xcconfig"
+#include "Runner.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -Onone

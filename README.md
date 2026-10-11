@@ -59,8 +59,7 @@ fvm flutter doctor
 Run the notes prototype:
 
 ```sh
-cd frontends/notes
-fvm flutter run
+./run-frontend.sh notes
 ```
 
 Analyze the whole workspace and run all Dart and Flutter tests from the root:
@@ -72,8 +71,8 @@ fvm dart run melos test
 
 ## Contributing
 
-All development is performed on a `dev` branch. Please open PR's to it. The main
-branch is for stable code and CI/CD.
+All development is performed on a `main` branch. Please open PR's to it.
+Pushes to `nightly` run CI/CD and publish nightly builds.
 
 [notes]: https://github.com/claudare/claudare/releases/tag/notes/nightly
 [notes-app]: frontends/notes/README.md

@@ -44,9 +44,9 @@ unset FLATPAK_GPG_PRIVATE_KEY_BASE64 FLATPAK_GPG_KEY_ID FLATPAK_GPG_PASSPHRASE
 
 assets=frontends/notes/flatpak
 mkdir -p "$work/source/bundle"
-cp "$assets/com.claudare.notes.json" "$work/"
-cp "$assets/notes.sh" "$assets/com.claudare.notes.desktop" \
-  "$assets/com.claudare.notes.metainfo.xml" "$work/source/"
+cp "$assets/com.claudare.notes.nightly.json" "$work/"
+cp "$assets/notes.sh" "$assets/com.claudare.notes.nightly.desktop" \
+  "$assets/com.claudare.notes.nightly.metainfo.xml" "$work/source/"
 cp frontends/notes/web/icons/Icon-512.png "$work/source/icon.png"
 tar -xzf dist/notes-linux/notes-nightly-linux-x64.tar.gz -C "$work/source/bundle"
 test -x "$work/source/bundle/notes"
@@ -65,7 +65,7 @@ flatpak remote-add --user --if-not-exists flathub \
 flatpak update --user --noninteractive
 flatpak-builder --user --arch=x86_64 --install-deps-from=flathub \
   --disable-rofiles-fuse --force-clean \
-  "$work/build" "$work/com.claudare.notes.json"
+  "$work/build" "$work/com.claudare.notes.nightly.json"
 flatpak build-export --gpg-sign="$fingerprint" --gpg-homedir="$GNUPGHOME" \
   site/flatpak/repo "$work/build" nightly
 flatpak build-update-repo --gpg-sign="$fingerprint" \
