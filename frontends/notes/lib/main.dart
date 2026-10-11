@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/notes_app_provider.dart';
@@ -30,9 +29,7 @@ void main() {
   runApp(
     MyApp(
       bootstrap: bootstrap,
-      supportDirectory: SupportDirectory(
-        namespace: kDebugMode ? 'dev' : 'prod',
-      ),
+      supportDirectory: PathProviderSupportDirectory(),
     ),
   );
 }

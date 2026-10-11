@@ -1,28 +1,41 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:support_directory/support_directory.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const channel = MethodChannel('plugins.flutter.io/path_provider');
+  final messenger =
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   for (final temporary in [false, true]) {
     group(temporary ? 'temporary' : 'platform', () {
       late TempSupportDirectory base;
       late SupportDirectory support;
 
-      setUp(() {
+      setUp(() async {
         base = TempSupportDirectory();
+        if (!temporary) {
+          final root = path.join((await base.getDirectory()).path, 'support');
+          messenger.setMockMethodCallHandler(channel, (call) async {
+            expect(call.method, 'getApplicationSupportDirectory');
+            return root;
+          });
+        }
         support = temporary
             ? TempSupportDirectory()
-            : SupportDirectory(
-                namespace: 'dev',
-                resolveBaseDirectory: base.getDirectory,
-              );
+            : PathProviderSupportDirectory();
       });
 
       tearDown(() async {
-        await support.delete();
-        await base.delete();
+        try {
+          await support.delete();
+        } finally {
+          messenger.setMockMethodCallHandler(channel, null);
+          await base.delete();
+        }
       });
 
       test('repeated access preserves existing contents', () async {

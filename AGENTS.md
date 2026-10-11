@@ -61,8 +61,8 @@ These instructions apply to the entire repository.
   refactor unrelated existing deviations.
 - Use the logger from `claudare_logging`. There is no global logger. Do not add
   ad hoc prints.
-- Breaking changes are allowed as the project is under development. Do not add
-  compatibility paths.
+- Breaking changes are encouraged as the project is under development. Do not add
+  compatibility paths. Do not add tests related to breaking changes.
 - Keep shared analyzer policy at the repository root without member overrides.
 - Use `///` to document key classes and interfaces. Use `[]` to reference code.
   Keep documentation short and to the point.

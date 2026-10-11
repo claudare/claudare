@@ -1,5 +1,5 @@
 name: support_directory
-description: Namespaced application support directories for Flutter apps.
+description: Application support directories for Flutter apps.
 version: 1.0.0
 publish_to: none
 resolution: workspace
