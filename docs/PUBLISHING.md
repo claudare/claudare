@@ -1,5 +1,13 @@
 # Publishing
 
+## Application naming
+
+Prefix command-line application names with `claudare-APPNAME`, using the
+lowercase app name. For example, Notes uses `claudare-notes`.
+
+Capitalize application display names and append `Nightly` for nightly builds.
+For example, use `Notes Nightly`.
+
 ## Docker image visibility
 
 After the first CI publication, open the `proxy` package settings on GitHub and
