@@ -12,8 +12,13 @@ x64 and Android.
 
 | App | Available builds | Downloads |
 | --- | --- | --- |
-| [Notes](frontends/notes/README.md) | Linux x64, Android | [Nightly][notes] |
+| [Notes][notes-app] | Linux x64, Android | [Flatpak][flatpak], [Nightly][notes] |
 | [Proxy][proxy-app] | Linux x64, Docker | [Nightly][proxy], [GHCR][ghcr] |
+
+For Linux installation and updates, use the [Notes Flatpak installer][flatpak].
+See the [Notes README][notes-app] for terminal installation and updates,
+including Android installation through Obtainium. Flatpak updates follow your
+software manager's settings.
 
 ## Current status
 
@@ -71,6 +76,9 @@ All development is performed on a `dev` branch. Please open PR's to it. The main
 branch is for stable code and CI/CD.
 
 [notes]: https://github.com/claudare/claudare/releases/tag/notes/nightly
+[notes-app]: frontends/notes/README.md
+[flatpak]:
+  https://claudare.github.io/claudare/flatpak/notes-nightly.flatpakref
 [proxy]: https://github.com/claudare/claudare/releases/tag/proxy/nightly
 [proxy-app]: backend/proxy/README.md
 [ghcr]: https://github.com/orgs/claudare/packages/container/package/proxy

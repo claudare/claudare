@@ -5,6 +5,76 @@
 After the first CI publication, open the `proxy` package settings on GitHub and
 set its visibility to **Public** to allow installation without signing in.
 
+## Flatpak repository
+
+The application Flatpak repository uses this repository's GitHub Pages site.
+In **Settings > Pages > Build and deployment**, select **GitHub Actions** as
+the source. Keep the site public. If the `github-pages` environment has branch
+restrictions, allow deployments from `main`.
+
+The repository URL is
+`https://claudare.github.io/claudare/flatpak/repo/`. Install descriptors are
+published beside it and linked from the application READMEs. No separate server
+or personal access token is required.
+
+### Create a signing key
+
+Use one persistent GPG signing key for the Claudare Flatpak repository. These
+commands require GnuPG and Bash on Linux. Keep signing files outside Git:
+
+```bash
+umask 077
+signing_dir="$HOME/.local/share/claudare/signing/flatpak"
+mkdir -p "$signing_dir/gnupg"
+chmod 700 "$signing_dir/gnupg"
+
+gpg --homedir "$signing_dir/gnupg" --quick-generate-key \
+  'Claudare Flatpak signing' rsa4096 sign 0
+gpg --homedir "$signing_dir/gnupg" --list-secret-keys \
+  --keyid-format long --fingerprint
+```
+
+Choose a strong passphrase and save it in a password manager. The command
+creates a signing-only key without an expiry date. Copy its full 40-character
+fingerprint into the command below:
+
+```bash
+flatpak_fingerprint='REPLACE_WITH_FULL_FINGERPRINT'
+gpg --homedir "$signing_dir/gnupg" --export-secret-keys \
+  "$flatpak_fingerprint" > "$signing_dir/private-key.gpg"
+base64 --wrap=0 "$signing_dir/private-key.gpg" \
+  > "$signing_dir/private-key.base64"
+```
+
+### Configure signing and publish
+
+In **Settings > Secrets and variables > Actions**, add these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `FLATPAK_GPG_PRIVATE_KEY_BASE64` | Contents of `private-key.base64` |
+| `FLATPAK_GPG_KEY_ID` | Full signing key fingerprint |
+| `FLATPAK_GPG_PASSPHRASE` | Signing key passphrase |
+
+Keep a secure backup of the key, its GnuPG directory, revocation certificate,
+and passphrase. Base64 is not encryption. Reuse the same key for subsequent
+publications. Replacing it requires updating the trust configuration of existing
+installations.
+
+Push to `main`, or rerun a failed workflow after configuring Pages and secrets.
+After the first successful publication, open the Notes installation link from
+its README, or verify installation from a terminal:
+
+```sh
+flatpak install --user \
+  https://claudare.github.io/claudare/flatpak/notes-nightly.flatpakref
+flatpak run com.claudare.notes
+flatpak update --user com.claudare.notes
+```
+
+The installer imports the public signing key. Keep signature verification
+enabled. Automatic updates depend on the user's desktop software manager.
+
 ## Android signing keys
 
 Use a separate signing key and PKCS12 keystore for each Android app. This limits

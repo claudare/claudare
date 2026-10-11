@@ -1,0 +1,9 @@
+[Flatpak Ref]
+Name=com.claudare.notes
+Branch=nightly
+Title=Notes Nightly
+Url=@REPO_URL@
+SuggestRemoteName=claudare-nightly
+RuntimeRepo=https://dl.flathub.org/repo/flathub.flatpakrepo
+IsRuntime=false
+GPGKey=@GPG_KEY@

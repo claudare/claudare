@@ -52,6 +52,52 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  notes-flatpak:
+    needs: notes-linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: notes-linux
+          path: dist/notes-linux
+      - name: Install Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder gnupg appstream \
+            desktop-file-utils
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/flatpak
+          key: flatpak-${{ runner.os }}-x86_64-gnome-51-${{ hashFiles('frontends/notes/flatpak/com.claudare.notes.json') }}
+          restore-keys: |
+            flatpak-${{ runner.os }}-x86_64-gnome-51-
+      - name: Validate desktop metadata
+        run: |
+          desktop-file-validate frontends/notes/flatpak/com.claudare.notes.desktop
+          appstreamcli validate --no-net frontends/notes/flatpak/com.claudare.notes.metainfo.xml
+      - name: Package and sign Notes Flatpak
+        env:
+          FLATPAK_GPG_PRIVATE_KEY_BASE64: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY_BASE64 }}
+          FLATPAK_GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+          FLATPAK_GPG_PASSPHRASE: ${{ secrets.FLATPAK_GPG_PASSPHRASE }}
+        run: bash .github/scripts/build-flatpak.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes-flatpak
+          path: dist/notes-flatpak/*
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+          retention-days: 1
+
   notes-android:
     needs: validate
     runs-on: ubuntu-24.04
@@ -176,11 +222,16 @@ jobs:
           retention-days: 1
 
   publish:
-    needs: [notes-linux, notes-android, proxy-linux, proxy-container]
+    needs: [notes-linux, notes-flatpak, notes-android, proxy-linux, proxy-container]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
       packages: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
     concurrency:
       group: rolling-nightly-publication
       cancel-in-progress: false
@@ -189,7 +240,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: dist
+          pattern: '{notes-*,proxy-*}'
       - name: Publish container and update rolling prereleases
+        id: publication
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/publish-nightly.sh
+      - name: Deploy Flatpak repository
+        id: pages
+        if: steps.publication.outputs.publish == 'true'
+        uses: actions/deploy-pages@v4

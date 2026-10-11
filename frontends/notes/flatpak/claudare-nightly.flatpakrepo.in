@@ -1,0 +1,8 @@
+[Flatpak Repo]
+Title=Claudare Nightly
+Comment=Experimental Claudare applications
+Description=Nightly builds of Claudare desktop applications.
+Homepage=https://github.com/claudare/claudare
+Url=@REPO_URL@
+DefaultBranch=nightly
+GPGKey=@GPG_KEY@

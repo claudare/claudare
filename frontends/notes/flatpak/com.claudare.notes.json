@@ -1,0 +1,36 @@
+{
+  "app-id": "com.claudare.notes",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "51",
+  "sdk": "org.gnome.Sdk",
+  "command": "claudare-notes",
+  "branch": "nightly",
+  "finish-args": [
+    "--socket=wayland",
+    "--socket=fallback-x11",
+    "--device=dri",
+    "--share=ipc",
+    "--share=network"
+  ],
+  "modules": [
+    {
+      "name": "notes",
+      "buildsystem": "simple",
+      "build-options": {
+        "strip": false,
+        "no-debuginfo": true
+      },
+      "build-commands": [
+        "mkdir -p /app/notes /app/bin",
+        "cp -a bundle/. /app/notes/",
+        "install -Dm755 notes.sh /app/bin/claudare-notes",
+        "install -Dm644 com.claudare.notes.desktop /app/share/applications/com.claudare.notes.desktop",
+        "install -Dm644 com.claudare.notes.metainfo.xml /app/share/metainfo/com.claudare.notes.metainfo.xml",
+        "install -Dm644 icon.png /app/share/icons/hicolor/512x512/apps/com.claudare.notes.png"
+      ],
+      "sources": [
+        { "type": "dir", "path": "source" }
+      ]
+    }
+  ]
+}

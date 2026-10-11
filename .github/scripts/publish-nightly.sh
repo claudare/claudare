@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo 'publish=false' >> "$GITHUB_OUTPUT"
 repository="repos/$GITHUB_REPOSITORY"
 head_sha=$(gh api "$repository/commits/main" --jq .sha)
 if [[ "$head_sha" != "$GITHUB_SHA" ]]; then
@@ -19,6 +20,11 @@ for app in notes proxy; do
 done
 test -s dist/notes-android/notes-nightly-android.apk
 test -s dist/proxy-container/proxy-container.tar
+jq -e --arg sha "$GITHUB_SHA" --argjson build "$GITHUB_RUN_NUMBER" \
+  --argjson attempt "$GITHUB_RUN_ATTEMPT" \
+  '.app == "notes" and .commit == $sha and .channel == "nightly"
+    and .buildNumber == $build and .runAttempt == $attempt' \
+  dist/notes-flatpak/build-info.json > /dev/null
 
 container_owner="${GITHUB_REPOSITORY%%/*}"
 container_image="ghcr.io/${container_owner,,}/proxy:nightly"
@@ -81,3 +87,4 @@ EOF
   fi
   gh release upload "$tag" --repo "$GITHUB_REPOSITORY" "${assets[@]}" --clobber
 done
+echo 'publish=true' >> "$GITHUB_OUTPUT"
