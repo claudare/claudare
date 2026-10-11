@@ -2,10 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/note_bootstrap.dart';
-import 'package:notes/application/reset_database.dart';
+import 'package:notes/screens/restart_required_screen.dart';
 import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -32,45 +33,78 @@ void main() {
 
   tearDown(() => messenger.setMockMethodCallHandler(channel, null));
 
-  for (final restart in [false, true]) {
-    test('reset with restart=$restart closes before deleting', () async {
-      await resetApplication(bootstrap, support, restart: restart);
+  Future<void> openScreen(
+    WidgetTester tester, {
+    TargetPlatform platform = TargetPlatform.android,
+  }) => tester.pumpWidget(
+    MaterialApp(
+      theme: ThemeData(platform: platform),
+      home: RestartRequiredScreen(
+        bootstrap: bootstrap,
+        supportDirectory: support,
+        resetDatabase: true,
+      ),
+    ),
+  );
 
-      expect(operations, ['close', 'delete', if (restart) 'restart']);
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    testWidgets('reset closes before deleting on ${platform.name}', (
+      tester,
+    ) async {
+      await openScreen(tester, platform: platform);
+      await tester.pumpAndSettle();
+
+      expect(operations, ['close', 'delete']);
+      expect(find.text('Restart required'), findsOneWidget);
+      expect(
+        find.text(
+          'The application needs to be restarted due to a database change.',
+        ),
+        findsOneWidget,
+      );
+      if (platform == TargetPlatform.iOS) {
+        expect(find.text('Restart now'), findsNothing);
+      } else {
+        await tester.tap(find.text('Restart now'));
+        await tester.pumpAndSettle();
+        expect(operations, ['close', 'delete', 'restart']);
+      }
     });
   }
 
-  test('reset waits for resource closure before deleting', () async {
+  testWidgets('reset waits for resource closure before deleting', (
+    tester,
+  ) async {
     final closed = Completer<void>();
     bootstrap.closeDelay = closed.future;
 
-    final resetting = resetApplication(bootstrap, support, restart: false);
+    await openScreen(tester);
     expect(operations, ['close']);
     closed.complete();
-    await resetting;
+    await tester.pumpAndSettle();
 
     expect(operations, ['close', 'delete']);
   });
 
-  test('closure failure prevents deletion and restart', () async {
+  testWidgets('closure failure prevents deletion and restart', (tester) async {
     final failure = Exception('close failed');
     bootstrap.closeFailure = failure;
 
-    await expectLater(
-      resetApplication(bootstrap, support, restart: true),
-      throwsA(same(failure)),
-    );
+    await openScreen(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Could not reset Notes'), findsOneWidget);
+    expect(find.text('Restart now'), findsNothing);
     expect(operations, ['close']);
   });
 
-  test('deletion failure prevents restart', () async {
+  testWidgets('deletion failure prevents restart', (tester) async {
     final failure = FileSystemException('delete failed');
     support.deleteFailure = failure;
 
-    await expectLater(
-      resetApplication(bootstrap, support, restart: true),
-      throwsA(same(failure)),
-    );
+    await openScreen(tester);
+    await tester.pumpAndSettle();
+    expect(find.text('Could not reset Notes'), findsOneWidget);
+    expect(find.text('Restart now'), findsNothing);
     expect(operations, ['close', 'delete']);
   });
 }

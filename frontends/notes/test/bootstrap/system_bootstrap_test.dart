@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
-import 'package:notes/application/reset_database.dart';
 import 'package:sync/sync.dart';
 import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
@@ -217,7 +216,8 @@ void main() {
         actor: identity.publicKey.toString(),
       );
       await application.command.createNote('note');
-      await resetApplication(first, support, restart: false);
+      await first.close();
+      await support.delete();
       expect(File(filepath).existsSync(), isFalse);
 
       final second = _bootstrap();
@@ -245,7 +245,7 @@ void main() {
     for (final suffix in ['-wal', '-shm', '-journal']) {
       await File('$filepath$suffix').writeAsString('');
     }
-    await resetApplication(bootstrap, support, restart: false);
+    await support.delete();
     for (final suffix in ['', '-wal', '-shm', '-journal']) {
       expect(File('$filepath$suffix').existsSync(), isFalse);
     }

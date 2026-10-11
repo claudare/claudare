@@ -9,7 +9,6 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
-import 'package:notes/application/reset_database.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:support_directory/support_directory.dart';
@@ -374,7 +373,8 @@ void main() {
       codec.encode(ReplicationMessageCommand(command!)),
     );
     await sqlite.transactionHeld.future.timeout(const Duration(seconds: 5));
-    await resetApplication(bootstrap, support, restart: false);
+    await bootstrap.close();
+    await support.delete();
     expect(transport.closed, isTrue);
     expect(File(filepath).existsSync(), isFalse);
     final published = system.eventStore.commandChanges.first;

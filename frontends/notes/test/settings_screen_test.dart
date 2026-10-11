@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/app_version.dart';
-import 'package:notes/application/event_store_provider.dart';
+import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
@@ -17,6 +18,8 @@ import 'package:notes/screens/settings/system_settings_screen.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'package:sync/sync.dart';
+
+import 'setup/setup_test_helpers.dart';
 
 void main() {
   testWidgets('Settings displays the app version last', (tester) async {
@@ -310,9 +313,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('back after saving transport settings refreshes the tile', (
-    tester,
-  ) async {
+  testWidgets('saving transport settings requires restart', (tester) async {
     final kv = MemoryKv();
     final system = _system(kv);
     await tester.pumpWidget(_screen(system, _application(system)));
@@ -329,12 +330,10 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Transport settings'), findsOneWidget);
-    await tester.enterText(find.widgetWithText(TextField, 'Group'), 'unsaved');
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
-
-    expect(_value(tester, 'Transport'), 'ws://saved.test @ notes');
+    expect(find.text('Restart required'), findsOneWidget);
+    expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://saved.test');
+    expect(await kv.getString(NoteSystem.groupKey), 'notes');
+    expect(find.byTooltip('Back'), findsNothing);
   });
 
   testWidgets('Peers appears below the device key with its saved count', (
@@ -490,16 +489,19 @@ Widget _screen(
   NoteSystem system,
   NotesApp application, {
   bool systemSettings = true,
-}) => NotesAppProvider(
-  application: application,
-  child: NoteSystemProvider(
-    system: system,
-    child: EventStoreProvider(
-      eventStore: system.eventStore,
-      reset: (_) async {},
+}) => NoteBootstrapProvider(
+  bootstrap: NoteBootstrap(
+    logger: const NoopLogger(),
+    timeProvider: FakeTimeProviderStatic.zero(),
+  ),
+  supportDirectory: FakeSupportDirectory(),
+  child: NotesAppProvider(
+    application: application,
+    child: NoteSystemProvider(
+      system: system,
       child: MaterialApp(
         home: systemSettings
-            ? const SystemSettingsScreen()
+            ? SystemSettingsScreen(key: ValueKey(systemSettings))
             : const SettingsScreen(),
       ),
     ),

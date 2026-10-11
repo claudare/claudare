@@ -10,8 +10,7 @@ import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/application/note_sync_provider.dart';
-import 'package:notes/application/reset_database.dart';
-import 'package:notes/application/event_store_provider.dart';
+import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
 import 'package:notes/screens/setup/actor_setup.dart';
@@ -138,15 +137,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _restartSync() async {
-    final bootstrap = widget.bootstrap;
-    try {
-      await bootstrap.restartSync();
-    } finally {
-      if (mounted && identical(bootstrap, widget.bootstrap)) setState(() {});
-    }
-  }
-
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
@@ -164,51 +154,49 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final ready = _ready;
-    Future<void> reset(bool restart) => resetApplication(
-      widget.bootstrap,
-      widget.supportDirectory,
-      restart: restart,
-    );
-    final app = MaterialApp(
-      title: appFlavor == 'nightly' ? 'Notes (Nightly)' : 'Notes',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
+    final app = NoteBootstrapProvider(
+      bootstrap: widget.bootstrap,
+      supportDirectory: widget.supportDirectory,
+      child: MaterialApp(
+        title: appFlavor == 'nightly' ? 'Notes (Nightly)' : 'Notes',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          visualDensity: VisualDensity.adaptivePlatformDensity,
+        ),
+        debugShowCheckedModeBanner: false,
+        home: _loading
+            ? LoadingScreen(
+                key: ValueKey(_initialization),
+                initialization: _initialization,
+                logger: widget.bootstrap.logger,
+                onReady: _onReady,
+              )
+            : _identity == null
+            ? ActorSetup(
+                identities: _system!.identities,
+                onSaved: (identity) {
+                  _identity = identity;
+                  _advanceSetup();
+                },
+              )
+            : !_syncSetupComplete
+            ? SyncSetup(
+                kv: _system!.kv,
+                initialServerUrl: _serverUrl ?? 'ws://localhost:7000',
+                initialGroup: _group ?? '0',
+                onSaved: (url, group) {
+                  _syncEnabled = true;
+                  _serverUrl = url;
+                  _group = group;
+                  _advanceSetup();
+                },
+                onSkipped: () {
+                  _syncEnabled = false;
+                  _advanceSetup();
+                },
+              )
+            : const HomeScreen(),
       ),
-      debugShowCheckedModeBanner: false,
-      home: _loading
-          ? LoadingScreen(
-              key: ValueKey(_initialization),
-              initialization: _initialization,
-              logger: widget.bootstrap.logger,
-              onReady: _onReady,
-              onReset: reset,
-            )
-          : _identity == null
-          ? ActorSetup(
-              identities: _system!.identities,
-              onSaved: (identity) {
-                _identity = identity;
-                _advanceSetup();
-              },
-            )
-          : !_syncSetupComplete
-          ? SyncSetup(
-              kv: _system!.kv,
-              initialServerUrl: _serverUrl ?? 'ws://localhost:7000',
-              initialGroup: _group ?? '0',
-              onSaved: (url, group) {
-                _syncEnabled = true;
-                _serverUrl = url;
-                _group = group;
-                _advanceSetup();
-              },
-              onSkipped: () {
-                _syncEnabled = false;
-                _advanceSetup();
-              },
-            )
-          : const HomeScreen(),
     );
     if (ready == null) return app;
     return NotesAppProvider(
@@ -217,15 +205,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       // Probably, each dep needs to be its own provider.
       child: NoteSystemProvider(
         system: _system!,
-        child: EventStoreProvider(
-          eventStore: _system!.eventStore,
-          reset: reset,
-          child: NoteSyncProvider(
-            restartSync: _restartSync,
-            coordinator: widget.bootstrap.syncCoordinator,
-            unavailableReason: widget.bootstrap.syncUnavailableReason,
-            child: app,
-          ),
+        child: NoteSyncProvider(
+          coordinator: widget.bootstrap.syncCoordinator,
+          unavailableReason: widget.bootstrap.syncUnavailableReason,
+          child: app,
         ),
       ),
     );

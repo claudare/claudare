@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
-import 'package:notes/application/event_store_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/screens/home/home_screen.dart';
@@ -165,7 +164,6 @@ void main() {
       application: application,
       eventStore: eventStore,
       openSystem: false,
-      reset: (_) async {},
     );
 
     expect(
@@ -196,8 +194,7 @@ void main() {
   testWidgets('canceling database reset does not reset the database', (
     tester,
   ) async {
-    final resets = <bool>[];
-    await _pumpSettings(tester, reset: (restart) async => resets.add(restart));
+    await _pumpSettings(tester);
 
     await tester.ensureVisible(find.text('Reset database'));
     await tester.tap(find.text('Reset database'));
@@ -210,42 +207,9 @@ void main() {
     );
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(resets, isEmpty);
+    expect(find.text('System'), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
   });
-
-  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
-    for (final restart in [false, true]) {
-      testWidgets('settings reset with restart=$restart on ${platform.name}', (
-        tester,
-      ) async {
-        final resets = <bool>[];
-        await _pumpSettings(
-          tester,
-          platform: platform,
-          reset: (restart) async => resets.add(restart),
-        );
-
-        await tester.ensureVisible(find.text('Reset database'));
-        await tester.tap(find.text('Reset database'));
-        await tester.pumpAndSettle();
-        final button = find.widgetWithText(
-          TextButton,
-          restart ? 'Reset and restart' : 'Reset',
-        );
-        final enabled = !restart || platform != TargetPlatform.iOS;
-        expect(tester.widget<TextButton>(button).enabled, enabled);
-
-        await tester.tap(button);
-        await tester.pumpAndSettle();
-        expect(resets, enabled ? [restart] : isEmpty);
-        expect(
-          find.byType(AlertDialog),
-          enabled ? findsNothing : findsOneWidget,
-        );
-      });
-    }
-  }
 }
 
 Future<void> _pumpSettings(
@@ -254,7 +218,6 @@ Future<void> _pumpSettings(
   MemoryEventStore? eventStore,
   TargetPlatform platform = TargetPlatform.iOS,
   bool openSystem = true,
-  required Future<void> Function(bool restart) reset,
 }) async {
   final store = eventStore ?? MemoryEventStore();
   await tester.pumpWidget(
@@ -268,13 +231,9 @@ Future<void> _pumpSettings(
           kv: MemoryKv(),
           eventStore: store,
         ),
-        child: EventStoreProvider(
-          eventStore: store,
-          reset: reset,
-          child: MaterialApp(
-            theme: ThemeData(platform: platform),
-            home: const SettingsScreen(),
-          ),
+        child: MaterialApp(
+          theme: ThemeData(platform: platform),
+          home: const SettingsScreen(),
         ),
       ),
     ),

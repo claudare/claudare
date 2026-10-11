@@ -2,12 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
-import 'package:notes/application/event_store_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
-import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/screens/confirm_database_reset.dart';
 import 'package:notes/screens/settings/peers_screen.dart';
 import 'package:notes/screens/settings/replication_screen.dart';
@@ -20,7 +18,6 @@ class SystemSettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final application = NotesAppProvider.of(context);
-    final eventStoreProvider = EventStoreProvider.of(context);
     final system = NoteSystemProvider.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('System')),
@@ -28,7 +25,6 @@ class SystemSettingsScreen extends StatelessWidget {
         key: ValueKey((system, application)),
         application: application,
         system: system,
-        reset: eventStoreProvider.reset,
       ),
     );
   }
@@ -37,13 +33,11 @@ class SystemSettingsScreen extends StatelessWidget {
 class _SettingsBody extends StatefulWidget {
   final NotesApp application;
   final NoteSystem system;
-  final Future<void> Function(bool) reset;
 
   const _SettingsBody({
     super.key,
     required this.application,
     required this.system,
-    required this.reset,
   });
 
   @override
@@ -66,7 +60,6 @@ class _SettingsBodyState extends State<_SettingsBody> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (context) => TransportSettingsScreen(
-          onSaved: NoteSyncProvider.maybeOf(context)?.restartSync,
           kv: widget.system.kv,
           initialEnabled: data.enabled,
           initialServerUrl: data.serverUrl,
@@ -167,12 +160,7 @@ class _SettingsBodyState extends State<_SettingsBody> {
           ListTile(
             leading: const Icon(Icons.delete_forever),
             title: const Text('Reset database'),
-            onTap: () async {
-              final restart = await confirmDatabaseReset(context);
-              if (restart != null) {
-                await widget.reset(restart);
-              }
-            },
+            onTap: () => confirmDatabaseReset(context),
           ),
         ],
       );

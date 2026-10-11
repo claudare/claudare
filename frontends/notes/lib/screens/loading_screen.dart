@@ -7,14 +7,12 @@ class LoadingScreen extends StatefulWidget {
   final Future<void> initialization;
   final Logger logger;
   final VoidCallback onReady;
-  final Future<void> Function(bool restart) onReset;
 
   const LoadingScreen({
     super.key,
     required this.initialization,
     required this.logger,
     required this.onReady,
-    required this.onReset,
   });
 
   @override
@@ -67,12 +65,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                     SelectableText('$error', textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () async {
-                        final restart = await confirmDatabaseReset(context);
-                        if (restart != null) {
-                          await widget.onReset(restart);
-                        }
-                      },
+                      onPressed: () => confirmDatabaseReset(context),
                       child: const Text('Reset database'),
                     ),
                   ],

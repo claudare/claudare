@@ -5,7 +5,6 @@ import 'package:kv/kv.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
-import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/main.dart';
 import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/setup/actor_setup.dart';
@@ -18,7 +17,7 @@ import '../sync_test_transport.dart';
 
 void main() {
   testWidgets(
-    'saving transport settings replaces the runtime used by diagnostics',
+    'saving transport settings closes the runtime and requires restart',
     (tester) async {
       final system = await testSystem();
       final bootstrap = _SetupBootstrap(system);
@@ -40,19 +39,10 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       expect(previous.snapshot.connection, SyncConnectionState.closed);
-      expect(bootstrap.syncCoordinator, isNot(same(previous)));
-      expect(
-        tester
-            .widget<NoteSyncProvider>(find.byType(NoteSyncProvider))
-            .coordinator,
-        same(bootstrap.syncCoordinator),
-      );
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Replication'));
-      await tester.pumpAndSettle();
-      expect(find.text('Connected'), findsOneWidget);
-      expect(find.text('Closed'), findsNothing);
+      expect(bootstrap.syncCoordinator, same(previous));
+      expect(find.text('Restart required'), findsOneWidget);
+      expect(find.byTooltip('Back'), findsNothing);
+      expect(await system.kv.getString(NoteSystem.groupKey), 'changed');
     },
   );
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:notes/screens/restart_required_screen.dart';
 import 'package:notes/screens/server_url_presets.dart';
 import 'package:notes/screens/settings/transport_health_check.dart';
 
@@ -11,7 +12,6 @@ class TransportSettingsScreen extends StatefulWidget {
   final String? initialServerUrl;
   final String? initialGroup;
   final Future<bool> Function(Uri) testConnection;
-  final Future<void> Function()? onSaved;
 
   TransportSettingsScreen({
     super.key,
@@ -19,7 +19,6 @@ class TransportSettingsScreen extends StatefulWidget {
     this.initialEnabled = false,
     this.initialServerUrl,
     this.initialGroup,
-    this.onSaved,
     Future<bool> Function(Uri)? testConnection,
   }) : testConnection = testConnection ?? TransportHealthCheck().call;
 
@@ -70,34 +69,22 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
       _saving = true;
       _saveError = null;
     });
-    var saved = false;
     try {
       await widget.kv.setAll({
         NoteSystem.syncEnabledKey: _enabled,
         NoteSystem.serverUrlKey: _url.text.trim(),
         NoteSystem.groupKey: _group.text,
       });
-      saved = true;
-      await widget.onSaved?.call();
-      if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transport settings saved and applied.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
     } on Exception {
       if (mounted) {
         setState(() {
           _saving = false;
-          _saveError = saved
-              ? 'Transport settings saved, but could not apply them. Save again to retry.'
-              : 'Could not save transport settings. Try again.';
+          _saveError = 'Could not save transport settings. Try again.';
         });
       }
+      return;
     }
+    if (mounted) await RestartRequiredScreen.open(context);
   }
 
   Future<void> _testConnection() async {
@@ -182,7 +169,7 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
           ),
           if (_saveError != null) Text(_saveError!),
           const SizedBox(height: 16),
-          const Text('Saving applies changes immediately.'),
+          const Text('Saving requires restarting the application.'),
           const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving || _testing ? null : _save,
