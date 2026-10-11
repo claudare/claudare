@@ -23,7 +23,7 @@ void main() {
       final system = await testSystem();
       final bootstrap = _SetupBootstrap(system);
       await tester.pumpWidget(
-        MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+        MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
       );
       await tester.pumpAndSettle();
       final previous = bootstrap.syncCoordinator!;
@@ -74,7 +74,7 @@ void main() {
             await tester.pumpWidget(
               MyApp(
                 bootstrap: bootstrap,
-                applicationDirectory: () async => 'unused',
+                supportDirectory: FakeSupportDirectory(),
               ),
             );
             await tester.pumpAndSettle();
@@ -130,7 +130,7 @@ void main() {
         await tester.pumpWidget(
           MyApp(
             bootstrap: _SetupBootstrap(system),
-            applicationDirectory: () async => 'unused',
+            supportDirectory: FakeSupportDirectory(),
           ),
         );
         await tester.pumpAndSettle();
@@ -143,7 +143,7 @@ void main() {
         await tester.pumpWidget(
           MyApp(
             bootstrap: _SetupBootstrap(system),
-            applicationDirectory: () async => 'unused',
+            supportDirectory: FakeSupportDirectory(),
           ),
         );
         await tester.pumpAndSettle();
@@ -160,7 +160,7 @@ void main() {
     await system.kv.setString(NoteSystem.serverUrlKey, 'wss://example.test');
     final bootstrap = _SetupBootstrap(system);
     await tester.pumpWidget(
-      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+      MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
     );
     await tester.pumpAndSettle();
     expect(find.byType(SyncSetup), findsOneWidget);
@@ -185,7 +185,7 @@ void main() {
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),
-        applicationDirectory: () async => 'unused',
+        supportDirectory: FakeSupportDirectory(),
       ),
     );
     await tester.pumpAndSettle();
@@ -195,7 +195,7 @@ void main() {
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),
-        applicationDirectory: () async => 'unused',
+        supportDirectory: FakeSupportDirectory(),
       ),
     );
     await tester.pumpAndSettle();
@@ -210,7 +210,7 @@ void main() {
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),
-        applicationDirectory: () async => 'unused',
+        supportDirectory: FakeSupportDirectory(),
       ),
     );
     await tester.pumpAndSettle();
@@ -219,7 +219,7 @@ void main() {
     await tester.pumpWidget(
       MyApp(
         bootstrap: _SetupBootstrap(system),
-        applicationDirectory: () async => 'unused',
+        supportDirectory: FakeSupportDirectory(),
       ),
     );
     await tester.pumpAndSettle();

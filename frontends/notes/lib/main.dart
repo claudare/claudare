@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/notes_app_provider.dart';
@@ -15,8 +16,7 @@ import 'package:notes/screens/home/home_screen.dart';
 import 'package:notes/screens/loading_screen.dart';
 import 'package:notes/screens/setup/actor_setup.dart';
 import 'package:notes/screens/setup/sync_setup.dart';
-import 'package:notes/util/get_application_directory.dart';
-import 'package:path/path.dart' as path;
+import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:sync/sync.dart';
 
@@ -27,17 +27,24 @@ void main() {
     timeProvider: SystemTimeProvider(),
     logger: ConsoleLogger(name: 'notes', minimumLevel: LogLevel.debug),
   );
-  runApp(MyApp(bootstrap: bootstrap));
+  runApp(
+    MyApp(
+      bootstrap: bootstrap,
+      supportDirectory: SupportDirectory(
+        namespace: kDebugMode ? 'dev' : 'prod',
+      ),
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
   final NoteBootstrap bootstrap;
-  final Future<String> Function() applicationDirectory;
+  final SupportDirectory supportDirectory;
 
   const MyApp({
     super.key,
     required this.bootstrap,
-    this.applicationDirectory = getApplicationDirectory,
+    required this.supportDirectory,
   });
 
   @override
@@ -85,10 +92,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   Future<void> _initialize() async {
     final bootstrap = widget.bootstrap;
-    final directory = await widget.applicationDirectory();
-    final system = await bootstrap.initializeSystem(
-      dbFilepath: path.join(directory, 'main.sqlite'),
-    );
+    final filepath = await widget.supportDirectory.getFilePath('main.sqlite');
+    final system = await bootstrap.initializeSystem(dbFilepath: filepath);
     final identity = await system.identities.getLocal();
     final serverUrl = await system.kv.getString(NoteSystem.serverUrlKey);
     final group = await system.kv.getString(NoteSystem.groupKey);
@@ -163,7 +168,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     final ready = _ready;
     Future<void> reset(bool restart) => resetApplication(
       widget.bootstrap,
-      widget.applicationDirectory,
+      widget.supportDirectory,
       restart: restart,
     );
     final app = MaterialApp(

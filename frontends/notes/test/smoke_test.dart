@@ -20,7 +20,7 @@ void main() {
   testWidgets('shows loading until the application is ready', (tester) async {
     final bootstrap = _ControlledBootstrap();
     await tester.pumpWidget(
-      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+      MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
     );
     await tester.pump();
 
@@ -41,7 +41,7 @@ void main() {
   ) async {
     final bootstrap = _ControlledBootstrap();
     await tester.pumpWidget(
-      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+      MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
     );
     bootstrap.complete();
     await tester.pumpAndSettle();
@@ -77,7 +77,7 @@ void main() {
     final bootstrap = _FailingBootstrap(logger);
     final app = MyApp(
       bootstrap: bootstrap,
-      applicationDirectory: () async => 'unused',
+      supportDirectory: FakeSupportDirectory(),
     );
 
     await tester.pumpWidget(app);
@@ -99,7 +99,7 @@ void main() {
   testWidgets('startup error offers reset confirmation', (tester) async {
     final bootstrap = _FailingBootstrap(const NoopLogger());
     await tester.pumpWidget(
-      MyApp(bootstrap: bootstrap, applicationDirectory: () async => 'unused'),
+      MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Reset database'));

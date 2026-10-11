@@ -12,6 +12,7 @@ import 'package:notes/application/note_system.dart';
 import 'package:notes/application/reset_database.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:support_directory/support_directory.dart';
 
 import '../sync_test_transport.dart';
 
@@ -331,11 +332,9 @@ void main() {
   );
 
   test('reset stops replication with a SQLite write response still pending', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'notes-sync-reset-',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final filepath = '${directory.path}/main.sqlite';
+    final support = TempSupportDirectory();
+    addTearDown(support.delete);
+    final filepath = await support.getFilePath('main.sqlite');
     final transport = TestTransport();
     final sqlite = _ObservedSqlite();
     final bootstrap = _bootstrap(transport, sqlite: sqlite);
@@ -375,7 +374,7 @@ void main() {
       codec.encode(ReplicationMessageCommand(command!)),
     );
     await sqlite.transactionHeld.future.timeout(const Duration(seconds: 5));
-    await resetDatabase(bootstrap, filepath);
+    await resetApplication(bootstrap, support, restart: false);
     expect(transport.closed, isTrue);
     expect(File(filepath).existsSync(), isFalse);
     final published = system.eventStore.commandChanges.first;

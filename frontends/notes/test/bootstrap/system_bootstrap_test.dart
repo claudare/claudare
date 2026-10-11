@@ -8,8 +8,8 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/reset_database.dart';
-import 'package:path/path.dart' as path;
 import 'package:sync/sync.dart';
+import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
 
 NoteBootstrap _bootstrap({IsolateSqlite? sqlite}) => NoteBootstrap(
@@ -22,9 +22,9 @@ void main() {
   for (final actor in [false, true]) {
     for (final server in [false, true]) {
       test('database reopens with actor=$actor and server=$server', () async {
-        final directory = await Directory.systemTemp.createTemp('notes-main-');
-        addTearDown(() => directory.delete(recursive: true));
-        final filepath = path.join(directory.path, 'main.sqlite');
+        final support = TempSupportDirectory();
+        addTearDown(support.delete);
+        final filepath = await support.getFilePath('main.sqlite');
         final first = _bootstrap();
         addTearDown(first.close);
         final system = await first.initializeSystem(dbFilepath: filepath);
@@ -81,17 +81,16 @@ void main() {
   });
 
   test('configuration migration failure closes the database once', () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'notes-main-error-',
-    );
-    addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'main.sqlite');
+    final support = TempSupportDirectory();
+    addTearDown(support.delete);
+    final filepath = await support.getFilePath('main.sqlite');
     final seed = IsolateSqlite();
     await seed.open(filepath);
     await seed.execute('CREATE TABLE migrations_kv (wrong INT)');
     await seed.close();
     final sqlite = _CountingSqlite();
     final bootstrap = _bootstrap(sqlite: sqlite);
+    addTearDown(bootstrap.close);
     await expectLater(
       bootstrap.initializeSystem(dbFilepath: filepath),
       throwsA(isA<Exception>()),
@@ -122,11 +121,9 @@ void main() {
   test(
     'existing event actors remain readable in the shared database',
     () async {
-      final directory = await Directory.systemTemp.createTemp(
-        'notes-old-actor-',
-      );
-      addTearDown(() => directory.delete(recursive: true));
-      final filepath = path.join(directory.path, 'main.sqlite');
+      final support = TempSupportDirectory();
+      addTearDown(support.delete);
+      final filepath = await support.getFilePath('main.sqlite');
       final first = _bootstrap();
       addTearDown(first.close);
       final firstSystem = await first.initializeSystem(dbFilepath: filepath);
@@ -156,10 +153,10 @@ void main() {
   test(
     'a closed database copy carries notes, settings, and pairings',
     () async {
-      final directory = await Directory.systemTemp.createTemp('notes-copy-');
-      addTearDown(() => directory.delete(recursive: true));
-      final filepath = path.join(directory.path, 'main.sqlite');
-      final copiedPath = path.join(directory.path, 'copied.sqlite');
+      final support = TempSupportDirectory();
+      addTearDown(support.delete);
+      final filepath = await support.getFilePath('main.sqlite');
+      final copiedPath = await support.getFilePath('copied.sqlite');
       final first = _bootstrap();
       addTearDown(first.close);
       final system = await first.initializeSystem(dbFilepath: filepath);
@@ -203,9 +200,9 @@ void main() {
   test(
     'database reset clears notes, settings, identity, and pairings',
     () async {
-      final directory = await Directory.systemTemp.createTemp('notes-reset-');
-      addTearDown(() => directory.delete(recursive: true));
-      final filepath = path.join(directory.path, 'main.sqlite');
+      final support = TempSupportDirectory();
+      addTearDown(support.delete);
+      final filepath = await support.getFilePath('main.sqlite');
       final first = _bootstrap();
       addTearDown(first.close);
       final system = await first.initializeSystem(dbFilepath: filepath);
@@ -220,11 +217,12 @@ void main() {
         actor: identity.publicKey.toString(),
       );
       await application.command.createNote('note');
-      await resetDatabase(first, filepath);
+      await resetApplication(first, support, restart: false);
       expect(File(filepath).existsSync(), isFalse);
 
       final second = _bootstrap();
       addTearDown(second.close);
+      await support.getDirectory();
       final reopened = await second.initializeSystem(dbFilepath: filepath);
       expect(await reopened.identities.getLocal(), isNull);
       expect(await reopened.identities.allPeers(), isEmpty);
@@ -237,16 +235,17 @@ void main() {
   );
 
   test('database reset deletes all SQLite sidecars', () async {
-    final directory = await Directory.systemTemp.createTemp('notes-sidecars-');
-    addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'main.sqlite');
+    final support = TempSupportDirectory();
+    addTearDown(support.delete);
+    final filepath = await support.getFilePath('main.sqlite');
     final bootstrap = _bootstrap();
+    addTearDown(bootstrap.close);
     await bootstrap.initializeSystem(dbFilepath: filepath);
     await bootstrap.close();
     for (final suffix in ['-wal', '-shm', '-journal']) {
       await File('$filepath$suffix').writeAsString('');
     }
-    await resetDatabase(bootstrap, filepath);
+    await resetApplication(bootstrap, support, restart: false);
     for (final suffix in ['', '-wal', '-shm', '-journal']) {
       expect(File('$filepath$suffix').existsSync(), isFalse);
     }

@@ -1,18 +1,16 @@
-import 'dart:io';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
-import 'package:path/path.dart' as path;
 import 'package:time_provider/time_provider.dart';
+import 'package:support_directory/support_directory.dart';
 
 void main() {
   test('keeps note history readable after SQLite is reopened', () async {
-    final directory = await Directory.systemTemp.createTemp('notes-bootstrap-');
-    addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'main.sqlite');
+    final support = TempSupportDirectory();
+    addTearDown(support.delete);
+    final filepath = await support.getFilePath('main.sqlite');
 
     final first = NoteBootstrap(
       logger: const NoopLogger(),
@@ -54,9 +52,9 @@ void main() {
   });
 
   test('closes SQLite when event database migration fails', () async {
-    final directory = await Directory.systemTemp.createTemp('notes-migration-');
-    addTearDown(() => directory.delete(recursive: true));
-    final filepath = path.join(directory.path, 'main.sqlite');
+    final support = TempSupportDirectory();
+    addTearDown(support.delete);
+    final filepath = await support.getFilePath('main.sqlite');
     final sqlite = IsolateSqlite();
     await sqlite.open(filepath);
     await sqlite.execute('CREATE TABLE migrations_event_database (wrong INT)');
@@ -68,6 +66,7 @@ void main() {
       timeProvider: FakeTimeProviderStatic.zero(),
       sqlite: tracked,
     );
+    addTearDown(bootstrap.close);
     await expectLater(
       bootstrap.initializeSystem(dbFilepath: filepath),
       throwsA(isA<Exception>()),

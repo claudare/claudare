@@ -1,8 +1,24 @@
+import 'dart:io';
+
 import 'package:claudare_crypto/crypto.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:path/path.dart' as path;
 import 'package:sync/sync.dart';
+import 'package:support_directory/support_directory.dart';
+
+class FakeSupportDirectory implements SupportDirectory {
+  @override
+  Future<Directory> getDirectory() async => Directory('unused');
+
+  @override
+  Future<String> getFilePath(String filename) async =>
+      path.join((await getDirectory()).path, filename);
+
+  @override
+  Future<void> delete() async {}
+}
 
 class TestIdentities extends MemoryActorIdentityStore {
   Exception? saveError;

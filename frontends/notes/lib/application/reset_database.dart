@@ -1,27 +1,16 @@
-import 'dart:io';
-
 import 'package:notes/application/note_bootstrap.dart';
-import 'package:path/path.dart' as path;
 import 'package:restart_app/restart_app.dart';
+import 'package:support_directory/support_directory.dart';
 
 /// Deletes all local Notes data and optionally requests a process restart.
 Future<void> resetApplication(
   NoteBootstrap bootstrap,
-  Future<String> Function() applicationDirectory, {
+  SupportDirectory supportDirectory, {
   required bool restart,
 }) async {
-  final directory = await applicationDirectory();
-  await resetDatabase(bootstrap, path.join(directory, 'main.sqlite'));
+  await bootstrap.close();
+  await supportDirectory.delete();
   if (restart) {
     await Restart.restartApp(mode: RestartMode.process);
-  }
-}
-
-/// Closes Notes and removes its database and SQLite sidecars.
-Future<void> resetDatabase(NoteBootstrap bootstrap, String filepath) async {
-  await bootstrap.close();
-  for (final suffix in ['', '-wal', '-shm', '-journal']) {
-    final file = File('$filepath$suffix');
-    if (file.existsSync()) file.deleteSync();
   }
 }

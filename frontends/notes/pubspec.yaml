@@ -44,7 +44,7 @@ dependencies:
   crdt: ^1.0.0
   notes_app: ^0.0.0
   time_provider: ^1.0.0
-  path_provider: ^2.1.5
+  support_directory: ^1.0.0
   path: ^1.9.1
   restart_app: ^1.3.2
   messagepack: ^0.2.1
