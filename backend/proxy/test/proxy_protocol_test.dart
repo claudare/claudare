@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:proxy/proxy.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:sync/sync.dart';
@@ -12,7 +13,7 @@ void main() {
 
   setUp(() async {
     final server = await shelf_io.serve(
-      router.call,
+      createRouter(logger: const NoopLogger()).call,
       InternetAddress.loopbackIPv4,
       0,
     );

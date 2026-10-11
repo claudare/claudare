@@ -16,6 +16,9 @@ Run from this directory; the default port is `7000`:
 PORT=7000 fvm dart run bin/main.dart
 ```
 
+Set `LOG_LEVEL` to `debug` (default), `info`, `warning`, or `error`.
+Debug logs include message payloads.
+
 ## Docker installation
 
 Only nightly Linux x64 images are available.

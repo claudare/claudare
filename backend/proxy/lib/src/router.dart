@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
@@ -13,16 +15,15 @@ import 'memory_broadcast_pubsub.dart';
 final directPubsub = MemoryDirectPubSub();
 final broadcastPubsub = MemoryBroadcastPubSub();
 
-// Configure routes.
-final router = Router()
+Router createRouter({required Logger logger}) => Router()
   ..get('/health', _healthHandler)
-  ..get('/', _actorHandler);
+  ..get('/', (Request request) => _actorHandler(request, logger));
 
 Response _healthHandler(Request req) {
   return Response.ok('Ok');
 }
 
-Handler _actorHandler = (Request request) {
+FutureOr<Response> _actorHandler(Request request, Logger logger) {
   final ProxyInit init;
   try {
     init = ProxyInit.fromHeaders(request.headers);
@@ -34,11 +35,8 @@ Handler _actorHandler = (Request request) {
     final thisActor = init.actor;
     final group = init.group;
 
-    void printScoped(String msg) {
-      print('[$group/$thisActor] $msg');
-    }
-
-    printScoped('Connected');
+    final scope = '[$group/$thisActor]';
+    logger.info('$scope Connected');
 
     late final Unsubscribe unsubDirect;
     try {
@@ -46,7 +44,7 @@ Handler _actorHandler = (Request request) {
         channel.sink.add(message);
       });
     } catch (_) {
-      printScoped('Already subscribed');
+      logger.warning('$scope Already subscribed');
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
       return;
     }
@@ -58,7 +56,7 @@ Handler _actorHandler = (Request request) {
 
     channel.stream.listen(
       (message) {
-        printScoped('Sent: $message');
+        logger.debug('$scope Sent: $message');
 
         try {
           final decoded = ProxyMessage.fromJson(jsonDecode(message));
@@ -87,8 +85,9 @@ Handler _actorHandler = (Request request) {
                 ),
               );
           }
-        } catch (error) {
-          printScoped('Bad message: $error');
+        } catch (error, stackTrace) {
+          logger.warning('$scope Bad message');
+          logger.debug('$scope Bad message details', error, stackTrace);
           channel.sink.close(
             WebSocketStatus.invalidFramePayloadData,
             'Bad message',
@@ -98,10 +97,10 @@ Handler _actorHandler = (Request request) {
       onDone: () {
         unsubDirect();
         unsubBroadcast();
-        printScoped('Disconnected');
+        logger.info('$scope Disconnected');
       },
       onError: (error) {
-        printScoped('Error: $error');
+        logger.error('$scope Stream error', error);
         channel.sink.close(WebSocketStatus.internalServerError, 'Stream error');
       },
       cancelOnError: true,
@@ -109,4 +108,4 @@ Handler _actorHandler = (Request request) {
   });
 
   return wsHandler(request);
-};
+}

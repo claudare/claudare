@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-// This development tester intentionally uses dev dependencies from bin.
-// ignore: depend_on_referenced_packages
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:sync/sync.dart';
 // ignore: depend_on_referenced_packages
