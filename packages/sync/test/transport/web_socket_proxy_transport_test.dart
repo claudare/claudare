@@ -11,6 +11,8 @@ import 'package:test/test.dart';
 import 'proxy_transport_test_helper.dart';
 
 void main() {
+  final beforeTimeout =
+      SyncDefaults.sessionTimeout - const Duration(seconds: 1);
   late TestProxy proxy;
   late TestClock clock;
   late TestTransport a;
@@ -45,7 +47,7 @@ void main() {
         await (order == 'a first' ? b : a).start();
         await flushMessages();
       }
-      await clock.elapse(const Duration(seconds: 30));
+      await clock.elapse(SyncDefaults.sessionTimeout * 2);
       expect(a.peers.map((peer) => peer.actor), ['b']);
       expect(b.peers.map((peer) => peer.actor), ['a']);
       expect(
@@ -62,7 +64,7 @@ void main() {
     final other = TestTransport(proxy, clock, 'c', group: 'other');
     await a.start();
     await other.start();
-    await clock.elapse(const Duration(seconds: 10));
+    await clock.elapse(SyncDefaults.discoveryInterval * 2);
     expect(a.peers, isEmpty);
     expect(other.peers, isEmpty);
     await other.close();
@@ -74,7 +76,7 @@ void main() {
     await flushMessages();
     expect(a.peers, isEmpty);
     expect(b.peers, hasLength(1));
-    await clock.elapse(const Duration(seconds: 14));
+    await clock.elapse(beforeTimeout);
     expect(a.peers, isEmpty);
     expect(b.peers, hasLength(1));
     final handshakes = proxy.sent
@@ -89,10 +91,12 @@ void main() {
       proxy.drop = (sent) => sent.message is TransportMessageHandshake;
       await Future.wait([a.start(), b.start()]);
       await flushMessages();
-      await clock.elapse(const Duration(seconds: 14));
+      await clock.elapse(beforeTimeout);
       expect(a.peers, isEmpty);
       proxy.drop = null;
-      await clock.elapse(const Duration(seconds: 6));
+      await clock.elapse(
+        const Duration(seconds: 1) + SyncDefaults.discoveryInterval,
+      );
       expect(a.peers, hasLength(1));
       final ids = proxy.sent
           .map((sent) => sent.message)
@@ -157,7 +161,7 @@ void main() {
       proxy.drop = (sent) => sent.sender == 'b';
       var closed = false;
       unawaited(a.peers.single.channel.sink.done.then((_) => closed = true));
-      await clock.elapse(const Duration(seconds: 14));
+      await clock.elapse(beforeTimeout);
       final id =
           (proxy.sent
                       .firstWhere(
@@ -174,7 +178,7 @@ void main() {
             : TransportMessageKeepalive(id),
       );
       await flushMessages();
-      await clock.elapse(const Duration(seconds: 14));
+      await clock.elapse(beforeTimeout);
       expect(closed, isFalse);
       await clock.elapse(const Duration(seconds: 1));
       expect(closed, isTrue);
@@ -188,10 +192,10 @@ void main() {
       final oldA = a.peers.single;
       final oldB = b.peers.single;
       proxy.drop = (sent) => sent.message is TransportMessageKeepalive;
-      await clock.elapse(const Duration(seconds: 15));
+      await clock.elapse(SyncDefaults.sessionTimeout);
       await Future.wait([oldA.channel.sink.done, oldB.channel.sink.done]);
       proxy.drop = null;
-      await clock.elapse(const Duration(seconds: 5));
+      await clock.elapse(SyncDefaults.discoveryInterval);
       expect(a.peers, hasLength(2));
       expect(b.peers, hasLength(2));
       expect(a.peers.last.channel, isNot(same(oldA.channel)));
@@ -213,7 +217,7 @@ void main() {
         await flushMessages();
         await Future.wait([left.sink.done, right.sink.done]);
         expect(await right.stream.toList(), isEmpty);
-        await clock.elapse(const Duration(seconds: 5));
+        await clock.elapse(SyncDefaults.discoveryInterval);
         expect(a.peers, hasLength(2));
         expect(b.peers, hasLength(2));
       },
@@ -231,7 +235,7 @@ void main() {
                 as TransportMessageHandshake)
             .sessionId;
     await a.peers.single.channel.sink.close();
-    await clock.elapse(const Duration(seconds: 5));
+    await clock.elapse(SyncDefaults.discoveryInterval);
     final received = <String>[];
     b.peers.last.channel.stream.listen(received.add);
     for (final message in <TransportMessage>[
@@ -253,7 +257,7 @@ void main() {
     proxy.drop = (sent) => sent.sender == 'b';
     var closed = false;
     unawaited(a.peers.single.channel.sink.done.then((_) => closed = true));
-    await clock.elapse(const Duration(seconds: 14));
+    await clock.elapse(beforeTimeout);
     for (final bad in [
       42,
       '{bad',
@@ -350,7 +354,7 @@ void main() {
     proxy.drop = (sent) => sent.sender == 'b';
     var closed = false;
     unawaited(a.peers.single.channel.sink.done.then((_) => closed = true));
-    await clock.elapse(const Duration(seconds: 14));
+    await clock.elapse(beforeTimeout);
     proxy.inject('a', 'b', const TransportMessageKeepalive('old-session'));
     await flushMessages();
     await clock.elapse(const Duration(seconds: 1));
@@ -451,7 +455,7 @@ void main() {
       );
       await replicators.first.close();
       await Future.wait(running);
-      await clock.elapse(const Duration(seconds: 5));
+      await clock.elapse(SyncDefaults.discoveryInterval);
       expect(replicators, hasLength(4));
       final second = command('b', 1);
       expect(await stores[1].addStoredCommand(second), isTrue);
