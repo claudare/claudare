@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:notes/screens/server_url_presets.dart';
 
 /// Enables or skips server configuration without opening a connection.
 class SyncSetup extends StatefulWidget {
@@ -100,6 +101,13 @@ class _SyncSetupState extends State<SyncSetup> {
             labelText: 'Replication server URL',
             errorText: _inputError,
           ),
+        ),
+        ServerUrlPresets(
+          enabled: !_saving,
+          onSelected: (url) => setState(() {
+            _url.text = url;
+            _inputError = null;
+          }),
         ),
         TextField(
           controller: _group,

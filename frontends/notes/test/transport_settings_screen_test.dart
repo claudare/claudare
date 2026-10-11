@@ -7,6 +7,109 @@ import 'package:notes/application/note_system.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
 
 void main() {
+  for (final (preset, url) in [
+    ('Local Development', 'ws://localhost:7000'),
+    ('Production', 'wss://proxy.claudare.org'),
+  ]) {
+    testWidgets('$preset updates settings draft until Save', (tester) async {
+      final kv = MemoryKv();
+      await kv.setString(NoteSystem.serverUrlKey, 'wss://before.test');
+      var applied = 0;
+      await _show(
+        tester,
+        kv,
+        url: 'wss://before.test',
+        group: 'notes',
+        onSaved: () async => applied++,
+      );
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      expect(_field(tester, 'Server URL').controller!.text, url);
+      expect(_field(tester, 'Group').controller!.text, 'notes');
+      expect(_toggle(tester).value, isFalse);
+      expect(await kv.getString(NoteSystem.serverUrlKey), 'wss://before.test');
+      expect(applied, 0);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(await kv.getString(NoteSystem.serverUrlKey), url);
+      expect(await kv.getString(NoteSystem.groupKey), 'notes');
+      expect(await kv.getBool(NoteSystem.syncEnabledKey), isFalse);
+      expect(applied, 1);
+    });
+
+    testWidgets('$preset allows custom settings URL edits', (tester) async {
+      final kv = MemoryKv();
+      await _show(tester, kv);
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      await _edit(tester, url: 'wss://custom.test', group: 'notes');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(await kv.getString(NoteSystem.serverUrlKey), 'wss://custom.test');
+    });
+
+    for (final success in [true, false]) {
+      testWidgets('$preset clears connection result $success', (tester) async {
+        await _show(
+          tester,
+          MemoryKv(),
+          url: 'ws://before.test',
+          group: 'notes',
+          check: (_) async => success,
+        );
+        await tester.tap(find.text('Test connection'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(success ? 'Connection successful' : 'Connection failed'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text(preset));
+        await tester.pump();
+        expect(find.textContaining('Connection '), findsNothing);
+        expect(_button(tester, 'Test connection').style, isNull);
+      });
+    }
+
+    testWidgets('$preset discards pending connection result', (tester) async {
+      final pending = Completer<bool>();
+      await _show(
+        tester,
+        MemoryKv(),
+        url: 'ws://before.test',
+        group: 'notes',
+        check: (_) => pending.future,
+      );
+      await tester.tap(find.text('Test connection'));
+      await tester.pump();
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      expect(_field(tester, 'Server URL').controller!.text, url);
+      pending.complete(true);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Connection '), findsNothing);
+      expect(_button(tester, 'Test connection').style, isNull);
+    });
+
+    testWidgets('$preset clears settings save error', (tester) async {
+      final kv = _ControlledKv()
+        ..beforeWrite = () async => throw Exception('save failed');
+      await _show(tester, kv);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Could not save transport settings. Try again.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      expect(
+        find.text('Could not save transport settings. Try again.'),
+        findsNothing,
+      );
+      expect(await kv.listKeys(''), isEmpty);
+    });
+  }
+
   testWidgets('Save applies persisted settings before showing success', (
     tester,
   ) async {
@@ -232,6 +335,9 @@ void main() {
     expect(_field(tester, 'Group').enabled, isFalse);
     expect(_toggle(tester).onChanged, isNull);
     expect(_button(tester, 'Saving…').onPressed, isNull);
+    for (final preset in ['Local Development', 'Production']) {
+      expect(_button(tester, preset).onPressed, isNull);
+    }
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
     expect(find.text('Transport settings'), findsOneWidget);
@@ -241,6 +347,9 @@ void main() {
     expect(find.text('Transport settings'), findsOneWidget);
     expect(_field(tester, 'Server URL').enabled, isTrue);
     expect(_button(tester, 'Save').onPressed, isNotNull);
+    for (final preset in ['Local Development', 'Production']) {
+      expect(_button(tester, preset).onPressed, isNotNull);
+    }
   });
 
   testWidgets('save failure shows generic error and permits retry', (

@@ -157,6 +157,77 @@ void main() {
     );
   });
 
+  for (final (preset, url) in [
+    ('Local Development', 'ws://localhost:7000'),
+    ('Production', 'wss://proxy.claudare.org'),
+  ]) {
+    testWidgets('$preset updates setup draft until Continue', (tester) async {
+      final store = MemoryKv();
+      String? savedUrl;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SyncSetup(
+            kv: store,
+            initialServerUrl: 'wss://before.test',
+            initialGroup: 'notes',
+            onSaved: (value, _) => savedUrl = value,
+            onSkipped: () {},
+          ),
+        ),
+      );
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      expect(
+        tester
+            .widget<TextField>(
+              find.widgetWithText(TextField, 'Replication server URL'),
+            )
+            .controller!
+            .text,
+        url,
+      );
+      expect(savedUrl, isNull);
+      expect(await store.listKeys(''), isEmpty);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(savedUrl, url);
+      expect(await store.getString(NoteSystem.serverUrlKey), url);
+      expect(await store.getString(NoteSystem.groupKey), 'notes');
+      expect(await store.getBool(NoteSystem.syncEnabledKey), isTrue);
+    });
+
+    testWidgets('$preset allows custom setup URL edits', (tester) async {
+      final store = MemoryKv();
+      await showSync(tester, store);
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Replication server URL'),
+        'wss://custom.test',
+      );
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      expect(
+        await store.getString(NoteSystem.serverUrlKey),
+        'wss://custom.test',
+      );
+    });
+
+    testWidgets('$preset clears setup URL validation error', (tester) async {
+      await showSync(tester, MemoryKv());
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Replication server URL'),
+        'invalid',
+      );
+      await tester.tap(find.text('Continue'));
+      await tester.pump();
+      expect(find.text('Enter a ws or wss URL with a host'), findsOneWidget);
+      await tester.tap(find.text(preset));
+      await tester.pump();
+      expect(find.text('Enter a ws or wss URL with a host'), findsNothing);
+    });
+  }
+
   testWidgets('group defaults to the string zero', (tester) async {
     final store = MemoryKv();
     await showSync(tester, store);
@@ -360,6 +431,14 @@ void main() {
       );
       expect(advanced, isFalse);
       expect(await store.listKeys(''), isEmpty);
+      for (final preset in ['Local Development', 'Production']) {
+        expect(
+          tester
+              .widget<TextButton>(find.widgetWithText(TextButton, preset))
+              .onPressed,
+          isNull,
+        );
+      }
       expect(
         tester
             .widget<TextButton>(find.widgetWithText(TextButton, 'Skip'))

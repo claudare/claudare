@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
+import 'package:notes/screens/server_url_presets.dart';
 import 'package:notes/screens/settings/transport_health_check.dart';
 
 /// Edits saved transport settings and checks server availability.
@@ -162,6 +163,13 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
                   ? 'Enter a ws or wss URL with a host'
                   : null,
             ),
+          ),
+          ServerUrlPresets(
+            enabled: !_saving,
+            onSelected: (url) {
+              _url.text = url;
+              _inputChanged(url);
+            },
           ),
           TextField(
             controller: _group,
