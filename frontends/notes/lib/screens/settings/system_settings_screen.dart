@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
+import 'package:notes/application/app_version.dart';
+import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
@@ -10,6 +12,7 @@ import 'package:notes/screens/confirm_database_reset.dart';
 import 'package:notes/screens/settings/peers_screen.dart';
 import 'package:notes/screens/settings/replication_screen.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
+import 'package:support_directory/support_directory.dart';
 
 /// Displays device identity, sync settings, diagnostics, and database controls.
 class SystemSettingsScreen extends StatelessWidget {
@@ -25,6 +28,7 @@ class SystemSettingsScreen extends StatelessWidget {
         key: ValueKey((system, application)),
         application: application,
         system: system,
+        supportDirectory: NoteBootstrapProvider.of(context).supportDirectory,
       ),
     );
   }
@@ -33,11 +37,13 @@ class SystemSettingsScreen extends StatelessWidget {
 class _SettingsBody extends StatefulWidget {
   final NotesApp application;
   final NoteSystem system;
+  final SupportDirectory supportDirectory;
 
   const _SettingsBody({
     super.key,
     required this.application,
     required this.system,
+    required this.supportDirectory,
   });
 
   @override
@@ -46,6 +52,10 @@ class _SettingsBody extends StatefulWidget {
 
 class _SettingsBodyState extends State<_SettingsBody> {
   late Future<_SettingsData> _data = _load();
+  late Future<String> _supportPath = _loadSupportPath();
+
+  Future<String> _loadSupportPath() async =>
+      (await widget.supportDirectory.getDirectory()).path;
 
   Future<_SettingsData> _load() =>
       _SettingsData.load(widget.application, widget.system);
@@ -54,6 +64,9 @@ class _SettingsBodyState extends State<_SettingsBody> {
   void didUpdateWidget(_SettingsBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     _data = _load();
+    if (widget.supportDirectory != oldWidget.supportDirectory) {
+      _supportPath = _loadSupportPath();
+    }
   }
 
   Future<void> _openTransport(_SettingsData data) async {
@@ -157,10 +170,29 @@ class _SettingsBodyState extends State<_SettingsBody> {
             title: const Text('Command Count'),
             subtitle: Text(display(data?.commandCount.toString())),
           ),
+          FutureBuilder<String>(
+            future: _supportPath,
+            builder: (context, snapshot) => ListTile(
+              leading: const Icon(Icons.folder_outlined),
+              title: const Text('Support directory'),
+              subtitle: SelectableText(
+                snapshot.connectionState != ConnectionState.done
+                    ? 'Loading…'
+                    : snapshot.hasError
+                    ? 'Could not load support directory'
+                    : snapshot.data!,
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.delete_forever),
             title: const Text('Reset database'),
             onTap: () => confirmDatabaseReset(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('App version'),
+            subtitle: SelectableText(appVersionLabel()),
           ),
         ],
       );

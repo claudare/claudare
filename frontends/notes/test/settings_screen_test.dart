@@ -22,17 +22,42 @@ import 'package:sync/sync.dart';
 import 'setup/setup_test_helpers.dart';
 
 void main() {
-  testWidgets('Settings displays the app version last', (tester) async {
+  testWidgets('System settings displays the app version last', (tester) async {
     final system = _system(MemoryKv());
-    await tester.pumpWidget(
-      _screen(system, _application(system), systemSettings: false),
-    );
+    await tester.pumpWidget(_screen(system, _application(system)));
     await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('App version'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
 
     expect(_value(tester, 'App version'), appVersionLabel());
     final lastTile = tester.widgetList<ListTile>(find.byType(ListTile)).last;
     expect((lastTile.title as Text).data, 'App version');
     expect(lastTile.subtitle, isA<SelectableText>());
+  });
+
+  testWidgets('support directory is selectable and appears above reset', (
+    tester,
+  ) async {
+    final system = _system(MemoryKv());
+    await tester.pumpWidget(_screen(system, _application(system)));
+    await tester.pumpAndSettle();
+
+    expect(_value(tester, 'Support directory'), 'unused');
+    final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
+    final directoryIndex = tiles.indexWhere(
+      (tile) => (tile.title as Text).data == 'Support directory',
+    );
+    expect(tiles[directoryIndex].subtitle, isA<SelectableText>());
+    expect((tiles[directoryIndex + 1].title as Text).data, 'Reset database');
   });
 
   testWidgets('Settings contains active notes and the wrench System submenu', (
@@ -47,7 +72,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_value(tester, 'Active Note Count'), '1');
-    expect(find.byType(ListTile), findsNWidgets(3));
+    expect(find.byType(ListTile), findsNWidgets(2));
     expect(find.byIcon(Icons.build), findsOneWidget);
     for (final label in [
       'This device actor key',
@@ -56,6 +81,8 @@ void main() {
       'Event Count',
       'Command Count',
       'Reset database',
+      'App version',
+      'Support directory',
     ]) {
       expect(find.text(label), findsNothing);
     }
@@ -190,6 +217,16 @@ void main() {
     await tester.tap(find.text('Cancel'));
     pending.complete(null);
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('This device actor key'),
+      -200,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
 
     expect(_value(tester, 'Transport'), 'Disabled');
     expect(_value(tester, 'This device actor key'), application.actor);
