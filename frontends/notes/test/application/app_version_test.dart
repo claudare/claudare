@@ -2,18 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/app_version.dart';
 
 void main() {
-  for (final (channel, expected) in [
-    ('main', '0.1.0 (build 42)'),
+  for (final (flavor, expected) in [
+    (null, '0.1.0 (build 42)'),
+    ('main', '0.1.0-main (build 42)'),
+    ('dev', '0.1.0-dev (build 42)'),
     ('beta', '0.1.0-beta (build 42)'),
     ('nightly', '0.1.0-nightly (build 42)'),
+    ('custom', '0.1.0-custom (build 42)'),
   ]) {
-    test('$channel labels the version and build number', () {
+    test('$flavor labels the version and build number', () {
       expect(
         appVersionLabel(
           version: '0.1.0',
           buildNumber: '42',
           commit: null,
-          channel: channel,
+          flavor: flavor,
         ),
         expected,
       );
@@ -26,7 +29,7 @@ void main() {
         version: '0.1.0',
         buildNumber: null,
         commit: null,
-        channel: 'main',
+        flavor: null,
       ),
       '0.1.0',
     );
@@ -55,14 +58,10 @@ void main() {
           version: '0.0.0',
           buildNumber: buildNumber,
           commit: commit,
-          channel: 'nightly',
+          flavor: 'nightly',
         ),
         expected,
       );
     });
   }
-
-  test('unknown channel is rejected', () {
-    expect(() => appVersionLabel(channel: 'other'), throwsArgumentError);
-  });
 }

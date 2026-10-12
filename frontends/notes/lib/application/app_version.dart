@@ -5,17 +5,9 @@ String appVersionLabel({
   String? version = appBuildName,
   String? buildNumber = appBuildNumber,
   String? commit = const String.fromEnvironment('APP_COMMIT'),
-  String channel = const String.fromEnvironment(
-    'APP_CHANNEL',
-    defaultValue: 'nightly',
-  ),
+  String? flavor = appFlavor,
 }) {
-  final suffix = switch (channel) {
-    'main' => '',
-    'beta' => '-beta',
-    'nightly' => '-nightly',
-    _ => throw ArgumentError.value(channel, 'channel', 'Unknown app channel'),
-  };
+  final suffix = flavor == null ? '' : '-$flavor';
   if (version == null) return 'Unknown';
   final metadata = [
     if (buildNumber != null && buildNumber.isNotEmpty) 'build $buildNumber',
