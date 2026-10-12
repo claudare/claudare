@@ -46,8 +46,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(previous.snapshot.connection, SyncConnectionState.closed);
       expect(bootstrap.syncCoordinator, isNot(same(previous)));
-      expect(find.text('System'), findsOneWidget);
-      final context = tester.element(find.text('System'));
+      expect(find.text('Transport settings'), findsOneWidget);
+      final context = tester.element(find.text('Transport settings'));
       expect(
         NoteSyncProvider.of(context).coordinator,
         same(bootstrap.syncCoordinator),
@@ -55,6 +55,8 @@ void main() {
       expect(NotesAppProvider.of(context), same(application));
       expect(await application.query.noteList(), hasLength(1));
       expect(await system.kv.getString(NoteSystem.groupKey), 'changed');
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Replication'));
       await tester.pumpAndSettle();
       expect(find.text('Connected'), findsOneWidget);
@@ -93,6 +95,9 @@ void main() {
       } else {
         expect(bootstrap.syncCoordinator, isNotNull);
       }
+      expect(find.text('Transport settings'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Replication'));
       await tester.pumpAndSettle();
       expect(

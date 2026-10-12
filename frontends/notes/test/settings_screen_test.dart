@@ -351,7 +351,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('saving transport settings refreshes System settings', (
+  testWidgets('returning after saving transport refreshes System settings', (
     tester,
   ) async {
     final kv = MemoryKv();
@@ -370,6 +370,9 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Transport settings'), findsOneWidget);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
     expect(find.text('System'), findsOneWidget);
     expect(_value(tester, 'Transport'), 'ws://saved.test @ notes');
     expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://saved.test');

@@ -28,7 +28,7 @@ void main() {
       expect(await kv.getString(NoteSystem.serverUrlKey), url);
       expect(await kv.getString(NoteSystem.groupKey), 'notes');
       expect(await kv.getBool(NoteSystem.syncEnabledKey), isFalse);
-      expect(find.text('Open'), findsOneWidget);
+      expect(find.text('Transport settings'), findsOneWidget);
     });
 
     testWidgets('$preset allows custom settings URL edits', (tester) async {
@@ -128,7 +128,9 @@ void main() {
     expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://after.test');
     expect(await kv.getString(NoteSystem.groupKey), 'new');
     expect(restarts, 1);
-    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Transport settings'), findsOneWidget);
+    expect(_button(tester, 'Save').onPressed, isNotNull);
+    expect(_field(tester, 'Server URL').enabled, isTrue);
   });
 
   testWidgets('failed persistence does not restart replication', (
@@ -182,7 +184,7 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(attempts, 2);
-    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Transport settings'), findsOneWidget);
   });
 
   testWidgets(
@@ -200,7 +202,7 @@ void main() {
       expect(find.text('Transport settings'), findsOneWidget);
       pending.complete();
       await tester.pumpAndSettle();
-      expect(find.text('Open'), findsOneWidget);
+      expect(find.text('Transport settings'), findsOneWidget);
     },
   );
 
@@ -265,8 +267,7 @@ void main() {
         NoteSystem.groupKey: 'notes',
       },
     ]);
-    expect(find.text('Transport settings'), findsNothing);
-    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Transport settings'), findsOneWidget);
   });
 
   testWidgets('Save trims URL and preserves entered group', (tester) async {
@@ -282,7 +283,7 @@ void main() {
       NoteSystem.serverUrlKey: 'ws://saved.test',
       NoteSystem.groupKey: ' notes ',
     });
-    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Transport settings'), findsOneWidget);
   });
 
   for (final (url, group, error) in [
@@ -353,8 +354,7 @@ void main() {
     pending.complete();
     await tester.pumpAndSettle();
     expect(kv.writes, hasLength(1));
-    expect(find.text('Transport settings'), findsNothing);
-    expect(find.text('Open'), findsOneWidget);
+    expect(find.text('Transport settings'), findsOneWidget);
   });
 
   testWidgets('save failure shows generic error and permits retry', (

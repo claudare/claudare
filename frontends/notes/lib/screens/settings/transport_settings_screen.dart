@@ -100,7 +100,6 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
     }
     if (!mounted) return;
     setState(() => _saving = false);
-    Navigator.of(context).pop();
   }
 
   Future<void> _testConnection() async {
