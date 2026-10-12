@@ -1,8 +1,11 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes_app/notes_app.dart';
+import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
@@ -12,7 +15,9 @@ import 'package:notes/screens/settings/settings_screen.dart';
 
 import 'package:kv/kv.dart';
 import 'package:sync/sync.dart';
+import 'package:time_provider/time_provider.dart';
 
+import 'setup/setup_test_helpers.dart';
 import 'support/remote_note_update.dart';
 
 void main() {
@@ -220,20 +225,29 @@ Future<void> _pumpSettings(
   bool openSystem = true,
 }) async {
   final store = eventStore ?? MemoryEventStore();
+  final bootstrap = NoteBootstrap(
+    logger: const NoopLogger(),
+    timeProvider: FakeTimeProviderStatic.zero(),
+  );
+  addTearDown(bootstrap.close);
   await tester.pumpWidget(
-    NotesAppProvider(
-      application:
-          application ??
-          NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
-      child: NoteSystemProvider(
-        system: NoteSystem(
-          identities: MemoryActorIdentityStore(),
-          kv: MemoryKv(),
-          eventStore: store,
-        ),
-        child: MaterialApp(
-          theme: ThemeData(platform: platform),
-          home: const SettingsScreen(),
+    NoteBootstrapProvider(
+      bootstrap: bootstrap,
+      supportDirectory: FakeSupportDirectory(),
+      child: NotesAppProvider(
+        application:
+            application ??
+            NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
+        child: NoteSystemProvider(
+          system: NoteSystem(
+            identities: MemoryActorIdentityStore(),
+            kv: MemoryKv(),
+            eventStore: store,
+          ),
+          child: MaterialApp(
+            theme: ThemeData(platform: platform),
+            home: const SettingsScreen(),
+          ),
         ),
       ),
     ),
