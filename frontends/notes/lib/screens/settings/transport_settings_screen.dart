@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
-import 'package:notes/screens/restart_required_screen.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/screens/server_url_presets.dart';
 import 'package:notes/screens/settings/transport_health_check.dart';
 
@@ -61,6 +61,7 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
 
   Future<void> _save() async {
     if (_saving || _testing) return;
+    final sync = NoteSyncProvider.of(context);
     if (_enabled && !_configured) {
       setState(() => _validate = true);
       return;
@@ -84,7 +85,22 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
       }
       return;
     }
-    if (mounted) await RestartRequiredScreen.open(context);
+    try {
+      await sync.restartSync();
+    } on Exception {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _saveError =
+              'Settings saved, but replication could not be restarted. '
+              'Try again.';
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    Navigator.of(context).pop();
   }
 
   Future<void> _testConnection() async {
@@ -169,8 +185,6 @@ class _TransportSettingsScreenState extends State<TransportSettingsScreen> {
           ),
           if (_saveError != null) Text(_saveError!),
           const SizedBox(height: 16),
-          const Text('Saving requires restarting the application.'),
-          const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving || _testing ? null : _save,
             child: Text(_saving ? 'Saving…' : 'Save'),

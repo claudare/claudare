@@ -137,6 +137,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _restartSync() async {
+    final bootstrap = widget.bootstrap;
+    try {
+      await bootstrap.restartSync();
+    } finally {
+      if (mounted && identical(bootstrap, widget.bootstrap)) setState(() {});
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.detached) {
@@ -206,6 +215,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       child: NoteSystemProvider(
         system: _system!,
         child: NoteSyncProvider(
+          restartSync: _restartSync,
           coordinator: widget.bootstrap.syncCoordinator,
           unavailableReason: widget.bootstrap.syncUnavailableReason,
           child: app,

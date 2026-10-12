@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kv/kv.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_sync_provider.dart';
+import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/main.dart';
 import 'package:notes/screens/home/home_screen.dart';
@@ -17,7 +19,7 @@ import '../sync_test_transport.dart';
 
 void main() {
   testWidgets(
-    'saving transport settings closes the runtime and requires restart',
+    'saving transport settings replaces replication and preserves Notes',
     (tester) async {
       final system = await testSystem();
       final bootstrap = _SetupBootstrap(system);
@@ -26,6 +28,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       final previous = bootstrap.syncCoordinator!;
+      final application = NotesAppProvider.of(
+        tester.element(find.byType(HomeScreen)),
+      );
+      await application.command.createNote('retained-note');
       await tester.tap(find.byIcon(Icons.settings));
       await tester.pumpAndSettle();
       await tester.tap(find.text('System'));
@@ -39,12 +45,62 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       expect(previous.snapshot.connection, SyncConnectionState.closed);
-      expect(bootstrap.syncCoordinator, same(previous));
-      expect(find.text('Restart required'), findsOneWidget);
-      expect(find.byTooltip('Back'), findsNothing);
+      expect(bootstrap.syncCoordinator, isNot(same(previous)));
+      expect(find.text('System'), findsOneWidget);
+      final context = tester.element(find.text('System'));
+      expect(
+        NoteSyncProvider.of(context).coordinator,
+        same(bootstrap.syncCoordinator),
+      );
+      expect(NotesAppProvider.of(context), same(application));
+      expect(await application.query.noteList(), hasLength(1));
       expect(await system.kv.getString(NoteSystem.groupKey), 'changed');
+      await tester.tap(find.text('Replication'));
+      await tester.pumpAndSettle();
+      expect(find.text('Connected'), findsOneWidget);
     },
   );
+
+  for (final initiallyEnabled in [false, true]) {
+    testWidgets('Save applies enabled change from $initiallyEnabled', (
+      tester,
+    ) async {
+      final system = await testSystem(syncEnabled: initiallyEnabled);
+      final bootstrap = _SetupBootstrap(system);
+      await tester.pumpWidget(
+        MyApp(bootstrap: bootstrap, supportDirectory: FakeSupportDirectory()),
+      );
+      await tester.pumpAndSettle();
+      final previous = bootstrap.syncCoordinator;
+      await tester.tap(find.byIcon(Icons.settings));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('System'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Transport'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(SwitchListTile));
+      await tester.pump();
+      expect(bootstrap.syncCoordinator, same(previous));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(
+        await system.kv.getBool(NoteSystem.syncEnabledKey),
+        !initiallyEnabled,
+      );
+      if (initiallyEnabled) {
+        expect(previous!.snapshot.connection, SyncConnectionState.closed);
+        expect(bootstrap.syncCoordinator, isNull);
+      } else {
+        expect(bootstrap.syncCoordinator, isNotNull);
+      }
+      await tester.tap(find.text('Replication'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(initiallyEnabled ? 'Disabled' : 'Connected'),
+        findsOneWidget,
+      );
+    });
+  }
 
   for (final actor in [false, true]) {
     for (final enabled in <bool?>[null, false, true]) {

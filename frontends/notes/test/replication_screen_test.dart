@@ -38,6 +38,7 @@ void main() {
     testWidgets('shows $reason without a coordinator', (tester) async {
       await tester.pumpWidget(
         NoteSyncProvider(
+          restartSync: () async {},
           unavailableReason: reason,
           child: const MaterialApp(home: ReplicationScreen()),
         ),
@@ -125,6 +126,7 @@ class _Harness {
   }
 
   Widget get screen => NoteSyncProvider(
+    restartSync: () async {},
     coordinator: coordinator,
     child: const MaterialApp(home: ReplicationScreen()),
   );

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/app_version.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
@@ -350,7 +351,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('saving transport settings requires restart', (tester) async {
+  testWidgets('saving transport settings refreshes System settings', (
+    tester,
+  ) async {
     final kv = MemoryKv();
     final system = _system(kv);
     await tester.pumpWidget(_screen(system, _application(system)));
@@ -367,10 +370,10 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Restart required'), findsOneWidget);
+    expect(find.text('System'), findsOneWidget);
+    expect(_value(tester, 'Transport'), 'ws://saved.test @ notes');
     expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://saved.test');
     expect(await kv.getString(NoteSystem.groupKey), 'notes');
-    expect(find.byTooltip('Back'), findsNothing);
   });
 
   testWidgets('Peers appears below the device key with its saved count', (
@@ -536,10 +539,13 @@ Widget _screen(
     application: application,
     child: NoteSystemProvider(
       system: system,
-      child: MaterialApp(
-        home: systemSettings
-            ? SystemSettingsScreen(key: ValueKey(systemSettings))
-            : const SettingsScreen(),
+      child: NoteSyncProvider(
+        restartSync: () async {},
+        child: MaterialApp(
+          home: systemSettings
+              ? SystemSettingsScreen(key: ValueKey(systemSettings))
+              : const SettingsScreen(),
+        ),
       ),
     ),
   ),

@@ -1,16 +1,11 @@
 import 'dart:async';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kv/kv.dart';
-import 'package:notes/application/note_bootstrap.dart';
-import 'package:notes/application/note_bootstrap_provider.dart';
+import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/screens/settings/transport_settings_screen.dart';
-import 'package:time_provider/time_provider.dart';
-
-import 'setup/setup_test_helpers.dart';
 
 void main() {
   for (final (preset, url) in [
@@ -33,7 +28,7 @@ void main() {
       expect(await kv.getString(NoteSystem.serverUrlKey), url);
       expect(await kv.getString(NoteSystem.groupKey), 'notes');
       expect(await kv.getBool(NoteSystem.syncEnabledKey), isFalse);
-      expect(find.text('Restart required'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
     });
 
     testWidgets('$preset allows custom settings URL edits', (tester) async {
@@ -109,16 +104,22 @@ void main() {
     });
   }
 
-  testWidgets('Save persists settings before requiring restart', (
+  testWidgets('Save persists settings before restarting replication', (
     tester,
   ) async {
     final kv = MemoryKv();
+    var restarts = 0;
     await _show(
       tester,
       kv,
       enabled: true,
       url: 'ws://before.test',
       group: 'old',
+      restartSync: () async {
+        expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://after.test');
+        expect(await kv.getString(NoteSystem.groupKey), 'new');
+        restarts++;
+      },
     );
     await _edit(tester, url: 'ws://after.test', group: 'new');
     expect(find.text('Restart required'), findsNothing);
@@ -126,23 +127,82 @@ void main() {
     await tester.pumpAndSettle();
     expect(await kv.getString(NoteSystem.serverUrlKey), 'ws://after.test');
     expect(await kv.getString(NoteSystem.groupKey), 'new');
-    expect(find.text('Restart required'), findsOneWidget);
+    expect(restarts, 1);
+    expect(find.text('Open'), findsOneWidget);
   });
 
-  testWidgets('failed persistence does not require restart', (tester) async {
+  testWidgets('failed persistence does not restart replication', (
+    tester,
+  ) async {
+    var restarts = 0;
     final kv = _ControlledKv()
       ..beforeWrite = () async {
         throw Exception('save failed');
       };
-    await _show(tester, kv);
+    await _show(
+      tester,
+      kv,
+      restartSync: () async {
+        restarts++;
+      },
+    );
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Restart required'), findsNothing);
+    expect(restarts, 0);
     expect(
       find.text('Could not save transport settings. Try again.'),
       findsOneWidget,
     );
   });
+
+  testWidgets('failed replication restart permits retry after saving', (
+    tester,
+  ) async {
+    final kv = MemoryKv();
+    var attempts = 0;
+    await _show(
+      tester,
+      kv,
+      restartSync: () async {
+        if (++attempts == 1) throw Exception('private failure');
+      },
+    );
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(await kv.getBool(NoteSystem.syncEnabledKey), isFalse);
+    expect(
+      find.text(
+        'Settings saved, but replication could not be restarted. '
+        'Try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('private failure'), findsNothing);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.text('Open'), findsOneWidget);
+  });
+
+  testWidgets(
+    'pending replication restart blocks editing and back navigation',
+    (tester) async {
+      final pending = Completer<void>();
+      await _show(tester, MemoryKv(), restartSync: () => pending.future);
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+      expect(_field(tester, 'Server URL').enabled, isFalse);
+      expect(_toggle(tester).onChanged, isNull);
+      expect(_button(tester, 'Saving…').onPressed, isNull);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pump();
+      expect(find.text('Transport settings'), findsOneWidget);
+      pending.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Open'), findsOneWidget);
+    },
+  );
 
   testWidgets('missing settings produce empty editable fields', (tester) async {
     await _show(tester, MemoryKv());
@@ -206,7 +266,7 @@ void main() {
       },
     ]);
     expect(find.text('Transport settings'), findsNothing);
-    expect(find.text('Restart required'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
   });
 
   testWidgets('Save trims URL and preserves entered group', (tester) async {
@@ -222,7 +282,7 @@ void main() {
       NoteSystem.serverUrlKey: 'ws://saved.test',
       NoteSystem.groupKey: ' notes ',
     });
-    expect(find.text('Restart required'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
   });
 
   for (final (url, group, error) in [
@@ -294,7 +354,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(kv.writes, hasLength(1));
     expect(find.text('Transport settings'), findsNothing);
-    expect(find.text('Restart required'), findsOneWidget);
+    expect(find.text('Open'), findsOneWidget);
   });
 
   testWidgets('save failure shows generic error and permits retry', (
@@ -449,14 +509,11 @@ Future<void> _show(
   String? url,
   String? group,
   Future<bool> Function(Uri)? check,
+  Future<void> Function()? restartSync,
 }) async {
   await tester.pumpWidget(
-    NoteBootstrapProvider(
-      bootstrap: NoteBootstrap(
-        logger: const NoopLogger(),
-        timeProvider: FakeTimeProviderStatic.zero(),
-      ),
-      supportDirectory: _PreservedSupportDirectory(),
+    NoteSyncProvider(
+      restartSync: restartSync ?? () async {},
       child: MaterialApp(
         home: Builder(
           builder: (context) => Scaffold(
@@ -481,12 +538,6 @@ Future<void> _show(
   );
   await tester.tap(find.text('Open'));
   await tester.pumpAndSettle();
-}
-
-class _PreservedSupportDirectory extends FakeSupportDirectory {
-  @override
-  Future<void> delete() async =>
-      throw StateError('Saving transport settings must preserve local data');
 }
 
 Future<void> _edit(
