@@ -9,7 +9,7 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
@@ -62,7 +62,7 @@ class CqrsRuntime {
   /// A granular, stateless resolve.
   /// Will start from provided sequence, and return the final sequence.
   Future<int?> resolveStateless<TEvent extends Object>({
-    required PatternFilter filter,
+    required LogFilter filter,
     required ApplyEnvelope<TEvent> apply,
     int? sequence,
   }) async {
@@ -166,7 +166,7 @@ class CqrsRuntime {
   }
 
   /// Observes matching stream change notifications without resolving any state.
-  Stream<void> subscribe(PatternFilter filter) => _eventStore.eventChanges
+  Stream<void> subscribe(LogFilter filter) => _eventStore.eventChanges
       .where((change) => filter.doesMatchPath(change.stream))
       .map<void>((_) {});
 }

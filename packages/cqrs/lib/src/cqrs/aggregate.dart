@@ -1,5 +1,5 @@
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
-import 'package:cqrs/src/cqrs/pattern_filter.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:cqrs/src/cqrs/snapshot.dart';
 
 /// Applies events to mutable aggregate state.
@@ -17,7 +17,7 @@ typedef ApplyEnvelope<TEvent extends Object> = void Function(
 class Aggregate<TEvent extends Object, TState extends AggregateState<TEvent>> {
   /// Name used in diagnostics.
   final String name;
-  final PatternFilter filter;
+  final LogFilter filter;
   final TState state;
   int? sequence;
 

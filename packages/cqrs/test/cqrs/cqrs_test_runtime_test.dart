@@ -205,6 +205,6 @@ final class _ValueState implements AggregateState<_ValueEvent> {
 
 Aggregate<_ValueEvent, _ValueState> _valueAggregate() => Aggregate(
   name: 'Values',
-  filter: const PatternFilter.startsWith('value/'),
+  filter: const LogFilter.startsWith('value/'),
   state: _ValueState(),
 );

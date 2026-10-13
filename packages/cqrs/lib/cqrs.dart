@@ -30,7 +30,7 @@ export 'src/cqrs/aggregate.dart';
 export 'src/cqrs/snapshot.dart';
 
 // stream route
-export 'src/cqrs/pattern_filter.dart';
+export 'src/cqrs/log_filter.dart';
 
 // exception
 export 'src/cqrs/exception/command_exception.dart';

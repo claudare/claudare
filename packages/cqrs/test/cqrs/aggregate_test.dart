@@ -49,6 +49,6 @@ final class _RecordingState implements AggregateState<String> {
 
 Aggregate<String, _RecordingState> _recordingAggregate() => Aggregate(
   name: 'Recording',
-  filter: const PatternFilter.startsWith('account/'),
+  filter: const LogFilter.startsWith('account/'),
   state: _RecordingState(),
 );

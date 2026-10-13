@@ -12,13 +12,13 @@ void main() {
     var prefix = 0;
     var all = 0;
     final exactSubscription = runtime
-        .subscribe(const PatternFilter.exact('notes/one'))
+        .subscribe(const LogFilter.exact('notes/one'))
         .listen((_) => exact++);
     final prefixSubscription = runtime
-        .subscribe(const PatternFilter.startsWith('notes/'))
+        .subscribe(const LogFilter.startsWith('notes/'))
         .listen((_) => prefix++);
     final allSubscription = runtime
-        .subscribe(const PatternFilter.all())
+        .subscribe(const LogFilter.all())
         .listen((_) => all++);
     addTearDown(exactSubscription.cancel);
     addTearDown(prefixSubscription.cancel);

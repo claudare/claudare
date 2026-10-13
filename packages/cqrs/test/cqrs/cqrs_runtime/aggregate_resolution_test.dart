@@ -88,7 +88,7 @@ void main() {
     await _appendAccountEvents(eventStore);
     final values = <String>[];
     final sequence = await runtime.resolveStateless<_TestEvent>(
-      filter: const PatternFilter.exact('account/one'),
+      filter: const LogFilter.exact('account/one'),
       apply: (envelope) => values.add(envelope.event.value),
     );
 
@@ -96,7 +96,7 @@ void main() {
     expect(sequence, 3);
     expect(
       await runtime.resolveStateless<_TestEvent>(
-        filter: const PatternFilter.exact('account/one'),
+        filter: const LogFilter.exact('account/one'),
         apply: (envelope) => values.add(envelope.event.value),
         sequence: sequence,
       ),
@@ -120,7 +120,7 @@ void main() {
 
     await observed.resolve(_envelopeAggregate('account/one'));
     await observed.resolveStateless<_TestEvent>(
-      filter: const PatternFilter.exact('account/one'),
+      filter: const LogFilter.exact('account/one'),
       apply: (_) {},
     );
 
@@ -160,8 +160,8 @@ Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
     Aggregate(
       name: 'Events $path',
       filter: path.endsWith('/')
-          ? PatternFilter.startsWith(path)
-          : PatternFilter.exact(path),
+          ? LogFilter.startsWith(path)
+          : LogFilter.exact(path),
       state: _EnvelopeState(),
     );
 
