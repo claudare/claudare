@@ -10,6 +10,7 @@ import 'package:cqrs/src/cqrs/event/event_codec.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -82,7 +83,7 @@ void main() {
       }),
     );
 
-    final events = await database.getLogEvents(0);
+    final events = await database.getLogEvents(const LogFilter.all(), 0);
     expect(events.data.map((event) => event.streamPath), [
       'first',
       'second',

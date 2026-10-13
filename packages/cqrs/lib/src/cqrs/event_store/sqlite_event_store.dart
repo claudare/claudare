@@ -13,6 +13,7 @@ import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final eventDatabaseMigrations =
@@ -201,20 +202,33 @@ class SqliteEventStore implements EventStore {
   }
 
   @override
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) {
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) {
     final pageSize = _eventFetchPageSize;
     return _transaction('Failed to get log events', (tx) {
       if (fromPosition < 0) {
         throw ArgumentError('fromPosition must be non-negative');
       }
+      final condition = switch (filter.type) {
+        LogFilterType.all => '',
+        LogFilterType.exact => 'AND stream_path = ?',
+        LogFilterType.startsWith => 'AND instr(stream_path, ?) = 1',
+      };
       final rows = tx.query(
         '''SELECT
         id_actor, id_sequence, id_index, stream_path, kind, detail, occured_at, stream_version, log_position
       FROM event
       WHERE log_position >= ?
+        $condition
       ORDER BY log_position ASC
-      LIMIT ?''',
-        [fromPosition, pageSize],
+      LIMIT ?;''',
+        [
+          fromPosition,
+          if (filter.type != LogFilterType.all) filter.pattern,
+          pageSize,
+        ],
       );
       final events = [
         for (final row in rows)

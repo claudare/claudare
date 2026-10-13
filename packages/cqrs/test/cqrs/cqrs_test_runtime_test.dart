@@ -106,10 +106,13 @@ void main() {
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
     expect(events.map((event) => event.actor), ['a', 'b', 'a']);
     expect(
-      (await database.getLogEvents(0)).data.map((event) => event.streamPath),
+      (await database.getLogEvents(
+        const LogFilter.all(),
+        0,
+      )).data.map((event) => event.streamPath),
       ['value/one', 'value/two', 'value/one'],
     );
-    final log = (await database.getLogEvents(0)).data;
+    final log = (await database.getLogEvents(const LogFilter.all(), 0)).data;
     expect(log.map((event) => event.version), [0, 0, 1]);
   });
 
@@ -159,7 +162,10 @@ void main() {
       throwsA(isA<EventCodecException>()),
     );
 
-    expect((await database.getLogEvents(0)).data, isEmpty);
+    expect(
+      (await database.getLogEvents(const LogFilter.all(), 0)).data,
+      isEmpty,
+    );
   });
 }
 

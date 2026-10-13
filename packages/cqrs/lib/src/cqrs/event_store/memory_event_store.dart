@@ -12,6 +12,7 @@ import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:mutex/mutex.dart';
 
 /// [MemoryEventStore] is an in-memory implementation of [EventStore].
@@ -167,36 +168,39 @@ class MemoryEventStore implements EventStore {
   });
 
   @override
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) =>
-      _read('Failed to get log events', () {
-        if (fromPosition < 0) {
-          throw ArgumentError('fromPosition must be non-negative');
-        }
-        final events = <StoredEvent>[];
-        for (
-          var index = 0;
-          index < _events.length && events.length < _eventFetchPageSize;
-          index++
-        ) {
-          final event = _events[index];
-          if (event.logPosition < fromPosition) continue;
-          final (streamPath, version) = _streamPosition(index);
-          events.add(
-            StoredEvent(
-              eventId: event.eventId,
-              streamPath: streamPath,
-              encodedEvent: event.encodedEvent,
-              occuredAt: event.occuredAt,
-              position: event.logPosition,
-              version: version,
-            ),
-          );
-        }
-        return PaginatedResult(
-          data: events,
-          next: events.isEmpty ? null : events.last.position + 1,
-        );
-      });
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) => _read('Failed to get log events', () {
+    if (fromPosition < 0) {
+      throw ArgumentError('fromPosition must be non-negative');
+    }
+    final events = <StoredEvent>[];
+    for (
+      var index = 0;
+      index < _events.length && events.length < _eventFetchPageSize;
+      index++
+    ) {
+      final event = _events[index];
+      if (event.logPosition < fromPosition) continue;
+      final (streamPath, version) = _streamPosition(index);
+      if (!filter.doesMatchPath(streamPath)) continue;
+      events.add(
+        StoredEvent(
+          eventId: event.eventId,
+          streamPath: streamPath,
+          encodedEvent: event.encodedEvent,
+          occuredAt: event.occuredAt,
+          position: event.logPosition,
+          version: version,
+        ),
+      );
+    }
+    return PaginatedResult(
+      data: events,
+      next: events.isEmpty ? null : events.last.position + 1,
+    );
+  });
 
   @override
   Future<StoredCommand?> getStoredCommand(CommandId commandId) =>

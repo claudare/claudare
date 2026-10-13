@@ -25,7 +25,10 @@ void main() {
           final command = (await store.getStoredCommand(CommandId(actor, 1)))!;
           expect(command.commandId.actor, actor);
           expect(
-            (await store.getLogEvents(0)).data.single.eventId,
+            (await store.getLogEvents(
+              const LogFilter.all(),
+              0,
+            )).data.single.eventId,
             EventId(actor, 1, 0),
           );
           expect(
@@ -63,7 +66,10 @@ void main() {
             commands[2].dependency,
             CommandDependency({'alice': 1, 'bob': 1}),
           );
-          final events = await alice.logReader(0).scan().toList();
+          final events = await alice
+              .logReader(const LogFilter.all(), 0)
+              .scan()
+              .toList();
           expect(events.map((event) => event.eventId), [
             EventId('alice', 1, 0),
             EventId('bob', 1, 0),
@@ -97,7 +103,13 @@ void main() {
           expect((await store.getState()).lastCommandLogPosition, isNull);
           expect(await store.getStreamVersion('one'), isNull);
           expect(await store.addStoredCommand(_stored('alice')), isTrue);
-          expect((await store.getLogEvents(0)).data.single.position, 0);
+          expect(
+            (await store.getLogEvents(
+              const LogFilter.all(),
+              0,
+            )).data.single.position,
+            0,
+          );
         });
       }
 

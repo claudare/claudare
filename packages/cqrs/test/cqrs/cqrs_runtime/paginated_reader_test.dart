@@ -7,6 +7,7 @@ import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -26,7 +27,10 @@ void main() {
     });
 
     test('handles an empty log', () async {
-      expect(await runtime.logReader(0).scan().toList(), isEmpty);
+      expect(
+        await runtime.logReader(const LogFilter.all(), 0).scan().toList(),
+        isEmpty,
+      );
     });
 
     test('starts stream replay at the supplied version across pages', () async {
@@ -40,7 +44,10 @@ void main() {
 
     test('starts log replay at the supplied position across pages', () async {
       await _appendCount(store, 5);
-      final events = await runtime.logReader(1).scan().toList();
+      final events = await runtime
+          .logReader(const LogFilter.all(), 1)
+          .scan()
+          .toList();
       expect(events.map((event) => event.position), [1, 2, 3, 4]);
     });
 

@@ -148,7 +148,7 @@ void main() {
               final expectedSize = pageSize ?? 10;
               Future<PaginatedResult<StoredEvent>> read(int cursor) => stream
                   ? store.getStreamEvents('one', cursor)
-                  : store.getLogEvents(cursor);
+                  : store.getLogEvents(const LogFilter.all(), cursor);
               final first = await read(1);
               expect(first.data, hasLength(expectedSize));
               expect(first.data.first.position, 1);

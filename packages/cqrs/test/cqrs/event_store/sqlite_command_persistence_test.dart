@@ -89,7 +89,13 @@ void main() {
       (await store.getStoredCommand(CommandId('actor-3', 1)))!.toJson(),
       _bundle(CommandId('actor-3', 1)).toJson(),
     );
-    expect((await database.getLogEvents(0)).data.single.position, 0);
+    expect(
+      (await database.getLogEvents(
+        const LogFilter.all(),
+        0,
+      )).data.single.position,
+      0,
+    );
   });
 
   test(
@@ -109,7 +115,7 @@ void main() {
       expect(await store.getStreamVersion('one'), isNull);
       await sqlite.execute('DROP TRIGGER fail_event');
       await store.saveChanges(_changes('one', count: 2));
-      final events = (await store.getLogEvents(0)).data;
+      final events = (await store.getLogEvents(const LogFilter.all(), 0)).data;
       expect(events.map((event) => event.position), [0, 1]);
       expect(events.map((event) => event.version), [0, 1]);
       expect(

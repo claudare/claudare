@@ -191,7 +191,7 @@ void main() {
       await _save(tester);
       expect((await app.query.note(id)).content, text);
     }
-    final events = (await store.getLogEvents(0)).data;
+    final events = (await store.getLogEvents(const LogFilter.all(), 0)).data;
     expect(events, hasLength(6));
     expect(
       events.skip(1).every((event) => event.eventId.actor == app.actor),

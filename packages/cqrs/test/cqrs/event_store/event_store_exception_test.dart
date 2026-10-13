@@ -44,14 +44,23 @@ void main() {
         throwsA(isA<EventStoreException>()),
       );
       expect((await store.getState()).lastCommandLogPosition, isNull);
-      expect((await store.getLogEvents(0)).data, isEmpty);
+      expect(
+        (await store.getLogEvents(const LogFilter.all(), 0)).data,
+        isEmpty,
+      );
       expect(await store.getStreamVersion('one'), isNull);
       await store.saveChanges(changes([first]));
       expect(
         await store.getStoredCommand(CommandId('test-actor', 1)),
         isNotNull,
       );
-      expect((await store.getLogEvents(0)).data.single.position, 0);
+      expect(
+        (await store.getLogEvents(
+          const LogFilter.all(),
+          0,
+        )).data.single.position,
+        0,
+      );
     });
 
     test(

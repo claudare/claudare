@@ -49,7 +49,7 @@ void main() {
         final one = await database.getStreamEvents('one', 1);
         expect(one.data.map((event) => event.version), [1, 2]);
         final all = await CqrsTestRuntime(eventStore: database)
-            .logReader(0)
+            .logReader(const LogFilter.all(), 0)
             .scan()
             .toList();
         expect(all.map((event) => event.streamPath), [
@@ -81,7 +81,10 @@ void main() {
           (await database.getStoredCommand(CommandId('actor-1', 1)))!.toJson(),
           reordered.toJson(),
         );
-        final logged = (await database.getLogEvents(0)).data;
+        final logged = (await database.getLogEvents(
+          const LogFilter.all(),
+          0,
+        )).data;
         expect(logged.map((event) => event.eventId), [
           EventId('actor-1', 1, 0),
           EventId('actor-1', 1, 1),

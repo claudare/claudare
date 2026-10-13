@@ -39,7 +39,10 @@ void main() {
         expect(restored, isNotNull);
         expect(restored!.toJson(), bundle.toJson());
         expect(restored.events, isNotEmpty);
-        final logged = await runtime.logReader(0).scan().toList();
+        final logged = await runtime
+            .logReader(const LogFilter.all(), 0)
+            .scan()
+            .toList();
         expect(logged.map((event) => event.eventId), [
           EventId('actor-1', 1, 0),
           EventId('actor-1', 1, 1),
@@ -102,7 +105,10 @@ void main() {
         await store.addStoredCommand(
           _bundle(CommandId('actor-2', 1), paths: ['one']),
         );
-        final events = await runtime.logReader(0).scan().toList();
+        final events = await runtime
+            .logReader(const LogFilter.all(), 0)
+            .scan()
+            .toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
         expect(events.map((event) => event.version), [0, 0, 1]);
       });
@@ -136,13 +142,16 @@ void main() {
         for (final actor in ['actor-1', 'actor-2', 'actor-3']) {
           await store.addStoredCommand(_bundle(CommandId(actor, 1)));
         }
-        final reader = runtime.logReader(0);
+        final reader = runtime.logReader(const LogFilter.all(), 0);
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [0, 1]);
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [2]);
         expect(await reader.loadMore(), isFalse);
-        final fromTwo = await runtime.logReader(2).scan().toList();
+        final fromTwo = await runtime
+            .logReader(const LogFilter.all(), 2)
+            .scan()
+            .toList();
         expect(fromTwo.single.position, 2);
       });
 

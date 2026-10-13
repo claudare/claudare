@@ -73,7 +73,10 @@ class CommandTester {
     _ensureRan();
 
     // only gets events that were emitted after the test has ran
-    final reader = _runtime.logReader((_preRunLastLogPosition ?? -1) + 1);
+    final reader = _runtime.logReader(
+      LogFilter.exact(streamPath),
+      (_preRunLastLogPosition ?? -1) + 1,
+    );
 
     return reader
         .scan()

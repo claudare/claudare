@@ -27,10 +27,6 @@ class LogFilter {
   }
 
   bool doesMatchPath(String path) {
-    if (path == '*') {
-      return true;
-    }
-
     switch (type) {
       case LogFilterType.all:
         return true;

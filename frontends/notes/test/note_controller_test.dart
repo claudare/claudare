@@ -279,11 +279,14 @@ class _FailingStore extends MemoryEventStore {
   }
 
   @override
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) {
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) {
     if (failRead) {
       failRead = false;
       return Future.error(Exception('Interrupted read'));
     }
-    return super.getLogEvents(fromPosition);
+    return super.getLogEvents(filter, fromPosition);
   }
 }

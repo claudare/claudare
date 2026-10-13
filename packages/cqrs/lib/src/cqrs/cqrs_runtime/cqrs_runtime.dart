@@ -50,8 +50,11 @@ class CqrsRuntime {
   );
 
   /// Creates a reader starting at the inclusive global log position.
-  PaginatedReader<StoredEvent> logReader(int fromPosition) =>
-      PaginatedReader(_eventStore.getLogEvents, initialCursor: fromPosition);
+  PaginatedReader<StoredEvent> logReader(LogFilter filter, int fromPosition) =>
+      PaginatedReader(
+        (int cursor) => _eventStore.getLogEvents(filter, cursor),
+        initialCursor: fromPosition,
+      );
 
   EventRegistry get eventRegistry => _eventRegistry;
 
@@ -69,14 +72,7 @@ class CqrsRuntime {
     final startingSequence = sequence;
     var applyCount = 0;
 
-    final stream = logReader((startingSequence ?? -1) + 1)
-        .scan()
-        .where((logEvent) {
-          // removes irrelevant events as database level filtering is not
-          // implemented. In the future, eventStore will support read filtering;
-          // with that system in place, this will not be needed.
-          return filter.doesMatchPath(logEvent.streamPath);
-        });
+    final stream = logReader(filter, (startingSequence ?? -1) + 1).scan();
 
     await for (final logEvent in stream) {
       final decoded = _eventRegistry.decode(logEvent.encodedEvent);
@@ -117,14 +113,10 @@ class CqrsRuntime {
     final startingSequence = aggregate.sequence;
     var applyCount = 0;
 
-    final stream = logReader((aggregate.sequence ?? -1) + 1)
-        .scan()
-        .where((logEvent) {
-          // removes irrelevant events as database level filtering is not
-          // implemented. In the future, eventStore will support read filtering;
-          // with that system in place, this will not be needed.
-          return aggregate.filter.doesMatchPath(logEvent.streamPath);
-        });
+    final stream = logReader(
+      aggregate.filter,
+      (aggregate.sequence ?? -1) + 1,
+    ).scan();
 
     await for (final logEvent in stream) {
       final decoded = _eventRegistry.decode(logEvent.encodedEvent);

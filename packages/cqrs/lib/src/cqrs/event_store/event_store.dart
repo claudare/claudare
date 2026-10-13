@@ -1,3 +1,4 @@
+import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -81,9 +82,12 @@ abstract interface class EventStore implements EventStoreReplication {
     int fromVersion,
   );
 
-  /// Get paginated result from the global log.
+  /// Reads events matching [filter] from the inclusive global [fromPosition].
   /// [EventStore] owns pagination size.
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition);
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  );
 
   /// Saves results of command execution into the event store.
   Future<void> saveChanges(CommandChanges changes);

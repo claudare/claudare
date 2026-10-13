@@ -170,13 +170,16 @@ class _ObservedStore extends MemoryEventStore {
   }
 
   @override
-  Future<PaginatedResult<StoredEvent>> getLogEvents(int fromPosition) {
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) {
     reads.add(fromPosition);
     if (failAt == fromPosition || _failNextRead) {
       failAt = null;
       _failNextRead = false;
       return Future.error(Exception('Interrupted event read'));
     }
-    return super.getLogEvents(fromPosition);
+    return super.getLogEvents(filter, fromPosition);
   }
 }
