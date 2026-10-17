@@ -6,6 +6,15 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 
+/// Local availability of a blob referenced by a committed command.
+enum BlobStatus {
+  /// The blob is required but its bytes have not been saved locally.
+  pending,
+
+  /// The complete blob bytes have been saved locally.
+  available,
+}
+
 class EventDatabaseState {
   final int? lastCommandLogPosition;
   final int? lastEventLogPosition;
@@ -69,6 +78,21 @@ abstract interface class EventStoreReplication {
 }
 
 abstract interface class EventStore implements EventStoreReplication {
+  /// Returns local availability, or null for an unreferenced blob ID.
+  Future<BlobStatus?> getBlobStatus(String blobId);
+
+  /// Reads pending IDs in local command order.
+  /// Each ID appears once, at its first reference. Start with cursor zero.
+  /// Null means the scan is complete.
+  /// Cursors remain stable when earlier blobs become available. Restart from
+  /// zero to retry pending IDs skipped during an earlier scan.
+  /// [EventStore] owns pagination size.
+  Future<PaginatedResult<String>> getPendingBlobIds(int cursor);
+
+  /// Marks a referenced blob available after its bytes are durably saved.
+  /// Repeated calls succeed. Throws [StateError] for an unreferenced ID.
+  Future<void> markBlobAvailable(String blobId);
+
   /// Broadcasts one change per event saved after listening begins.
   Stream<EventChange> get eventChanges;
 

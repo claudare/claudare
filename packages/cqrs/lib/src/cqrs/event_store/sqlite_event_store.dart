@@ -77,6 +77,17 @@ class SqliteEventStore implements EventStore {
   Stream<CommandChange> get commandChanges => _commandChanges.stream;
 
   @override
+  Future<BlobStatus?> getBlobStatus(String blobId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> markBlobAvailable(String blobId) => throw UnimplementedError();
+
+  @override
   Stream<EventChange> get eventChanges => _eventChanges.stream;
 
   void _publishChanges(

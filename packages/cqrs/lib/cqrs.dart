@@ -1,5 +1,8 @@
 library;
 
+// blobs
+export 'src/cqrs/blob_store/blob_store.dart';
+
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
 

@@ -27,16 +27,18 @@ byte storage.
 - Events and ordered blob references commit atomically. Commands producing no
   events do not persist collected writes.
 - Received commands persist events and blob references before ACK. Missing
-  blobs become `pending`; existing available blobs remain `available`.
+  blobs become `pending` in their emitted order within the command; existing
+  available blobs remain `available`.
 - Command ACKs never wait for blob downloads.
 
 ## Independent blob replication
 
 - A separate replicator fetches pending blobs by ID from connected peers. Any
   peer holding the bytes can serve them.
-- Attempt priority follows local command log position, then blob position
-  within the command. Concurrent commands may have different local order on
-  different devices.
+- Attempt priority follows local order, which naturally preserves each saved
+  command's emitted blob order. The replicator reads pending IDs in that local
+  order; no global blob order across devices is required. Concurrent commands
+  may have different local order on different devices.
 - Failed or unavailable blobs remain pending while later blobs proceed. Retries
   must not starve later work.
 - Pending work survives restart. Notifications wake workers but do not replace
