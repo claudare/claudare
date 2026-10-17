@@ -34,6 +34,7 @@ class AccountSummaryState implements AggregateState<AccountEvent> {
         lastTransactionAt = occuredAt;
         transactionCount++;
       case AccountAtmWithdrawn(:final amount):
+      case AccountExpenseRecorded(:final amount):
         balance -= amount;
         lastTransactionAt = occuredAt;
         transactionCount++;

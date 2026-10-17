@@ -8,6 +8,7 @@ part 'account_atm_withdrawn.dart';
 part 'account_inner_transfer.dart';
 part 'account_opened.dart';
 part 'account_renamed.dart';
+part 'account_expense_recorded.dart';
 
 // Using this as a guide for the domain terminology
 // https://www.helpwithmybank.gov/glossary/index-glossary.html

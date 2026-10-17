@@ -29,8 +29,9 @@ class TransferFundsBetweenAccounts implements Command {
       switch (event) {
         case AccountAtmDeposited():
           return prev + event.amount;
-        case AccountAtmWithdrawn():
-          return prev - event.amount;
+        case AccountAtmWithdrawn(:final amount):
+        case AccountExpenseRecorded(:final amount):
+          return prev - amount;
         case AccountInnerTransfer():
           return prev + event.amount;
         // TODO: new events could be missed here
