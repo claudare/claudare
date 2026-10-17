@@ -4,6 +4,7 @@ library;
 export 'src/cqrs/blob_store/blob_store.dart';
 export 'src/cqrs/blob_store/memory_blob_store.dart';
 export 'src/cqrs/blob_store/no_blob_store.dart';
+export 'src/cqrs/blob_store/sqlite_blob_store.dart';
 
 // cqrs runtime stuff
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
