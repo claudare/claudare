@@ -114,5 +114,6 @@ abstract interface class EventStore implements EventStoreReplication {
   );
 
   /// Saves results of command execution into the event store.
+  /// The caller must validate [CommandChanges.isValid] before saving.
   Future<void> saveChanges(CommandChanges changes);
 }

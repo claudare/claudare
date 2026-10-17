@@ -54,23 +54,6 @@ void main() {
         },
       );
 
-      test('rejects changes without stream locks before writing', () async {
-        final changes = _changes('one');
-        await expectLater(
-          store.saveChanges(
-            CommandChanges(
-              actor: 'test-actor',
-              dependency: changes.dependency,
-              occuredAt: changes.occuredAt,
-              locks: [],
-              events: changes.events,
-            ),
-          ),
-          throwsArgumentError,
-        );
-        expect((await store.getState()).lastCommandLogPosition, isNull);
-      });
-
       test('concurrent stale-lock writes have one winner', () async {
         Future<bool> save() async {
           try {
@@ -186,6 +169,7 @@ CommandChanges _changes(
 }) {
   final timestamp = DateTime.utc(2026);
   return CommandChanges(
+    blobs: const [],
     actor: 'test-actor',
     dependency: dependency ?? CommandDependency(),
     occuredAt: timestamp,

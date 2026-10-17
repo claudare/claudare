@@ -471,6 +471,7 @@ void main() {
 }
 
 StoredCommand command(String actor, int sequence) => StoredCommand(
+  blobIds: const [],
   commandId: CommandId(actor, sequence),
   dependency: CommandDependency(),
   occuredAt: DateTime.utc(2026),

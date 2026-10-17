@@ -9,6 +9,7 @@ class CommandChanges {
   final DateTime occuredAt;
   final List<StreamLock> locks;
   final List<EventAppend> events;
+  final List<String> blobs;
 
   const CommandChanges({
     required this.actor,
@@ -16,9 +17,15 @@ class CommandChanges {
     required this.occuredAt,
     required this.locks,
     required this.events,
+    required this.blobs,
   });
 
-  /// Whether locks are unique by stream and cover every appended event.
+  bool isEmpty() {
+    return events.isEmpty;
+  }
+
+  /// Checks whether locks are unique by stream and cover every appended event
+  /// and makes sure that blobs are emitted only when events are present.
   bool isValid() {
     final lockedStreamPaths = <String>{};
 
@@ -28,9 +35,15 @@ class CommandChanges {
       }
     }
 
-    return events.every(
+    if (!events.every(
       (event) => lockedStreamPaths.contains(event.streamPath),
-    );
+    )) {
+      return false;
+    }
+
+    if (events.isEmpty && blobs.isNotEmpty) return false;
+
+    return true;
   }
 }
 

@@ -4,11 +4,11 @@ import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:id_generator/id_generator.dart';
 
 /// Test runtime with event seeding support.
 ///
-/// By default uses a memory event store, noop logger, and static time provider
-/// with 0 timestamps.
+/// Defaults to memory stores, sequential IDs, a noop logger, and zero timestamps.
 final class CqrsTestRuntime extends CqrsRuntime {
   static const _testActor = 'test-actor';
 
@@ -18,22 +18,30 @@ final class CqrsTestRuntime extends CqrsRuntime {
     EventStore? eventStore,
     Logger? logger,
     TimeProvider? timeProvider,
+    BlobStore? blobStore,
+    IdGenerator? idGenerator,
   }) => CqrsTestRuntime._(
     eventStore ?? MemoryEventStore(),
     logger ?? const NoopLogger(),
     timeProvider ?? FakeTimeProviderStatic.zero(),
+    blobStore ?? MemoryBlobStore(),
+    idGenerator ?? IdGeneratorSequential(),
   );
 
   CqrsTestRuntime._(
     EventStore eventStore,
     Logger logger,
     TimeProvider timeProvider,
+    BlobStore blobStore,
+    IdGenerator idGenerator,
   ) : _eventStore = eventStore,
       super(
         actor: _testActor,
         eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
+        blobStore: blobStore,
+        idGenerator: idGenerator,
       );
 
   /// Saves [events] in order using codecs in [eventRegistry].
@@ -52,6 +60,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
       final info = await _eventStore.getStreamVersion(append.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
+          blobs: const [],
           actor: events[index].actor,
           dependency: CommandDependency(),
           occuredAt: append.occuredAt,

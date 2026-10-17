@@ -1,3 +1,5 @@
+import 'package:id_generator/id_generator.dart';
+
 import 'dart:async';
 
 import 'package:claudare_crypto/crypto.dart';
@@ -521,6 +523,8 @@ NoteSystem _system(
 
 NotesApp _application(NoteSystem system, {String actor = 'local'}) => NotesApp(
   cqrsRuntime: CqrsRuntime(
+    idGenerator: IdGeneratorSequential(),
+    blobStore: MemoryBlobStore(),
     eventStore: system.eventStore,
     actor: actor,
     logger: const NoopLogger(),

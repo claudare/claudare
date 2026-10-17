@@ -92,6 +92,7 @@ void main() {
         await expectLater(
           store.saveChanges(
             CommandChanges(
+              blobs: const [],
               actor: valid.actor,
               dependency: valid.dependency,
               occuredAt: valid.occuredAt,
@@ -170,6 +171,7 @@ CommandChanges _changes({
 }) {
   final time = DateTime.utc(2026);
   return CommandChanges(
+    blobs: const [],
     actor: 'actor',
     dependency: dependency ?? CommandDependency(),
     occuredAt: time,
@@ -188,6 +190,7 @@ CommandChanges _changes({
 StoredCommand _storedCommand(CommandId commandId, List<String> streams) {
   final time = DateTime.utc(2026);
   return StoredCommand(
+    blobIds: const [],
     commandId: commandId,
     dependency: CommandDependency(),
     occuredAt: time,

@@ -1,3 +1,5 @@
+import 'package:id_generator/id_generator.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -17,6 +19,8 @@ void main() {
   setUp(() {
     eventStore = MemoryEventStore(eventFetchPageSize: 1);
     runtime = CqrsRuntime(
+      idGenerator: IdGeneratorSequential(),
+      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: const NoopLogger(),
@@ -109,6 +113,8 @@ void main() {
     await _appendAccountEvents(eventStore);
     final logger = RecordingLogger();
     final observed = CqrsRuntime(
+      idGenerator: IdGeneratorSequential(),
+      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: logger,
@@ -182,6 +188,7 @@ final class _EnvelopeState implements AggregateState<_TestEvent> {
 Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
+        blobs: const [],
         actor: 'test-actor',
         dependency: CommandDependency(),
         occuredAt: _timestamp,

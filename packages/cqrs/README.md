@@ -7,5 +7,7 @@ Use memory storage for tests and temporary data, or SQLite for persistence. Open
 and migrate SQLite stores before use; closing a store also closes its supplied
 database.
 
+Commands can write blobs alongside events. 
+
 For peer transport and replication, see [sync](../sync/README.md). Actor
 identifiers do not provide authentication.

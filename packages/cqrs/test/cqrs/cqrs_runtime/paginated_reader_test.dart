@@ -78,6 +78,7 @@ Future<void> _appendCount(EventStore store, int count) async {
   for (var i = 0; i < count; i++) {
     await store.saveChanges(
       CommandChanges(
+        blobs: const [],
         actor: 'test-actor',
         dependency: CommandDependency(),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),

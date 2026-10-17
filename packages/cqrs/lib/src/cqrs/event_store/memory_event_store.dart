@@ -222,6 +222,7 @@ class MemoryEventStore implements EventStore {
               commandId: commandId,
               dependency: command.dependency,
               occuredAt: command.occuredAt,
+              blobIds: command.blobIds,
               events: [
                 for (var index = 0; index < _events.length; index++)
                   if (_events[index].eventId.commandId == commandId)
@@ -242,12 +243,14 @@ class MemoryEventStore implements EventStore {
     required CommandDependency dependency,
     required DateTime occuredAt,
     required List<EventAppend> events,
+    required List<String> blobIds,
   }) {
     final command = _MemoryLogCommand(
       commandId: commandId,
       dependency: dependency,
       occuredAt: occuredAt,
       logPosition: _commands.length,
+      blobIds: List.unmodifiable(blobIds),
     );
     final appended = <_MemoryLogEvent>[];
     final streamVersions = <String, List<int>>{};
@@ -298,6 +301,7 @@ class MemoryEventStore implements EventStore {
           dependency: command.dependency,
           occuredAt: command.occuredAt,
           events: events,
+          blobIds: command.blobIds,
         );
         _publishChanges(ChangeOrigin.remote, command.commandId, events);
         return true;
@@ -306,10 +310,7 @@ class MemoryEventStore implements EventStore {
   @override
   Future<void> saveChanges(CommandChanges changes) =>
       _write('Failed to append command batch', () {
-        if (changes.events.isEmpty) return;
-        if (!changes.isValid()) {
-          throw ArgumentError('every appended event must have one stream lock');
-        }
+        if (changes.isEmpty()) return;
         final state = _getState();
         if (!state.logVersion.contains(changes.dependency)) {
           throw StateError('command dependency is not in the log');
@@ -328,18 +329,21 @@ class MemoryEventStore implements EventStore {
           dependency: changes.dependency,
           occuredAt: changes.occuredAt,
           events: changes.events,
+          blobIds: changes.blobs,
         );
         _publishChanges(ChangeOrigin.local, commandId, changes.events);
       });
 }
 
 class _MemoryLogCommand {
+  final List<String> blobIds;
   final CommandId commandId;
   final CommandDependency dependency;
   final DateTime occuredAt;
   final int logPosition;
 
   _MemoryLogCommand({
+    required this.blobIds,
     required this.commandId,
     required this.dependency,
     required this.occuredAt,

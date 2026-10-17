@@ -736,6 +736,7 @@ class _Store implements EventStoreReplication {
 }
 
 StoredCommand _command({String actor = 'writer'}) => StoredCommand(
+  blobIds: const [],
   commandId: CommandId(actor, 1),
   dependency: CommandDependency(),
   occuredAt: DateTime.utc(2026),

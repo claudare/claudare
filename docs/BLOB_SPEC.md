@@ -18,14 +18,14 @@ byte storage.
 
 ## Commands and persistence
 
-- Command handlers can read blobs and register writes. Registration returns an
-  ID immediately.
+- Command handlers generate IDs with `generateId()` and register writes with
+  `saveBlob(id, data)`. Command blob reads are not implemented yet.
 - `StoredCommand.blobIds` preserves registration order, independent of write
   completion order. All registered writes belong to that command.
 - Locally authored commands save blob bytes before committing events. Failed
   blob writes prevent event commit.
-- Events and ordered blob references commit atomically. Commands producing no
-  events do not persist collected writes.
+- Events and ordered blob references commit atomically. Commands emitting blobs
+  without events are rejected before any writes. Empty commands are no-ops.
 - Received commands persist events and blob references before ACK. Missing
   blobs become `pending` in their emitted order within the command; existing
   available blobs remain `available`.
@@ -74,10 +74,11 @@ outside this specification.
 
 Check an item only when its implementation and relevant tests pass.
 
-- [ ] Establish string IDs, immutable byte-storage behavior, and availability
+- [x] Establish string IDs, immutable byte-storage behavior, and availability
   metadata contracts.
-- [ ] Integrate command-context writes and ordered `StoredCommand.blobIds`,
+- [x] Integrate command-context writes and ordered `StoredCommand.blobIds`,
   including persistence and serialization.
+- [x] Provide memory blob storage and command-tester write inspection.
 - [ ] Implement durable pending registration with received commands and recovery
   across interrupted saves and status updates.
 - [ ] Implement independent blob replication, ordered attempts, retries,

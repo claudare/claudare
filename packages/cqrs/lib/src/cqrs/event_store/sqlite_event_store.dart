@@ -28,6 +28,13 @@ final eventDatabaseMigrations =
           event_count INTEGER NOT NULL CHECK(event_count > 0),
           UNIQUE(id_actor, id_sequence)
         );''');
+        tx.execute('''CREATE TABLE command_blob(
+          id_actor TEXT NOT NULL,
+          id_sequence INTEGER NOT NULL,
+          blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
+          blob_id TEXT NOT NULL,
+          PRIMARY KEY(id_actor, id_sequence, blob_index)
+        );''');
         tx.execute(
           'CREATE INDEX idx_command_id ON command(id_actor, id_sequence);',
         );
@@ -269,16 +276,16 @@ class SqliteEventStore implements EventStore {
   @override
   Future<StoredCommand?> getStoredCommand(CommandId commandId) =>
       _transaction('Failed to get stored command $commandId', (tx) {
-        final row = tx.queryRow(
+        final commandRow = tx.queryRow(
           '''SELECT dependency, occured_at
           FROM command
           WHERE id_actor = ?
             AND id_sequence = ?;''',
           [commandId.actor, commandId.sequence],
         );
-        if (row == null) return null;
+        if (commandRow == null) return null;
 
-        final rows = tx.query(
+        final eventRows = tx.query(
           '''SELECT stream_path, kind, detail, occured_at
           FROM event
           WHERE id_actor = ?
@@ -286,13 +293,21 @@ class SqliteEventStore implements EventStore {
           ORDER BY id_index ASC;''',
           [commandId.actor, commandId.sequence],
         );
-
+        final blobRows = tx.query(
+          '''SELECT blob_id FROM command_blob
+          WHERE id_actor = ? AND id_sequence = ?
+          ORDER BY blob_index ASC;''',
+          [commandId.actor, commandId.sequence],
+        );
         return StoredCommand(
+          blobIds: [for (final row in blobRows) row.field<String>('blob_id')],
           commandId: commandId,
-          dependency: _decodeDependency(row.field<Uint8List>('dependency')),
-          occuredAt: _date(row.field<int>('occured_at')),
+          dependency: _decodeDependency(
+            commandRow.field<Uint8List>('dependency'),
+          ),
+          occuredAt: _date(commandRow.field<int>('occured_at')),
           events: [
-            for (final row in rows)
+            for (final row in eventRows)
               StoredCommandEvent(
                 streamPath: row.field<String>('stream_path'),
                 encodedEvent: EncodedEvent(
@@ -311,9 +326,6 @@ class SqliteEventStore implements EventStore {
       tx,
     ) {
       if (changes.events.isEmpty) return null;
-      if (!changes.isValid()) {
-        throw ArgumentError('every appended event must have one stream lock');
-      }
       final state = _getState(tx);
       if (!state.logVersion.contains(changes.dependency)) {
         throw StateError('command dependency is not in the log');
@@ -334,6 +346,7 @@ class SqliteEventStore implements EventStore {
         dependency: changes.dependency,
         occuredAt: changes.occuredAt,
         events: changes.events,
+        blobIds: changes.blobs,
       );
       return commandId;
     });
@@ -360,6 +373,7 @@ class SqliteEventStore implements EventStore {
         commandId: command.commandId,
         dependency: command.dependency,
         occuredAt: command.occuredAt,
+        blobIds: command.blobIds,
         events: [
           for (final event in command.events)
             EventAppend(
@@ -408,6 +422,7 @@ void _append(
   required CommandDependency dependency,
   required DateTime occuredAt,
   required List<EventAppend> events,
+  required List<String> blobIds,
 }) {
   tx.execute(
     '''INSERT INTO command(log_position, id_actor, id_sequence,
@@ -423,6 +438,13 @@ void _append(
     ],
   );
   _insertLogEvents(tx, commandId, events);
+  for (final (index, blobId) in blobIds.indexed) {
+    tx.execute(
+      '''INSERT INTO command_blob(id_actor, id_sequence, blob_index, blob_id)
+      VALUES (?, ?, ?, ?);''',
+      [commandId.actor, commandId.sequence, index, blobId],
+    );
+  }
 }
 
 int _nextLogPosition(SyncContext tx, String table) {

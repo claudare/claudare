@@ -86,6 +86,7 @@ void main() {
       test('rejects commands without events without writing', () async {
         final valid = _bundle(CommandId('actor-2', 1));
         final invalid = StoredCommand(
+          blobIds: const [],
           commandId: valid.commandId,
           dependency: valid.dependency,
           occuredAt: valid.occuredAt,
@@ -174,6 +175,7 @@ void main() {
 }
 
 CommandChanges _changes(String path, int? version) => CommandChanges(
+  blobs: const [],
   actor: 'test-actor',
   dependency: CommandDependency(),
   occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),
@@ -194,6 +196,7 @@ StoredCommand _bundle(
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(300, isUtc: true);
   return StoredCommand(
+    blobIds: const [],
     commandId: id,
     dependency: dependency ?? CommandDependency(),
     occuredAt: time,

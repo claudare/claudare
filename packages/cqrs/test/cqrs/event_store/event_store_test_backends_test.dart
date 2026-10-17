@@ -71,6 +71,7 @@ void main() {
       test('bundle event order defines stored indexes', () async {
         final bundle = _bundle(CommandId('actor-1', 1), ['one', 'two']);
         final reordered = StoredCommand(
+          blobIds: const [],
           commandId: bundle.commandId,
           dependency: bundle.dependency,
           occuredAt: bundle.occuredAt,
@@ -98,6 +99,7 @@ void main() {
 StoredCommand _bundle(CommandId id, List<String> paths) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return StoredCommand(
+    blobIds: const [],
     commandId: id,
     dependency: CommandDependency(),
     occuredAt: time,

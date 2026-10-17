@@ -122,6 +122,7 @@ Future<void> _appendSparseHistory(EventStore store) => _appendPaths(store, [
 Future<void> _appendPaths(EventStore store, List<String> paths) async {
   final time = DateTime.utc(2026);
   final command = StoredCommand(
+    blobIds: const [],
     commandId: const CommandId('actor', 1),
     dependency: CommandDependency(),
     occuredAt: time,

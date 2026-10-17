@@ -795,6 +795,7 @@ StoredCommand _command(
 }) {
   final time = DateTime.utc(2026);
   return StoredCommand(
+    blobIds: const [],
     commandId: CommandId(actor, sequence),
     dependency: CommandDependency(dependency),
     occuredAt: time,
@@ -815,6 +816,7 @@ Future<void> _append(EventStore store, String actor) async {
   final time = DateTime.utc(2026);
   await store.saveChanges(
     CommandChanges(
+      blobs: const [],
       actor: actor,
       dependency: (await store.getState()).logVersion,
       occuredAt: time,

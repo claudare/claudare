@@ -1,3 +1,5 @@
+import 'package:id_generator/id_generator.dart';
+
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -22,6 +24,7 @@ void main() {
 
   CommandContext createContext({EventRegistry? eventRegistry}) =>
       CommandContext(
+        idGenerator: IdGeneratorSequential(),
         actor: 'test-actor',
         eventStore: store,
         streamReader: CqrsTestRuntime(eventStore: store).streamReader,
@@ -38,6 +41,7 @@ void main() {
     for (var index = 0; index < 2; index++) {
       await store.saveChanges(
         CommandChanges(
+          blobs: const [],
           actor: 'test-actor',
           dependency: CommandDependency(),
           occuredAt: _timestamp,

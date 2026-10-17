@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
+import 'package:cqrs/src/cqrs/blob_store/blob_store.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -10,6 +11,7 @@ import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/log_filter.dart';
+import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
 /// Coordinates durable command execution and projection delivery.
@@ -18,6 +20,7 @@ class CqrsRuntime {
   final String _actor;
   final Logger _logger;
   final TimeProvider _timeProvider;
+  final IdGenerator _idGenerator;
   final EventRegistry _eventRegistry = EventRegistry();
 
   late final CommandExecutor _commandExecutor;
@@ -27,12 +30,16 @@ class CqrsRuntime {
     required this._actor,
     required this._logger,
     required this._timeProvider,
+    required this._idGenerator,
+    required BlobStore blobStore,
   }) {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
+      blobStore: blobStore,
       actor: _actor,
       streamReader: streamReader,
       timeProvider: _timeProvider,
+      idGenerator: _idGenerator,
       eventRegistry: _eventRegistry,
       logger: _logger,
     );

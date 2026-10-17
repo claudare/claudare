@@ -210,6 +210,10 @@ void main() {
       'test-actor',
     );
     expect(
+      (await second.getStoredCommand(CommandId('test-actor', 1)))!.blobIds,
+      ['local-second', 'local-first'],
+    );
+    expect(
       await second.addStoredCommand(_bundle(CommandId('actor-160', 2))),
       isTrue,
     );
@@ -258,6 +262,7 @@ void main() {
 CommandChanges _changes(String path, {int count = 1}) {
   final timestamp = DateTime.utc(2026);
   return CommandChanges(
+    blobs: const ['local-second', 'local-first'],
     actor: 'test-actor',
     dependency: CommandDependency(),
     occuredAt: timestamp,
@@ -281,6 +286,7 @@ StoredCommand _bundle(
 }) {
   final time = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return StoredCommand(
+    blobIds: const ['remote-second', 'remote-first'],
     commandId: id,
     dependency: dependency ?? CommandDependency(),
     occuredAt: time,

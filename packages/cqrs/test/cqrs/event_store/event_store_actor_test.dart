@@ -1,3 +1,5 @@
+import 'package:id_generator/id_generator.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -229,6 +231,8 @@ void main() {
 }
 
 CqrsRuntime _runtime(EventStore store, String actor) => CqrsRuntime(
+  idGenerator: IdGeneratorSequential(),
+  blobStore: MemoryBlobStore(),
   eventStore: store,
   actor: actor,
   logger: const NoopLogger(),
@@ -261,6 +265,7 @@ StoredCommand _stored(
   int sequence = 1,
   CommandDependency? dependency,
 }) => StoredCommand(
+  blobIds: const [],
   commandId: CommandId(actor, sequence),
   dependency: dependency ?? CommandDependency(),
   occuredAt: DateTime.utc(2026),
@@ -279,6 +284,7 @@ CommandChanges _changes(
   int? version,
   CommandDependency? dependency,
 }) => CommandChanges(
+  blobs: const [],
   actor: actor,
   dependency: dependency ?? CommandDependency(),
   occuredAt: DateTime.utc(2026),

@@ -1,3 +1,4 @@
+import 'package:id_generator/id_generator.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:notes_app/notes_app.dart';
@@ -24,6 +25,8 @@ Future<void> addRemoteTitleUpdate(
 
   final remote = NotesApp(
     cqrsRuntime: CqrsRuntime(
+      idGenerator: IdGeneratorSequential(),
+      blobStore: MemoryBlobStore(),
       eventStore: remoteStore,
       actor: 'remote',
       logger: const NoopLogger(),

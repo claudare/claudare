@@ -1,3 +1,6 @@
+import 'package:cqrs/src/cqrs/blob_store/memory_blob_store.dart';
+import 'package:id_generator/id_generator.dart';
+
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
@@ -150,6 +153,7 @@ void main() {
 
   test('stopping scan applies and locks only the yielded', () async {
     final context = CommandContext(
+      idGenerator: IdGeneratorSequential(),
       actor: 'test-actor',
       eventStore: eventStore,
       streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
@@ -177,6 +181,8 @@ Future<void> _execute(
   Future<void> Function(CommandContextApi context) handle,
 ) async {
   final executor = CommandExecutor(
+    idGenerator: IdGeneratorSequential(),
+    blobStore: MemoryBlobStore(),
     actor: 'test-actor',
     eventStore: eventStore,
     streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
@@ -195,6 +201,7 @@ Future<bool> _seedCommand(
 }) {
   return database.addStoredCommand(
     StoredCommand(
+      blobIds: const [],
       commandId: commandId,
       dependency: dependency ?? CommandDependency(),
       occuredAt: _timestamp,
