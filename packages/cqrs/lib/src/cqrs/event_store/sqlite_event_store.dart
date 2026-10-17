@@ -28,7 +28,7 @@ final eventDatabaseMigrations =
           event_count INTEGER NOT NULL CHECK(event_count > 0),
           UNIQUE(id_actor, id_sequence)
         );''');
-        tx.execute('''CREATE TABLE command_blob(
+        tx.execute('''CREATE TABLE blob(
           id_actor TEXT NOT NULL,
           id_sequence INTEGER NOT NULL,
           blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
@@ -294,7 +294,7 @@ class SqliteEventStore implements EventStore {
           [commandId.actor, commandId.sequence],
         );
         final blobRows = tx.query(
-          '''SELECT blob_id FROM command_blob
+          '''SELECT blob_id FROM blob
           WHERE id_actor = ? AND id_sequence = ?
           ORDER BY blob_index ASC;''',
           [commandId.actor, commandId.sequence],
@@ -440,7 +440,7 @@ void _append(
   _insertLogEvents(tx, commandId, events);
   for (final (index, blobId) in blobIds.indexed) {
     tx.execute(
-      '''INSERT INTO command_blob(id_actor, id_sequence, blob_index, blob_id)
+      '''INSERT INTO blob(id_actor, id_sequence, blob_index, blob_id)
       VALUES (?, ?, ?, ?);''',
       [commandId.actor, commandId.sequence, index, blobId],
     );
