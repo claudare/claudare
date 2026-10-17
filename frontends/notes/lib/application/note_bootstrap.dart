@@ -88,7 +88,7 @@ class NoteBootstrap {
   Future<NotesApp> _initialize(NoteSystem system, String actor) async {
     final runtime = CqrsRuntime(
       idGenerator: IdGeneratorRandom(),
-      blobStore: MemoryBlobStore(),
+      blobStore: const NoBlobStore(),
       eventStore: system.eventStore,
       actor: actor,
       logger: logger,
