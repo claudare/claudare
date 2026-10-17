@@ -79,6 +79,8 @@ Check an item only when its implementation and relevant tests pass.
 - [x] Integrate command-context writes and ordered `StoredCommand.blobIds`,
   including persistence and serialization.
 - [x] Provide memory blob storage and command-tester write inspection.
+- [x] Provide local blob reads through `CqrsRuntime.getBlob`. Command-context
+  reads remain deferred.
 - [ ] Implement durable pending registration with received commands and recovery
   across interrupted saves and status updates.
 - [ ] Implement independent blob replication, ordered attempts, retries,
