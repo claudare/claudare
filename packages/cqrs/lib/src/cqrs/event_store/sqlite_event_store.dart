@@ -28,13 +28,6 @@ final eventDatabaseMigrations =
           event_count INTEGER NOT NULL CHECK(event_count > 0),
           UNIQUE(id_actor, id_sequence)
         );''');
-        tx.execute('''CREATE TABLE blob(
-          id_actor TEXT NOT NULL,
-          id_sequence INTEGER NOT NULL,
-          blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
-          blob_id TEXT NOT NULL,
-          PRIMARY KEY(id_actor, id_sequence, blob_index)
-        );''');
         tx.execute(
           'CREATE INDEX idx_command_id ON command(id_actor, id_sequence);',
         );
@@ -59,6 +52,15 @@ final eventDatabaseMigrations =
         );
         tx.execute('''CREATE UNIQUE INDEX idx_log_event_stream_version
           ON event(stream_path, stream_version);''');
+        tx.execute('''CREATE TABLE blob(
+          local_position INTEGER PRIMARY KEY NOT NULL CHECK(local_position >= 0),
+          id_actor TEXT NOT NULL,
+          id_sequence INTEGER NOT NULL,
+          blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
+          blob_id TEXT UNIQUE NOT NULL,
+          available INTEGER NOT NULL,
+          UNIQUE(id_actor, id_sequence, blob_index)
+        );''');
       }),
     );
 

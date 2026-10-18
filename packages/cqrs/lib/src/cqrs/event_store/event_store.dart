@@ -75,13 +75,11 @@ abstract interface class EventStoreReplication {
     CommandDependency dependency,
     int count,
   );
-}
 
-abstract interface class EventStore implements EventStoreReplication {
   /// Returns local availability, or null for an unreferenced blob ID.
   Future<BlobStatus?> getBlobStatus(String blobId);
 
-  /// Reads pending IDs in local command order.
+  /// Reads pending IDs in local position order.
   /// Each ID appears once, at its first reference. Start with cursor zero.
   /// Null means the scan is complete.
   /// Cursors remain stable when earlier blobs become available. Restart from
@@ -92,7 +90,9 @@ abstract interface class EventStore implements EventStoreReplication {
   /// Marks a referenced blob available after its bytes are durably saved.
   /// Repeated calls succeed. Throws [StateError] for an unreferenced ID.
   Future<void> markBlobAvailable(String blobId);
+}
 
+abstract interface class EventStore implements EventStoreReplication {
   /// Broadcasts one change per event saved after listening begins.
   Stream<EventChange> get eventChanges;
 

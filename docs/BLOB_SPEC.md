@@ -6,8 +6,8 @@ complete.
 
 ## Intended behavior
 
-Blobs are immutable bytes identified by strings. Production IDs are UUIDs,
-allocated through `IdGenerator` before persistence.
+Blobs are immutable bytes identified by random string ids. Production IDs are
+UUIDs, allocated through `IdGenerator` before persistence.
 
 `BlobStore` provides get/save operations keyed by string ID. Missing bytes
 return null. Repeated saves of identical content succeed; conflicting content
@@ -16,84 +16,85 @@ under the same ID fails. Successful saves expose complete, durable bytes.
 Durable metadata tracks command ownership and blob availability separately from
 byte storage.
 
-## Commands and persistence
+In the event store, the metadata is stored as the following:
 
-- Command handlers generate IDs with `generateId()` and register writes with
-  `saveBlob(id, data)`. Command blob reads are not implemented yet.
-- `StoredCommand.blobIds` preserves registration order, independent of write
-  completion order. All registered writes belong to that command.
-- Locally authored commands save blob bytes before committing events. Failed
-  blob writes prevent event commit.
-- Events and ordered blob references commit atomically. Commands emitting blobs
-  without events are rejected before any writes. Empty commands are no-ops.
-- Received commands persist events and blob references before ACK. Missing
-  blobs become `pending` in their emitted order within the command; existing
-  available blobs remain `available`.
-- Command ACKs never wait for blob downloads.
+```sql
+  CREATE TABLE blob(
+    local_position INTEGER PRIMARY KEY NOT NULL CHECK(local_position >= 0),
+    blob_id TEXT UNIQUE NOT NULL,
+    id_actor TEXT NOT NULL,
+    id_sequence INTEGER NOT NULL,
+    blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
+    available INTEGER NOT NULL,
+    UNIQUE(id_actor, id_sequence, blob_index)
+  );
+```
 
-## Independent blob replication
+The blobs are added only though running commands. The ID of each written blob
+will be a random value (uuidv4 in prod). Therefore, all commands will write
+unique blobs. The blobs are saved before the `CommandChanges` is commited to the
+`EventStore`.
 
-- A separate replicator fetches pending blobs by ID from connected peers. Any
-  peer holding the bytes can serve them.
-- Attempt priority follows local order, which naturally preserves each saved
-  command's emitted blob order. The replicator reads pending IDs in that local
-  order; no global blob order across devices is required. Concurrent commands
-  may have different local order on different devices.
-- Failed or unavailable blobs remain pending while later blobs proceed. Retries
-  must not starve later work.
-- Pending work survives restart. Notifications wake workers but do not replace
-  durable work tracking.
-- Received bytes become durable before availability changes to `available`.
-  Recovery reconciles interrupted status updates with already-saved bytes.
-- Duplicate references and deliveries do not duplicate required work or reset
-  availability.
-- Blob replication uses no vector clocks. Existing command vectors remain part
-  of event replication.
-- Consumers can inspect availability separately from reading bytes. Replicated
-  events may reference blobs that are still pending.
+When command that emits some blobs is saved, its `id_actor` and `id_sequence` is
+the same as that of the command. The `blob_index` provides an order to the
+blobs, similarly to how events are ordered.
 
-## Failures and cleanup
+The database assigns `local_position` as an auto-incrementing ID without holes
+upon insertion. Replication requests blobs with `available` = 0 in ascending
+`local_position` order.
 
-Failed transfers remain retryable. Partial incoming writes may be discarded
-without removing pending references.
+`getPendingBlobIds` follows the same pagination rules as `getLogEvents`. Start
+with cursor 0. The cursor is a non-negative, inclusive `local_position`, so a
+page contains pending IDs at positions greater than or equal to the cursor.
+The `EventStore` owns the page size. For a non-empty page, `next` is the last
+returned blob's `local_position` plus one. An empty page returns `next: null`,
+ending the scan. Availability changes do not change positions or cursors.
+Restarting replication or retrying earlier pending blobs starts a new scan at
+cursor 0.
 
-Local bytes left behind by failed or abandoned commands are cleanup candidates.
-Background cleanup remains outside CQRS execution, with durable ownership and
-staging information sufficient to identify candidates safely.
+Locally saved command changes mark the blob as `available`, as it is present in
+the local storage.
 
-Cleanup coordinates with active writes and commits. Neither elapsed time nor an
-exception observed by the caller proves that bytes are safe to delete. Durable
-committed references protect blobs from cleanup.
+No cleanup of interrupted command execution is implemented. It is okay for
+partially written blobs to be present in the `BlobStore` to be missing from the
+`blob` table in the `EventStore`. Cleanup is a non-goal and should not be
+implemented.
 
-Initially, retain all blobs referenced by committed history and replicate them
-to every participating device. Whole-blob transfers are sufficient. Streaming,
-resumable transfers, content deduplication, and deletion of committed blobs are
-outside this specification.
+During replication, when `StoredCommand` is recieved, the blobs are saved as
+`available` = 0, if they are not already present in the `EventStore`. `blobId`
+is used as a decider. No hashing or other consistency functionality is needed.
+If the `blobId` is marked as `available`, it is assumed that content is already
+there.
+
+Blob replication uses a pull model. This device requests pending blobs from a
+peer by `blobId`, one at a time in `local_position` order. After downloading a
+blob, it saves the bytes in the `BlobStore`, calls `markBlobAvailable` in the
+`EventStore`, and proceeds to the next ID. Blob replication uses no vector
+clocks, just `blobId`s.
+
+A peer explicitly responds when it does not have the requested blob. Requests
+have a finite timeout. A missing-blob response, timeout, or transfer failure
+leaves the blob pending and allows the next ID in the scan to proceed. After
+the scan completes, remaining pending blobs are retried from cursor 0 after a
+retry delay. An unavailable earlier blob must not block later downloads.
+
+If execution stops after saving bytes but before marking the blob available,
+the metadata remains pending. Redownloading and saving the same bytes on retry
+is acceptable for now; checking local bytes before downloading is not required.
+
+The command replication ACKs never wait for blob downloads. Blob is its own
+protocol operating in parallel. The replicated events may reference blobs that
+are still pending. Its the application's job to handle this discrepancy.
+
+Blobs are implemented in an "all or onthing manner". There will be no streaming,
+chunked APIs, or resumable transfers. The whole blob must be in memory to be
+written or read. We are currently not handling huge blobs!
+
 
 ## Implementation TODO
 
 Check an item only when its implementation and relevant tests pass.
 
-- [x] Establish string IDs, immutable byte-storage behavior, and availability
-  metadata contracts.
-- [x] Integrate command-context writes and ordered `StoredCommand.blobIds`,
-  including persistence and serialization.
-- [x] Provide memory blob storage and command-tester write inspection.
-- [x] Provide local blob reads through `CqrsRuntime.getBlob`. Command-context
-  reads remain deferred.
-- [ ] Implement durable pending registration with received commands and recovery
-  across interrupted saves and status updates.
-- [ ] Implement independent blob replication, ordered attempts, retries,
-  duplicate handling, and peer-to-peer forwarding.
-- [ ] Establish abandoned-write tracking and the cleanup integration contract.
-  Keep background cleanup outside command execution.
-- [ ] Validate failure recovery and end-to-end replication using in-memory
-  channels and fake transports.
-- [ ] Complete root analysis and cross-workspace tests. Update concise public
-  documentation where behavior changes.
+- [ ] Implement interfaces that throw non-implemented errors
+- [ ] Implement more TODO's for replication.
 - [ ] Delete this temporary specification after completion.
-
-Validation must cover event ACKs while blobs remain pending, restart after ACK,
-unavailable earlier blobs, forwarding through another actor, duplicate and
-conflicting saves, command concurrency failures, and cleanup racing with active
-writes. Memory and persistent stores must satisfy the same contracts.
