@@ -22,6 +22,8 @@ export 'src/transport/transport_message.dart';
 export 'src/transport/web_socket_proxy_transport.dart';
 
 // replication
+export 'src/replication/blob_replication_message.dart';
+export 'src/replication/blob_replication_message_codec.dart';
 export 'src/replication/in_memory_replication.dart';
 export 'src/replication/replication_message.dart';
 export 'src/replication/replication_message_codec.dart';
