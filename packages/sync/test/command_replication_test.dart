@@ -156,7 +156,7 @@ void main() {
       await _seed(store, [_command('local', 1)]);
       final peer = _Peer(store);
 
-      final message = await peer.next<ReplicationMessageDependency>();
+      final message = await peer.next<CommandReplicationMessageDependency>();
 
       expect(message.version, CommandDependency({'local': 1}));
     });
@@ -165,26 +165,26 @@ void main() {
       final store = MemoryEventStore();
       await _seed(store, [_command('local', 1), _command('local', 2)]);
       final peer = _Peer(store, receive: false);
-      peer.send(ReplicationMessageDependency(CommandDependency()));
-      final first = await peer.next<ReplicationMessageCommand>();
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
+      final first = await peer.next<CommandReplicationMessageCommand>();
       await _flush();
       expect(peer.messages, hasLength(1));
 
-      peer.send(ReplicationMessageCommandAck(first.command.commandId));
+      peer.send(CommandReplicationMessageCommandAck(first.command.commandId));
 
-      final second = await peer.next<ReplicationMessageCommand>();
+      final second = await peer.next<CommandReplicationMessageCommand>();
       expect(second.command.commandId, const CommandId('local', 2));
     });
 
     test('receiving a command does not subscribe the peer', () async {
       final store = MemoryEventStore();
       final peer = _Peer(store);
-      await peer.next<ReplicationMessageDependency>();
+      await peer.next<CommandReplicationMessageDependency>();
       final command = _command('remote', 1);
 
-      peer.send(ReplicationMessageCommand(command));
+      peer.send(CommandReplicationMessageCommand(command));
       expect(
-        (await peer.next<ReplicationMessageCommandAck>()).commandId,
+        (await peer.next<CommandReplicationMessageCommandAck>()).commandId,
         command.commandId,
       );
       await _append(store, 'local');
@@ -196,16 +196,16 @@ void main() {
     test('a late subscription preserves knowledge of received commands', () async {
       final store = MemoryEventStore();
       final peer = _Peer(store);
-      await peer.next<ReplicationMessageDependency>();
-      peer.send(ReplicationMessageCommand(_command('remote', 1)));
-      await peer.next<ReplicationMessageCommandAck>();
+      await peer.next<CommandReplicationMessageDependency>();
+      peer.send(CommandReplicationMessageCommand(_command('remote', 1)));
+      await peer.next<CommandReplicationMessageCommandAck>();
       await _append(store, 'local');
 
       // A late, older snapshot must not erase knowledge of the remote command.
-      peer.send(ReplicationMessageDependency(CommandDependency()));
-      final next = await peer.next<ReplicationMessageCommand>();
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
+      final next = await peer.next<CommandReplicationMessageCommand>();
       expect(next.command.commandId, const CommandId('local', 1));
-      peer.send(ReplicationMessageCommandAck(next.command.commandId));
+      peer.send(CommandReplicationMessageCommandAck(next.command.commandId));
       await _flush();
       expect(peer.messages, hasLength(3));
       expect(peer.stopped, isFalse);
@@ -219,21 +219,21 @@ void main() {
         _command('other', 1),
       ]);
       final peer = _Peer(store);
-      await peer.next<ReplicationMessageDependency>();
-      peer.send(ReplicationMessageDependency(CommandDependency()));
-      final pending = await peer.next<ReplicationMessageCommand>();
+      await peer.next<CommandReplicationMessageDependency>();
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
+      final pending = await peer.next<CommandReplicationMessageCommand>();
       peer.send(
-        ReplicationMessageCommand(
+        CommandReplicationMessageCommand(
           _command('remote', 1, dependency: {'local': 2}),
         ),
       );
-      await peer.next<ReplicationMessageCommandAck>();
+      await peer.next<CommandReplicationMessageCommandAck>();
       await _flush();
       expect(peer.messages, hasLength(3));
 
-      peer.send(ReplicationMessageCommandAck(pending.command.commandId));
+      peer.send(CommandReplicationMessageCommandAck(pending.command.commandId));
 
-      final next = await peer.next<ReplicationMessageCommand>();
+      final next = await peer.next<CommandReplicationMessageCommand>();
       expect(next.command.commandId, const CommandId('other', 1));
     });
 
@@ -247,15 +247,15 @@ void main() {
         return store.store.addStoredCommand(command);
       };
       final peer = _Peer(store);
-      await peer.next<ReplicationMessageDependency>();
+      await peer.next<CommandReplicationMessageDependency>();
       final command = _command('remote', 1);
-      peer.send(ReplicationMessageCommand(command));
+      peer.send(CommandReplicationMessageCommand(command));
       await saving.future;
       expect(peer.messages, hasLength(1));
 
       release.complete();
 
-      final ack = await peer.next<ReplicationMessageCommandAck>();
+      final ack = await peer.next<CommandReplicationMessageCommandAck>();
       expect(ack.commandId, command.commandId);
       expect(await store.getStoredCommand(command.commandId), isNotNull);
     });
@@ -264,16 +264,16 @@ void main() {
       final store = MemoryEventStore();
       await _append(store, 'local');
       final peer = _Peer(store, receive: false);
-      peer.send(ReplicationMessageDependency(CommandDependency()));
-      final pending = await peer.next<ReplicationMessageCommand>();
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
+      final pending = await peer.next<CommandReplicationMessageCommand>();
       await _append(store, 'local');
       await _flush();
       expect(peer.messages, hasLength(1));
 
-      peer.send(ReplicationMessageCommandAck(pending.command.commandId));
+      peer.send(CommandReplicationMessageCommandAck(pending.command.commandId));
 
       expect(
-        (await peer.next<ReplicationMessageCommand>()).command.commandId,
+        (await peer.next<CommandReplicationMessageCommand>()).command.commandId,
         const CommandId('local', 2),
       );
     });
@@ -288,14 +288,14 @@ void main() {
         return release.future;
       };
       final peer = _Peer(store, receive: false);
-      peer.send(ReplicationMessageDependency(CommandDependency()));
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
       await reading.future;
       await _append(store.store, 'local');
 
       release.complete([]);
 
       expect(
-        (await peer.next<ReplicationMessageCommand>()).command.commandId,
+        (await peer.next<CommandReplicationMessageCommand>()).command.commandId,
         const CommandId('local', 1),
       );
     });
@@ -314,13 +314,15 @@ void main() {
         final peer = _Peer(store);
         await reading.future;
         await _append(store.store, 'local');
-        peer.send(ReplicationMessageDependency(CommandDependency()));
+        peer.send(CommandReplicationMessageDependency(CommandDependency()));
 
         release.complete(snapshot);
 
-        await peer.next<ReplicationMessageDependency>();
+        await peer.next<CommandReplicationMessageDependency>();
         expect(
-          (await peer.next<ReplicationMessageCommand>()).command.commandId,
+          (await peer.next<CommandReplicationMessageCommand>())
+              .command
+              .commandId,
           const CommandId('local', 1),
         );
       },
@@ -335,14 +337,14 @@ void main() {
         final store = MemoryEventStore();
         await _seed(store, [_command('local', 1)]);
         final peer = _Peer(store);
-        await peer.next<ReplicationMessageDependency>();
+        await peer.next<CommandReplicationMessageDependency>();
 
-        peer.send(ReplicationMessageCommand(command));
+        peer.send(CommandReplicationMessageCommand(command));
         await peer.finished;
 
-        expect(peer.failure, isA<ReplicationException>());
+        expect(peer.failure, isA<CommandReplicationException>());
         expect(
-          peer.messages.whereType<ReplicationMessageCommandAck>(),
+          peer.messages.whereType<CommandReplicationMessageCommandAck>(),
           isEmpty,
         );
         expect((await store.getState()).lastCommandLogPosition, 0);
@@ -358,16 +360,16 @@ void main() {
         final stack = StackTrace.current;
         store.save = (_) => Future<bool>.error(failure, stack);
         final peer = _Peer(store);
-        await peer.next<ReplicationMessageDependency>();
+        await peer.next<CommandReplicationMessageDependency>();
 
-        peer.send(ReplicationMessageCommand(_command('remote', 1)));
+        peer.send(CommandReplicationMessageCommand(_command('remote', 1)));
         await peer.finished;
 
         expect(peer.failure, same(failure));
         expect(peer.failureStack, same(stack));
         expect(store.listeners, 0);
         expect(
-          peer.messages.whereType<ReplicationMessageCommandAck>(),
+          peer.messages.whereType<CommandReplicationMessageCommandAck>(),
           isEmpty,
         );
       });
@@ -378,10 +380,10 @@ void main() {
       () async {
         final peer = _Peer(MemoryEventStore(), receive: false);
 
-        peer.send(ReplicationMessageCommand(_command('remote', 1)));
+        peer.send(CommandReplicationMessageCommand(_command('remote', 1)));
         await peer.finished;
 
-        expect(peer.failure, isA<ReplicationException>());
+        expect(peer.failure, isA<CommandReplicationException>());
         expect(peer.messages, isEmpty);
       },
     );
@@ -399,12 +401,12 @@ void main() {
         final peer = _Peer(store);
         await reading.future;
 
-        peer.send(ReplicationMessageCommand(_command('remote', 1)));
+        peer.send(CommandReplicationMessageCommand(_command('remote', 1)));
         await _flush();
         release.complete(await store.store.getState());
         await peer.finished;
 
-        expect(peer.failure, isA<ReplicationException>());
+        expect(peer.failure, isA<CommandReplicationException>());
         expect(peer.messages, isEmpty);
         expect((await store.store.getState()).lastCommandLogPosition, isNull);
       },
@@ -420,26 +422,28 @@ void main() {
         return release.future;
       };
       final peer = _Peer(store, receive: false);
-      peer.send(ReplicationMessageDependency(CommandDependency()));
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
       await reading.future;
 
-      peer.send(const ReplicationMessageCommandAck(CommandId('local', 1)));
+      peer.send(
+        const CommandReplicationMessageCommandAck(CommandId('local', 1)),
+      );
       await _flush();
       release.complete([const CommandId('local', 1)]);
       await peer.finished;
 
-      expect(peer.failure, isA<ReplicationException>());
+      expect(peer.failure, isA<CommandReplicationException>());
       expect(peer.messages, isEmpty);
     });
 
     test('a repeated subscription closes the connection', () async {
       final peer = _Peer(MemoryEventStore(), receive: false);
-      peer.send(ReplicationMessageDependency(CommandDependency()));
-      peer.send(ReplicationMessageDependency(CommandDependency()));
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
+      peer.send(CommandReplicationMessageDependency(CommandDependency()));
 
       await peer.finished;
 
-      expect(peer.failure, isA<ReplicationException>());
+      expect(peer.failure, isA<CommandReplicationException>());
     });
 
     for (final pending in [false, true]) {
@@ -448,14 +452,16 @@ void main() {
         await _append(store, 'local');
         final peer = _Peer(store, receive: false);
         if (pending) {
-          peer.send(ReplicationMessageDependency(CommandDependency()));
-          await peer.next<ReplicationMessageCommand>();
+          peer.send(CommandReplicationMessageDependency(CommandDependency()));
+          await peer.next<CommandReplicationMessageCommand>();
         }
 
-        peer.send(const ReplicationMessageCommandAck(CommandId('unknown', 1)));
+        peer.send(
+          const CommandReplicationMessageCommandAck(CommandId('unknown', 1)),
+        );
         await peer.finished;
 
-        expect(peer.failure, isA<ReplicationException>());
+        expect(peer.failure, isA<CommandReplicationException>());
       });
     }
 
@@ -463,7 +469,7 @@ void main() {
       'channel errors stop the session and surface the original error',
       () async {
         final peer = _Peer(MemoryEventStore());
-        await peer.next<ReplicationMessageDependency>();
+        await peer.next<CommandReplicationMessageDependency>();
         final failure = const FormatException('channel failure');
 
         peer.channel.foreign.sink.addError(failure);
@@ -479,8 +485,8 @@ void main() {
         final store = _ControlledStore();
         await _append(store.store, 'local');
         final peer = _Peer(store, receive: false);
-        peer.send(ReplicationMessageDependency(CommandDependency()));
-        await peer.next<ReplicationMessageCommand>();
+        peer.send(CommandReplicationMessageDependency(CommandDependency()));
+        await peer.next<CommandReplicationMessageCommand>();
 
         await peer.channel.foreign.sink.close();
         await peer.finished;
@@ -503,8 +509,8 @@ void main() {
         return store.store.addStoredCommand(command);
       };
       final peer = _Peer(store);
-      await peer.next<ReplicationMessageDependency>();
-      peer.send(ReplicationMessageCommand(_command('remote', 1)));
+      await peer.next<CommandReplicationMessageDependency>();
+      peer.send(CommandReplicationMessageCommand(_command('remote', 1)));
       await saving.future;
 
       final closing = peer.replicator.close();
@@ -513,7 +519,10 @@ void main() {
       await peer.finished;
 
       expect(peer.failure, isNull);
-      expect(peer.messages.whereType<ReplicationMessageCommandAck>(), isEmpty);
+      expect(
+        peer.messages.whereType<CommandReplicationMessageCommandAck>(),
+        isEmpty,
+      );
     });
 
     for (final operation in ['state', 'next IDs', 'command']) {
@@ -531,15 +540,18 @@ void main() {
         }
         final peer = _Peer(store);
         if (operation != 'state') {
-          await peer.next<ReplicationMessageDependency>();
-          peer.send(ReplicationMessageDependency(CommandDependency()));
+          await peer.next<CommandReplicationMessageDependency>();
+          peer.send(CommandReplicationMessageDependency(CommandDependency()));
         }
 
         await peer.finished;
 
         expect(peer.failure, same(failure));
         expect(store.listeners, 0);
-        expect(peer.messages.whereType<ReplicationMessageCommand>(), isEmpty);
+        expect(
+          peer.messages.whereType<CommandReplicationMessageCommand>(),
+          isEmpty,
+        );
       });
     }
 
@@ -557,7 +569,7 @@ void main() {
           },
         );
         if (operation != 'add') {
-          await peer.next<ReplicationMessageDependency>();
+          await peer.next<CommandReplicationMessageDependency>();
           if (operation == 'done') {
             sink.completion.completeError(failure);
           } else {
@@ -573,14 +585,14 @@ void main() {
 
     test('a replicator cannot run twice', () async {
       final peer = _Peer(MemoryEventStore());
-      await peer.next<ReplicationMessageDependency>();
+      await peer.next<CommandReplicationMessageDependency>();
 
       expect(peer.replicator.run, throwsStateError);
     });
 
     test('close can be called repeatedly', () async {
       final peer = _Peer(MemoryEventStore());
-      await peer.next<ReplicationMessageDependency>();
+      await peer.next<CommandReplicationMessageDependency>();
 
       await Future.wait([peer.replicator.close(), peer.replicator.close()]);
       await peer.replicator.close();
@@ -610,7 +622,7 @@ class _Session {
 }
 
 class _Link extends _Session {
-  late final InMemoryReplication replication;
+  late final InMemoryCommandReplication replication;
 
   _Link(
     EventStoreReplication first,
@@ -618,7 +630,7 @@ class _Link extends _Session {
     bool peer1Receives = true,
     bool peer2Receives = true,
   }) {
-    replication = InMemoryReplication(
+    replication = InMemoryCommandReplication(
       store1: first,
       store2: second,
       logger: const NoopLogger(),
@@ -637,9 +649,9 @@ class _Link extends _Session {
 }
 
 class _Peer extends _Session {
-  final channel = StreamChannelController<ReplicationMessage>();
-  final messages = <ReplicationMessage>[];
-  late final Replicator replicator;
+  final channel = StreamChannelController<CommandReplicationMessage>();
+  final messages = <CommandReplicationMessage>[];
+  late final CommandReplicator replicator;
   Completer<void> _changed = Completer<void>();
   int _index = 0;
   bool _channelClosed = false;
@@ -647,7 +659,9 @@ class _Peer extends _Session {
   _Peer(
     EventStoreReplication store, {
     bool receive = true,
-    StreamSink<ReplicationMessage> Function(StreamSink<ReplicationMessage>)?
+    StreamSink<CommandReplicationMessage> Function(
+      StreamSink<CommandReplicationMessage>,
+    )?
     wrapSink,
   }) {
     final subscription = channel.foreign.stream.listen(
@@ -660,7 +674,7 @@ class _Peer extends _Session {
         _notify();
       },
     );
-    replicator = Replicator(
+    replicator = CommandReplicator(
       channel: wrapSink == null
           ? channel.local
           : StreamChannel(channel.local.stream, wrapSink(channel.local.sink)),
@@ -675,14 +689,15 @@ class _Peer extends _Session {
     });
   }
 
-  void send(ReplicationMessage message) => channel.foreign.sink.add(message);
+  void send(CommandReplicationMessage message) =>
+      channel.foreign.sink.add(message);
 
   void _notify() {
     _changed.complete();
     _changed = Completer<void>();
   }
 
-  Future<T> next<T extends ReplicationMessage>() async {
+  Future<T> next<T extends CommandReplicationMessage>() async {
     while (_index == messages.length) {
       if (_channelClosed) fail('Channel closed before receiving $T: $failure');
       await _changed.future.timeout(const Duration(seconds: 5));
@@ -748,8 +763,8 @@ class _ControlledStore implements EventStoreReplication {
       store.getNextCommandIds(dependency, count);
 }
 
-class _TestSink implements StreamSink<ReplicationMessage> {
-  final StreamSink<ReplicationMessage> underlying;
+class _TestSink implements StreamSink<CommandReplicationMessage> {
+  final StreamSink<CommandReplicationMessage> underlying;
   final completion = Completer<void>();
   Object? addFailure;
   Object? closeFailure;
@@ -773,7 +788,7 @@ class _TestSink implements StreamSink<ReplicationMessage> {
   Future<void> get done => completion.future;
 
   @override
-  void add(ReplicationMessage message) {
+  void add(CommandReplicationMessage message) {
     final failure = addFailure;
     if (failure != null) throw failure;
     underlying.add(message);
@@ -784,7 +799,7 @@ class _TestSink implements StreamSink<ReplicationMessage> {
       underlying.addError(error, stackTrace);
 
   @override
-  Future<void> addStream(Stream<ReplicationMessage> stream) =>
+  Future<void> addStream(Stream<CommandReplicationMessage> stream) =>
       underlying.addStream(stream);
 
   @override

@@ -1,38 +1,38 @@
 import 'package:cqrs/cqrs.dart';
 
 /// A message exchanged within one replication session.
-sealed class ReplicationMessage {
-  const ReplicationMessage();
+sealed class CommandReplicationMessage {
+  const CommandReplicationMessage();
 
   Map<String, dynamic> toJson() => switch (this) {
-    ReplicationMessageDependency(:final version) => {
+    CommandReplicationMessageDependency(:final version) => {
       'type': 'dependency',
       'dependencies': version.toJson(),
     },
-    ReplicationMessageCommand(:final command) => {
+    CommandReplicationMessageCommand(:final command) => {
       'type': 'command',
       'command': command.toJson(),
     },
-    ReplicationMessageCommandAck(:final commandId) => {
+    CommandReplicationMessageCommandAck(:final commandId) => {
       'type': 'commandAck',
       'commandId': commandId.toJson(),
     },
   };
 
   /// Rejects malformed JSON, including nested command fields, with [FormatException].
-  factory ReplicationMessage.fromJson(Object? value) {
+  factory CommandReplicationMessage.fromJson(Object? value) {
     try {
       final json = value as Map<String, dynamic>;
       return switch (json['type']) {
-        'dependency' => ReplicationMessageDependency(
+        'dependency' => CommandReplicationMessageDependency(
           CommandDependency.fromJson(
             json['dependencies'] as Map<String, dynamic>,
           ),
         ),
-        'command' => ReplicationMessageCommand(
+        'command' => CommandReplicationMessageCommand(
           StoredCommand.fromJson(json['command'] as Map<String, dynamic>),
         ),
-        'commandAck' => ReplicationMessageCommandAck(
+        'commandAck' => CommandReplicationMessageCommandAck(
           CommandId.fromJson(json['commandId'] as List<dynamic>),
         ),
         _ => throw FormatException(
@@ -50,22 +50,22 @@ sealed class ReplicationMessage {
 }
 
 /// Subscribes to missing and future commands using the receiver's history.
-class ReplicationMessageDependency extends ReplicationMessage {
+class CommandReplicationMessageDependency extends CommandReplicationMessage {
   final CommandDependency version;
 
-  const ReplicationMessageDependency(this.version);
+  const CommandReplicationMessageDependency(this.version);
 }
 
 /// A complete command to save before acknowledging.
-class ReplicationMessageCommand extends ReplicationMessage {
+class CommandReplicationMessageCommand extends CommandReplicationMessage {
   final StoredCommand command;
 
-  const ReplicationMessageCommand(this.command);
+  const CommandReplicationMessageCommand(this.command);
 }
 
 /// Confirms that saving the outstanding command succeeded.
-class ReplicationMessageCommandAck extends ReplicationMessage {
+class CommandReplicationMessageCommandAck extends CommandReplicationMessage {
   final CommandId commandId;
 
-  const ReplicationMessageCommandAck(this.commandId);
+  const CommandReplicationMessageCommandAck(this.commandId);
 }

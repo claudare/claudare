@@ -4,24 +4,32 @@ import 'package:cqrs/cqrs.dart';
 
 import 'package:sync/sync.dart';
 
-/// Connects two [Replicator]s through an asynchronous in-memory channel.
-class InMemoryReplication {
-  final Replicator peer1;
-  final Replicator peer2;
+/// Connects two [CommandReplicator]s through an asynchronous in-memory channel.
+class InMemoryCommandReplication {
+  final CommandReplicator peer1;
+  final CommandReplicator peer2;
 
-  factory InMemoryReplication({
+  factory InMemoryCommandReplication({
     required EventStoreReplication store1,
     required EventStoreReplication store2,
     required Logger logger,
   }) {
-    final channel = StreamChannelController<ReplicationMessage>();
-    return InMemoryReplication._(
-      Replicator(channel: channel.local, eventStore: store1, logger: logger),
-      Replicator(channel: channel.foreign, eventStore: store2, logger: logger),
+    final channel = StreamChannelController<CommandReplicationMessage>();
+    return InMemoryCommandReplication._(
+      CommandReplicator(
+        channel: channel.local,
+        eventStore: store1,
+        logger: logger,
+      ),
+      CommandReplicator(
+        channel: channel.foreign,
+        eventStore: store2,
+        logger: logger,
+      ),
     );
   }
 
-  InMemoryReplication._(this.peer1, this.peer2);
+  InMemoryCommandReplication._(this.peer1, this.peer2);
 
   /// Runs both peers until disconnection, surfacing either peer's failure.
   Future<void> run({

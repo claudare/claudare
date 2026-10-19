@@ -4,17 +4,17 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:sync/sync.dart';
 
-/// Continuously exchanges stored commands over one [ReplicationChannel].
+/// Continuously exchanges stored commands over one [CommandReplicationChannel].
 ///
 /// Each writer must own a unique actor ID. Observe [run] for session failures
 /// and use [close] to stop. A replicator cannot be restarted.
-class Replicator {
-  final ReplicationChannel _channel;
+class CommandReplicator {
+  final CommandReplicationChannel _channel;
   final EventStoreReplication _eventStore;
   final Logger _logger;
   final Completer<void> _done = Completer<void>();
 
-  StreamSubscription<ReplicationMessage>? _messages;
+  StreamSubscription<CommandReplicationMessage>? _messages;
   StreamSubscription<CommandChange>? _changes;
   Future<void> _work = Future<void>.value();
   Future<void>? _closing;
@@ -27,7 +27,7 @@ class Replicator {
   Object? _failure;
   StackTrace? _failureStack;
 
-  Replicator({
+  CommandReplicator({
     required this._channel,
     required this._eventStore,
     required this._logger,
@@ -36,7 +36,9 @@ class Replicator {
   /// Starts once and completes on closure, or fails with the original error.
   /// Set [receive] to false to send no subscription and accept no commands.
   Future<void> run({bool receive = true}) {
-    if (_started) throw StateError('Replicator has already been started');
+    if (_started) {
+      throw StateError('CommandReplicator has already been started');
+    }
     _started = true;
     try {
       unawaited(_channel.sink.done.then<void>((_) {}, onError: _fail));
@@ -49,7 +51,9 @@ class Replicator {
         final state = await _eventStore.getState();
         if (_closed) return;
         _receiving = true;
-        _channel.sink.add(ReplicationMessageDependency(state.logVersion));
+        _channel.sink.add(
+          CommandReplicationMessageDependency(state.logVersion),
+        );
       });
       _messages = _channel.stream.listen(
         _onMessage,
@@ -65,7 +69,7 @@ class Replicator {
   /// Stops both directions and releases subscriptions and pending ACK state.
   /// Session failures are reported through [run]. Active store calls finish.
   Future<void> close() {
-    if (!_started) throw StateError('Replicator has not been started');
+    if (!_started) throw StateError('CommandReplicator has not been started');
     _closed = true;
     _pending = null;
     return _closing ??= Future<void>.microtask(_cleanup);
@@ -83,19 +87,21 @@ class Replicator {
     });
   }
 
-  void _onMessage(ReplicationMessage message) {
+  void _onMessage(CommandReplicationMessage message) {
     if (_closed) return;
-    if (message is ReplicationMessageCommand && !_receiving) {
+    if (message is CommandReplicationMessageCommand && !_receiving) {
       _fail(
-        const ReplicationException('Command received without subscription'),
+        const CommandReplicationException(
+          'Command received without subscription',
+        ),
         StackTrace.current,
       );
       return;
     }
-    if (message is ReplicationMessageCommandAck &&
+    if (message is CommandReplicationMessageCommandAck &&
         _pending != message.commandId) {
       _fail(
-        const ReplicationException('Unexpected command ACK'),
+        const CommandReplicationException('Unexpected command ACK'),
         StackTrace.current,
       );
       return;
@@ -103,26 +109,30 @@ class Replicator {
     _enqueue(() => _receive(message));
   }
 
-  Future<void> _receive(ReplicationMessage message) async {
+  Future<void> _receive(CommandReplicationMessage message) async {
     switch (message) {
-      case ReplicationMessageDependency(:final version):
+      case CommandReplicationMessageDependency(:final version):
         if (_peerSubscribed) {
-          throw const ReplicationException('Repeated subscription');
+          throw const CommandReplicationException('Repeated subscription');
         }
         _merge(version);
         _peerSubscribed = true;
-      case ReplicationMessageCommand(:final command):
+      case CommandReplicationMessageCommand(:final command):
         // Record knowledge before saving can publish a store change.
         _merge(command.dependency);
         _remember(command.commandId);
         if (!await _eventStore.addStoredCommand(command)) {
-          throw const ReplicationException('Stored command was rejected');
+          throw const CommandReplicationException(
+            'Stored command was rejected',
+          );
         }
         if (_closed) return;
-        _channel.sink.add(ReplicationMessageCommandAck(command.commandId));
-      case ReplicationMessageCommandAck(:final commandId):
+        _channel.sink.add(
+          CommandReplicationMessageCommandAck(command.commandId),
+        );
+      case CommandReplicationMessageCommandAck(:final commandId):
         if (_pending != commandId) {
-          throw const ReplicationException('Unexpected command ACK');
+          throw const CommandReplicationException('Unexpected command ACK');
         }
         _remember(commandId);
         _pending = null;
@@ -137,12 +147,12 @@ class Replicator {
     final command = await _eventStore.getStoredCommand(ids.single);
     if (_closed) return;
     if (command == null) {
-      throw const ReplicationException(
+      throw const CommandReplicationException(
         'Selected command is absent from the store',
       );
     }
     _pending = command.commandId;
-    _channel.sink.add(ReplicationMessageCommand(command));
+    _channel.sink.add(CommandReplicationMessageCommand(command));
   }
 
   void _remember(CommandId id) =>

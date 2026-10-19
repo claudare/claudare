@@ -457,17 +457,17 @@ void main() {
     'real replicators restart commands while retaining their peer connections',
     () async {
       final stores = [MemoryEventStore(), MemoryEventStore()];
-      final replicators = <Replicator>[];
+      final replicators = <CommandReplicator>[];
       final running = <Future<void>>[];
       void startReplication(TestTransport transport, MemoryEventStore store) {
         transport.onPeer = (peer) {
           final multiplexer = PeerMultiplexer(peer.channel);
           multiplexer.commandSessions.listen((channel) {
             if (!identical(channel, multiplexer.commands)) return;
-            final replicator = Replicator(
+            final replicator = CommandReplicator(
               channel: channel.transform(
                 StreamChannelTransformer.fromCodec(
-                  const ReplicationMessageCodec(),
+                  const CommandReplicationMessageCodec(),
                 ),
               ),
               eventStore: store,

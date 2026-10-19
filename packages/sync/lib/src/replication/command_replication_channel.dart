@@ -5,5 +5,5 @@ import 'package:sync/sync.dart';
 ///
 /// Messages are delivered or the connection closes. Closure ends both
 /// directions, with unacknowledged delivery unknown. Detection may be delayed.
-/// A new connection requires a new [ReplicationChannel].
-typedef ReplicationChannel = StreamChannel<ReplicationMessage>;
+/// A new connection requires a new [CommandReplicationChannel].
+typedef CommandReplicationChannel = StreamChannel<CommandReplicationMessage>;

@@ -185,18 +185,18 @@ void main() {
     final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
-    expect(peer.messages.single, isA<ReplicationMessageDependency>());
+    expect(peer.messages.single, isA<CommandReplicationMessageDependency>());
 
     final command = _command();
-    peer.send(ReplicationMessageCommand(command));
+    peer.send(CommandReplicationMessageCommand(command));
     await flushMessages();
 
     expect(await h.store.getStoredCommand(command.commandId), isNotNull);
-    expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+    expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
     await h.store.addStoredCommand(_command(actor: 'local'));
-    peer.send(ReplicationMessageDependency(CommandDependency()));
+    peer.send(CommandReplicationMessageDependency(CommandDependency()));
     await flushMessages();
-    expect(peer.messages.last, isA<ReplicationMessageCommand>());
+    expect(peer.messages.last, isA<CommandReplicationMessageCommand>());
     expect(peer.closed, isFalse);
   });
 
@@ -229,10 +229,10 @@ void main() {
     final peer = h.discover();
     await flushMessages();
     await h.identities.deleteAllPeers();
-    peer.send(ReplicationMessageCommand(_command()));
+    peer.send(CommandReplicationMessageCommand(_command()));
     await flushMessages();
     expect(peer.closed, isFalse);
-    expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+    expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
   });
 
   test('identity removal blocks a later admission', () async {
@@ -345,9 +345,9 @@ void main() {
       expect(second.closed, isFalse);
       expect(h.transports.single.closes, 0);
       expect(h.clock.activeTimers, 1);
-      second.send(ReplicationMessageCommand(_command()));
+      second.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
-      expect(second.messages.last, isA<ReplicationMessageCommandAck>());
+      expect(second.messages.last, isA<CommandReplicationMessageCommandAck>());
       _expectSafeLogs(h.logger);
     });
   }
@@ -365,12 +365,12 @@ void main() {
       expect(h.coordinator.snapshot.activePeers, isEmpty);
       await h.clock.elapse(SyncDefaults.reconnectInterval);
       expect(
-        peer.messages.whereType<ReplicationMessageDependency>(),
+        peer.messages.whereType<CommandReplicationMessageDependency>(),
         hasLength(2),
       );
-      peer.send(ReplicationMessageCommand(_command()));
+      peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
-      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+      expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
       _expectSafeLogs(h.logger);
     },
   );
@@ -384,9 +384,9 @@ void main() {
     await flushMessages();
     expect(peer.multiplexer.commands, same(commands));
     expect(h.clock.activeTimers, 0);
-    peer.send(ReplicationMessageCommand(_command()));
+    peer.send(CommandReplicationMessageCommand(_command()));
     await flushMessages();
-    expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+    expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
   });
 
   test(
@@ -399,16 +399,16 @@ void main() {
       var blobsClosed = false;
       unawaited(blobs.sink.done.then((_) => blobsClosed = true));
       h.store.save = (_) async => throw Exception('private data');
-      peer.send(ReplicationMessageCommand(_command()));
+      peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
       expect(peer.closed, isFalse);
       expect(blobsClosed, isFalse);
       expect(h.coordinator.snapshot.lastFailure, 'Sync replication failed');
       h.store.save = null;
       await h.clock.elapse(SyncDefaults.reconnectInterval);
-      peer.send(ReplicationMessageCommand(_command()));
+      peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
-      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+      expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
       expect(peer.multiplexer.blobs, same(blobs));
       expect(blobsClosed, isFalse);
       expect(h.attempts, 1);
@@ -460,13 +460,13 @@ void main() {
       await flushMessages();
       final saving = Completer<bool>();
       h.store.save = (_) => saving.future;
-      peer.send(ReplicationMessageCommand(_command()));
+      peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
       await peer.multiplexer.commands.sink.close();
       await flushMessages();
       await h.clock.elapse(SyncDefaults.reconnectInterval);
       expect(
-        peer.messages.whereType<ReplicationMessageDependency>(),
+        peer.messages.whereType<CommandReplicationMessageDependency>(),
         hasLength(2),
       );
       saving.completeError(Exception('late failure'));
@@ -475,9 +475,9 @@ void main() {
       expect(h.coordinator.snapshot.lastFailure, isNull);
       expect(peer.closed, isFalse);
       h.store.save = null;
-      peer.send(ReplicationMessageCommand(_command()));
+      peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
-      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+      expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
     },
   );
 
@@ -532,7 +532,7 @@ void main() {
     expect(old.closed, isTrue);
     expect(old.messages, isEmpty);
     expect(current.closed, isFalse);
-    expect(current.messages.single, isA<ReplicationMessageDependency>());
+    expect(current.messages.single, isA<CommandReplicationMessageDependency>());
   });
 
   test('channel closure during admission prevents replication', () async {
@@ -554,12 +554,12 @@ void main() {
     final lookup = Completer<PeerActorIdentity?>();
     h.identities.lookup = () => lookup.future;
     final peer = h.discover();
-    peer.send(ReplicationMessageDependency(CommandDependency()));
+    peer.send(CommandReplicationMessageDependency(CommandDependency()));
     await flushMessages();
     lookup.complete((await h.identities.allPeers()).first);
     await flushMessages();
     expect(peer.closed, isFalse);
-    expect(peer.messages.single, isA<ReplicationMessageDependency>());
+    expect(peer.messages.single, isA<CommandReplicationMessageDependency>());
   });
 
   test('channel errors during admission prevent replication', () async {
@@ -587,7 +587,7 @@ void main() {
     final current = h.discover();
     await flushMessages();
     expect(old.closed, isTrue);
-    expect(current.messages.single, isA<ReplicationMessageDependency>());
+    expect(current.messages.single, isA<CommandReplicationMessageDependency>());
     read.completeError(StateError('private data'));
     await flushMessages();
     expect(current.closed, isFalse);
@@ -645,7 +645,7 @@ void main() {
     h.store.save = (_) => save.future;
     final peer = h.discover();
     await flushMessages();
-    peer.send(ReplicationMessageCommand(_command()));
+    peer.send(CommandReplicationMessageCommand(_command()));
     await flushMessages();
     expect(h.store.saves, 1);
     await _closePromptly(h);
@@ -662,13 +662,16 @@ void main() {
     h.store.save = (_) => save.future;
     final old = h.discover();
     await flushMessages();
-    old.send(ReplicationMessageCommand(_command()));
+    old.send(CommandReplicationMessageCommand(_command()));
     await flushMessages();
     expect(h.store.saves, 1);
     final replacement = h.discover();
     await flushMessages();
     expect(old.closed, isTrue);
-    expect(replacement.messages.single, isA<ReplicationMessageDependency>());
+    expect(
+      replacement.messages.single,
+      isA<CommandReplicationMessageDependency>(),
+    );
     save.complete(true);
     await flushMessages();
     expect(old.messages, hasLength(1));
@@ -843,7 +846,7 @@ class _Identities extends MemoryActorIdentityStore {
 
 class _Peer {
   final channel = StreamChannelController<String>();
-  final messages = <ReplicationMessage>[];
+  final messages = <CommandReplicationMessage>[];
   bool closed = false;
   late final PeerMultiplexer multiplexer;
 
@@ -853,14 +856,15 @@ class _Peer {
     multiplexer.commandSessions.listen((session) {
       if (!identical(multiplexer.commands, session)) return;
       session.stream.listen(
-        (value) => messages.add(const ReplicationMessageCodec().decode(value)),
+        (value) =>
+            messages.add(const CommandReplicationMessageCodec().decode(value)),
       );
     });
     addTearDown(multiplexer.close);
   }
 
-  void send(ReplicationMessage message) => multiplexer.commands.sink.add(
-    const ReplicationMessageCodec().encode(message),
+  void send(CommandReplicationMessage message) => multiplexer.commands.sink.add(
+    const CommandReplicationMessageCodec().encode(message),
   );
 }
 

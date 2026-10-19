@@ -346,14 +346,14 @@ void main() {
       firstActor: _actor(1),
       secondActor: _actor(2),
     );
-    final codec = const ReplicationMessageCodec();
+    final codec = const CommandReplicationMessageCodec();
     final commands = PeerMultiplexer(pair.second.channel).commands;
     final subscribed = Completer<void>();
-    final messages = <ReplicationMessage>[];
+    final messages = <CommandReplicationMessage>[];
     final subscription = commands.stream.listen((message) {
       final decoded = codec.decode(message);
       messages.add(decoded);
-      if (decoded is ReplicationMessageDependency) subscribed.complete();
+      if (decoded is CommandReplicationMessageDependency) subscribed.complete();
     });
     addTearDown(subscription.cancel);
     transport.discovery.add(pair.first);
@@ -370,7 +370,7 @@ void main() {
       CommandId(_actor(2), 1),
     );
     sqlite.holdNextTransaction = true;
-    commands.sink.add(codec.encode(ReplicationMessageCommand(command!)));
+    commands.sink.add(codec.encode(CommandReplicationMessageCommand(command!)));
     await sqlite.transactionHeld.future.timeout(const Duration(seconds: 5));
     await bootstrap.close();
     await support.delete();
@@ -379,7 +379,7 @@ void main() {
     final published = system.eventStore.commandChanges.first;
     sqlite.releaseTransaction.complete();
     await published.timeout(const Duration(seconds: 5));
-    expect(messages.whereType<ReplicationMessageCommandAck>(), isEmpty);
+    expect(messages.whereType<CommandReplicationMessageCommandAck>(), isEmpty);
     expect(bootstrap.syncCoordinator!.snapshot.activePeers, isEmpty);
   });
 }

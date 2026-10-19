@@ -7,8 +7,8 @@ import 'package:stream_channel/stream_channel.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'actor/actor_identity_store.dart';
-import 'replication/replication_message_codec.dart';
-import 'replication/replicator.dart';
+import 'replication/command_replication_message_codec.dart';
+import 'replication/command_replicator.dart';
 import 'sync_defaults.dart';
 import 'sync_snapshot.dart';
 import 'transport/transport.dart';
@@ -281,9 +281,11 @@ class SyncCoordinator {
     _PeerSession session,
     StreamChannel<String> channel,
   ) {
-    final replicator = session.replicator = Replicator(
+    final replicator = session.replicator = CommandReplicator(
       channel: channel.transform(
-        StreamChannelTransformer.fromCodec(const ReplicationMessageCodec()),
+        StreamChannelTransformer.fromCodec(
+          const CommandReplicationMessageCodec(),
+        ),
       ),
       eventStore: eventStore,
       logger: logger,
@@ -352,7 +354,7 @@ class _PeerSession {
   StreamSubscription<StreamChannel<String>>? commandSessions;
   Timer? commandRetry;
   bool replicating = false;
-  Replicator? replicator;
+  CommandReplicator? replicator;
   PeerMultiplexer? multiplexer;
   bool closed = false;
 

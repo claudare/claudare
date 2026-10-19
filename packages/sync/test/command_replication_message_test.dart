@@ -37,7 +37,10 @@ void main() {
     ),
   ]) {
     test('$description throws FormatException', () {
-      expect(() => ReplicationMessage.fromJson(json), throwsFormatException);
+      expect(
+        () => CommandReplicationMessage.fromJson(json),
+        throwsFormatException,
+      );
     });
   }
 
@@ -46,10 +49,13 @@ void main() {
     {'local': 2, 'remote': 5},
   ]) {
     test('dependency preserves history $values through JSON', () {
-      final original = ReplicationMessageDependency(CommandDependency(values));
+      final original = CommandReplicationMessageDependency(
+        CommandDependency(values),
+      );
 
       expect(original.toJson(), {'type': 'dependency', 'dependencies': values});
-      final decoded = _roundTrip(original) as ReplicationMessageDependency;
+      final decoded =
+          _roundTrip(original) as CommandReplicationMessageDependency;
 
       expect(decoded.version, original.version);
     });
@@ -57,7 +63,7 @@ void main() {
 
   test('command preserves its events through JSON', () {
     final time = DateTime.utc(2026, 10, 3, 12, 30);
-    final original = ReplicationMessageCommand(
+    final original = CommandReplicationMessageCommand(
       StoredCommand(
         blobIds: const [],
         commandId: const CommandId('local', 3),
@@ -85,7 +91,7 @@ void main() {
       'type': 'command',
       'command': original.command.toJson(),
     });
-    final decoded = _roundTrip(original) as ReplicationMessageCommand;
+    final decoded = _roundTrip(original) as CommandReplicationMessageCommand;
 
     expect(decoded.command.commandId, original.command.commandId);
     expect(decoded.command.dependency, original.command.dependency);
@@ -102,32 +108,32 @@ void main() {
   });
 
   test('command ACK preserves its ID through JSON', () {
-    const original = ReplicationMessageCommandAck(CommandId('local', 3));
+    const original = CommandReplicationMessageCommandAck(CommandId('local', 3));
 
     expect(original.toJson(), {
       'type': 'commandAck',
       'commandId': ['local', 3],
     });
-    final decoded = _roundTrip(original) as ReplicationMessageCommandAck;
+    final decoded = _roundTrip(original) as CommandReplicationMessageCommandAck;
 
     expect(decoded.commandId, original.commandId);
   });
 
   test('missing message type throws FormatException', () {
-    expect(() => ReplicationMessage.fromJson({}), throwsFormatException);
+    expect(() => CommandReplicationMessage.fromJson({}), throwsFormatException);
   });
 
   for (final type in [null, 'unknown', 1]) {
     test('unsupported message type $type throws FormatException', () {
       expect(
-        () => ReplicationMessage.fromJson({'type': type}),
+        () => CommandReplicationMessage.fromJson({'type': type}),
         throwsFormatException,
       );
     });
   }
 }
 
-ReplicationMessage _roundTrip(ReplicationMessage message) =>
-    ReplicationMessage.fromJson(
+CommandReplicationMessage _roundTrip(CommandReplicationMessage message) =>
+    CommandReplicationMessage.fromJson(
       jsonDecode(jsonEncode(message.toJson())) as Map<String, dynamic>,
     );

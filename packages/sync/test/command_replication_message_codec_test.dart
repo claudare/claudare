@@ -5,11 +5,11 @@ import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 
 void main() {
-  const codec = ReplicationMessageCodec();
+  const codec = CommandReplicationMessageCodec();
 
-  for (final message in <ReplicationMessage>[
-    ReplicationMessageDependency(CommandDependency({'local': 1})),
-    ReplicationMessageCommand(
+  for (final message in <CommandReplicationMessage>[
+    CommandReplicationMessageDependency(CommandDependency({'local': 1})),
+    CommandReplicationMessageCommand(
       StoredCommand(
         blobIds: const [],
         commandId: const CommandId('local', 2),
@@ -27,7 +27,7 @@ void main() {
         ],
       ),
     ),
-    const ReplicationMessageCommandAck(CommandId('local', 2)),
+    const CommandReplicationMessageCommandAck(CommandId('local', 2)),
   ]) {
     final type = message.toJson()['type'];
 
