@@ -53,7 +53,7 @@ final eventDatabaseMigrations =
         tx.execute('''CREATE UNIQUE INDEX idx_log_event_stream_version
           ON event(stream_path, stream_version);''');
         tx.execute('''CREATE TABLE blob(
-          local_position INTEGER PRIMARY KEY NOT NULL CHECK(local_position >= 0),
+          log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
           id_actor TEXT NOT NULL,
           id_sequence INTEGER NOT NULL,
           blob_index INTEGER NOT NULL CHECK(blob_index >= 0),
@@ -87,14 +87,49 @@ class SqliteEventStore implements EventStore {
 
   @override
   Future<BlobStatus?> getBlobStatus(String blobId) =>
-      throw UnimplementedError();
+      _transaction('Failed to get blob status', (tx) {
+        final row = tx.queryRow(
+          'SELECT available FROM blob WHERE blob_id = ?;',
+          [blobId],
+        );
+        if (row == null) return null;
+        return row.field<int>('available') == 1
+            ? BlobStatus.available
+            : BlobStatus.pending;
+      });
 
   @override
-  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
-      throw UnimplementedError();
+  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) {
+    final pageSize = _eventFetchPageSize;
+    return _transaction('Failed to get pending blob IDs', (tx) {
+      if (cursor < 0) {
+        throw ArgumentError('cursor must be non-negative');
+      }
+      final rows = tx.query(
+        '''SELECT blob_id, log_position FROM blob
+        WHERE log_position >= ? AND available = 0
+        ORDER BY log_position ASC
+        LIMIT ?;''',
+        [cursor, pageSize],
+      );
+      return PaginatedResult(
+        data: [for (final row in rows) row.field<String>('blob_id')],
+        next: rows.isEmpty ? null : rows.last.field<int>('log_position') + 1,
+      );
+    });
+  }
 
   @override
-  Future<void> markBlobAvailable(String blobId) => throw UnimplementedError();
+  Future<void> markBlobAvailable(String blobId) =>
+      _transaction('Failed to mark blob available', (tx) {
+        final result = tx.execute(
+          'UPDATE blob SET available = 1 WHERE blob_id = ?;',
+          [blobId],
+        );
+        if (result.modified == 0) {
+          throw StateError('Blob ID is not referenced: $blobId');
+        }
+      });
 
   @override
   Stream<EventChange> get eventChanges => _eventChanges.stream;
@@ -349,6 +384,7 @@ class SqliteEventStore implements EventStore {
         occuredAt: changes.occuredAt,
         events: changes.events,
         blobIds: changes.blobs,
+        blobsAvailable: true,
       );
       return commandId;
     });
@@ -376,6 +412,7 @@ class SqliteEventStore implements EventStore {
         dependency: command.dependency,
         occuredAt: command.occuredAt,
         blobIds: command.blobIds,
+        blobsAvailable: false,
         events: [
           for (final event in command.events)
             EventAppend(
@@ -425,6 +462,7 @@ void _append(
   required DateTime occuredAt,
   required List<EventAppend> events,
   required List<String> blobIds,
+  required bool blobsAvailable,
 }) {
   tx.execute(
     '''INSERT INTO command(log_position, id_actor, id_sequence,
@@ -440,11 +478,26 @@ void _append(
     ],
   );
   _insertLogEvents(tx, commandId, events);
+  var blobLogPosition = _nextLogPosition(tx, 'blob');
   for (final (index, blobId) in blobIds.indexed) {
+    final existing = tx.queryRow(
+      'SELECT blob_id FROM blob WHERE blob_id = ?;',
+      [blobId],
+    );
+    if (existing != null) {
+      throw StateError('Blob ID is already owned by a command: $blobId');
+    }
     tx.execute(
-      '''INSERT INTO blob(id_actor, id_sequence, blob_index, blob_id)
-      VALUES (?, ?, ?, ?);''',
-      [commandId.actor, commandId.sequence, index, blobId],
+      '''INSERT INTO blob(log_position, id_actor, id_sequence, blob_index,
+      blob_id, available) VALUES (?, ?, ?, ?, ?, ?);''',
+      [
+        blobLogPosition++,
+        commandId.actor,
+        commandId.sequence,
+        index,
+        blobId,
+        blobsAvailable ? 1 : 0,
+      ],
     );
   }
 }

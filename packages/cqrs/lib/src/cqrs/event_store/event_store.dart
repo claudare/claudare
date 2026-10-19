@@ -8,7 +8,7 @@ import 'package:cqrs/src/cqrs/event/stored_event.dart';
 
 /// Local availability of a blob referenced by a committed command.
 enum BlobStatus {
-  /// The blob is required but its bytes have not been saved locally.
+  /// The blob is required but has not been marked available locally.
   pending,
 
   /// The complete blob bytes have been saved locally.
@@ -62,6 +62,8 @@ abstract interface class EventStoreReplication {
   /// Returns false when the command's dependencies are not satisfied or the
   /// command is out of order.
   /// This accepts commands received from other actors.
+  /// New blob references start pending. Reusing a blob ID in another command
+  /// throws [StateError].
   Future<bool> addStoredCommand(StoredCommand command);
 
   /// Returns a stored command by command ID, or null when absent.
@@ -79,9 +81,10 @@ abstract interface class EventStoreReplication {
   /// Returns local availability, or null for an unreferenced blob ID.
   Future<BlobStatus?> getBlobStatus(String blobId);
 
-  /// Reads pending IDs in local position order.
-  /// Each ID appears once, at its first reference. Start with cursor zero.
-  /// Null means the scan is complete.
+  /// Reads pending IDs in local log order from the inclusive [cursor].
+  /// Start with cursor zero. Negative cursors throw [ArgumentError].
+  /// [PaginatedResult.next] is the last returned position plus one, or null
+  /// when the page is empty.
   /// Cursors remain stable when earlier blobs become available. Restart from
   /// zero to retry pending IDs skipped during an earlier scan.
   /// [EventStore] owns pagination size.
@@ -115,5 +118,8 @@ abstract interface class EventStore implements EventStoreReplication {
 
   /// Saves results of command execution into the event store.
   /// The caller must validate [CommandChanges.isValid] before saving.
+  /// Blob bytes must already be saved; their references start available.
+  /// Reusing a blob ID in another command or at another index throws
+  /// [StateError].
   Future<void> saveChanges(CommandChanges changes);
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -699,6 +700,18 @@ class _ControlledStore implements EventStoreReplication {
   Future<EventDatabaseState> Function()? readState;
   Future<List<CommandId>> Function(CommandDependency, int)? readNext;
   Future<StoredCommand?> Function(CommandId)? readCommand;
+
+  @override
+  Future<BlobStatus?> getBlobStatus(String blobId) =>
+      store.getBlobStatus(blobId);
+
+  @override
+  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
+      store.getPendingBlobIds(cursor);
+
+  @override
+  Future<void> markBlobAvailable(String blobId) =>
+      store.markBlobAvailable(blobId);
 
   @override
   Stream<CommandChange> get commandChanges => Stream.multi((controller) {

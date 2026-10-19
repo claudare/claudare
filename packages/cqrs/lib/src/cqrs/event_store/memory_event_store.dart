@@ -26,6 +26,7 @@ class MemoryEventStore implements EventStore {
       StreamController<EventChange>.broadcast();
   final List<_MemoryLogCommand> _commands = [];
   final List<_MemoryLogEvent> _events = [];
+  final Map<String, _MemoryBlob> _blobs = {};
   // Each stream links to zero-based indexes in _events, in stream order.
   final Map<String, List<int>> _streamVersions = {};
 
@@ -44,14 +45,39 @@ class MemoryEventStore implements EventStore {
 
   @override
   Future<BlobStatus?> getBlobStatus(String blobId) =>
-      throw UnimplementedError();
+      _read('Failed to get blob status', () {
+        final blob = _blobs[blobId];
+        if (blob == null) return null;
+        return blob.available ? BlobStatus.available : BlobStatus.pending;
+      });
 
   @override
   Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
-      throw UnimplementedError();
+      _read('Failed to get pending blob IDs', () {
+        if (cursor < 0) {
+          throw ArgumentError('cursor must be non-negative');
+        }
+        final ids = <String>[];
+        int? next;
+        for (final entry in _blobs.entries) {
+          final blob = entry.value;
+          if (blob.logPosition < cursor || blob.available) continue;
+          ids.add(entry.key);
+          next = blob.logPosition + 1;
+          if (ids.length == _eventFetchPageSize) break;
+        }
+        return PaginatedResult(data: ids, next: next);
+      });
 
   @override
-  Future<void> markBlobAvailable(String blobId) => throw UnimplementedError();
+  Future<void> markBlobAvailable(String blobId) =>
+      _write('Failed to mark blob available', () {
+        final blob = _blobs[blobId];
+        if (blob == null) {
+          throw StateError('Blob ID is not referenced: $blobId');
+        }
+        blob.available = true;
+      });
 
   @override
   Stream<EventChange> get eventChanges => _eventChanges.stream;
@@ -244,6 +270,7 @@ class MemoryEventStore implements EventStore {
     required DateTime occuredAt,
     required List<EventAppend> events,
     required List<String> blobIds,
+    required bool blobsAvailable,
   }) {
     final command = _MemoryLogCommand(
       commandId: commandId,
@@ -252,6 +279,12 @@ class MemoryEventStore implements EventStore {
       logPosition: _commands.length,
       blobIds: List.unmodifiable(blobIds),
     );
+    final seenBlobIds = <String>{};
+    for (final blobId in command.blobIds) {
+      if (!seenBlobIds.add(blobId) || _blobs.containsKey(blobId)) {
+        throw StateError('Blob ID is already owned by a command: $blobId');
+      }
+    }
     final appended = <_MemoryLogEvent>[];
     final streamVersions = <String, List<int>>{};
     for (final (index, event) in events.indexed) {
@@ -274,6 +307,12 @@ class MemoryEventStore implements EventStore {
     _commands.add(command);
     _events.addAll(appended);
     _streamVersions.addAll(streamVersions);
+    for (final blobId in command.blobIds) {
+      _blobs[blobId] = _MemoryBlob(
+        logPosition: _blobs.length,
+        available: blobsAvailable,
+      );
+    }
   }
 
   @override
@@ -302,6 +341,7 @@ class MemoryEventStore implements EventStore {
           occuredAt: command.occuredAt,
           events: events,
           blobIds: command.blobIds,
+          blobsAvailable: false,
         );
         _publishChanges(ChangeOrigin.remote, command.commandId, events);
         return true;
@@ -330,9 +370,17 @@ class MemoryEventStore implements EventStore {
           occuredAt: changes.occuredAt,
           events: changes.events,
           blobIds: changes.blobs,
+          blobsAvailable: true,
         );
         _publishChanges(ChangeOrigin.local, commandId, changes.events);
       });
+}
+
+class _MemoryBlob {
+  final int logPosition;
+  bool available;
+
+  _MemoryBlob({required this.logPosition, required this.available});
 }
 
 class _MemoryLogCommand {

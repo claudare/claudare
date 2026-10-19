@@ -20,7 +20,7 @@ In the event store, the metadata is stored as the following:
 
 ```sql
   CREATE TABLE blob(
-    local_position INTEGER PRIMARY KEY NOT NULL CHECK(local_position >= 0),
+    log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
     blob_id TEXT UNIQUE NOT NULL,
     id_actor TEXT NOT NULL,
     id_sequence INTEGER NOT NULL,
@@ -39,15 +39,21 @@ When command that emits some blobs is saved, its `id_actor` and `id_sequence` is
 the same as that of the command. The `blob_index` provides an order to the
 blobs, similarly to how events are ordered.
 
-The database assigns `local_position` as an auto-incrementing ID without holes
-upon insertion. Replication requests blobs with `available` = 0 in ascending
-`local_position` order.
+A blob ID belongs to one command and one `blob_index`. Reusing an ID in another
+command or at another index is rejected. Receiving the same command again does
+not reset blob availability.
+
+Blob positions follow the same rules as command and event positions. Each log
+has its own local, zero-based `log_position` sequence. Positions are assigned
+in insertion order without holes; failed transactions do not consume positions.
+Replication requests blobs with `available` = 0 in ascending `log_position`
+order.
 
 `getPendingBlobIds` follows the same pagination rules as `getLogEvents`. Start
-with cursor 0. The cursor is a non-negative, inclusive `local_position`, so a
+with cursor 0. The cursor is a non-negative, inclusive `log_position`, so a
 page contains pending IDs at positions greater than or equal to the cursor.
 The `EventStore` owns the page size. For a non-empty page, `next` is the last
-returned blob's `local_position` plus one. An empty page returns `next: null`,
+returned blob's `log_position` plus one. An empty page returns `next: null`,
 ending the scan. Availability changes do not change positions or cursors.
 Restarting replication or retrying earlier pending blobs starts a new scan at
 cursor 0.
@@ -67,7 +73,7 @@ If the `blobId` is marked as `available`, it is assumed that content is already
 there.
 
 Blob replication uses a pull model. This device requests pending blobs from a
-peer by `blobId`, one at a time in `local_position` order. After downloading a
+peer by `blobId`, one at a time in `log_position` order. After downloading a
 blob, it saves the bytes in the `BlobStore`, calls `markBlobAvailable` in the
 `EventStore`, and proceeds to the next ID. Blob replication uses no vector
 clocks, just `blobId`s.
@@ -95,6 +101,6 @@ written or read. We are currently not handling huge blobs!
 
 Check an item only when its implementation and relevant tests pass.
 
-- [ ] Implement interfaces that throw non-implemented errors
+- [x] Implement blob metadata persistence, availability, and pending pagination.
 - [ ] Implement more TODO's for replication.
 - [ ] Delete this temporary specification after completion.

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:claudare_crypto/crypto.dart';
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:sync/sync.dart';
@@ -708,6 +709,18 @@ class _Store implements EventStoreReplication {
   Future<bool> Function(StoredCommand)? save;
   int stateReads = 0;
   int saves = 0;
+
+  @override
+  Future<BlobStatus?> getBlobStatus(String blobId) =>
+      store.getBlobStatus(blobId);
+
+  @override
+  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
+      store.getPendingBlobIds(cursor);
+
+  @override
+  Future<void> markBlobAvailable(String blobId) =>
+      store.markBlobAvailable(blobId);
 
   @override
   Stream<CommandChange> get commandChanges => store.commandChanges;
