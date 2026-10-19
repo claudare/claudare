@@ -341,10 +341,10 @@ void main() {
       final failing = h.discover();
       await flushMessages();
       expect(first.closed, isTrue);
-      expect(failing.closed, isTrue);
+      expect(failing.closed, isFalse);
       expect(second.closed, isFalse);
       expect(h.transports.single.closes, 0);
-      expect(h.clock.activeTimers, 0);
+      expect(h.clock.activeTimers, 1);
       second.send(ReplicationMessageCommand(_command()));
       await flushMessages();
       expect(second.messages.last, isA<ReplicationMessageCommandAck>());
@@ -352,16 +352,171 @@ void main() {
     });
   }
 
-  test('malformed replication data closes only its session', () async {
+  test(
+    'malformed command data restarts commands on the same connection',
+    () async {
+      final h = await _Harness.create();
+      final peer = h.discover();
+      await flushMessages();
+      peer.multiplexer.commands.sink.add('private data');
+      await flushMessages();
+      expect(peer.closed, isFalse);
+      expect(h.transports.single.closes, 0);
+      expect(h.coordinator.snapshot.activePeers, isEmpty);
+      await h.clock.elapse(SyncDefaults.reconnectInterval);
+      expect(
+        peer.messages.whereType<ReplicationMessageDependency>(),
+        hasLength(2),
+      );
+      peer.send(ReplicationMessageCommand(_command()));
+      await flushMessages();
+      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+      _expectSafeLogs(h.logger);
+    },
+  );
+
+  test('blob resets leave command replication running', () async {
     final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
-    peer.channel.foreign.sink.add('private data');
+    final commands = peer.multiplexer.commands;
+    await peer.multiplexer.blobs.sink.close();
     await flushMessages();
-    expect(peer.closed, isTrue);
-    expect(h.transports.single.closes, 0);
-    _expectSafeLogs(h.logger);
+    expect(peer.multiplexer.commands, same(commands));
+    expect(h.clock.activeTimers, 0);
+    peer.send(ReplicationMessageCommand(_command()));
+    await flushMessages();
+    expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
   });
+
+  test(
+    'command retry leaves the blob session and peer connection open',
+    () async {
+      final h = await _Harness.create();
+      final peer = h.discover();
+      await flushMessages();
+      final blobs = peer.multiplexer.blobs;
+      var blobsClosed = false;
+      unawaited(blobs.sink.done.then((_) => blobsClosed = true));
+      h.store.save = (_) async => throw Exception('private data');
+      peer.send(ReplicationMessageCommand(_command()));
+      await flushMessages();
+      expect(peer.closed, isFalse);
+      expect(blobsClosed, isFalse);
+      expect(h.coordinator.snapshot.lastFailure, 'Sync replication failed');
+      h.store.save = null;
+      await h.clock.elapse(SyncDefaults.reconnectInterval);
+      peer.send(ReplicationMessageCommand(_command()));
+      await flushMessages();
+      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+      expect(peer.multiplexer.blobs, same(blobs));
+      expect(blobsClosed, isFalse);
+      expect(h.attempts, 1);
+    },
+  );
+
+  test(
+    'persistent command failure retries at the configured interval',
+    () async {
+      final h = await _Harness.create(
+        reconnectInterval: const Duration(seconds: 2),
+      );
+      h.store.readState = () async => throw Exception('private data');
+      final peer = h.discover();
+      await flushMessages();
+      expect(h.store.stateReads, 1);
+      await h.clock.elapse(const Duration(seconds: 1));
+      expect(h.store.stateReads, 1);
+      await h.clock.elapse(const Duration(seconds: 1));
+      expect(h.store.stateReads, 2);
+      expect(peer.closed, isFalse);
+      expect(h.clock.activeTimers, 1);
+      await h.coordinator.close();
+      await h.clock.elapse(const Duration(seconds: 4));
+      expect(h.store.stateReads, 2);
+      expect(h.clock.activeTimers, 0);
+    },
+  );
+
+  test('connection closure cancels a pending command restart', () async {
+    final h = await _Harness.create();
+    final peer = h.discover();
+    await flushMessages();
+    peer.multiplexer.commands.sink.add('malformed command');
+    await flushMessages();
+    expect(h.clock.activeTimers, 1);
+    await peer.multiplexer.close();
+    await h.clock.elapse(SyncDefaults.reconnectInterval);
+    expect(h.clock.activeTimers, 0);
+    expect(h.store.stateReads, 1);
+    expect(h.coordinator.snapshot.activePeers, isEmpty);
+  });
+
+  test(
+    'late command work cannot affect a restarted protocol session',
+    () async {
+      final h = await _Harness.create();
+      final peer = h.discover();
+      await flushMessages();
+      final saving = Completer<bool>();
+      h.store.save = (_) => saving.future;
+      peer.send(ReplicationMessageCommand(_command()));
+      await flushMessages();
+      await peer.multiplexer.commands.sink.close();
+      await flushMessages();
+      await h.clock.elapse(SyncDefaults.reconnectInterval);
+      expect(
+        peer.messages.whereType<ReplicationMessageDependency>(),
+        hasLength(2),
+      );
+      saving.completeError(Exception('late failure'));
+      await flushMessages();
+      expect(h.coordinator.snapshot.activePeers, hasLength(1));
+      expect(h.coordinator.snapshot.lastFailure, isNull);
+      expect(peer.closed, isFalse);
+      h.store.save = null;
+      peer.send(ReplicationMessageCommand(_command()));
+      await flushMessages();
+      expect(peer.messages.last, isA<ReplicationMessageCommandAck>());
+    },
+  );
+
+  test(
+    'both coordinators resume command exchange after a write failure',
+    () async {
+      final first = await _Harness.create();
+      final second = await _Harness.create();
+      final pair = SyncTestHelper.createPeerPair(
+        firstActor: PublicKey.staticValue(1).toString(),
+        secondActor: PublicKey.staticValue(2).toString(),
+      );
+      second.store.save = (_) async => throw Exception('write failed');
+      await first.store.addStoredCommand(_command());
+      first.transports.single.discovery.add(pair.first);
+      second.transports.single.discovery.add(pair.second);
+      await flushMessages();
+      expect(
+        second.coordinator.snapshot.lastFailure,
+        'Sync replication failed',
+      );
+      expect(await second.store.getStoredCommand(_command().commandId), isNull);
+      second.store.save = null;
+      await first.clock.elapse(SyncDefaults.reconnectInterval);
+      await second.clock.elapse(SyncDefaults.reconnectInterval);
+      expect(
+        await second.store.getStoredCommand(_command().commandId),
+        isNotNull,
+      );
+      final reverse = _command(actor: 'reverse');
+      await second.store.addStoredCommand(reverse);
+      await flushMessages();
+      expect(await first.store.getStoredCommand(reverse.commandId), isNotNull);
+      expect(first.coordinator.snapshot.activePeers, hasLength(1));
+      expect(second.coordinator.snapshot.activePeers, hasLength(1));
+      expect(first.transports.single.closes, 0);
+      expect(second.transports.single.closes, 0);
+    },
+  );
 
   test('superseded admission cannot replace the current session', () async {
     final h = await _Harness.create();
@@ -690,17 +845,23 @@ class _Peer {
   final channel = StreamChannelController<String>();
   final messages = <ReplicationMessage>[];
   bool closed = false;
+  late final PeerMultiplexer multiplexer;
 
   _Peer() {
-    final subscription = channel.foreign.stream.listen(
-      (value) => messages.add(const ReplicationMessageCodec().decode(value)),
-      onDone: () => closed = true,
-    );
-    addTearDown(subscription.cancel);
+    multiplexer = PeerMultiplexer(channel.foreign);
+    unawaited(channel.foreign.sink.done.then((_) => closed = true));
+    multiplexer.commandSessions.listen((session) {
+      if (!identical(multiplexer.commands, session)) return;
+      session.stream.listen(
+        (value) => messages.add(const ReplicationMessageCodec().decode(value)),
+      );
+    });
+    addTearDown(multiplexer.close);
   }
 
-  void send(ReplicationMessage message) =>
-      channel.foreign.sink.add(const ReplicationMessageCodec().encode(message));
+  void send(ReplicationMessage message) => multiplexer.commands.sink.add(
+    const ReplicationMessageCodec().encode(message),
+  );
 }
 
 class _Store implements EventStoreReplication {

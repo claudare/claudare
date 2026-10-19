@@ -78,6 +78,12 @@ blob, it saves the bytes in the `BlobStore`, calls `markBlobAvailable` in the
 `EventStore`, and proceeds to the next ID. Blob replication uses no vector
 clocks, just `blobId`s.
 
+Commands and blobs use separate logical channels on one peer connection. They
+share its keepalive and timeout. A protocol failure restarts only that protocol
+session on both peers, leaving the connection and other protocols running.
+Connection failure or timeout stops all protocols. Malformed multiplexing
+frames are discarded. Blob requests and transfers remain unimplemented.
+
 A peer explicitly responds when it does not have the requested blob. Requests
 have a finite timeout. A missing-blob response, timeout, or transfer failure
 leaves the blob pending and allows the next ID in the scan to proceed. After

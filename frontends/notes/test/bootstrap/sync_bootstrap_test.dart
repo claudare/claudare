@@ -347,9 +347,10 @@ void main() {
       secondActor: _actor(2),
     );
     final codec = const ReplicationMessageCodec();
+    final commands = PeerMultiplexer(pair.second.channel).commands;
     final subscribed = Completer<void>();
     final messages = <ReplicationMessage>[];
-    final subscription = pair.second.channel.stream.listen((message) {
+    final subscription = commands.stream.listen((message) {
       final decoded = codec.decode(message);
       messages.add(decoded);
       if (decoded is ReplicationMessageDependency) subscribed.complete();
@@ -369,9 +370,7 @@ void main() {
       CommandId(_actor(2), 1),
     );
     sqlite.holdNextTransaction = true;
-    pair.second.channel.sink.add(
-      codec.encode(ReplicationMessageCommand(command!)),
-    );
+    commands.sink.add(codec.encode(ReplicationMessageCommand(command!)));
     await sqlite.transactionHeld.future.timeout(const Duration(seconds: 5));
     await bootstrap.close();
     await support.delete();

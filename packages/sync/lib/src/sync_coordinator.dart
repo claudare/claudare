@@ -12,13 +12,15 @@ import 'replication/replicator.dart';
 import 'sync_defaults.dart';
 import 'sync_snapshot.dart';
 import 'transport/transport.dart';
+import 'transport/peer_multiplexer.dart';
 
 typedef TransportFactory = Transport Function();
 
 /// Owns background transport and replication lifetimes.
 ///
 /// Admits known peers when sessions start; removal leaves active sessions open.
-/// Replication failures are handled internally. Injected stores remain open.
+/// Command failures restart command replication on the same peer connection
+/// after [reconnectInterval]. Injected stores remain open.
 class SyncCoordinator {
   final EventStoreReplication eventStore;
   final ActorIdentityStore identityStore;
@@ -70,7 +72,7 @@ class SyncCoordinator {
     _snapshot = SyncSnapshot(
       connection: connection ?? _snapshot.connection,
       activePeers: _sessions.values
-          .where((session) => session.replicator != null && !session.closed)
+          .where((session) => session.replicating && !session.closed)
           .map((session) => session.peer.actor),
       lastFailure: failure ?? _snapshot.lastFailure,
       lastFailureAt: failure == null
@@ -226,33 +228,15 @@ class SyncCoordinator {
         _retireSession(session);
         return;
       }
-      final channel =
-          StreamChannel<String>(
-            session.incoming.stream,
-            session.peer.channel.sink,
-          ).transform(
-            StreamChannelTransformer.fromCodec(const ReplicationMessageCodec()),
-          );
-      final replicator = session.replicator = Replicator(
-        channel: channel,
-        eventStore: eventStore,
-        logger: logger,
-      );
-      unawaited(
-        replicator.run().then<void>(
-          (_) => _retireSession(session),
-          onError: (Object error, StackTrace stack) {
-            logger.error('Sync replication failed');
-            if (_current(generation) &&
-                (_sessions[session.peer.actor] == null ||
-                    identical(_sessions[session.peer.actor], session))) {
-              _publish(failure: 'Sync replication failed');
-            }
-            _retireSession(session);
-          },
+      final multiplexer = session.multiplexer = PeerMultiplexer(
+        StreamChannel<String>(
+          session.incoming.stream,
+          session.peer.channel.sink,
         ),
       );
-      _publish();
+      session.commandSessions = multiplexer.commandSessions.listen(
+        (channel) => _commandSession(generation, session, channel),
+      );
     } catch (error) {
       logger.error('Sync peer admission failed');
       if (_admitted(generation, session)) {
@@ -260,6 +244,70 @@ class SyncCoordinator {
       }
       _retireSession(session);
     }
+  }
+
+  void _commandSession(
+    int generation,
+    _PeerSession session,
+    StreamChannel<String> channel,
+  ) {
+    if (!_admitted(generation, session) ||
+        !identical(session.multiplexer!.commands, channel)) {
+      return;
+    }
+    final previous = session.replicator;
+    if (previous != null) _cleanup(previous.close);
+    session.replicating = false;
+    session.commandRetry?.cancel();
+    void start() {
+      session.commandRetry = null;
+      if (!_admitted(generation, session) ||
+          !identical(session.multiplexer!.commands, channel)) {
+        return;
+      }
+      _startReplication(generation, session, channel);
+    }
+
+    if (previous == null) {
+      start();
+    } else {
+      session.commandRetry = timerFactory(reconnectInterval, start);
+      _publish();
+    }
+  }
+
+  void _startReplication(
+    int generation,
+    _PeerSession session,
+    StreamChannel<String> channel,
+  ) {
+    final replicator = session.replicator = Replicator(
+      channel: channel.transform(
+        StreamChannelTransformer.fromCodec(const ReplicationMessageCodec()),
+      ),
+      eventStore: eventStore,
+      logger: logger,
+    );
+    session.replicating = true;
+    void ended({String? failure}) {
+      if (!_admitted(generation, session) ||
+          !identical(session.replicator, replicator)) {
+        return;
+      }
+      session.replicating = false;
+      _publish(failure: failure);
+    }
+
+    unawaited(
+      replicator.run().then<void>(
+        (_) => ended(),
+        onError: (Object error, StackTrace stack) {
+          logger.error('Sync replication failed');
+          ended(failure: 'Sync replication failed');
+        },
+      ),
+    );
+    _publish();
   }
 
   void _retireSession(_PeerSession session) {
@@ -270,10 +318,15 @@ class SyncCoordinator {
     }
     final replicator = session.replicator;
     final messages = session.messages;
+    final multiplexer = session.multiplexer;
+    session.commandRetry?.cancel();
+    final commandSessions = session.commandSessions;
+    if (commandSessions != null) _cleanup(commandSessions.cancel);
+    if (multiplexer != null) _cleanup(multiplexer.close);
     if (replicator != null) _cleanup(replicator.close);
     _cleanup(session.peer.channel.sink.close);
     if (messages != null) _cleanup(messages.cancel);
-    if (replicator == null) {
+    if (multiplexer == null) {
       _cleanup(session.incoming.stream.listen(null).cancel);
     }
     _cleanup(session.incoming.close);
@@ -296,7 +349,11 @@ class _PeerSession {
   final PeerTransport peer;
   final incoming = StreamController<String>();
   StreamSubscription<String>? messages;
+  StreamSubscription<StreamChannel<String>>? commandSessions;
+  Timer? commandRetry;
+  bool replicating = false;
   Replicator? replicator;
+  PeerMultiplexer? multiplexer;
   bool closed = false;
 
   _PeerSession(this.peer);

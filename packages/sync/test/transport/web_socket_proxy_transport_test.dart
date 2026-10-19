@@ -60,6 +60,38 @@ void main() {
     });
   }
 
+  test('logical channels share one session, keepalive, and timeout', () async {
+    await connect();
+    final left = PeerMultiplexer(a.peers.single.channel);
+    final right = PeerMultiplexer(b.peers.single.channel);
+    final commands = <String>[];
+    final blobs = <String>[];
+    final commandsDone = Completer<void>();
+    final blobsDone = Completer<void>();
+    right.commands.stream.listen(commands.add, onDone: commandsDone.complete);
+    right.blobs.stream.listen(blobs.add, onDone: blobsDone.complete);
+    left.commands.sink.add('command');
+    left.blobs.sink.add('blob');
+    await flushMessages();
+    expect(commands, ['command']);
+    expect(blobs, ['blob']);
+    final frames = proxy.sent
+        .map((sent) => sent.message)
+        .whereType<TransportMessageData>();
+    expect(frames.map((frame) => frame.sessionId).toSet(), hasLength(1));
+    await clock.elapse(SyncDefaults.sessionTimeout * 2);
+    expect(a.peers, hasLength(1));
+    expect(b.peers, hasLength(1));
+    expect(commandsDone.isCompleted, isFalse);
+    expect(blobsDone.isCompleted, isFalse);
+    proxy.drop = (sent) => sent.message is TransportMessageKeepalive;
+    await clock.elapse(SyncDefaults.sessionTimeout);
+    await Future.wait([commandsDone.future, blobsDone.future]);
+    expect(proxy.connections.keys, unorderedEquals(['a', 'b']));
+    await left.close();
+    await right.close();
+  });
+
   test('ignores its own discovery and isolates groups', () async {
     final other = TestTransport(proxy, clock, 'c', group: 'other');
     await a.start();
@@ -422,24 +454,28 @@ void main() {
   });
 
   test(
-    'real replicators exchange commands and restart above replacement channels',
+    'real replicators restart commands while retaining their peer connections',
     () async {
       final stores = [MemoryEventStore(), MemoryEventStore()];
       final replicators = <Replicator>[];
       final running = <Future<void>>[];
       void startReplication(TestTransport transport, MemoryEventStore store) {
         transport.onPeer = (peer) {
-          final replicator = Replicator(
-            channel: peer.channel.transform(
-              StreamChannelTransformer.fromCodec(
-                const ReplicationMessageCodec(),
+          final multiplexer = PeerMultiplexer(peer.channel);
+          multiplexer.commandSessions.listen((channel) {
+            if (!identical(channel, multiplexer.commands)) return;
+            final replicator = Replicator(
+              channel: channel.transform(
+                StreamChannelTransformer.fromCodec(
+                  const ReplicationMessageCodec(),
+                ),
               ),
-            ),
-            eventStore: store,
-            logger: const NoopLogger(),
-          );
-          replicators.add(replicator);
-          running.add(replicator.run());
+              eventStore: store,
+              logger: const NoopLogger(),
+            );
+            replicators.add(replicator);
+            running.add(replicator.run());
+          });
         };
       }
 
@@ -454,9 +490,11 @@ void main() {
         first.toJson(),
       );
       await replicators.first.close();
-      await Future.wait(running);
-      await clock.elapse(SyncDefaults.discoveryInterval);
+      await Future.wait(running.take(2));
+      await flushMessages();
       expect(replicators, hasLength(4));
+      expect(a.peers, hasLength(1));
+      expect(b.peers, hasLength(1));
       final second = command('b', 1);
       expect(await stores[1].addStoredCommand(second), isTrue);
       await flushMessages();

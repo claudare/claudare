@@ -15,6 +15,8 @@ export 'src/proxy/proxy_init.dart';
 export 'src/proxy/proxy_message.dart';
 
 // transport
+export 'src/transport/multiplex_message.dart';
+export 'src/transport/peer_multiplexer.dart';
 export 'src/transport/transport.dart';
 export 'src/transport/transport_message.dart';
 export 'src/transport/web_socket_proxy_transport.dart';
