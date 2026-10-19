@@ -55,8 +55,8 @@ page contains pending IDs at positions greater than or equal to the cursor.
 The `EventStore` owns the page size. For a non-empty page, `next` is the last
 returned blob's `log_position` plus one. An empty page returns `next: null`,
 ending the scan. Availability changes do not change positions or cursors.
-Restarting replication or retrying earlier pending blobs starts a new scan at
-cursor 0.
+New protocol sessions and periodic retries start at cursor 0. Sessions do not
+share scan progress.
 
 Locally saved command changes mark the blob as `available`, as it is present in
 the local storage.
@@ -82,13 +82,21 @@ Commands and blobs use separate logical channels on one peer connection. They
 share its keepalive and timeout. A protocol failure restarts only that protocol
 session on both peers, leaving the connection and other protocols running.
 Connection failure or timeout stops all protocols. Malformed multiplexing
-frames are discarded. Blob requests and transfers remain unimplemented.
+frames are discarded. Coordinator integration remains unimplemented.
 
-A peer explicitly responds when it does not have the requested blob. Requests
-have a finite timeout. A missing-blob response, timeout, or transfer failure
-leaves the blob pending and allows the next ID in the scan to proceed. After
-the scan completes, remaining pending blobs are retried from cursor 0 after a
-retry delay. An unavailable earlier blob must not block later downloads.
+A peer serves bytes present in its blob store, regardless of metadata status,
+and explicitly responds when the requested bytes are absent. With no blob
+store configured, it responds missing and does not download.
+
+A request waits for a matching response or session closure. A missing response
+leaves the blob pending and advances to the next ID without resetting the
+session. Protocol or storage failures and session closure leave unfinished blobs
+pending. A replacement starts a fresh scan from cursor 0. The caller owns
+replacement of a failed protocol runtime.
+
+After a scan completes, remaining pending blobs are retried from cursor 0 after
+a retry delay. New committed commands wake an idle scan to fetch newly appended
+references. Missing earlier blobs must not block later downloads.
 
 If execution stops after saving bytes but before marking the blob available,
 the metadata remains pending. Redownloading and saving the same bytes on retry
@@ -108,5 +116,7 @@ written or read. We are currently not handling huge blobs!
 Check an item only when its implementation and relevant tests pass.
 
 - [x] Implement blob metadata persistence, availability, and pending pagination.
-- [ ] Implement more TODO's for replication.
+- [x] Implement blob wire messages and codecs.
+- [x] Implement the standalone blob protocol and in-memory replication helper.
+- [ ] Integrate blob replication with the sync coordinator.
 - [ ] Delete this temporary specification after completion.

@@ -13,4 +13,7 @@ abstract final class SyncDefaults {
 
   /// Maximum peer session inactivity, equal to three keepalive intervals.
   static const sessionTimeout = Duration(seconds: _keepaliveSeconds * 3);
+
+  /// Time between completed pending-blob scans and retries from zero.
+  static const blobRetryInterval = Duration(seconds: 10);
 }
