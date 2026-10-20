@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:sync/src/replication/command_replication_message.dart';
+import 'package:sync/src/replication/command_replication/command_replication_message.dart';
 
 /// Encodes one peer's [CommandReplicationMessage]s as JSON strings.
 class CommandReplicationMessageCodec

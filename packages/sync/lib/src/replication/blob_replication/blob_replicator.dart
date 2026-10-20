@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 
-import '../sync_defaults.dart';
+import '../../sync_defaults.dart';
 import 'blob_replication_channel.dart';
 import 'blob_replication_exception.dart';
 import 'blob_replication_message.dart';

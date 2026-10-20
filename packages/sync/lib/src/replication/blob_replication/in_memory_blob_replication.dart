@@ -4,7 +4,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:stream_channel/stream_channel.dart';
 
-import '../sync_defaults.dart';
+import '../../sync_defaults.dart';
 import 'blob_replication_message.dart';
 import 'blob_replicator.dart';
 
