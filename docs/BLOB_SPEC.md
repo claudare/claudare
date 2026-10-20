@@ -82,7 +82,8 @@ Commands and blobs use separate logical channels on one peer connection. They
 share its keepalive and timeout. A protocol failure restarts only that protocol
 session on both peers, leaving the connection and other protocols running.
 Connection failure or timeout stops all protocols. Malformed multiplexing
-frames are discarded. Coordinator integration remains unimplemented.
+frames are discarded. The coordinator starts both protocols after peer
+admission and recovers them independently.
 
 A peer serves bytes present in its blob store, regardless of metadata status,
 and explicitly responds when the requested bytes are absent. With no blob
@@ -118,5 +119,5 @@ Check an item only when its implementation and relevant tests pass.
 - [x] Implement blob metadata persistence, availability, and pending pagination.
 - [x] Implement blob wire messages and codecs.
 - [x] Implement the standalone blob protocol and in-memory replication helper.
-- [ ] Integrate blob replication with the sync coordinator.
+- [x] Integrate blob replication with the sync coordinator.
 - [ ] Delete this temporary specification after completion.

@@ -7,6 +7,8 @@ import 'package:stream_channel/stream_channel.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'actor/actor_identity_store.dart';
+import 'replication/blob_replication_message_codec.dart';
+import 'replication/blob_replicator.dart';
 import 'replication/command_replication_message_codec.dart';
 import 'replication/command_replicator.dart';
 import 'sync_defaults.dart';
@@ -19,10 +21,14 @@ typedef TransportFactory = Transport Function();
 /// Owns background transport and replication lifetimes.
 ///
 /// Admits known peers when sessions start; removal leaves active sessions open.
-/// Command failures restart command replication on the same peer connection
-/// after [reconnectInterval]. Injected stores remain open.
+/// Command and blob failures restart only that protocol on the same peer
+/// connection after [reconnectInterval]. Injected stores remain open.
 class SyncCoordinator {
   final EventStoreReplication eventStore;
+
+  /// Storage shared with the command runtime. Null disables blob downloads and
+  /// responds to blob requests with missing.
+  final BlobStore? blobStore;
   final ActorIdentityStore identityStore;
   final TransportFactory createTransport;
   final Logger logger;
@@ -46,6 +52,7 @@ class SyncCoordinator {
     required this.createTransport,
     required this.logger,
     required this.timeProvider,
+    this.blobStore,
     this.reconnectInterval = SyncDefaults.reconnectInterval,
     this.timerFactory = Timer.new,
   }) {
@@ -72,7 +79,11 @@ class SyncCoordinator {
     _snapshot = SyncSnapshot(
       connection: connection ?? _snapshot.connection,
       activePeers: _sessions.values
-          .where((session) => session.replicating && !session.closed)
+          .where(
+            (session) =>
+                !session.closed &&
+                (session.commandRunning || session.blobRunning),
+          )
           .map((session) => session.peer.actor),
       lastFailure: failure ?? _snapshot.lastFailure,
       lastFailureAt: failure == null
@@ -237,6 +248,9 @@ class SyncCoordinator {
       session.commandSessions = multiplexer.commandSessions.listen(
         (channel) => _commandSession(generation, session, channel),
       );
+      session.blobSessions = multiplexer.blobSessions.listen(
+        (channel) => _blobSession(generation, session, channel),
+      );
     } catch (error) {
       logger.error('Sync peer admission failed');
       if (_admitted(generation, session)) {
@@ -255,17 +269,17 @@ class SyncCoordinator {
         !identical(session.multiplexer!.commands, channel)) {
       return;
     }
-    final previous = session.replicator;
+    final previous = session.commandReplicator;
     if (previous != null) _cleanup(previous.close);
-    session.replicating = false;
+    session.commandRunning = false;
     session.commandRetry?.cancel();
     void start() {
-      session.commandRetry = null;
       if (!_admitted(generation, session) ||
           !identical(session.multiplexer!.commands, channel)) {
         return;
       }
-      _startReplication(generation, session, channel);
+      session.commandRetry = null;
+      _startCommandReplication(generation, session, channel);
     }
 
     if (previous == null) {
@@ -276,12 +290,16 @@ class SyncCoordinator {
     }
   }
 
-  void _startReplication(
+  void _startCommandReplication(
     int generation,
     _PeerSession session,
     StreamChannel<String> channel,
   ) {
-    final replicator = session.replicator = CommandReplicator(
+    if (!_admitted(generation, session) ||
+        !identical(session.multiplexer!.commands, channel)) {
+      return;
+    }
+    final replicator = session.commandReplicator = CommandReplicator(
       channel: channel.transform(
         StreamChannelTransformer.fromCodec(
           const CommandReplicationMessageCodec(),
@@ -290,13 +308,14 @@ class SyncCoordinator {
       eventStore: eventStore,
       logger: logger,
     );
-    session.replicating = true;
+    session.commandRunning = true;
     void ended({String? failure}) {
       if (!_admitted(generation, session) ||
-          !identical(session.replicator, replicator)) {
+          !identical(session.commandReplicator, replicator)) {
         return;
       }
-      session.replicating = false;
+      if (failure != null) logger.error(failure);
+      session.commandRunning = false;
       _publish(failure: failure);
     }
 
@@ -304,8 +323,77 @@ class SyncCoordinator {
       replicator.run().then<void>(
         (_) => ended(),
         onError: (Object error, StackTrace stack) {
-          logger.error('Sync replication failed');
-          ended(failure: 'Sync replication failed');
+          ended(failure: 'Sync command replication failed');
+        },
+      ),
+    );
+    _publish();
+  }
+
+  void _blobSession(
+    int generation,
+    _PeerSession session,
+    StreamChannel<String> channel,
+  ) {
+    if (!_admitted(generation, session) ||
+        !identical(session.multiplexer!.blobs, channel)) {
+      return;
+    }
+    final previous = session.blobReplicator;
+    if (previous != null) _cleanup(previous.close);
+    session.blobRunning = false;
+    session.blobRetry?.cancel();
+    void start() {
+      if (!_admitted(generation, session) ||
+          !identical(session.multiplexer!.blobs, channel)) {
+        return;
+      }
+      session.blobRetry = null;
+      _startBlobReplication(generation, session, channel);
+    }
+
+    if (previous == null) {
+      start();
+    } else {
+      session.blobRetry = timerFactory(reconnectInterval, start);
+      _publish();
+    }
+  }
+
+  void _startBlobReplication(
+    int generation,
+    _PeerSession session,
+    StreamChannel<String> channel,
+  ) {
+    if (!_admitted(generation, session) ||
+        !identical(session.multiplexer!.blobs, channel)) {
+      return;
+    }
+    final replicator = session.blobReplicator = BlobReplicator(
+      channel: channel.transform(
+        StreamChannelTransformer.fromCodec(const BlobReplicationMessageCodec()),
+      ),
+      eventStore: eventStore,
+      blobStore: blobStore,
+      logger: logger,
+      timerFactory: timerFactory,
+    );
+    session.blobRunning = true;
+    void ended({String? failure}) {
+      if (!_admitted(generation, session) ||
+          !identical(session.blobReplicator, replicator)) {
+        return;
+      }
+      if (failure != null) logger.error(failure);
+      session.blobRunning = false;
+      _publish(failure: failure);
+    }
+
+    unawaited(
+      replicator.run().then<void>(
+        (_) => ended(),
+        onError: (Object error, StackTrace stack) {
+          ended(failure: 'Sync blob replication failed');
         },
       ),
     );
@@ -318,14 +406,19 @@ class SyncCoordinator {
     if (identical(_sessions[session.peer.actor], session)) {
       _sessions.remove(session.peer.actor);
     }
-    final replicator = session.replicator;
+    final commandReplicator = session.commandReplicator;
+    final blobReplicator = session.blobReplicator;
     final messages = session.messages;
     final multiplexer = session.multiplexer;
     session.commandRetry?.cancel();
+    session.blobRetry?.cancel();
     final commandSessions = session.commandSessions;
+    final blobSessions = session.blobSessions;
     if (commandSessions != null) _cleanup(commandSessions.cancel);
+    if (blobSessions != null) _cleanup(blobSessions.cancel);
     if (multiplexer != null) _cleanup(multiplexer.close);
-    if (replicator != null) _cleanup(replicator.close);
+    if (commandReplicator != null) _cleanup(commandReplicator.close);
+    if (blobReplicator != null) _cleanup(blobReplicator.close);
     _cleanup(session.peer.channel.sink.close);
     if (messages != null) _cleanup(messages.cancel);
     if (multiplexer == null) {
@@ -352,9 +445,13 @@ class _PeerSession {
   final incoming = StreamController<String>();
   StreamSubscription<String>? messages;
   StreamSubscription<StreamChannel<String>>? commandSessions;
+  StreamSubscription<StreamChannel<String>>? blobSessions;
   Timer? commandRetry;
-  bool replicating = false;
-  CommandReplicator? replicator;
+  Timer? blobRetry;
+  bool commandRunning = false;
+  bool blobRunning = false;
+  CommandReplicator? commandReplicator;
+  BlobReplicator? blobReplicator;
   PeerMultiplexer? multiplexer;
   bool closed = false;
 

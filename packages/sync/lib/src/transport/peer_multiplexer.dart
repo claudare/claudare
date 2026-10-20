@@ -39,7 +39,7 @@ class PeerMultiplexer {
   /// Current command session. Retired sessions cannot send into replacements.
   StreamChannel<String> get commands => _commands.current.channel;
 
-  /// Current blob session. No blob transfer protocol is provided.
+  /// Current blob session. Retired sessions cannot send into replacements.
   StreamChannel<String> get blobs => _blobs.current.channel;
 
   /// Initial command session and replacements, buffered until subscribed.
