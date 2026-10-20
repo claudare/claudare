@@ -272,20 +272,20 @@ class SyncCoordinator {
     final previous = session.commandReplicator;
     if (previous != null) _cleanup(previous.close);
     session.commandRunning = false;
-    session.commandRetry?.cancel();
+    session.commandRestartTimer?.cancel();
     void start() {
       if (!_admitted(generation, session) ||
           !identical(session.multiplexer!.commands, channel)) {
         return;
       }
-      session.commandRetry = null;
+      session.commandRestartTimer = null;
       _startCommandReplication(generation, session, channel);
     }
 
     if (previous == null) {
       start();
     } else {
-      session.commandRetry = timerFactory(reconnectInterval, start);
+      session.commandRestartTimer = timerFactory(reconnectInterval, start);
       _publish();
     }
   }
@@ -342,20 +342,20 @@ class SyncCoordinator {
     final previous = session.blobReplicator;
     if (previous != null) _cleanup(previous.close);
     session.blobRunning = false;
-    session.blobRetry?.cancel();
+    session.blobRestartTimer?.cancel();
     void start() {
       if (!_admitted(generation, session) ||
           !identical(session.multiplexer!.blobs, channel)) {
         return;
       }
-      session.blobRetry = null;
+      session.blobRestartTimer = null;
       _startBlobReplication(generation, session, channel);
     }
 
     if (previous == null) {
       start();
     } else {
-      session.blobRetry = timerFactory(reconnectInterval, start);
+      session.blobRestartTimer = timerFactory(reconnectInterval, start);
       _publish();
     }
   }
@@ -410,8 +410,8 @@ class SyncCoordinator {
     final blobReplicator = session.blobReplicator;
     final messages = session.messages;
     final multiplexer = session.multiplexer;
-    session.commandRetry?.cancel();
-    session.blobRetry?.cancel();
+    session.commandRestartTimer?.cancel();
+    session.blobRestartTimer?.cancel();
     final commandSessions = session.commandSessions;
     final blobSessions = session.blobSessions;
     if (commandSessions != null) _cleanup(commandSessions.cancel);
@@ -446,8 +446,12 @@ class _PeerSession {
   StreamSubscription<String>? messages;
   StreamSubscription<StreamChannel<String>>? commandSessions;
   StreamSubscription<StreamChannel<String>>? blobSessions;
-  Timer? commandRetry;
-  Timer? blobRetry;
+
+  /// A restart delay on failure. This is to prevent spammy restarts.
+  Timer? commandRestartTimer;
+
+  /// A restart delay on failure. This is to prevent spammy restarts.
+  Timer? blobRestartTimer;
   bool commandRunning = false;
   bool blobRunning = false;
   CommandReplicator? commandReplicator;
