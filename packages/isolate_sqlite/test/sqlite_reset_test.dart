@@ -57,6 +57,19 @@ void main() {
       await _expectReset(db);
     });
 
+    test('reapplies configured migrations after each reset', () async {
+      final reset = SqliteReset('test_migrations', (tx) {
+        tx.execute('DROP TABLE records');
+      }, migrations: migrations);
+      await db.execute('INSERT INTO records (id) VALUES (2)');
+
+      await reset.reset(db);
+      await _expectMigrated(db);
+
+      await reset.reset(db);
+      await _expectMigrated(db);
+    });
+
     test('runs the callback before clearing migration history', () async {
       final reset = SqliteReset('test_migrations', (tx) {
         tx.execute('''
@@ -68,6 +81,7 @@ void main() {
 
       expect(await db.queryValue<int>('SELECT id FROM records'), 2);
     });
+  });
 }
 
 SqliteMigrations _createMigrations() {
@@ -100,12 +114,4 @@ Future<void> _expectReset(IsolateSqlite db) async {
     0,
   );
   expect(await db.queryValue<int>('SELECT COUNT(*) FROM test_migrations'), 0);
-}
-
-void _throwResetException(SyncContext tx) {
-  throw Exception('reset failed');
-}
-
-void _executeInvalidSql(SyncContext tx) {
-  tx.execute('INVALID RESET SQL');
 }
