@@ -5,7 +5,7 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final _blobStoreMigrations =
     SqliteMigrations(migrationTable: 'migrations_blob_store')..add(
-      SqliteMigration(1, (tx) {
+      SqliteMigration(0, (tx) {
         tx.execute('''CREATE TABLE blob_data(
           blob_id TEXT PRIMARY KEY NOT NULL,
           data BLOB NOT NULL

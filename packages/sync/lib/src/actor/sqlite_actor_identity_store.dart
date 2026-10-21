@@ -6,7 +6,7 @@ import 'package:sync/src/actor/actor_identity_store.dart';
 
 final _actorIdentityMigrations =
     SqliteMigrations(migrationTable: 'migrations_sync_actor_identity')..add(
-      SqliteMigration(1, (tx) {
+      SqliteMigration(0, (tx) {
         tx.execute('''CREATE TABLE sync_local_actor_identity(
           id INTEGER PRIMARY KEY CHECK(id = 1),
           public_key BLOB NOT NULL

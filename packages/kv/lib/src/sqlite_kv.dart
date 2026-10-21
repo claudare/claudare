@@ -3,7 +3,7 @@ import 'package:kv/src/kv.dart';
 
 final _kvMigrations = SqliteMigrations(migrationTable: 'migrations_kv')
   ..add(
-    SqliteMigration(1, (tx) {
+    SqliteMigration(0, (tx) {
       tx.execute('''CREATE TABLE kv_entry(
       key TEXT PRIMARY KEY NOT NULL,
       value TEXT NOT NULL

@@ -18,7 +18,7 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 
 final eventDatabaseMigrations =
     SqliteMigrations(migrationTable: 'migrations_event_database')..add(
-      SqliteMigration(1, (tx) {
+      SqliteMigration(0, (tx) {
         tx.execute('''CREATE TABLE command(
           log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
           id_actor TEXT NOT NULL,

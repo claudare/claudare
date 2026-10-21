@@ -87,12 +87,12 @@ void main() {
 SqliteMigrations _createMigrations() {
   return SqliteMigrations(migrationTable: 'test_migrations')
     ..add(
-      SqliteMigration(1, (tx) {
+      SqliteMigration(0, (tx) {
         tx.execute('CREATE TABLE records (id INTEGER PRIMARY KEY)');
       }),
     )
     ..add(
-      SqliteMigration(2, (tx) {
+      SqliteMigration(1, (tx) {
         tx.execute('INSERT INTO records (id) VALUES (1)');
       }),
     );
@@ -103,7 +103,7 @@ Future<void> _expectMigrated(IsolateSqlite db) async {
   final history = await db.query(
     'SELECT version FROM test_migrations ORDER BY version',
   );
-  expect(history.map((row) => row[0]), [1, 2]);
+  expect(history.map((row) => row[0]), [0, 1]);
 }
 
 Future<void> _expectReset(IsolateSqlite db) async {
