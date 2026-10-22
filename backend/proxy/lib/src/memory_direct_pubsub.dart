@@ -5,26 +5,26 @@ class MemoryDirectPubSub implements PubSub {
   final _listeners = <String, SubscribeCallback>{};
 
   @override
-  bool publish(String actor, String data) {
-    if (_listeners[actor] == null) {
+  bool publish(String target, String data) {
+    if (_listeners[target] == null) {
       return false;
     }
 
-    _listeners[actor]!(data);
+    _listeners[target]!(data);
 
     return true;
   }
 
   @override
-  Unsubscribe subscribe(String actor, SubscribeCallback cb) {
-    if (_listeners[actor] != null) {
+  Unsubscribe subscribe(String target, SubscribeCallback cb) {
+    if (_listeners[target] != null) {
       throw Exception('single subscription only');
     }
 
-    _listeners[actor] = cb;
+    _listeners[target] = cb;
 
     return () {
-      _listeners.remove(actor);
+      _listeners.remove(target);
     };
   }
 }

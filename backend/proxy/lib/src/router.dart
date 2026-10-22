@@ -40,9 +40,12 @@ FutureOr<Response> _actorHandler(Request request, Logger logger) {
 
     late final Unsubscribe unsubDirect;
     try {
-      unsubDirect = directPubsub.subscribe(thisActor, (message) {
-        channel.sink.add(message);
-      });
+      unsubDirect = directPubsub.subscribe(
+        _encodePubsubTarget(group, thisActor),
+        (message) {
+          channel.sink.add(message);
+        },
+      );
     } catch (_) {
       logger.warning('$scope Already subscribed');
       channel.sink.close(WebSocketStatus.policyViolation, 'Already subscribed');
@@ -64,7 +67,7 @@ FutureOr<Response> _actorHandler(Request request, Logger logger) {
           switch (decoded.type) {
             case ProxyMessageType.direct:
               directPubsub.publish(
-                decoded.actor,
+                _encodePubsubTarget(group, decoded.actor),
                 jsonEncode(
                   ProxyMessage(
                     type: decoded.type,
@@ -109,3 +112,5 @@ FutureOr<Response> _actorHandler(Request request, Logger logger) {
 
   return wsHandler(request);
 }
+
+String _encodePubsubTarget(String group, String actor) => '$group/$actor';

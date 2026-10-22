@@ -1,12 +1,12 @@
 import 'package:proxy/src/pubsub.dart';
 
-/// In-memory pub/sub allowing multiple subscriptions per group.
+/// In-memory pub/sub allowing multiple subscriptions per topic.
 class MemoryBroadcastPubSub implements PubSub {
   final _listeners = <String, Map<Object, SubscribeCallback>>{};
 
   @override
-  bool publish(String group, String data) {
-    final listeners = _listeners[group];
+  bool publish(String topic, String data) {
+    final listeners = _listeners[topic];
     if (listeners == null) {
       return false;
     }
@@ -19,8 +19,8 @@ class MemoryBroadcastPubSub implements PubSub {
   }
 
   @override
-  Unsubscribe subscribe(String group, SubscribeCallback cb) {
-    final listeners = _listeners.putIfAbsent(group, () => {});
+  Unsubscribe subscribe(String topic, SubscribeCallback cb) {
+    final listeners = _listeners.putIfAbsent(topic, () => {});
     final subscription = Object();
     listeners[subscription] = cb;
 
@@ -29,7 +29,7 @@ class MemoryBroadcastPubSub implements PubSub {
         return;
       }
       if (listeners.isEmpty) {
-        _listeners.remove(group);
+        _listeners.remove(topic);
       }
     };
   }
