@@ -4,12 +4,13 @@ import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes_app/notes_app.dart';
 
+/// Loads either active or trashed notes in the selected order.
 class NoteListController extends ChangeNotifier {
   final NotesApp application;
 
   List<NoteState> _noteData = [];
-  NoteCategory _category = NoteCategory.all;
-  NoteSortOrder _order = NoteSortOrder.createdAtDescending;
+  NoteCategory _category = NoteCategory.active;
+  NoteSortOrder _order = NoteSortOrder.updatedAtDescending;
   bool _isLoading = false;
   Exception? _loadError;
   bool _disposed = false;
@@ -24,13 +25,19 @@ class NoteListController extends ChangeNotifier {
   }
 
   List<NoteState> get noteData => _noteData;
+  NoteCategory get category => _category;
+  NoteSortOrder get order => _order;
   bool get isLoading => _isLoading;
   Exception? get loadError => _loadError;
 
   Future<void> setCategory(NoteCategory category) async {
+    if (category == NoteCategory.all) {
+      throw ArgumentError.value(category, 'category', 'Choose Notes or Trash');
+    }
     if (_category == category) return;
 
     _category = category;
+    _noteData = [];
 
     await reloadNotes();
   }
@@ -39,6 +46,7 @@ class NoteListController extends ChangeNotifier {
     if (_order == order) return;
 
     _order = order;
+    _noteData = [];
 
     await reloadNotes();
   }
@@ -50,11 +58,14 @@ class NoteListController extends ChangeNotifier {
     _notify();
 
     try {
+      final category = _category;
+      final order = _order;
       final notes = await application.query.noteList(
-        category: _category,
-        order: _order,
+        category: category,
+        order: order,
       );
       if (_disposed) return;
+      if (category != _category || order != _order) return;
       _noteData = notes;
       _loadError = null;
     } on Exception catch (error) {

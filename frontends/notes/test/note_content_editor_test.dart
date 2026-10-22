@@ -8,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/screens/note/note_screen.dart';
-import 'package:notes/screens/home/home_screen.dart';
 
+import 'support/home_test_app.dart';
 import 'support/remote_note_update.dart';
 
 void main() {
@@ -141,10 +141,7 @@ void main() {
   testWidgets('navigation saves a new content-only note', (tester) async {
     final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(
-      NotesAppProvider(
-        application: app,
-        child: const MaterialApp(home: HomeScreen()),
-      ),
+      NotesAppProvider(application: app, child: homeTestApp()),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.add));

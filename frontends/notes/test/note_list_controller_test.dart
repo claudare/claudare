@@ -32,15 +32,14 @@ void main() {
     expect(controller.noteData.map((note) => note.noteId), [noteId]);
   });
 
-  test('deleting notes refreshes their trashed state', () async {
+  test('moving notes to trash removes them from Notes', () async {
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
     await controller.reloadNotes();
 
     await controller.deleteNotes([noteId]);
 
-    expect(controller.noteData.single.noteId, noteId);
-    expect(controller.noteData.single.isTrashed, isTrue);
+    expect(controller.noteData, isEmpty);
   });
 
   test('category changes filter the current aggregate state', () async {
@@ -50,10 +49,36 @@ void main() {
     await application.command.createNote(trashedId);
     await application.command.trashNote(trashedId);
 
-    await controller.setCategory(NoteCategory.active);
+    await controller.reloadNotes();
     expect(controller.noteData.map((note) => note.noteId), [activeId]);
 
     await controller.setCategory(NoteCategory.trashed);
     expect(controller.noteData.map((note) => note.noteId), [trashedId]);
   });
+
+  test('switching categories clears the previous list immediately', () async {
+    final noteId = application.generateNoteId();
+    await application.command.createNote(noteId);
+    await controller.reloadNotes();
+
+    final switching = controller.setCategory(NoteCategory.trashed);
+    expect(controller.noteData, isEmpty);
+    await switching;
+    expect(controller.noteData, isEmpty);
+  });
+
+  for (final order in NoteSortOrder.values) {
+    test(
+      'a new controller defaults to last edited after selecting $order',
+      () async {
+        await controller.reloadNotes();
+        await controller.setOrder(order);
+        final reopened = NoteListController(application);
+        addTearDown(reopened.dispose);
+        await reopened.reloadNotes();
+        expect(reopened.order, NoteSortOrder.updatedAtDescending);
+        expect(reopened.category, NoteCategory.active);
+      },
+    );
+  }
 }

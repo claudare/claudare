@@ -243,7 +243,10 @@ class _NoteScreenState extends State<NoteScreen> {
 
       if (!mounted || !identical(controller, _controller)) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Note deleted'), duration: Duration(seconds: 1)),
+        SnackBar(
+          content: Text('Note moved to trash'),
+          duration: Duration(seconds: 1),
+        ),
       );
       setState(() => _allowPop = true);
       Navigator.of(context).pop();
@@ -254,7 +257,7 @@ class _NoteScreenState extends State<NoteScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error deleting note: $e'),
+          content: Text('Error moving note to trash: $e'),
           duration: Duration(seconds: 10),
         ),
       );
@@ -379,7 +382,7 @@ class _NoteScreenState extends State<NoteScreen> {
           child: Scaffold(
             appBar: AppBar(
               title: Text(
-                _controller.isTrashed ? 'Viewing deleted note' : 'Editing note',
+                _controller.isTrashed ? 'Viewing trashed note' : 'Editing note',
               ),
               actions: [
                 IconButton(
@@ -394,12 +397,14 @@ class _NoteScreenState extends State<NoteScreen> {
                 ),
                 _controller.isTrashed
                     ? IconButton(
+                        tooltip: 'Restore',
                         icon: Icon(Icons.restore),
                         onPressed: _controller.isTrashed
                             ? () => _restoreNote()
                             : null,
                       )
                     : IconButton(
+                        tooltip: 'Move to trash',
                         icon: Icon(Icons.delete),
                         onPressed: _controller.exists && !_controller.isLoading
                             ? () => _trashNote()
@@ -475,7 +480,7 @@ class _NoteScreenState extends State<NoteScreen> {
                 ),
               if (_controller.trashedAt != null)
                 Text(
-                  'Deleted at ${formatDateTime(_controller.trashedAt!)}',
+                  'Trashed at ${formatDateTime(_controller.trashedAt!)}',
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
             ],

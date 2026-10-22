@@ -23,7 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final application = NotesAppProvider.of(context);
-    if (identical(_application, application)) return;
+    if (identical(_application, application)) {
+      return;
+    }
 
     if (_application != null) {
       _controller.removeListener(_onControllerChanged);
@@ -63,23 +65,95 @@ class _HomeScreenState extends State<HomeScreen> {
     await _openNote(null);
   }
 
+  String _sortLabel(NoteSortOrder order) => switch (order) {
+    NoteSortOrder.updatedAtDescending => 'Last edited, newest first',
+    NoteSortOrder.updatedAtAscending => 'Last edited, oldest first',
+    NoteSortOrder.createdAtDescending => 'Created, newest first',
+    NoteSortOrder.createdAtAscending => 'Created, oldest first',
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Notes'),
+        title: Text(
+          _controller.category == NoteCategory.active ? 'Notes' : 'Trash',
+        ),
         actions: [
-          IconButton(icon: Icon(Icons.add), onPressed: () => _newNote()),
-          IconButton(
-            icon: Icon(Icons.settings),
-            onPressed: () => _openSettings(),
+          PopupMenuButton<NoteSortOrder>(
+            tooltip: 'Sort notes',
+            icon: const Icon(Icons.sort),
+            enabled: !_controller.isLoading,
+            onSelected: _controller.setOrder,
+            itemBuilder: (context) => [
+              for (final order in [
+                NoteSortOrder.updatedAtDescending,
+                NoteSortOrder.updatedAtAscending,
+                NoteSortOrder.createdAtDescending,
+                NoteSortOrder.createdAtAscending,
+              ])
+                CheckedPopupMenuItem(
+                  value: order,
+                  checked: order == _controller.order,
+                  child: Text(_sortLabel(order)),
+                ),
+            ],
           ),
+          if (_controller.category == NoteCategory.active)
+            IconButton(
+              tooltip: 'New note',
+              icon: Icon(Icons.add),
+              onPressed: () => _newNote(),
+            ),
         ],
       ),
-      body: _controller.loadError == null
-          ? NoteList(noteData: _controller.noteData, openNote: _openNote)
-          : Center(
-              child: Text('Error loading notes: ${_controller.loadError}'),
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              for (final (category, label, icon) in [
+                (NoteCategory.active, 'Notes', Icons.notes),
+                (NoteCategory.trashed, 'Trash', Icons.delete_outline),
+              ])
+                ListTile(
+                  leading: Icon(icon),
+                  title: Text(label),
+                  selected: _controller.category == category,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    unawaited(_controller.setCategory(category));
+                  },
+                ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.settings),
+                title: const Text('Settings'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  unawaited(_openSettings());
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: _controller.loadError != null
+          ? Center(child: Text('Error loading notes: ${_controller.loadError}'))
+          : _controller.isLoading && _controller.noteData.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : _controller.noteData.isEmpty
+          ? Center(
+              child: Text(
+                _controller.category == NoteCategory.trashed
+                    ? 'Trash is empty'
+                    : 'No notes yet',
+              ),
+            )
+          : NoteList(
+              noteData: _controller.noteData,
+              order: _controller.order,
+              openNote: _openNote,
             ),
     );
   }

@@ -32,6 +32,8 @@ void main() {
         tester.element(find.byType(HomeScreen)),
       );
       await application.command.createNote('retained-note');
+      await tester.tap(find.byTooltip('Open navigation menu'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.settings));
       await tester.pumpAndSettle();
       await tester.tap(find.text('System'));
@@ -74,6 +76,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       final previous = bootstrap.syncCoordinator;
+      await tester.tap(find.byTooltip('Open navigation menu'));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.settings));
       await tester.pumpAndSettle();
       await tester.tap(find.text('System'));

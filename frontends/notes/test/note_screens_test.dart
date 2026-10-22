@@ -9,7 +9,7 @@ import 'package:notes/application/note_bootstrap_provider.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:notes/application/note_system_provider.dart';
-import 'package:notes/screens/home/home_screen.dart';
+
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
@@ -18,6 +18,7 @@ import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'setup/setup_test_helpers.dart';
+import 'support/home_test_app.dart';
 import 'support/remote_note_update.dart';
 
 void main() {
@@ -32,10 +33,7 @@ void main() {
     await application.command.updateNoteTitle(noteId, 'Before');
 
     await tester.pumpWidget(
-      NotesAppProvider(
-        application: application,
-        child: const MaterialApp(home: HomeScreen()),
-      ),
+      NotesAppProvider(application: application, child: homeTestApp()),
     );
     await tester.pumpAndSettle();
     expect(find.text('Before'), findsOneWidget);
@@ -52,10 +50,7 @@ void main() {
   ) async {
     final application = NotesApp(cqrsRuntime: CqrsTestRuntime());
     await tester.pumpWidget(
-      NotesAppProvider(
-        application: application,
-        child: const MaterialApp(home: HomeScreen()),
-      ),
+      NotesAppProvider(application: application, child: homeTestApp()),
     );
     await tester.pumpAndSettle();
 
@@ -104,19 +99,13 @@ void main() {
     await second.command.updateNoteTitle(secondId, 'Second application');
 
     await tester.pumpWidget(
-      NotesAppProvider(
-        application: first,
-        child: const MaterialApp(home: HomeScreen()),
-      ),
+      NotesAppProvider(application: first, child: homeTestApp()),
     );
     await tester.pumpAndSettle();
     expect(find.text('First application'), findsOneWidget);
 
     await tester.pumpWidget(
-      NotesAppProvider(
-        application: second,
-        child: const MaterialApp(home: HomeScreen()),
-      ),
+      NotesAppProvider(application: second, child: homeTestApp()),
     );
     await tester.pumpAndSettle();
     expect(find.text('Second application'), findsOneWidget);
