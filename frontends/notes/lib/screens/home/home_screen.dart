@@ -91,8 +91,17 @@ class _HomeScreenState extends State<HomeScreen> {
               width: wide ? 280 : 0,
               child: wide
                   ? Material(
-                      color: Theme.of(context).colorScheme.surface,
-                      child: _buildMenu(closeDrawer: false),
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      child: Row(
+                        children: [
+                          Expanded(child: _buildMenu(closeDrawer: false)),
+                          VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ],
+                      ),
                     )
                   : null,
             ),
