@@ -5,6 +5,7 @@ import 'package:claudare_crypto/crypto.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:identity/identity.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:sync/sync.dart';
 import 'package:test/test.dart';

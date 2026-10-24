@@ -5,6 +5,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/screens/settings/replication_screen.dart';
 import 'package:sync/sync.dart';

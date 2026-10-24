@@ -7,6 +7,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/app_version.dart';
 import 'package:notes/application/note_bootstrap.dart';
@@ -19,8 +20,6 @@ import 'package:notes/application/note_system_provider.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 import 'package:notes/screens/settings/system_settings_screen.dart';
 import 'package:time_provider/time_provider.dart';
-
-import 'package:sync/sync.dart';
 
 import 'setup/setup_test_helpers.dart';
 

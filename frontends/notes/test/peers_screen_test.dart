@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:claudare_crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:notes/screens/settings/peers_screen.dart';
-import 'package:sync/sync.dart';
 
 void main() {
   testWidgets('empty peer list has empty key input and static zero', (

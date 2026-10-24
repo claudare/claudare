@@ -1,5 +1,6 @@
 import 'package:claudare_crypto/crypto.dart';
 
+/// The local installation's actor identity.
 class LocalActorIdentity {
   /// [PublicKey] is our public key. For the current prototype, there is no
   /// private keys. There is no verification or encryption.
@@ -8,6 +9,7 @@ class LocalActorIdentity {
   const LocalActorIdentity({required this.publicKey});
 }
 
+/// A saved peer actor identity.
 class PeerActorIdentity {
   /// [PublicKey] is the peer device identity.
   /// For now there is no verification or encryption. However, it will be an

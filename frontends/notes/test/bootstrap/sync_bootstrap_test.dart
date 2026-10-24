@@ -5,6 +5,7 @@ import 'package:claudare_crypto/crypto.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_bootstrap.dart';

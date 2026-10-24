@@ -1,6 +1,7 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
+import 'package:identity/identity.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:kv/kv.dart';
 import 'package:notes_app/notes_app.dart';

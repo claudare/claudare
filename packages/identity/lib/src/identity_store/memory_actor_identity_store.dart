@@ -1,5 +1,5 @@
 import 'package:claudare_crypto/crypto.dart';
-import 'package:sync/src/actor/actor_identity_store.dart';
+import 'package:identity/src/identity_store/actor_identity_store.dart';
 
 /// Stores local and peer identities in memory for this instance.
 class MemoryActorIdentityStore implements ActorIdentityStore {

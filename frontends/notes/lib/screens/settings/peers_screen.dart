@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:claudare_crypto/crypto.dart';
 import 'package:flutter/material.dart';
-import 'package:sync/sync.dart';
+import 'package:identity/identity.dart';
 
 /// Adds and removes saved peer identities without editing existing peers.
 class PeersScreen extends StatefulWidget {

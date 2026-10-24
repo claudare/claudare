@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:claudare_crypto/crypto.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:identity/identity.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:path/path.dart' as path;
-import 'package:sync/sync.dart';
 import 'package:support_directory/support_directory.dart';
 
 class FakeSupportDirectory implements SupportDirectory {

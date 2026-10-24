@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show appFlavor;
+import 'package:identity/identity.dart';
 import 'package:kv/kv.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes_app/notes_app.dart';
@@ -17,7 +18,6 @@ import 'package:notes/screens/setup/actor_setup.dart';
 import 'package:notes/screens/setup/sync_setup.dart';
 import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
-import 'package:sync/sync.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

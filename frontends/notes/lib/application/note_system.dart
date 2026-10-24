@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:identity/identity.dart';
 import 'package:kv/kv.dart';
-import 'package:sync/sync.dart';
 
 /// Notes, settings, and actor identities stored in one database.
 class NoteSystem {

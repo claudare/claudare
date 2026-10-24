@@ -3,6 +3,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_bootstrap_provider.dart';
@@ -14,7 +15,6 @@ import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
 
 import 'package:kv/kv.dart';
-import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
 
 import 'setup/setup_test_helpers.dart';

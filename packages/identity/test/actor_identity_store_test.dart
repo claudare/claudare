@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:claudare_crypto/crypto.dart';
+import 'package:identity/identity.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 
 void main() {
   for (final backend in <String, Future<ActorIdentityStore> Function()>{
     'memory': () async => MemoryActorIdentityStore(),
     'SQLite': () async {
-      final store = await SyncTestHelper.createMemoryActorIdentityStore();
+      final store = await IdentityTestHelper.createMemoryActorIdentityStore();
       addTearDown(store.close);
       return store;
     },
@@ -218,7 +218,7 @@ void main() {
   }
 
   test('repeated migration preserves identities', () async {
-    final store = await SyncTestHelper.createMemoryActorIdentityStore();
+    final store = await IdentityTestHelper.createMemoryActorIdentityStore();
     addTearDown(store.close);
     final localKey = PublicKey.staticValue(1);
     final peerKey = PublicKey.staticValue(2);

@@ -1,8 +1,8 @@
 import 'dart:typed_data';
 
 import 'package:claudare_crypto/crypto.dart';
+import 'package:identity/src/identity_store/actor_identity_store.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
-import 'package:sync/src/actor/actor_identity_store.dart';
 
 final _actorIdentityMigrations =
     SqliteMigrations(migrationTable: 'migrations_sync_actor_identity')..add(

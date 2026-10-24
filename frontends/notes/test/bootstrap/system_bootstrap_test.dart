@@ -4,10 +4,10 @@ import 'package:claudare_crypto/crypto.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:identity/identity.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
-import 'package:sync/sync.dart';
 import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
 

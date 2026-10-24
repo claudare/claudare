@@ -3,10 +3,10 @@ import 'dart:async';
 import 'package:claudare_crypto/crypto.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:identity/identity.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:time_provider/time_provider.dart';
 
-import 'actor/actor_identity_store.dart';
 import 'replication/blob_replication/blob_replication_message_codec.dart';
 import 'replication/blob_replication/blob_replicator.dart';
 import 'replication/command_replication/command_replication_message_codec.dart';

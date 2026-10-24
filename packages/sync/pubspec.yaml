@@ -12,12 +12,13 @@ dependencies:
   claudare_crypto: ^1.0.0
   cqrs: ^1.0.0
   id_generator: ^1.0.0
-  isolate_sqlite: ^0.3.1
+  identity: ^1.0.0
   stream_channel: ^2.1.4
   time_provider: ^1.0.0
   web_socket_channel: ^3.0.3
 
 dev_dependencies:
   common: ^1.0.0
+  isolate_sqlite: ^0.3.1
   lints: ^6.0.0
   test: ^1.25.6
