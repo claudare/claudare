@@ -1,7 +1,7 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
-import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -84,17 +84,14 @@ final _backends = <_StorageBackend>[
   _StorageBackend('memory', () async {
     return _StorageSession(MemoryBlobStorage(), () async {});
   }),
-  _StorageBackend('sqlite', () async {
-    final database = IsolateSqlite();
-    await database.openInMemory();
-    try {
-      final storage = SqliteBlobStorage(database);
-      await storage.migrate();
-      return _StorageSession(storage, database.close);
-    } catch (_) {
-      await database.close();
-      rethrow;
-    }
+  _StorageBackend('file', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'file_blob_storage_',
+    );
+    return _StorageSession(
+      FileBlobStorage(directory),
+      () => directory.delete(recursive: true),
+    );
   }),
 ];
 
