@@ -362,7 +362,7 @@ void main() {
       final h = await _Harness.create();
       final peer = h.discover();
       await flushMessages();
-      peer.multiplexer.commands.sink.add('private data');
+      peer.multiplexer.channel('commands').sink.add('private data');
       await flushMessages();
       expect(peer.closed, isFalse);
       expect(h.transports.single.closes, 0);
@@ -383,10 +383,10 @@ void main() {
     final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
-    final commands = peer.multiplexer.commands;
-    await peer.multiplexer.blobs.sink.close();
+    final commands = peer.multiplexer.channel('commands');
+    await peer.multiplexer.channel('blobs').sink.close();
     await flushMessages();
-    expect(peer.multiplexer.commands, same(commands));
+    expect(peer.multiplexer.channel('commands'), same(commands));
     expect(h.clock.activeTimers, 1);
     peer.send(CommandReplicationMessageCommand(_command()));
     await flushMessages();
@@ -399,7 +399,7 @@ void main() {
       final h = await _Harness.create();
       final peer = h.discover();
       await flushMessages();
-      final blobs = peer.multiplexer.blobs;
+      final blobs = peer.multiplexer.channel('blobs');
       var blobsClosed = false;
       unawaited(blobs.sink.done.then((_) => blobsClosed = true));
       h.store.save = (_) async => throw Exception('private data');
@@ -416,7 +416,7 @@ void main() {
       peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
       expect(peer.messages.last, isA<CommandReplicationMessageCommandAck>());
-      expect(peer.multiplexer.blobs, same(blobs));
+      expect(peer.multiplexer.channel('blobs'), same(blobs));
       expect(blobsClosed, isFalse);
       expect(h.attempts, 1);
     },
@@ -449,7 +449,7 @@ void main() {
     final h = await _Harness.create();
     final peer = h.discover();
     await flushMessages();
-    peer.multiplexer.commands.sink.add('malformed command');
+    peer.multiplexer.channel('commands').sink.add('malformed command');
     await flushMessages();
     expect(h.clock.activeTimers, 1);
     await peer.multiplexer.close();
@@ -469,7 +469,7 @@ void main() {
       h.store.save = (_) => saving.future;
       peer.send(CommandReplicationMessageCommand(_command()));
       await flushMessages();
-      await peer.multiplexer.commands.sink.close();
+      await peer.multiplexer.channel('commands').sink.close();
       await flushMessages();
       await h.clock.elapse(SyncDefaults.reconnectInterval);
       expect(
@@ -686,7 +686,7 @@ void main() {
         }
       };
       await flushMessages();
-      final commands = peer.multiplexer.commands;
+      final commands = peer.multiplexer.channel('commands');
       if (stage == 'read') {
         peer.sendBlob(const BlobReplicationMessageRequest(blobId: 'serve'));
         await flushMessages();
@@ -696,7 +696,7 @@ void main() {
         'Sync blob replication failed',
       );
       expect(h.coordinator.snapshot.activePeers, hasLength(1));
-      expect(peer.multiplexer.commands, same(commands));
+      expect(peer.multiplexer.channel('commands'), same(commands));
       expect(peer.closed, isFalse);
       peer.send(CommandReplicationMessageCommand(_command(actor: 'incoming')));
       await flushMessages();
@@ -774,11 +774,11 @@ void main() {
         );
         final peer = h.discover();
         await flushMessages();
-        peer.multiplexer.commands.sink.add('private data');
+        peer.multiplexer.channel('commands').sink.add('private data');
         await flushMessages();
         expect(h.coordinator.snapshot.activePeers, hasLength(1));
         if (!simultaneous) await h.clock.elapse(const Duration(seconds: 1));
-        peer.multiplexer.blobs.sink.add('private data');
+        peer.multiplexer.channel('blobs').sink.add('private data');
         await flushMessages();
         expect(h.coordinator.snapshot.activePeers, isEmpty);
         expect(h.clock.activeTimers, 2);
@@ -800,17 +800,14 @@ void main() {
     );
   }
 
-  for (final protocol in PeerProtocol.values) {
+  for (final protocol in ['commands', 'blobs']) {
     test('$protocol ignores superseded retry callbacks', () async {
       final h = await _Harness.create(
         reconnectInterval: const Duration(seconds: 2),
       );
       final peer = h.discover();
       await flushMessages();
-      StreamChannel<String> channel() => switch (protocol) {
-        PeerProtocol.commands => peer.multiplexer.commands,
-        PeerProtocol.blobs => peer.multiplexer.blobs,
-      };
+      StreamChannel<String> channel() => peer.multiplexer.channel(protocol);
       await channel().sink.close();
       await flushMessages();
       final stale = h.callbacks.last;
@@ -845,8 +842,8 @@ void main() {
       );
       final peer = h.discover();
       await flushMessages();
-      peer.multiplexer.commands.sink.add('private data');
-      peer.multiplexer.blobs.sink.add('private data');
+      peer.multiplexer.channel('commands').sink.add('private data');
+      peer.multiplexer.channel('blobs').sink.add('private data');
       await flushMessages();
       expect(h.clock.activeTimers, 2);
       final callbacks = h.callbacks.skip(1).toList();
@@ -899,7 +896,7 @@ void main() {
       _Peer? replacement;
       switch (cause) {
         case 'protocol reset':
-          await peer.multiplexer.blobs.sink.close();
+          await peer.multiplexer.channel('blobs').sink.close();
           await flushMessages();
           await h.clock.elapse(SyncDefaults.reconnectInterval);
         case 'peer replacement':
@@ -943,7 +940,7 @@ void main() {
         await flushMessages();
         peer.sendBlob(const BlobReplicationMessageRequest(blobId: 'old'));
         await flushMessages();
-        await peer.multiplexer.blobs.sink.close();
+        await peer.multiplexer.channel('blobs').sink.close();
         await flushMessages();
         await h.clock.elapse(SyncDefaults.reconnectInterval);
         final snapshot = h.coordinator.snapshot;
@@ -1314,15 +1311,15 @@ class _Peer {
   _Peer() {
     multiplexer = PeerMultiplexer(channel.foreign);
     unawaited(channel.foreign.sink.done.then((_) => closed = true));
-    multiplexer.commandSessions.listen((session) {
-      if (!identical(multiplexer.commands, session)) return;
+    multiplexer.sessions('commands').listen((session) {
+      if (!identical(multiplexer.channel('commands'), session)) return;
       session.stream.listen(
         (value) =>
             messages.add(const CommandReplicationMessageCodec().decode(value)),
       );
     });
-    multiplexer.blobSessions.listen((session) {
-      if (!identical(multiplexer.blobs, session)) return;
+    multiplexer.sessions('blobs').listen((session) {
+      if (!identical(multiplexer.channel('blobs'), session)) return;
       session.stream.listen((value) {
         final message = const BlobReplicationMessageCodec().decode(value);
         blobMessages.add(message);
@@ -1332,13 +1329,15 @@ class _Peer {
     addTearDown(multiplexer.close);
   }
 
-  void send(CommandReplicationMessage message) => multiplexer.commands.sink.add(
-    const CommandReplicationMessageCodec().encode(message),
-  );
+  void send(CommandReplicationMessage message) => multiplexer
+      .channel('commands')
+      .sink
+      .add(const CommandReplicationMessageCodec().encode(message));
 
-  void sendBlob(BlobReplicationMessage message) => multiplexer.blobs.sink.add(
-    const BlobReplicationMessageCodec().encode(message),
-  );
+  void sendBlob(BlobReplicationMessage message) => multiplexer
+      .channel('blobs')
+      .sink
+      .add(const BlobReplicationMessageCodec().encode(message));
 }
 
 class _Store implements EventStoreReplication {

@@ -565,27 +565,32 @@ void main() {
       final right = PeerMultiplexer(wire.foreign);
       final store = MemoryEventStore();
       final commands = CommandReplicator(
-        channel: left.commands.transform(
-          StreamChannelTransformer.fromCodec(
-            const CommandReplicationMessageCodec(),
-          ),
-        ),
+        channel: left
+            .channel('commands')
+            .transform(
+              StreamChannelTransformer.fromCodec(
+                const CommandReplicationMessageCodec(),
+              ),
+            ),
         eventStore: store,
         logger: const NoopLogger(),
       );
       final blobs = BlobReplicator(
-        channel: left.blobs.transform(
-          StreamChannelTransformer.fromCodec(
-            const BlobReplicationMessageCodec(),
-          ),
-        ),
+        channel: left
+            .channel('blobs')
+            .transform(
+              StreamChannelTransformer.fromCodec(
+                const BlobReplicationMessageCodec(),
+              ),
+            ),
         eventStore: store,
         blobStore: MemoryBlobStore(),
         logger: const NoopLogger(),
       );
       final commandMessages = <CommandReplicationMessage>[];
-      final commandSession = right.commands;
-      right.commands
+      final commandSession = right.channel('commands');
+      right
+          .channel('commands')
           .transform(
             StreamChannelTransformer.fromCodec(
               const CommandReplicationMessageCodec(),
@@ -606,16 +611,19 @@ void main() {
         await runningCommands;
       });
       await flushMessages();
-      right.blobs.sink.add('invalid JSON');
+      right.channel('blobs').sink.add('invalid JSON');
       await failedBlobs;
-      expect(right.commands, same(commandSession));
+      expect(right.channel('commands'), same(commandSession));
       expect(commandsStopped, isFalse);
       final command = _command(['pending']);
-      right.commands.sink.add(
-        const CommandReplicationMessageCodec().encode(
-          CommandReplicationMessageCommand(command),
-        ),
-      );
+      right
+          .channel('commands')
+          .sink
+          .add(
+            const CommandReplicationMessageCodec().encode(
+              CommandReplicationMessageCommand(command),
+            ),
+          );
       await flushMessages();
       expect(commandMessages.last, isA<CommandReplicationMessageCommandAck>());
       expect(await store.getBlobStatus('pending'), BlobStatus.pending);

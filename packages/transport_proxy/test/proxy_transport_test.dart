@@ -67,10 +67,13 @@ void main() {
     final blobs = <String>[];
     final commandsDone = Completer<void>();
     final blobsDone = Completer<void>();
-    right.commands.stream.listen(commands.add, onDone: commandsDone.complete);
-    right.blobs.stream.listen(blobs.add, onDone: blobsDone.complete);
-    left.commands.sink.add('command');
-    left.blobs.sink.add('blob');
+    right
+        .channel('commands')
+        .stream
+        .listen(commands.add, onDone: commandsDone.complete);
+    right.channel('blobs').stream.listen(blobs.add, onDone: blobsDone.complete);
+    left.channel('commands').sink.add('command');
+    left.channel('blobs').sink.add('blob');
     await flushMessages();
     expect(commands, ['command']);
     expect(blobs, ['blob']);

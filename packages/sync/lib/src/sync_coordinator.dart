@@ -15,6 +15,9 @@ import 'replication/command_replication/command_replicator.dart';
 import 'sync_defaults.dart';
 import 'sync_snapshot.dart';
 
+const _commandsProtocol = 'commands';
+const _blobsProtocol = 'blobs';
+
 typedef TransportFactory = Transport Function();
 
 /// Owns background transport and replication lifetimes.
@@ -244,12 +247,12 @@ class SyncCoordinator {
           session.peer.channel.sink,
         ),
       );
-      session.commandSessions = multiplexer.commandSessions.listen(
-        (channel) => _commandSession(generation, session, channel),
-      );
-      session.blobSessions = multiplexer.blobSessions.listen(
-        (channel) => _blobSession(generation, session, channel),
-      );
+      session.commandSessions = multiplexer
+          .sessions(_commandsProtocol)
+          .listen((channel) => _commandSession(generation, session, channel));
+      session.blobSessions = multiplexer
+          .sessions(_blobsProtocol)
+          .listen((channel) => _blobSession(generation, session, channel));
     } catch (error) {
       logger.error('Sync peer admission failed');
       if (_admitted(generation, session)) {
@@ -265,7 +268,7 @@ class SyncCoordinator {
     StreamChannel<String> channel,
   ) {
     if (!_admitted(generation, session) ||
-        !identical(session.multiplexer!.commands, channel)) {
+        !identical(session.multiplexer!.channel(_commandsProtocol), channel)) {
       return;
     }
     final previous = session.commandReplicator;
@@ -274,7 +277,10 @@ class SyncCoordinator {
     session.commandRestartTimer?.cancel();
     void start() {
       if (!_admitted(generation, session) ||
-          !identical(session.multiplexer!.commands, channel)) {
+          !identical(
+            session.multiplexer!.channel(_commandsProtocol),
+            channel,
+          )) {
         return;
       }
       session.commandRestartTimer = null;
@@ -295,7 +301,7 @@ class SyncCoordinator {
     StreamChannel<String> channel,
   ) {
     if (!_admitted(generation, session) ||
-        !identical(session.multiplexer!.commands, channel)) {
+        !identical(session.multiplexer!.channel(_commandsProtocol), channel)) {
       return;
     }
     final replicator = session.commandReplicator = CommandReplicator(
@@ -335,7 +341,7 @@ class SyncCoordinator {
     StreamChannel<String> channel,
   ) {
     if (!_admitted(generation, session) ||
-        !identical(session.multiplexer!.blobs, channel)) {
+        !identical(session.multiplexer!.channel(_blobsProtocol), channel)) {
       return;
     }
     final previous = session.blobReplicator;
@@ -344,7 +350,7 @@ class SyncCoordinator {
     session.blobRestartTimer?.cancel();
     void start() {
       if (!_admitted(generation, session) ||
-          !identical(session.multiplexer!.blobs, channel)) {
+          !identical(session.multiplexer!.channel(_blobsProtocol), channel)) {
         return;
       }
       session.blobRestartTimer = null;
@@ -365,7 +371,7 @@ class SyncCoordinator {
     StreamChannel<String> channel,
   ) {
     if (!_admitted(generation, session) ||
-        !identical(session.multiplexer!.blobs, channel)) {
+        !identical(session.multiplexer!.channel(_blobsProtocol), channel)) {
       return;
     }
     final replicator = session.blobReplicator = BlobReplicator(

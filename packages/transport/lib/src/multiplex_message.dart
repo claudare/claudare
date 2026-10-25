@@ -1,22 +1,28 @@
-/// The protocol routed through a peer connection.
-enum PeerProtocol { commands, blobs }
-
 /// A payload or reset for one protocol session on a peer connection.
 sealed class MultiplexMessage {
-  final PeerProtocol protocol;
+  /// Wire protocol name. Blank names are rejected with [ArgumentError].
+  final String protocol;
   final int generation;
 
-  const MultiplexMessage({required this.protocol, required this.generation});
+  MultiplexMessage({required this.protocol, required this.generation}) {
+    if (protocol.trim().isEmpty) {
+      throw ArgumentError.value(
+        protocol,
+        'protocol',
+        'Protocol name must not be blank',
+      );
+    }
+  }
 
   Map<String, dynamic> toJson() => switch (this) {
     MultiplexMessageData(:final data) => {
-      'protocol': protocol.name,
+      'protocol': protocol,
       'type': 'data',
       'generation': generation,
       'data': data,
     },
     MultiplexMessageReset() => {
-      'protocol': protocol.name,
+      'protocol': protocol,
       'type': 'reset',
       'generation': generation,
     },
@@ -27,11 +33,12 @@ sealed class MultiplexMessage {
     if (value is! Map<String, dynamic>) {
       throw const FormatException('Multiplex message must be an object');
     }
-    final protocol = switch (value['protocol']) {
-      'commands' => PeerProtocol.commands,
-      'blobs' => PeerProtocol.blobs,
-      _ => throw const FormatException('Unknown multiplex protocol'),
-    };
+    final protocol = value['protocol'];
+    if (protocol is! String || protocol.trim().isEmpty) {
+      throw const FormatException(
+        'Multiplex protocol must be a nonblank string',
+      );
+    }
     final generation = value['generation'];
     if (generation is! int || generation < 0) {
       throw const FormatException('Multiplex generation must be nonnegative');
@@ -55,7 +62,7 @@ sealed class MultiplexMessage {
 class MultiplexMessageData extends MultiplexMessage {
   final String data;
 
-  const MultiplexMessageData({
+  MultiplexMessageData({
     required super.protocol,
     required super.generation,
     required this.data,
@@ -64,8 +71,5 @@ class MultiplexMessageData extends MultiplexMessage {
 
 /// Starts a new generation of one protocol session.
 class MultiplexMessageReset extends MultiplexMessage {
-  const MultiplexMessageReset({
-    required super.protocol,
-    required super.generation,
-  });
+  MultiplexMessageReset({required super.protocol, required super.generation});
 }

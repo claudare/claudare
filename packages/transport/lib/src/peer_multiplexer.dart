@@ -5,16 +5,16 @@ import 'package:stream_channel/stream_channel.dart';
 
 import 'multiplex_message.dart';
 
-/// Routes independent command and blob sessions over one peer connection.
+/// Routes independent named protocol sessions over one peer connection.
 ///
 /// Closing a protocol session resets only that protocol on both peers. The
 /// connection's keepalive and timeout remain shared. Transport failure or
-/// [close] ends both protocols. Malformed envelopes are discarded.
+/// [close] ends all protocols. Malformed envelopes and messages for
+/// unregistered protocols are discarded.
 class PeerMultiplexer {
   final StreamChannel<String> _peer;
   final _done = Completer<void>();
-  late final _Protocol _commands;
-  late final _Protocol _blobs;
+  final Map<String, _Protocol> _protocols = {};
   late final StreamSubscription<String> _subscription;
   bool _closed = false;
 
@@ -22,8 +22,6 @@ class PeerMultiplexer {
     unawaited(
       _done.future.then<void>((_) {}, onError: (Object _, StackTrace _) {}),
     );
-    _commands = _Protocol(this, PeerProtocol.commands);
-    _blobs = _Protocol(this, PeerProtocol.blobs);
     _subscription = _peer.stream.listen(
       _receive,
       onError: _fail,
@@ -36,20 +34,30 @@ class PeerMultiplexer {
     );
   }
 
-  /// Current command session. Retired sessions cannot send into replacements.
-  StreamChannel<String> get commands => _commands.current.channel;
+  /// Current session for [name], registering it on first access.
+  /// Retired sessions cannot send into replacements.
+  /// Registered names remain accessible after closure.
+  StreamChannel<String> channel(String name) => _protocol(name).current.channel;
 
-  /// Current blob session. Retired sessions cannot send into replacements.
-  StreamChannel<String> get blobs => _blobs.current.channel;
+  /// Initial session and replacements, buffered until subscribed.
+  /// Registers [name] with the same rules as [channel]. Skip retired entries
+  /// by comparing them with [channel].
+  Stream<StreamChannel<String>> sessions(String name) =>
+      _protocol(name).sessions.stream;
 
-  /// Initial command session and replacements, buffered until subscribed.
-  /// Skip retired entries by comparing them with [commands].
-  Stream<StreamChannel<String>> get commandSessions =>
-      _commands.sessions.stream;
-
-  /// Initial blob session and replacements, buffered until subscribed.
-  /// Skip retired entries by comparing them with [blobs].
-  Stream<StreamChannel<String>> get blobSessions => _blobs.sessions.stream;
+  _Protocol _protocol(String name) {
+    if (name.trim().isEmpty) {
+      throw ArgumentError.value(
+        name,
+        'name',
+        'Protocol name must not be blank',
+      );
+    }
+    return _protocols.putIfAbsent(name, () {
+      if (_closed) throw StateError('Peer connection is closed');
+      return _Protocol(this, name);
+    });
+  }
 
   void _receive(String message) {
     if (_closed) return;
@@ -59,10 +67,8 @@ class PeerMultiplexer {
     } on FormatException {
       return;
     }
-    final protocol = switch (envelope.protocol) {
-      PeerProtocol.commands => _commands,
-      PeerProtocol.blobs => _blobs,
-    };
+    final protocol = _protocols[envelope.protocol];
+    if (protocol == null) return;
     switch (envelope) {
       case MultiplexMessageReset(:final generation):
         if (generation > protocol.current.generation) {
@@ -87,8 +93,9 @@ class PeerMultiplexer {
 
   void _fail(Object error, StackTrace stack) {
     if (_closed) return;
-    _commands.current.incoming.addError(error, stack);
-    _blobs.current.incoming.addError(error, stack);
+    for (final protocol in _protocols.values) {
+      protocol.current.incoming.addError(error, stack);
+    }
     unawaited(close());
   }
 
@@ -97,8 +104,9 @@ class PeerMultiplexer {
   Future<void> close() {
     if (_closed) return _done.future;
     _closed = true;
-    _commands.close();
-    _blobs.close();
+    for (final protocol in _protocols.values) {
+      protocol.close();
+    }
     _done.complete(
       Future.wait<void>([
         Future<void>.sync(_subscription.cancel),
@@ -111,11 +119,11 @@ class PeerMultiplexer {
 
 class _Protocol {
   final PeerMultiplexer owner;
-  final PeerProtocol kind;
+  final String name;
   final sessions = StreamController<StreamChannel<String>>();
   late _ProtocolSession current;
 
-  _Protocol(this.owner, this.kind) {
+  _Protocol(this.owner, this.name) {
     current = _ProtocolSession(this, 0);
     sessions.add(current.channel);
   }
@@ -123,7 +131,7 @@ class _Protocol {
   void restart(_ProtocolSession session) {
     if (owner._closed || !identical(current, session) || session.closed) return;
     final generation = session.generation + 1;
-    owner._send(MultiplexMessageReset(protocol: kind, generation: generation));
+    owner._send(MultiplexMessageReset(protocol: name, generation: generation));
     replace(generation);
   }
 
@@ -163,7 +171,7 @@ class _ProtocolSession implements StreamSink<String> {
 
   void _send(String data) => protocol.owner._send(
     MultiplexMessageData(
-      protocol: protocol.kind,
+      protocol: protocol.name,
       generation: generation,
       data: data,
     ),

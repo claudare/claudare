@@ -349,7 +349,7 @@ void main() {
       secondActor: _actor(2),
     );
     final codec = const CommandReplicationMessageCodec();
-    final commands = PeerMultiplexer(pair.second.channel).commands;
+    final commands = PeerMultiplexer(pair.second.channel).channel('commands');
     final subscribed = Completer<void>();
     final messages = <CommandReplicationMessage>[];
     final subscription = commands.stream.listen((message) {

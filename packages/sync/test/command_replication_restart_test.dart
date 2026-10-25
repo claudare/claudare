@@ -32,8 +32,8 @@ void main() {
       transport.peerTransports.listen((peer) {
         peers.add(peer);
         final multiplexer = PeerMultiplexer(peer.channel);
-        multiplexer.commandSessions.listen((channel) {
-          if (!identical(channel, multiplexer.commands)) return;
+        multiplexer.sessions('commands').listen((channel) {
+          if (!identical(channel, multiplexer.channel('commands'))) return;
           final replicator = CommandReplicator(
             channel: channel.transform(
               StreamChannelTransformer.fromCodec(
