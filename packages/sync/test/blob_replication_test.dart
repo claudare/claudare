@@ -8,6 +8,7 @@ import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport/transport.dart';
 
 import 'transport/proxy_transport_test_helper.dart'
     show TestClock, flushMessages;

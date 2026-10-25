@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 void main() {
   test(
@@ -32,8 +32,8 @@ void main() {
   });
 }
 
-WebSocketProxyTransport _transport(_Client client) {
-  final transport = WebSocketProxyTransport(
+ProxyTransport _transport(_Client client) {
+  final transport = ProxyTransport(
     baseUrl: 'ws://unused',
     thisActor: 'local',
     group: 'notes',

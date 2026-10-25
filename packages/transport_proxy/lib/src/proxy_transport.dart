@@ -6,12 +6,12 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport/transport.dart';
 import 'package:web_socket_channel/io.dart';
 
-import '../proxy/proxy_init.dart';
-import '../proxy/proxy_message.dart';
-import '../sync_defaults.dart';
-import 'transport.dart';
+import 'proxy_init.dart';
+import 'proxy_message.dart';
+import 'proxy_transport_defaults.dart';
 import 'transport_message.dart';
 import 'web_socket_peer_session.dart';
 
@@ -26,7 +26,7 @@ typedef TransportTimerFactory = Timer Function(Duration delay, void Function());
 
 /// Discovers peer sessions through one live WebSocket proxy connection.
 /// Subscribe to [peerTransports] before [start]. Socket closure is terminal.
-class WebSocketProxyTransport implements Transport {
+class ProxyTransport implements Transport {
   final String _baseUrl;
   final String _thisActor;
   final String _group;
@@ -49,7 +49,7 @@ class WebSocketProxyTransport implements Transport {
   bool _closed = false;
   Future<void>? _closing;
 
-  WebSocketProxyTransport({
+  ProxyTransport({
     required this._baseUrl,
     required String thisActor,
     required String group,
@@ -59,9 +59,9 @@ class WebSocketProxyTransport implements Transport {
     this._openConnection,
     this._createHttpClient = HttpClient.new,
     this._timerFactory = Timer.new,
-    Duration discoveryInterval = SyncDefaults.discoveryInterval,
-    Duration keepaliveInterval = SyncDefaults.keepaliveInterval,
-    Duration sessionTimeout = SyncDefaults.sessionTimeout,
+    Duration discoveryInterval = ProxyTransportDefaults.discoveryInterval,
+    Duration keepaliveInterval = ProxyTransportDefaults.keepaliveInterval,
+    Duration sessionTimeout = ProxyTransportDefaults.sessionTimeout,
   }) : _thisActor = thisActor,
        _group = group,
        _discoveryInterval = discoveryInterval,

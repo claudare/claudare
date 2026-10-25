@@ -15,9 +15,10 @@ dependencies:
   isolate_sqlite: ^0.3.1
   stream_channel: ^2.1.4
   time_provider: ^1.0.0
-  web_socket_channel: ^3.0.3
+  transport: ^1.0.0
 
 dev_dependencies:
   common: ^1.0.0
   lints: ^6.0.0
   test: ^1.25.6
+  transport_proxy: ^1.0.0

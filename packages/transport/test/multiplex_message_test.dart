@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport/transport.dart';
 
 void main() {
   for (final protocol in PeerProtocol.values) {

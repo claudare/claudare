@@ -13,7 +13,7 @@ class PeerTransport {
 
 /// Discovers ordered, single-peer channels independently of replication.
 abstract interface class Transport {
-  /// Single-subscription discovery stream. Listen before calling [start].
+  /// All discovered peers appear here. Listen before calling [start].
   Stream<PeerTransport> get peerTransports;
 
   /// Starts discovery once. A closed transport cannot restart.

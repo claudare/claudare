@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:stream_channel/stream_channel.dart';
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport/transport.dart';
 
 Future<void> flush() => Future<void>.delayed(Duration.zero);
 

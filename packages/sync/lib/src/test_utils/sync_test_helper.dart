@@ -1,8 +1,7 @@
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:sync/src/actor/sqlite_actor_identity_store.dart';
 import 'package:stream_channel/stream_channel.dart';
-
-import '../transport/transport.dart';
+import 'package:transport/transport.dart';
 
 /// Creates SQLite stores and in-memory peer connections for tests.
 abstract final class SyncTestHelper {

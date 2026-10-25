@@ -4,8 +4,9 @@ import 'dart:convert';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:stream_channel/stream_channel.dart';
-import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport/transport.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 class TestClock implements TimeProvider {
   DateTime _now = DateTime.utc(2026);
@@ -147,7 +148,7 @@ class TestTransport {
   final peers = <PeerTransport>[];
   final errors = <Object>[];
   final finished = Completer<void>();
-  late final WebSocketProxyTransport transport;
+  late final ProxyTransport transport;
   void Function(PeerTransport)? onPeer;
 
   TestTransport(
@@ -158,7 +159,7 @@ class TestTransport {
     ProxyConnectionOpener? open,
     Logger logger = const NoopLogger(),
   }) {
-    transport = WebSocketProxyTransport(
+    transport = ProxyTransport(
       baseUrl: 'ws://unused',
       thisActor: actor,
       group: group,

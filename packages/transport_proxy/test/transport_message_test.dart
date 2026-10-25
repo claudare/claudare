@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 void main() {
   for (final (description, json) in <(String, Object?)>[

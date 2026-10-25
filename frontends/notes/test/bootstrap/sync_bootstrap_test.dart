@@ -11,6 +11,7 @@ import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport/transport.dart';
 import 'package:support_directory/support_directory.dart';
 
 import '../sync_test_transport.dart';

@@ -6,7 +6,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'package:shelf_web_socket/shelf_web_socket.dart';
-import 'package:sync/sync.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 import 'pubsub.dart';
 import 'memory_direct_pubsub.dart';

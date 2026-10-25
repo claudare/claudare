@@ -1,18 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/cqrs.dart';
 import 'package:stream_channel/stream_channel.dart';
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport/transport.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 import 'proxy_transport_test_helper.dart';
 
 void main() {
   final beforeTimeout =
-      SyncDefaults.sessionTimeout - const Duration(seconds: 1);
+      ProxyTransportDefaults.sessionTimeout - const Duration(seconds: 1);
   late TestProxy proxy;
   late TestClock clock;
   late TestTransport a;
@@ -47,7 +46,7 @@ void main() {
         await (order == 'a first' ? b : a).start();
         await flushMessages();
       }
-      await clock.elapse(SyncDefaults.sessionTimeout * 2);
+      await clock.elapse(ProxyTransportDefaults.sessionTimeout * 2);
       expect(a.peers.map((peer) => peer.actor), ['b']);
       expect(b.peers.map((peer) => peer.actor), ['a']);
       expect(
@@ -79,13 +78,13 @@ void main() {
         .map((sent) => sent.message)
         .whereType<TransportMessageData>();
     expect(frames.map((frame) => frame.sessionId).toSet(), hasLength(1));
-    await clock.elapse(SyncDefaults.sessionTimeout * 2);
+    await clock.elapse(ProxyTransportDefaults.sessionTimeout * 2);
     expect(a.peers, hasLength(1));
     expect(b.peers, hasLength(1));
     expect(commandsDone.isCompleted, isFalse);
     expect(blobsDone.isCompleted, isFalse);
     proxy.drop = (sent) => sent.message is TransportMessageKeepalive;
-    await clock.elapse(SyncDefaults.sessionTimeout);
+    await clock.elapse(ProxyTransportDefaults.sessionTimeout);
     await Future.wait([commandsDone.future, blobsDone.future]);
     expect(proxy.connections.keys, unorderedEquals(['a', 'b']));
     await left.close();
@@ -96,7 +95,7 @@ void main() {
     final other = TestTransport(proxy, clock, 'c', group: 'other');
     await a.start();
     await other.start();
-    await clock.elapse(SyncDefaults.discoveryInterval * 2);
+    await clock.elapse(ProxyTransportDefaults.discoveryInterval * 2);
     expect(a.peers, isEmpty);
     expect(other.peers, isEmpty);
     await other.close();
@@ -127,7 +126,7 @@ void main() {
       expect(a.peers, isEmpty);
       proxy.drop = null;
       await clock.elapse(
-        const Duration(seconds: 1) + SyncDefaults.discoveryInterval,
+        const Duration(seconds: 1) + ProxyTransportDefaults.discoveryInterval,
       );
       expect(a.peers, hasLength(1));
       final ids = proxy.sent
@@ -224,10 +223,10 @@ void main() {
       final oldA = a.peers.single;
       final oldB = b.peers.single;
       proxy.drop = (sent) => sent.message is TransportMessageKeepalive;
-      await clock.elapse(SyncDefaults.sessionTimeout);
+      await clock.elapse(ProxyTransportDefaults.sessionTimeout);
       await Future.wait([oldA.channel.sink.done, oldB.channel.sink.done]);
       proxy.drop = null;
-      await clock.elapse(SyncDefaults.discoveryInterval);
+      await clock.elapse(ProxyTransportDefaults.discoveryInterval);
       expect(a.peers, hasLength(2));
       expect(b.peers, hasLength(2));
       expect(a.peers.last.channel, isNot(same(oldA.channel)));
@@ -249,7 +248,7 @@ void main() {
         await flushMessages();
         await Future.wait([left.sink.done, right.sink.done]);
         expect(await right.stream.toList(), isEmpty);
-        await clock.elapse(SyncDefaults.discoveryInterval);
+        await clock.elapse(ProxyTransportDefaults.discoveryInterval);
         expect(a.peers, hasLength(2));
         expect(b.peers, hasLength(2));
       },
@@ -267,7 +266,7 @@ void main() {
                 as TransportMessageHandshake)
             .sessionId;
     await a.peers.single.channel.sink.close();
-    await clock.elapse(SyncDefaults.discoveryInterval);
+    await clock.elapse(ProxyTransportDefaults.discoveryInterval);
     final received = <String>[];
     b.peers.last.channel.stream.listen(received.add);
     for (final message in <TransportMessage>[
@@ -438,7 +437,7 @@ void main() {
   });
 
   test('close completes even when discovery has no listener', () async {
-    final transport = WebSocketProxyTransport(
+    final transport = ProxyTransport(
       baseUrl: 'ws://unused',
       thisActor: 'c',
       group: 'test',
@@ -452,75 +451,4 @@ void main() {
     await transport.close();
     expect(await transport.peerTransports.toList(), isEmpty);
   });
-
-  test(
-    'real replicators restart commands while retaining their peer connections',
-    () async {
-      final stores = [MemoryEventStore(), MemoryEventStore()];
-      final replicators = <CommandReplicator>[];
-      final running = <Future<void>>[];
-      void startReplication(TestTransport transport, MemoryEventStore store) {
-        transport.onPeer = (peer) {
-          final multiplexer = PeerMultiplexer(peer.channel);
-          multiplexer.commandSessions.listen((channel) {
-            if (!identical(channel, multiplexer.commands)) return;
-            final replicator = CommandReplicator(
-              channel: channel.transform(
-                StreamChannelTransformer.fromCodec(
-                  const CommandReplicationMessageCodec(),
-                ),
-              ),
-              eventStore: store,
-              logger: const NoopLogger(),
-            );
-            replicators.add(replicator);
-            running.add(replicator.run());
-          });
-        };
-      }
-
-      startReplication(a, stores[0]);
-      startReplication(b, stores[1]);
-      final first = command('a', 1);
-      expect(await stores[0].addStoredCommand(first), isTrue);
-      await connect();
-      await flushMessages();
-      expect(
-        (await stores[1].getStoredCommand(first.commandId))!.toJson(),
-        first.toJson(),
-      );
-      await replicators.first.close();
-      await Future.wait(running.take(2));
-      await flushMessages();
-      expect(replicators, hasLength(4));
-      expect(a.peers, hasLength(1));
-      expect(b.peers, hasLength(1));
-      final second = command('b', 1);
-      expect(await stores[1].addStoredCommand(second), isTrue);
-      await flushMessages();
-      expect(
-        (await stores[0].getStoredCommand(second.commandId))!.toJson(),
-        second.toJson(),
-      );
-      await Future.wait([a.close(), b.close()]);
-      await Future.wait(running);
-    },
-  );
 }
-
-StoredCommand command(String actor, int sequence) => StoredCommand(
-  blobIds: const [],
-  commandId: CommandId(actor, sequence),
-  dependency: CommandDependency(),
-  occuredAt: DateTime.utc(2026),
-  events: [
-    StoredCommandEvent(
-      streamPath: actor,
-      encodedEvent: EncodedEvent(
-        kind: 'test',
-        bytes: Uint8List.fromList([sequence]),
-      ),
-      occuredAt: DateTime.utc(2026),
-    ),
-  ],
-);

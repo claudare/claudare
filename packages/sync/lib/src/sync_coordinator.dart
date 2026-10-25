@@ -5,6 +5,7 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:stream_channel/stream_channel.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport/transport.dart';
 
 import 'actor/actor_identity_store.dart';
 import 'replication/blob_replication/blob_replication_message_codec.dart';
@@ -13,8 +14,6 @@ import 'replication/command_replication/command_replication_message_codec.dart';
 import 'replication/command_replication/command_replicator.dart';
 import 'sync_defaults.dart';
 import 'sync_snapshot.dart';
-import 'transport/transport.dart';
-import 'transport/peer_multiplexer.dart';
 
 typedef TransportFactory = Transport Function();
 
