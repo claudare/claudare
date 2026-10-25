@@ -9,9 +9,9 @@ import 'package:stream_channel/stream_channel.dart';
 import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 import 'package:transport/transport.dart';
+import 'package:transport_test/transport_test.dart';
 
-import 'transport/proxy_transport_test_helper.dart'
-    show TestClock, flushMessages;
+import 'sync_test_utils.dart';
 
 void main() {
   test('failure timestamps update only when a new failure occurs', () async {
@@ -493,7 +493,7 @@ void main() {
     () async {
       final first = await _Harness.create();
       final second = await _Harness.create();
-      final pair = SyncTestHelper.createPeerPair(
+      final pair = createMemoryPeerPair(
         firstActor: PublicKey.staticValue(1).toString(),
         secondActor: PublicKey.staticValue(2).toString(),
       );
@@ -1423,7 +1423,7 @@ StoredCommand _command({
 );
 
 Future<void> _connectPeers(_Harness first, _Harness second) async {
-  final pair = SyncTestHelper.createPeerPair(
+  final pair = createMemoryPeerPair(
     firstActor: PublicKey.staticValue(1).toString(),
     secondActor: PublicKey.staticValue(2).toString(),
   );

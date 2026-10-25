@@ -10,8 +10,7 @@ import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 import 'package:transport/transport.dart';
 
-import 'transport/proxy_transport_test_helper.dart'
-    show TestClock, flushMessages;
+import 'sync_test_utils.dart';
 
 void main() {
   group('in-memory blob replication', () {

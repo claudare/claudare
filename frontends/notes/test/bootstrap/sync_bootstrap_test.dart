@@ -12,6 +12,7 @@ import 'package:notes/application/note_system.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:transport/transport.dart';
+import 'package:transport_test/transport_test.dart';
 import 'package:support_directory/support_directory.dart';
 
 import '../sync_test_transport.dart';
@@ -305,7 +306,7 @@ void main() {
       );
       await firstApp.command.createNote('shared-note');
       final catchup = secondSystem.eventStore.commandChanges.first;
-      final pair = SyncTestHelper.createPeerPair(
+      final pair = createMemoryPeerPair(
         firstActor: _actor(1),
         secondActor: _actor(2),
       );
@@ -343,7 +344,7 @@ void main() {
       PeerActorIdentity(publicKey: PublicKey.staticValue(2)),
     );
     await bootstrap.initialize(system: system, actor: _actor(1));
-    final pair = SyncTestHelper.createPeerPair(
+    final pair = createMemoryPeerPair(
       firstActor: _actor(1),
       secondActor: _actor(2),
     );

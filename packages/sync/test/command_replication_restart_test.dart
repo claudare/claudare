@@ -6,24 +6,31 @@ import 'package:stream_channel/stream_channel.dart';
 import 'package:sync/sync.dart';
 import 'package:test/test.dart';
 import 'package:transport/transport.dart';
+import 'package:transport_test/transport_test.dart';
 
-import 'transport/proxy_transport_test_helper.dart';
+import 'sync_test_utils.dart';
 
 void main() {
-  test('proxy restarts commands while retaining peer connections', () async {
-    final proxy = TestProxy();
-    final clock = TestClock();
-    final a = TestTransport(proxy, clock, 'a');
-    final b = TestTransport(proxy, clock, 'b');
+  test('memory transport retains peers when commands restart', () async {
+    final network = MemoryTransportNetwork();
+    final a = network.createTransport(actor: 'a');
+    final b = network.createTransport(actor: 'b');
     addTearDown(() async {
       await Future.wait([a.close(), b.close()]);
     });
+    final aPeers = <PeerTransport>[];
+    final bPeers = <PeerTransport>[];
     final stores = [MemoryEventStore(), MemoryEventStore()];
     final replicators = <CommandReplicator>[];
     final running = <Future<void>>[];
 
-    void startReplication(TestTransport transport, MemoryEventStore store) {
-      transport.onPeer = (peer) {
+    void startReplication(
+      MemoryTransport transport,
+      MemoryEventStore store,
+      List<PeerTransport> peers,
+    ) {
+      transport.peerTransports.listen((peer) {
+        peers.add(peer);
         final multiplexer = PeerMultiplexer(peer.channel);
         multiplexer.commandSessions.listen((channel) {
           if (!identical(channel, multiplexer.commands)) return;
@@ -39,17 +46,17 @@ void main() {
           replicators.add(replicator);
           running.add(replicator.run());
         });
-      };
+      });
     }
 
-    startReplication(a, stores[0]);
-    startReplication(b, stores[1]);
+    startReplication(a, stores[0], aPeers);
+    startReplication(b, stores[1], bPeers);
     final first = command('a', 1);
     expect(await stores[0].addStoredCommand(first), isTrue);
     await Future.wait([a.start(), b.start()]);
     await flushMessages();
-    expect(a.peers, hasLength(1));
-    expect(b.peers, hasLength(1));
+    expect(aPeers, hasLength(1));
+    expect(bPeers, hasLength(1));
     expect(
       (await stores[1].getStoredCommand(first.commandId))!.toJson(),
       first.toJson(),
@@ -58,8 +65,8 @@ void main() {
     await Future.wait(running.take(2));
     await flushMessages();
     expect(replicators, hasLength(4));
-    expect(a.peers, hasLength(1));
-    expect(b.peers, hasLength(1));
+    expect(aPeers, hasLength(1));
+    expect(bPeers, hasLength(1));
     final second = command('b', 1);
     expect(await stores[1].addStoredCommand(second), isTrue);
     await flushMessages();
@@ -69,7 +76,6 @@ void main() {
     );
     await Future.wait([a.close(), b.close()]);
     await Future.wait(running);
-    expect(clock.activeTimers, 0);
   });
 }
 

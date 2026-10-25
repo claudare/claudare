@@ -9,6 +9,7 @@ import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/screens/settings/replication_screen.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport_test/transport_test.dart';
 
 import 'sync_test_transport.dart';
 
@@ -93,7 +94,7 @@ void main() {
     await h.identities.addPeer(PeerActorIdentity(publicKey: peer));
     h.coordinator.start();
     await tester.pumpWidget(h.screen);
-    final pair = SyncTestHelper.createPeerPair(
+    final pair = createMemoryPeerPair(
       firstActor: PublicKey.staticValue(1).toString(),
       secondActor: peer.toString(),
     );
