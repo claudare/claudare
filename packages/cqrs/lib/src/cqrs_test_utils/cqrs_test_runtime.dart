@@ -18,13 +18,11 @@ final class CqrsTestRuntime extends CqrsRuntime {
     EventStore? eventStore,
     Logger? logger,
     TimeProvider? timeProvider,
-    BlobStore? blobStore,
     IdGenerator? idGenerator,
   }) => CqrsTestRuntime._(
     eventStore ?? MemoryEventStore(),
     logger ?? const NoopLogger(),
     timeProvider ?? FakeTimeProviderStatic.zero(),
-    blobStore ?? MemoryBlobStore(),
     idGenerator ?? IdGeneratorSequential(),
   );
 
@@ -32,7 +30,6 @@ final class CqrsTestRuntime extends CqrsRuntime {
     EventStore eventStore,
     Logger logger,
     TimeProvider timeProvider,
-    BlobStore blobStore,
     IdGenerator idGenerator,
   ) : _eventStore = eventStore,
       super(
@@ -40,7 +37,6 @@ final class CqrsTestRuntime extends CqrsRuntime {
         eventStore: eventStore,
         logger: logger,
         timeProvider: timeProvider,
-        blobStore: blobStore,
         idGenerator: idGenerator,
       );
 
@@ -60,7 +56,6 @@ final class CqrsTestRuntime extends CqrsRuntime {
       final info = await _eventStore.getStreamVersion(append.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
-          blobs: const [],
           actor: events[index].actor,
           dependency: CommandDependency(),
           occuredAt: append.occuredAt,

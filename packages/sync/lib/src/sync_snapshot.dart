@@ -5,7 +5,7 @@ enum SyncConnectionState { idle, connecting, connected, reconnecting, closed }
 class SyncSnapshot {
   final SyncConnectionState connection;
 
-  /// Admitted actors with command or blob replication running, listed once.
+  /// Admitted actors with command replication running, listed once.
   final List<String> activePeers;
   final String? lastFailure;
 

@@ -20,7 +20,6 @@ void main() {
     eventStore = MemoryEventStore(eventFetchPageSize: 1);
     runtime = CqrsRuntime(
       idGenerator: IdGeneratorSequential(),
-      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: const NoopLogger(),
@@ -114,7 +113,6 @@ void main() {
     final logger = RecordingLogger();
     final observed = CqrsRuntime(
       idGenerator: IdGeneratorSequential(),
-      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: logger,
@@ -188,7 +186,6 @@ final class _EnvelopeState implements AggregateState<_TestEvent> {
 Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
-        blobs: const [],
         actor: 'test-actor',
         dependency: CommandDependency(),
         occuredAt: _timestamp,

@@ -30,7 +30,6 @@ class TransferFundsBetweenAccounts implements Command {
         case AccountAtmDeposited():
           return prev + event.amount;
         case AccountAtmWithdrawn(:final amount):
-        case AccountExpenseRecorded(:final amount):
           return prev - amount;
         case AccountInnerTransfer():
           return prev + event.amount;

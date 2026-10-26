@@ -41,7 +41,6 @@ void main() {
     for (var index = 0; index < 2; index++) {
       await store.saveChanges(
         CommandChanges(
-          blobs: const [],
           actor: 'test-actor',
           dependency: CommandDependency(),
           occuredAt: _timestamp,

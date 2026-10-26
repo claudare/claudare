@@ -1,5 +1,4 @@
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/src/cqrs/blob_store/blob_store.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
@@ -10,7 +9,6 @@ import 'package:time_provider/time_provider.dart';
 
 class CommandExecutor {
   final EventStore _eventStore;
-  final BlobStore _blobStore;
   final String _actor;
   final StreamReader _streamReader;
   final TimeProvider _timeProvider;
@@ -20,7 +18,6 @@ class CommandExecutor {
 
   const CommandExecutor({
     required this._eventStore,
-    required this._blobStore,
     required this._actor,
     required this._streamReader,
     required this._timeProvider,
@@ -48,11 +45,6 @@ class CommandExecutor {
     }
 
     if (changes.isEmpty()) return;
-    await Future.wait(
-      context.savedBlobs().map((blob) async {
-        await _blobStore.save(blob.blobId, blob.data);
-      }),
-    );
     await _eventStore.saveChanges(changes);
   }
 }

@@ -31,7 +31,6 @@ void main() {
         occuredAt: DateTime.utc(2026),
       );
       CommandChanges changes(List<EventAppend> events) => CommandChanges(
-        blobs: const [],
         actor: 'test-actor',
         dependency: CommandDependency(),
         occuredAt: DateTime.utc(2026),
@@ -108,7 +107,6 @@ final class _FailingBundle extends StoredCommand {
 
   _FailingBundle(this.failureTrace)
     : super(
-        blobIds: const [],
         commandId: const CommandId('actor-1', 1),
         dependency: CommandDependency(),
         occuredAt: DateTime.utc(2026),

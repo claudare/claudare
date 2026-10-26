@@ -7,9 +7,5 @@ Use memory storage for tests and temporary data, or SQLite for persistence. Open
 and migrate SQLite stores before use; closing a store also closes its supplied
 database.
 
-Commands can write blobs alongside events. Supply `const NoBlobStore()` when
-your application does not use blobs, or `SqliteBlobStore` to keep blob bytes in
-an sqlite database.
-
 For peer transport and replication, see [sync](../sync/README.md). Actor
 identifiers do not provide authentication.

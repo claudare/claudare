@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -717,18 +716,6 @@ class _ControlledStore implements EventStoreReplication {
   Future<StoredCommand?> Function(CommandId)? readCommand;
 
   @override
-  Future<BlobStatus?> getBlobStatus(String blobId) =>
-      store.getBlobStatus(blobId);
-
-  @override
-  Future<PaginatedResult<String>> getPendingBlobIds(int cursor) =>
-      store.getPendingBlobIds(cursor);
-
-  @override
-  Future<void> markBlobAvailable(String blobId) =>
-      store.markBlobAvailable(blobId);
-
-  @override
   Stream<CommandChange> get commandChanges => Stream.multi((controller) {
     listeners++;
     final subscription = store.commandChanges.listen(
@@ -823,7 +810,6 @@ StoredCommand _command(
 }) {
   final time = DateTime.utc(2026);
   return StoredCommand(
-    blobIds: const [],
     commandId: CommandId(actor, sequence),
     dependency: CommandDependency(dependency),
     occuredAt: time,
@@ -844,7 +830,6 @@ Future<void> _append(EventStore store, String actor) async {
   final time = DateTime.utc(2026);
   await store.saveChanges(
     CommandChanges(
-      blobs: const [],
       actor: actor,
       dependency: (await store.getState()).logVersion,
       occuredAt: time,

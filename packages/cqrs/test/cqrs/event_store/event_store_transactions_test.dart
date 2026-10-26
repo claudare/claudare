@@ -169,7 +169,6 @@ CommandChanges _changes(
 }) {
   final timestamp = DateTime.utc(2026);
   return CommandChanges(
-    blobs: const [],
     actor: 'test-actor',
     dependency: dependency ?? CommandDependency(),
     occuredAt: timestamp,

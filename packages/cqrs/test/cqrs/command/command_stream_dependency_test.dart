@@ -1,4 +1,3 @@
-import 'package:cqrs/src/cqrs/blob_store/memory_blob_store.dart';
 import 'package:id_generator/id_generator.dart';
 
 import 'dart:typed_data';
@@ -182,7 +181,6 @@ Future<void> _execute(
 ) async {
   final executor = CommandExecutor(
     idGenerator: IdGeneratorSequential(),
-    blobStore: MemoryBlobStore(),
     actor: 'test-actor',
     eventStore: eventStore,
     streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
@@ -201,7 +199,6 @@ Future<bool> _seedCommand(
 }) {
   return database.addStoredCommand(
     StoredCommand(
-      blobIds: const [],
       commandId: commandId,
       dependency: dependency ?? CommandDependency(),
       occuredAt: _timestamp,

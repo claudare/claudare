@@ -75,7 +75,6 @@ CommandChanges _changes({
 }) {
   final timestamp = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   return CommandChanges(
-    blobs: const [],
     actor: 'test-actor',
     dependency: CommandDependency(),
     occuredAt: timestamp,

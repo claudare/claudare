@@ -4,20 +4,18 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 
-/// A command with its ordered events and blob references for replication.
+/// A command with its ordered events for replication.
 class StoredCommand {
   final CommandId commandId;
   final CommandDependency dependency;
   final DateTime occuredAt;
   final List<StoredCommandEvent> events;
-  final List<String> blobIds;
 
   const StoredCommand({
     required this.commandId,
     required this.dependency,
     required this.occuredAt,
     required this.events,
-    required this.blobIds,
   });
 
   Map<String, dynamic> toJson() => {
@@ -25,7 +23,6 @@ class StoredCommand {
     'dependency': dependency.toJson(),
     'occuredAt': occuredAt.toUtc().toIso8601String(),
     'events': [for (final event in events) event.toJson()],
-    'blobIds': blobIds,
   };
 
   factory StoredCommand.fromJson(Map<String, dynamic> json) => StoredCommand(
@@ -34,7 +31,6 @@ class StoredCommand {
       json['dependency'] as Map<String, dynamic>,
     ),
     occuredAt: DateTime.parse(json['occuredAt'] as String),
-    blobIds: List<String>.from(json['blobIds'] as List),
     events: [
       for (final event in json['events'] as List<dynamic>)
         StoredCommandEvent.fromJson(event as Map<String, dynamic>),
