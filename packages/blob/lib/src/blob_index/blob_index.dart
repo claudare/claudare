@@ -1,8 +1,5 @@
 /// Local availability of a blob.
 enum BlobStatus {
-  /// The blob is known, but is not available locally yet.
-  pending,
-
   /// The complete blob bytes are available locally.
   available,
 
@@ -25,6 +22,6 @@ abstract interface class BlobIndex {
   /// Unknown IDs return metadata with [BlobStatus.missing].
   Future<BlobMetadata> get(String blobId);
 
-  /// Adds or replaces metadata for its blob ID.
-  Future<void> upsert(BlobMetadata metadata);
+  /// Marks the blob available by its ID. Multiple calls with the same blobId succeed.
+  Future<void> markAvailable(String blobId);
 }

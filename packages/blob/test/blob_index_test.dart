@@ -21,38 +21,28 @@ void main() {
         expect(metadata.status, BlobStatus.missing);
       });
 
-      for (final status in [BlobStatus.pending, BlobStatus.available]) {
-        test('indexes $status metadata', () async {
-          await index.upsert(BlobMetadata(blobId: 'blob', status: status));
+      test('marks a blob available', () async {
+        await index.markAvailable('blob');
 
-          final metadata = await index.get('blob');
-          expect(metadata.blobId, 'blob');
-          expect(metadata.status, status);
-        });
-      }
+        final metadata = await index.get('blob');
+        expect(metadata.blobId, 'blob');
+        expect(metadata.status, BlobStatus.available);
+      });
 
-      test('replaces existing metadata', () async {
-        await index.upsert(
-          const BlobMetadata(blobId: 'blob', status: BlobStatus.pending),
-        );
+      test('marks the same blob available multiple times', () async {
+        await index.markAvailable('blob');
+        await index.markAvailable('blob');
 
-        await index.upsert(
-          const BlobMetadata(blobId: 'blob', status: BlobStatus.available),
-        );
-
-        expect((await index.get('blob')).status, BlobStatus.available);
+        final metadata = await index.get('blob');
+        expect(metadata.blobId, 'blob');
+        expect(metadata.status, BlobStatus.available);
       });
 
       test('indexes blob IDs independently', () async {
-        await index.upsert(
-          const BlobMetadata(blobId: 'first', status: BlobStatus.pending),
-        );
-        await index.upsert(
-          const BlobMetadata(blobId: 'second', status: BlobStatus.available),
-        );
+        await index.markAvailable('first');
 
-        expect((await index.get('first')).status, BlobStatus.pending);
-        expect((await index.get('second')).status, BlobStatus.available);
+        expect((await index.get('first')).status, BlobStatus.available);
+        expect((await index.get('second')).status, BlobStatus.missing);
       });
     });
   }

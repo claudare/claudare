@@ -12,7 +12,7 @@ class BlobStore {
 
   const BlobStore({required this._index, required this._storage});
 
-  /// Returns available blob bytes, or null when missing or pending.
+  /// Returns available blob bytes, or null when missing.
   Future<Uint8List?> get(String blobId) async {
     final metadata = await _index.get(blobId);
     if (metadata.status != BlobStatus.available) return null;
@@ -29,8 +29,6 @@ class BlobStore {
   /// Saves immutable bytes before marking the blob as available.
   Future<void> save(String blobId, Uint8List data) async {
     await _storage.save(blobId, data);
-    await _index.upsert(
-      BlobMetadata(blobId: blobId, status: BlobStatus.available),
-    );
+    await _index.markAvailable(blobId);
   }
 }

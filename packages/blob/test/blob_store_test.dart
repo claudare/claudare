@@ -14,35 +14,27 @@ void main() {
     store = BlobStore(index: index, storage: storage);
   });
 
-  for (final status in [BlobStatus.missing, BlobStatus.pending]) {
-    test('returns null for $status without reading stored bytes', () async {
-      if (status == BlobStatus.pending) {
-        await index.upsert(
-          const BlobMetadata(blobId: 'blob', status: BlobStatus.pending),
-        );
-      }
+  test(
+    'returns null for a missing blob without reading stored bytes',
+    () async {
       final indexedStore = BlobStore(
         index: index,
         storage: _FailingReadBlobStorage(),
       );
 
       expect(await indexedStore.get('blob'), isNull);
-    });
-  }
+    },
+  );
 
   test('returns bytes for an available blob', () async {
     await storage.save('blob', Uint8List.fromList([1, 2]));
-    await index.upsert(
-      const BlobMetadata(blobId: 'blob', status: BlobStatus.available),
-    );
+    await index.markAvailable('blob');
 
     expect(await store.get('blob'), [1, 2]);
   });
 
   test('rejects available metadata without stored bytes', () async {
-    await index.upsert(
-      const BlobMetadata(blobId: 'blob', status: BlobStatus.available),
-    );
+    await index.markAvailable('blob');
 
     await expectLater(store.get('blob'), throwsStateError);
   });
@@ -56,15 +48,12 @@ void main() {
 
     await recordingStore.save('blob', Uint8List.fromList([1]));
 
-    expect(operations, ['storage.save', 'index.upsert']);
+    expect(operations, ['storage.save', 'index.markAvailable']);
     expect(await storage.get('blob'), [1]);
     expect((await index.get('blob')).status, BlobStatus.available);
   });
 
   test('leaves the index unchanged when storage fails', () async {
-    await index.upsert(
-      const BlobMetadata(blobId: 'blob', status: BlobStatus.pending),
-    );
     final failingStore = BlobStore(
       index: index,
       storage: _FailingBlobStorage(),
@@ -75,7 +64,7 @@ void main() {
       throwsException,
     );
 
-    expect((await index.get('blob')).status, BlobStatus.pending);
+    expect((await index.get('blob')).status, BlobStatus.missing);
   });
 
   test('an identical retry completes a failed index update', () async {
@@ -96,16 +85,14 @@ void main() {
 
   test('does not change metadata after a conflicting save', () async {
     await storage.save('blob', Uint8List.fromList([1]));
-    await index.upsert(
-      const BlobMetadata(blobId: 'blob', status: BlobStatus.pending),
-    );
+    await index.markAvailable('blob');
 
     await expectLater(
       store.save('blob', Uint8List.fromList([2])),
       throwsStateError,
     );
 
-    expect((await index.get('blob')).status, BlobStatus.pending);
+    expect((await index.get('blob')).status, BlobStatus.available);
   });
 }
 
@@ -119,9 +106,9 @@ final class _RecordingBlobIndex implements BlobIndex {
   Future<BlobMetadata> get(String blobId) => _index.get(blobId);
 
   @override
-  Future<void> upsert(BlobMetadata metadata) {
-    _operations.add('index.upsert');
-    return _index.upsert(metadata);
+  Future<void> markAvailable(String blobId) {
+    _operations.add('index.markAvailable');
+    return _index.markAvailable(blobId);
   }
 }
 
@@ -171,11 +158,11 @@ final class _FailOnceBlobIndex implements BlobIndex {
   Future<BlobMetadata> get(String blobId) => _index.get(blobId);
 
   @override
-  Future<void> upsert(BlobMetadata metadata) {
+  Future<void> markAvailable(String blobId) {
     if (_shouldFail) {
       _shouldFail = false;
       throw Exception('Index failed');
     }
-    return _index.upsert(metadata);
+    return _index.markAvailable(blobId);
   }
 }

@@ -6,8 +6,7 @@ final _blobIndexMigrations =
     SqliteMigrations(migrationTable: 'migrations_blob_index')..add(
       SqliteMigration(0, (tx) {
         tx.execute('''CREATE TABLE blob_index(
-          id TEXT PRIMARY KEY NOT NULL,
-          status INTEGER NOT NULL
+          id TEXT PRIMARY KEY NOT NULL
         );''');
       }),
     );
@@ -27,22 +26,20 @@ class SqliteBlobIndex implements BlobIndex {
   @override
   Future<BlobMetadata> get(String blobId) async {
     final row = await _database.queryRow(
-      'SELECT status FROM blob_index WHERE id = ?;',
+      'SELECT id FROM blob_index WHERE id = ?;',
       [blobId],
     );
     if (row == null) {
       return BlobMetadata(blobId: blobId, status: BlobStatus.missing);
     }
-    final status = BlobStatus.values[row.field<int>('status')];
-    return BlobMetadata(blobId: blobId, status: status);
+    return BlobMetadata(blobId: blobId, status: BlobStatus.available);
   }
 
   @override
-  Future<void> upsert(BlobMetadata metadata) => _database.execute(
-    '''INSERT INTO blob_index(id, status)
-    VALUES (?, ?)
-    ON CONFLICT(id)
-      DO UPDATE SET status = excluded.status;''',
-    [metadata.blobId, metadata.status.index],
+  Future<void> markAvailable(String blobId) => _database.execute(
+    '''INSERT INTO blob_index(id)
+    VALUES (?)
+    ON CONFLICT(id) DO NOTHING;''',
+    [blobId],
   );
 }
