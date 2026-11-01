@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
-import 'blob_storage.dart';
+import 'blob_store.dart';
 
 /// Stores immutable blobs for the lifetime of this instance.
-class MemoryBlobStorage implements BlobStorage {
+class MemoryBlobStore implements BlobStore {
   final Map<String, Uint8List> _blobs = {};
 
   @override
@@ -27,5 +27,13 @@ class MemoryBlobStorage implements BlobStorage {
       return;
     }
     _blobs[blobId] = Uint8List.fromList(data);
+  }
+
+  @override
+  Future<List<String>> listIds() async => _blobs.keys.toList();
+
+  @override
+  Future<void> delete(String blobId) async {
+    _blobs.remove(blobId);
   }
 }

@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'blob_storage.dart';
+import 'blob_store.dart';
 
 /// Stores immutable blob bytes as files in an injected directory.
-class FileBlobStorage implements BlobStorage {
+class FileBlobStore implements BlobStore {
   final Directory _rootDir;
 
-  const FileBlobStorage(this._rootDir);
+  const FileBlobStore(this._rootDir);
 
   @override
   Future<Uint8List?> get(String blobId) async {
@@ -29,6 +29,24 @@ class FileBlobStorage implements BlobStorage {
 
     await _rootDir.create(recursive: true);
     await file.writeAsBytes(data, flush: true);
+  }
+
+  @override
+  Future<List<String>> listIds() async {
+    if (!await _rootDir.exists()) return [];
+    final ids = <String>[];
+    await for (final entity in _rootDir.list(followLinks: false)) {
+      if (entity is File) {
+        ids.add(entity.uri.pathSegments.last);
+      }
+    }
+    return ids;
+  }
+
+  @override
+  Future<void> delete(String blobId) async {
+    final file = _file(blobId);
+    if (await file.exists()) await file.delete();
   }
 
   File _file(String blobId) =>

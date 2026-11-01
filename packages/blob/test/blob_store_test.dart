@@ -1,168 +1,134 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
 import 'package:test/test.dart';
 
 void main() {
-  late MemoryBlobIndex index;
-  late MemoryBlobStorage storage;
-  late BlobStore store;
+  for (final backend in _backends) {
+    group(backend.name, () {
+      late _StorageSession session;
+      late BlobStore storage;
 
-  setUp(() {
-    index = MemoryBlobIndex();
-    storage = MemoryBlobStorage();
-    store = BlobStore(index: index, storage: storage);
-  });
+      setUp(() async {
+        session = await backend.open();
+        storage = session.storage;
+      });
+      tearDown(() => session.close());
 
-  test(
-    'returns null for a missing blob without reading stored bytes',
-    () async {
-      final indexedStore = BlobStore(
-        index: index,
-        storage: _FailingReadBlobStorage(),
-      );
+      test('returns null for an absent blob', () async {
+        expect(await storage.get('absent'), isNull);
+      });
 
-      expect(await indexedStore.get('blob'), isNull);
-    },
-  );
+      test('lists stored blob IDs', () async {
+        expect(await storage.listIds(), isEmpty);
+        await storage.save('first', Uint8List.fromList([1]));
+        await storage.save('second', Uint8List.fromList([2]));
 
-  test('returns bytes for an available blob', () async {
-    await storage.save('blob', Uint8List.fromList([1, 2]));
-    await index.markAvailable('blob');
+        expect(await storage.listIds(), unorderedEquals(['first', 'second']));
+      });
 
-    expect(await store.get('blob'), [1, 2]);
-  });
+      test('deletes a blob without affecting other blobs', () async {
+        await storage.save('first', Uint8List.fromList([1]));
+        await storage.save('second', Uint8List.fromList([2]));
 
-  test('rejects available metadata without stored bytes', () async {
-    await index.markAvailable('blob');
+        await storage.delete('first');
 
-    await expectLater(store.get('blob'), throwsStateError);
-  });
+        expect(await storage.get('first'), isNull);
+        expect(await storage.get('second'), [2]);
+        expect(await storage.listIds(), ['second']);
+      });
 
-  test('stores bytes before marking the blob available', () async {
-    final operations = <String>[];
-    final recordingStore = BlobStore(
-      index: _RecordingBlobIndex(index, operations),
-      storage: _RecordingBlobStorage(storage, operations),
-    );
+      test('deleting an absent blob succeeds', () async {
+        await storage.delete('absent');
+        expect(await storage.listIds(), isEmpty);
+      });
 
-    await recordingStore.save('blob', Uint8List.fromList([1]));
+      for (final bytes in <List<int>>[
+        [],
+        [0, 255, 42],
+      ]) {
+        test('stores bytes $bytes', () async {
+          await storage.save('blob', Uint8List.fromList(bytes));
 
-    expect(operations, ['storage.save', 'index.markAvailable']);
-    expect(await storage.get('blob'), [1]);
-    expect((await index.get('blob')).status, BlobStatus.available);
-  });
+          expect(await storage.get('blob'), bytes);
+        });
 
-  test('leaves the index unchanged when storage fails', () async {
-    final failingStore = BlobStore(
-      index: index,
-      storage: _FailingBlobStorage(),
-    );
+        test('accepts identical retries for $bytes', () async {
+          await storage.save('blob', Uint8List.fromList(bytes));
+          await storage.save('blob', Uint8List.fromList(bytes));
 
-    await expectLater(
-      failingStore.save('blob', Uint8List.fromList([1])),
-      throwsException,
-    );
+          expect(await storage.get('blob'), bytes);
+        });
+      }
 
-    expect((await index.get('blob')).status, BlobStatus.missing);
-  });
+      for (final conflicting in <List<int>>[
+        [],
+        [2],
+        [1, 2],
+      ]) {
+        test('rejects conflicting bytes $conflicting', () async {
+          await storage.save('blob', Uint8List.fromList([1]));
 
-  test('an identical retry completes a failed index update', () async {
-    final failingIndex = _FailOnceBlobIndex(index);
-    final retryingStore = BlobStore(index: failingIndex, storage: storage);
+          await expectLater(
+            storage.save('blob', Uint8List.fromList(conflicting)),
+            throwsStateError,
+          );
+          expect(await storage.get('blob'), [1]);
+        });
+      }
 
-    await expectLater(
-      retryingStore.save('blob', Uint8List.fromList([1])),
-      throwsException,
-    );
-    expect(await storage.get('blob'), [1]);
-    expect((await index.get('blob')).status, BlobStatus.missing);
+      test('copies input bytes', () async {
+        final data = Uint8List.fromList([1]);
+        await storage.save('blob', data);
+        data[0] = 2;
 
-    await retryingStore.save('blob', Uint8List.fromList([1]));
+        expect(await storage.get('blob'), [1]);
+      });
 
-    expect((await index.get('blob')).status, BlobStatus.available);
-  });
+      test('copies returned bytes', () async {
+        await storage.save('blob', Uint8List.fromList([1]));
+        (await storage.get('blob'))![0] = 2;
 
-  test('does not change metadata after a conflicting save', () async {
-    await storage.save('blob', Uint8List.fromList([1]));
-    await index.markAvailable('blob');
+        expect(await storage.get('blob'), [1]);
+      });
 
-    await expectLater(
-      store.save('blob', Uint8List.fromList([2])),
-      throwsStateError,
-    );
+      test('stores independent blob IDs', () async {
+        await storage.save('first', Uint8List.fromList([1]));
+        await storage.save('second', Uint8List.fromList([2]));
 
-    expect((await index.get('blob')).status, BlobStatus.available);
-  });
-}
-
-final class _RecordingBlobIndex implements BlobIndex {
-  final BlobIndex _index;
-  final List<String> _operations;
-
-  const _RecordingBlobIndex(this._index, this._operations);
-
-  @override
-  Future<BlobMetadata> get(String blobId) => _index.get(blobId);
-
-  @override
-  Future<void> markAvailable(String blobId) {
-    _operations.add('index.markAvailable');
-    return _index.markAvailable(blobId);
+        expect(await storage.get('first'), [1]);
+        expect(await storage.get('second'), [2]);
+      });
+    });
   }
 }
 
-final class _RecordingBlobStorage implements BlobStorage {
-  final BlobStorage _storage;
-  final List<String> _operations;
+final _backends = <_StorageBackend>[
+  _StorageBackend('memory', () async {
+    return _StorageSession(MemoryBlobStore(), () async {});
+  }),
+  _StorageBackend('file', () async {
+    final directory = await Directory.systemTemp.createTemp(
+      'file_blob_storage_',
+    );
+    return _StorageSession(
+      FileBlobStore(directory),
+      () => directory.delete(recursive: true),
+    );
+  }),
+];
 
-  const _RecordingBlobStorage(this._storage, this._operations);
+final class _StorageBackend {
+  final String name;
+  final Future<_StorageSession> Function() open;
 
-  @override
-  Future<Uint8List?> get(String blobId) => _storage.get(blobId);
-
-  @override
-  Future<void> save(String blobId, Uint8List data) {
-    _operations.add('storage.save');
-    return _storage.save(blobId, data);
-  }
+  const _StorageBackend(this.name, this.open);
 }
 
-final class _FailingBlobStorage implements BlobStorage {
-  @override
-  Future<Uint8List?> get(String blobId) async => null;
+final class _StorageSession {
+  final BlobStore storage;
+  final Future<void> Function() close;
 
-  @override
-  Future<void> save(String blobId, Uint8List data) async {
-    throw Exception('Storage failed');
-  }
-}
-
-final class _FailingReadBlobStorage implements BlobStorage {
-  @override
-  Future<Uint8List?> get(String blobId) async {
-    throw Exception('Storage read');
-  }
-
-  @override
-  Future<void> save(String blobId, Uint8List data) async {}
-}
-
-final class _FailOnceBlobIndex implements BlobIndex {
-  final BlobIndex _index;
-  var _shouldFail = true;
-
-  _FailOnceBlobIndex(this._index);
-
-  @override
-  Future<BlobMetadata> get(String blobId) => _index.get(blobId);
-
-  @override
-  Future<void> markAvailable(String blobId) {
-    if (_shouldFail) {
-      _shouldFail = false;
-      throw Exception('Index failed');
-    }
-    return _index.markAvailable(blobId);
-  }
+  const _StorageSession(this.storage, this.close);
 }

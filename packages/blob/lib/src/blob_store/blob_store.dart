@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 /// Stores immutable binary values by string blob ID.
-abstract interface class BlobStorage {
+abstract interface class BlobStore {
   /// Returns complete blob bytes, or null when absent.
   Future<Uint8List?> get(String blobId);
 
@@ -10,4 +10,10 @@ abstract interface class BlobStorage {
   /// Repeating an identical save succeeds. Saving different bytes for an
   /// existing ID throws [StateError].
   Future<void> save(String blobId, Uint8List data);
+
+  /// Returns the IDs of locally stored blobs, in unspecified order.
+  Future<List<String>> listIds();
+
+  /// Deletes a blob if it exists.
+  Future<void> delete(String blobId);
 }

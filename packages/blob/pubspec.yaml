@@ -1,5 +1,5 @@
 name: blob
-description: Immutable blob storage and local availability indexing.
+description: Immutable blob storage.
 version: 1.0.0
 publish_to: none
 resolution: workspace
@@ -10,7 +10,6 @@ environment:
 dependencies:
   cqrs: ^1.0.0
   id_generator: ^1.0.0
-  isolate_sqlite: ^0.3.1
 
 dev_dependencies:
   lints: ^6.0.0

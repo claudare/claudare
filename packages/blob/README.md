@@ -1,11 +1,13 @@
 # Blob
 
-Provides immutable blob storage and an index of local blob availability.
+Provides local blob storage.
 
-Use `BlobStore` to write and save blobs.
+Create a `BlobApp` with your CQRS runtime:
 
 ```dart
-final blobs = BlobStore(index: MemoryBlobIndex(), storage: MemoryBlobStorage());
-await blobs.save('blob-id', bytes);
-final saved = await blobs.get('blob-id');
+final blobs = BlobApp(runtime: runtime, blobStore: MemoryBlobStore());
+
+// Inside a command handler:
+final id = await blobs.save(ctx, bytes);
+final saved = await blobs.get(id);
 ```

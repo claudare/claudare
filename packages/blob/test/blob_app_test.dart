@@ -15,10 +15,7 @@ void main() {
     runtime = CqrsTestRuntime();
     app = BlobApp(
       runtime: runtime,
-      blobStore: BlobStore(
-        index: MemoryBlobIndex(),
-        storage: MemoryBlobStorage(),
-      ),
+      blobStore: MemoryBlobStore(),
       idGenerator: IdGeneratorStatic('blob-id'),
     );
   });
