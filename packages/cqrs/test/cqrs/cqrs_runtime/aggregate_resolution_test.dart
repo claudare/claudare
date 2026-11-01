@@ -25,9 +25,7 @@ void main() {
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
     );
-    runtime.eventRegistry
-      ..add(const _TestEventCodec())
-      ..freeze();
+    runtime.eventRegistry.add(const _TestEventCodec());
   });
 
   test('resolves matching events and resumes across filtered pages', () async {
@@ -118,9 +116,7 @@ void main() {
       logger: logger,
       timeProvider: FakeTimeProviderStatic.zero(),
     );
-    observed.eventRegistry
-      ..add(const _TestEventCodec())
-      ..freeze();
+    observed.eventRegistry.add(const _TestEventCodec());
 
     await observed.resolve(_envelopeAggregate('account/one'));
     await observed.resolveStateless<_TestEvent>(

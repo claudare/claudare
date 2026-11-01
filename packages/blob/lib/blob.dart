@@ -1,5 +1,6 @@
 library;
 
+export 'src/blob_app.dart';
 export 'src/blob_index/blob_index.dart';
 export 'src/blob_index/memory_blob_index.dart';
 export 'src/blob_index/sqlite_blob_index.dart';

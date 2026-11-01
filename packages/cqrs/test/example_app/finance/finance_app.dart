@@ -24,8 +24,7 @@ class FinanceApp {
       ..add(const AccountAtmWithdrawnCodec())
       ..add(const AccountInnerTransferCodec())
       ..add(const AccountOpenedCodec())
-      ..add(const AccountRenamedCodec())
-      ..freeze();
+      ..add(const AccountRenamedCodec());
 
     command = Commands(_cqrsRuntime);
     query = Queries(_cqrsRuntime);
