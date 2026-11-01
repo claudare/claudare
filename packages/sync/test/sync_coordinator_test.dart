@@ -1,4 +1,9 @@
 import 'dart:async';
+
+import 'package:blob/blob.dart';
+
+import 'package:common/common.dart';
+
 import 'dart:typed_data';
 
 import 'package:claudare_crypto/crypto.dart';
@@ -13,6 +18,61 @@ import 'package:transport_test/transport_test.dart';
 import 'sync_test_utils.dart';
 
 void main() {
+  test('blob sessions announce and serve newly stored bytes', () async {
+    final blobs = MemoryBlobStore();
+    final h = await _Harness.create(blobStore: blobs);
+    final peer = h.discover();
+    await flushMessages();
+    await blobs.save('id', Uint8List.fromList([1]));
+    await flushMessages();
+    expect(peer.blobMessages.single, isA<BlobReplicationMessageAvailable>());
+    peer.sendBlob(const BlobReplicationMessageRequest(blobId: 'id'));
+    await flushMessages();
+    expect(peer.blobMessages.last, isA<BlobReplicationMessageData>());
+  });
+
+  test('blob failures restart independently of command sessions', () async {
+    final h = await _Harness.create(blobStore: MemoryBlobStore());
+    final peer = h.discover();
+    await flushMessages();
+    final commands = peer.messages.length;
+    peer.sendBlob(const BlobReplicationMessageMissing(blobId: 'unsolicited'));
+    await flushMessages();
+    expect(h.coordinator.snapshot.lastFailure, 'Sync blob replication failed');
+    expect(h.coordinator.snapshot.activePeers, hasLength(1));
+    await h.clock.elapse(SyncDefaults.reconnectInterval);
+    expect(peer.blobSessions, 2);
+    expect(peer.messages, hasLength(commands));
+    peer.sendBlob(const BlobReplicationMessageRequest(blobId: 'absent'));
+    await flushMessages();
+    expect(peer.blobMessages.last, isA<BlobReplicationMessageMissing>());
+  });
+
+  test('blob replication keeps a peer active during command failure', () async {
+    final h = await _Harness.create(blobStore: MemoryBlobStore());
+    h.store.readState = () async => throw Exception('unavailable');
+    h.discover();
+    await flushMessages();
+    expect(h.coordinator.snapshot.activePeers, hasLength(1));
+    expect(
+      h.coordinator.snapshot.lastFailure,
+      'Sync command replication failed',
+    );
+  });
+
+  test('closing coordinator stops availability announcements', () async {
+    final blobs = MemoryBlobStore();
+    final h = await _Harness.create(blobStore: blobs);
+    final peer = h.discover();
+    await flushMessages();
+    await h.coordinator.close();
+    await flushMessages();
+    await blobs.save('id', Uint8List(0));
+    await flushMessages();
+    expect(peer.blobMessages, isEmpty);
+    expect(h.clock.activeTimers, 0);
+  });
+
   test('failure timestamps update only when a new failure occurs', () async {
     final h = await _Harness.create();
     await flushMessages();
@@ -794,9 +854,10 @@ class _Harness {
   int attempts = 0;
   late final SyncCoordinator coordinator;
 
-  _Harness._({Duration? reconnectInterval}) {
+  _Harness._({Duration? reconnectInterval, BlobStore? blobStore}) {
     coordinator = SyncCoordinator(
       eventStore: store,
+      blobStore: blobStore,
       identityStore: identities,
       logger: logger,
       timeProvider: clock,
@@ -819,8 +880,12 @@ class _Harness {
   static Future<_Harness> create({
     bool start = true,
     Duration? reconnectInterval,
+    BlobStore? blobStore,
   }) async {
-    final harness = _Harness._(reconnectInterval: reconnectInterval);
+    final harness = _Harness._(
+      reconnectInterval: reconnectInterval,
+      blobStore: blobStore,
+    );
     for (final value in [1, 2]) {
       await harness.identities.addPeer(
         PeerActorIdentity(publicKey: PublicKey.staticValue(value)),
@@ -875,6 +940,8 @@ class _Identities extends MemoryActorIdentityStore {
 }
 
 class _Peer {
+  final blobMessages = <BlobReplicationMessage>[];
+  int blobSessions = 0;
   final channel = StreamChannelController<String>();
   final messages = <CommandReplicationMessage>[];
   bool closed = false;
@@ -882,6 +949,13 @@ class _Peer {
 
   _Peer() {
     multiplexer = PeerMultiplexer(channel.foreign);
+    multiplexer.sessions('blobs').listen((session) {
+      blobSessions++;
+      session.stream.listen(
+        (value) =>
+            blobMessages.add(const BlobReplicationMessageCodec().decode(value)),
+      );
+    });
     unawaited(channel.foreign.sink.done.then((_) => closed = true));
     multiplexer.sessions('commands').listen((session) {
       if (!identical(multiplexer.channel('commands'), session)) return;
@@ -897,9 +971,23 @@ class _Peer {
       .channel('commands')
       .sink
       .add(const CommandReplicationMessageCodec().encode(message));
+
+  void sendBlob(BlobReplicationMessage message) => multiplexer
+      .channel('blobs')
+      .sink
+      .add(const BlobReplicationMessageCodec().encode(message));
 }
 
 class _Store implements EventStoreReplication {
+  @override
+  Stream<EventChange> get eventChanges => store.eventChanges;
+
+  @override
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int position,
+  ) => store.getLogEvents(filter, position);
+
   final store = MemoryEventStore();
   Future<EventDatabaseState> Function()? readState;
   Future<bool> Function(StoredCommand)? save;

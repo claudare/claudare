@@ -1,5 +1,7 @@
 library;
 
+export 'src/replication/blob_replication/blob_replicator.dart';
+
 export 'src/sync_coordinator.dart';
 export 'src/sync_defaults.dart';
 export 'src/sync_snapshot.dart';

@@ -8,6 +8,10 @@ Use the `transport` package for peer connections and multiplexing. Injected
 stores remain caller-owned, and connection status does not indicate
 synchronization progress.
 
+Supply `blobStore` to `SyncCoordinator` to enable blob protocol sessions.
+Share that store instance with local blob writers so availability notifications
+reach connected sessions.
+
 To use blobs, inject them as a dependency in the command hanlders.
 
 This is not a complete synchronization system. Authentication, identity

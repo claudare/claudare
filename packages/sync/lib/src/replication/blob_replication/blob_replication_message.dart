@@ -8,6 +8,10 @@ sealed class BlobReplicationMessage {
   const BlobReplicationMessage({required this.blobId});
 
   Map<String, dynamic> toJson() => switch (this) {
+    BlobReplicationMessageAvailable() => {
+      'type': 'available',
+      'blobId': blobId,
+    },
     BlobReplicationMessageRequest() => {'type': 'request', 'blobId': blobId},
     BlobReplicationMessageData(:final bytes) => {
       'type': 'data',
@@ -24,6 +28,7 @@ sealed class BlobReplicationMessage {
     }
     final blobId = value['blobId'] as String;
     return switch (value['type']) {
+      'available' => BlobReplicationMessageAvailable(blobId: blobId),
       'request' => BlobReplicationMessageRequest(blobId: blobId),
       'data' when value['bytes'] is String => BlobReplicationMessageData(
         blobId: blobId,
@@ -33,6 +38,11 @@ sealed class BlobReplicationMessage {
       _ => throw const FormatException('Invalid blob message fields'),
     };
   }
+}
+
+/// Announces that complete bytes for [blobId] have become available.
+class BlobReplicationMessageAvailable extends BlobReplicationMessage {
+  const BlobReplicationMessageAvailable({required super.blobId});
 }
 
 /// Requests complete bytes for [blobId].

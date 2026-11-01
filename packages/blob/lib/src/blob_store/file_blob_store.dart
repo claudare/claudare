@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -7,7 +8,12 @@ import 'blob_store.dart';
 class FileBlobStore implements BlobStore {
   final Directory _rootDir;
 
-  const FileBlobStore(this._rootDir);
+  FileBlobStore(this._rootDir);
+
+  final _available = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get availableBlobs => _available.stream;
 
   @override
   Future<Uint8List?> get(String blobId) async {
@@ -29,6 +35,7 @@ class FileBlobStore implements BlobStore {
 
     await _rootDir.create(recursive: true);
     await file.writeAsBytes(data, flush: true);
+    _available.add(blobId);
   }
 
   @override

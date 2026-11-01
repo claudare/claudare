@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import 'package:common/common.dart';
+
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
@@ -708,6 +711,15 @@ class _Peer extends _Session {
 }
 
 class _ControlledStore implements EventStoreReplication {
+  @override
+  Stream<EventChange> get eventChanges => store.eventChanges;
+
+  @override
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int position,
+  ) => store.getLogEvents(filter, position);
+
   final store = MemoryEventStore();
   int listeners = 0;
   Future<bool> Function(StoredCommand)? save;

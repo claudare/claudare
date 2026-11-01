@@ -46,6 +46,9 @@ abstract interface class EventStoreReplication {
   /// Broadcasts commands saved after listening begins.
   Stream<CommandChange> get commandChanges;
 
+  /// Broadcasts one change per event saved after listening begins.
+  Stream<EventChange> get eventChanges;
+
   /// A small summary of the current state of the event store.
   Future<EventDatabaseState> getState();
 
@@ -66,12 +69,16 @@ abstract interface class EventStoreReplication {
     CommandDependency dependency,
     int count,
   );
+
+  /// Reads events matching [filter] from the inclusive global [fromPosition].
+  /// [EventStore] owns pagination size.
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  );
 }
 
 abstract interface class EventStore implements EventStoreReplication {
-  /// Broadcasts one change per event saved after listening begins.
-  Stream<EventChange> get eventChanges;
-
   /// Quick latest lookup of the last stream's version.
   Future<int?> getStreamVersion(String streamPath);
 
@@ -80,13 +87,6 @@ abstract interface class EventStore implements EventStoreReplication {
   Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,
-  );
-
-  /// Reads events matching [filter] from the inclusive global [fromPosition].
-  /// [EventStore] owns pagination size.
-  Future<PaginatedResult<StoredEvent>> getLogEvents(
-    LogFilter filter,
-    int fromPosition,
   );
 
   /// Saves results of command execution into the event store.

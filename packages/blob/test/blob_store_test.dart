@@ -20,6 +20,38 @@ void main() {
         expect(await storage.get('absent'), isNull);
       });
 
+      test('broadcasts newly readable blobs to all listeners', () async {
+        final first = storage.availableBlobs.first;
+        final second = storage.availableBlobs.first;
+        await storage.save('new', Uint8List.fromList([1]));
+        expect(await first, 'new');
+        expect(await second, 'new');
+        expect(await storage.get('new'), [1]);
+      });
+
+      test(
+        'does not replay availability or announce identical saves',
+        () async {
+          await storage.save('old', Uint8List.fromList([1]));
+          final ids = <String>[];
+          final subscription = storage.availableBlobs.listen(ids.add);
+          addTearDown(subscription.cancel);
+          await storage.save('old', Uint8List.fromList([1]));
+          await Future<void>.delayed(Duration.zero);
+          expect(ids, isEmpty);
+        },
+      );
+
+      test('failed saves do not announce availability', () async {
+        await storage.save('old', Uint8List.fromList([1]));
+        final ids = <String>[];
+        final subscription = storage.availableBlobs.listen(ids.add);
+        addTearDown(subscription.cancel);
+        await expectLater(storage.save('old', Uint8List(0)), throwsStateError);
+        await Future<void>.delayed(Duration.zero);
+        expect(ids, isEmpty);
+      });
+
       test('lists stored blob IDs', () async {
         expect(await storage.listIds(), isEmpty);
         await storage.save('first', Uint8List.fromList([1]));

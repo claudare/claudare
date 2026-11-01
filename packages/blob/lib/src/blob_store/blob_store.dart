@@ -2,6 +2,10 @@ import 'dart:typed_data';
 
 /// Stores immutable binary values by string blob ID.
 abstract interface class BlobStore {
+  /// Broadcasts newly available IDs after persistence, without replay.
+  /// Identical saves and deletions emit nothing. Observe the shared instance.
+  Stream<String> get availableBlobs;
+
   /// Returns complete blob bytes, or null when absent.
   Future<Uint8List?> get(String blobId);
 

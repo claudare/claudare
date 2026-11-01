@@ -101,6 +101,9 @@ void main() {
 }
 
 final class _FailingStore implements BlobStore {
+  @override
+  Stream<String> get availableBlobs => store.availableBlobs;
+
   final BlobStore store;
   final bool failList;
   _FailingStore(this.store, {this.failList = false});

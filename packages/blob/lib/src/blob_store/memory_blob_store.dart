@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'blob_store.dart';
@@ -5,6 +6,10 @@ import 'blob_store.dart';
 /// Stores immutable blobs for the lifetime of this instance.
 class MemoryBlobStore implements BlobStore {
   final Map<String, Uint8List> _blobs = {};
+  final _available = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get availableBlobs => _available.stream;
 
   @override
   Future<Uint8List?> get(String blobId) async {
@@ -27,6 +32,7 @@ class MemoryBlobStore implements BlobStore {
       return;
     }
     _blobs[blobId] = Uint8List.fromList(data);
+    _available.add(blobId);
   }
 
   @override
