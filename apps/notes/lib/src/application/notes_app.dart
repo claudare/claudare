@@ -34,8 +34,7 @@ class NotesApp {
       ..add(const NoteCreatedCodec())
       ..add(const NoteRestoredCodec())
       ..add(const NoteTitleUpdatedCodec())
-      ..add(const NoteTrashedCodec())
-      ..freeze();
+      ..add(const NoteTrashedCodec());
     actor = cqrsRuntime.actor;
   }
 

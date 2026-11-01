@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
-import 'package:cqrs/src/cqrs/blob_store/blob_store.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -18,7 +16,6 @@ import 'package:time_provider/time_provider.dart';
 /// Coordinates durable command execution and projection delivery.
 class CqrsRuntime {
   final EventStore _eventStore;
-  final BlobStore _blobStore;
   final String _actor;
   final Logger _logger;
   final TimeProvider _timeProvider;
@@ -33,11 +30,9 @@ class CqrsRuntime {
     required this._logger,
     required this._timeProvider,
     required this._idGenerator,
-    required this._blobStore,
   }) {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
-      blobStore: _blobStore,
       actor: _actor,
       streamReader: streamReader,
       timeProvider: _timeProvider,
@@ -48,9 +43,6 @@ class CqrsRuntime {
   }
 
   String get actor => _actor;
-
-  /// Returns local blob bytes, or null when absent, without fetching remotely.
-  Future<Uint8List?> getBlob(String blobId) => _blobStore.get(blobId);
 
   /// Creates a reader starting at the inclusive stream version.
   PaginatedReader<StoredEvent> streamReader(

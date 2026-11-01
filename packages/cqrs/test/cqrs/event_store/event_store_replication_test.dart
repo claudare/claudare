@@ -183,7 +183,6 @@ StoredCommand _command(
   CommandDependency? dependency,
   int eventCount = 1,
 }) => StoredCommand(
-  blobIds: const [],
   commandId: CommandId(actor, sequence),
   dependency: dependency ?? CommandDependency(),
   occuredAt: DateTime.utc(2026),

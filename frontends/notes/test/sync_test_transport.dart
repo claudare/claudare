@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:sync/sync.dart';
+import 'package:transport/transport.dart';
 
 /// Controllable transport with no sockets or timers.
 class TestTransport implements Transport {

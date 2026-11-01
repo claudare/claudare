@@ -28,7 +28,6 @@ class AtmWithdrawal implements Command {
           balance += event.amount;
           break;
         case AccountAtmWithdrawn(:final amount):
-        case AccountExpenseRecorded(:final amount):
           balance -= amount;
           break;
         case AccountInnerTransfer():

@@ -21,7 +21,6 @@ class TotalBalanceState implements AggregateState<AccountEvent> {
       case AccountAtmDeposited(:final amount):
         balance += amount;
       case AccountAtmWithdrawn(:final amount):
-      case AccountExpenseRecorded(:final amount):
         balance -= amount;
       case AccountOpened():
       case AccountInnerTransfer():

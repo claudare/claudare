@@ -5,8 +5,8 @@ import 'dart:io';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:proxy/proxy.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:sync/sync.dart';
 import 'package:test/test.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 void main() {
   late Uri baseUrl;

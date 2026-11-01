@@ -1,14 +1,11 @@
-import 'dart:typed_data';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:cqrs/src/cqrs/command/saved_blob.dart';
 
-/// Executes a command and inspects its emitted events and successful blob writes.
+/// Executes a command and inspects its emitted events.
 class CommandTester {
   final TimeProvider _timeProvider;
   static const _testActor = 'test-actor';
@@ -16,7 +13,6 @@ class CommandTester {
   final EventStore _eventStore;
   final List<EventAppend> _seedEvents = [];
   late final CqrsRuntime _runtime;
-  final _RecordingBlobStore _blobStore;
 
   EventRegistry get _eventRegistry => _runtime.eventRegistry;
 
@@ -26,17 +22,14 @@ class CommandTester {
   CommandTester({
     required TimeProvider timeProvider,
     EventStore? eventStore,
-    BlobStore? blobStore,
     IdGenerator? idGenerator,
   }) : _timeProvider = timeProvider,
-       _blobStore = _RecordingBlobStore(blobStore ?? MemoryBlobStore()),
        _eventStore = eventStore ?? MemoryEventStore() {
     _runtime = CqrsRuntime(
       actor: _testActor,
       eventStore: _eventStore,
       timeProvider: timeProvider,
       logger: const NoopLogger(),
-      blobStore: _blobStore,
       idGenerator: idGenerator ?? IdGeneratorSequential(),
     );
   }
@@ -45,14 +38,6 @@ class CommandTester {
     if (!_ran) {
       throw StateError('tester did not ran, but it should have been');
     }
-  }
-
-  /// Returns successful writes in registration order, even after a failure.
-  List<SavedBlob> getWrittenBlobs() {
-    _ensureRan();
-    return List.unmodifiable([
-      for (final blob in _blobStore.writes) SavedBlob(blob.blobId, blob.data),
-    ]);
   }
 
   void _ensureNotRan() {
@@ -124,7 +109,6 @@ class CommandTester {
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
         CommandChanges(
-          blobs: const [],
           actor: _testActor,
           dependency: CommandDependency(),
           occuredAt: timestamp,
@@ -139,26 +123,5 @@ class CommandTester {
       );
     }
     _seedEvents.clear();
-  }
-}
-
-class _RecordingBlobStore implements BlobStore {
-  final BlobStore _store;
-  final List<SavedBlob?> _writes = [];
-
-  Iterable<SavedBlob> get writes => _writes.whereType<SavedBlob>();
-
-  _RecordingBlobStore(this._store);
-
-  @override
-  Future<Uint8List?> get(String blobId) => _store.get(blobId);
-
-  @override
-  Future<void> save(String blobId, Uint8List data) async {
-    final snapshot = SavedBlob(blobId, data);
-    final index = _writes.length;
-    _writes.add(null);
-    await _store.save(blobId, snapshot.data);
-    _writes[index] = snapshot;
   }
 }

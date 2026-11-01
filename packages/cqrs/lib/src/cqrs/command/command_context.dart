@@ -1,12 +1,9 @@
-import 'dart:typed_data';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency_builder.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/command/saved_blob.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
@@ -18,7 +15,7 @@ import 'package:time_provider/time_provider.dart';
 
 part 'command_stream.dart';
 
-/// Collects a command's events, blob writes, stream locks, and dependencies.
+/// Collects a command's events, stream locks, and dependencies.
 class CommandContext implements CommandContextApi {
   final EventStore _eventStore;
   final String _actor;
@@ -29,7 +26,6 @@ class CommandContext implements CommandContextApi {
   final Logger _logger;
   final DateTime _occuredAt;
   final List<EventAppend> _events = [];
-  final List<SavedBlob> _blobs = [];
   final Map<String, _CommandStreamState> _streams = {};
   final CommandDependencyBuilder _dependency = CommandDependencyBuilder();
   bool _finished = false;
@@ -56,9 +52,6 @@ class CommandContext implements CommandContextApi {
     return CommandStream<TEvent>._(this, streamPath);
   }
 
-  /// Returns registered writes in registration order.
-  List<SavedBlob> savedBlobs() => List.unmodifiable(_blobs);
-
   /// Seals this context and snapshots its changes.
   /// Throws [StateError] if acquisition is pending or the context is sealed.
   CommandChanges finish() {
@@ -76,7 +69,6 @@ class CommandContext implements CommandContextApi {
         _streams.values.map((state) => state.lock).whereType<StreamLock>(),
       ),
       events: List.unmodifiable(_events),
-      blobs: List.unmodifiable(_blobs.map((saved) => saved.blobId)),
     );
   }
 
@@ -142,15 +134,6 @@ class CommandContext implements CommandContextApi {
   String generateId() {
     _ensureOpen();
     return _idGenerator.generateId();
-  }
-
-  @override
-  void saveBlob(String id, Uint8List data) {
-    _ensureOpen();
-    if (_blobs.any((blob) => blob.blobId == id)) {
-      throw StateError('Blob already registered: $id');
-    }
-    _blobs.add(SavedBlob(id, data));
   }
 }
 

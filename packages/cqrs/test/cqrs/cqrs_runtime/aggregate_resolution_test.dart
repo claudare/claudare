@@ -20,15 +20,12 @@ void main() {
     eventStore = MemoryEventStore(eventFetchPageSize: 1);
     runtime = CqrsRuntime(
       idGenerator: IdGeneratorSequential(),
-      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
     );
-    runtime.eventRegistry
-      ..add(const _TestEventCodec())
-      ..freeze();
+    runtime.eventRegistry.add(const _TestEventCodec());
   });
 
   test('resolves matching events and resumes across filtered pages', () async {
@@ -114,15 +111,12 @@ void main() {
     final logger = RecordingLogger();
     final observed = CqrsRuntime(
       idGenerator: IdGeneratorSequential(),
-      blobStore: MemoryBlobStore(),
       actor: 'test-actor',
       eventStore: eventStore,
       logger: logger,
       timeProvider: FakeTimeProviderStatic.zero(),
     );
-    observed.eventRegistry
-      ..add(const _TestEventCodec())
-      ..freeze();
+    observed.eventRegistry.add(const _TestEventCodec());
 
     await observed.resolve(_envelopeAggregate('account/one'));
     await observed.resolveStateless<_TestEvent>(
@@ -188,7 +182,6 @@ final class _EnvelopeState implements AggregateState<_TestEvent> {
 Future<void> _appendAccountEvents(EventStore eventStore) =>
     eventStore.saveChanges(
       CommandChanges(
-        blobs: const [],
         actor: 'test-actor',
         dependency: CommandDependency(),
         occuredAt: _timestamp,

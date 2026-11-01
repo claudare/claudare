@@ -7,6 +7,8 @@ import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:sync/sync.dart';
 import 'package:time_provider/time_provider.dart';
+import 'package:transport/transport.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 
 /// Creates a fresh transport for the saved Notes configuration.
 typedef NoteTransportFactory = Transport Function({
@@ -88,7 +90,6 @@ class NoteBootstrap {
   Future<NotesApp> _initialize(NoteSystem system, String actor) async {
     final runtime = CqrsRuntime(
       idGenerator: IdGeneratorRandom(),
-      blobStore: const NoBlobStore(),
       eventStore: system.eventStore,
       actor: actor,
       logger: logger,
@@ -149,7 +150,7 @@ class NoteBootstrap {
       identityStore: system.identities,
       createTransport: () =>
           _createTransport?.call(url: url!, actor: actor, group: group) ??
-          WebSocketProxyTransport(
+          ProxyTransport(
             baseUrl: url!,
             thisActor: actor,
             group: group,

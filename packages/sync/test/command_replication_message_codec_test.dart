@@ -11,7 +11,6 @@ void main() {
     CommandReplicationMessageDependency(CommandDependency({'local': 1})),
     CommandReplicationMessageCommand(
       StoredCommand(
-        blobIds: const [],
         commandId: const CommandId('local', 2),
         dependency: CommandDependency({'local': 1}),
         occuredAt: DateTime.utc(2026, 10, 3),

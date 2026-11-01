@@ -26,7 +26,6 @@ Future<void> addRemoteTitleUpdate(
   final remote = NotesApp(
     cqrsRuntime: CqrsRuntime(
       idGenerator: IdGeneratorSequential(),
-      blobStore: const NoBlobStore(),
       eventStore: remoteStore,
       actor: 'remote',
       logger: const NoopLogger(),

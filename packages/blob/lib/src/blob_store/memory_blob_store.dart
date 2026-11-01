@@ -1,0 +1,45 @@
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'blob_store.dart';
+
+/// Stores immutable blobs for the lifetime of this instance.
+class MemoryBlobStore implements BlobStore {
+  final Map<String, Uint8List> _blobs = {};
+  final _available = StreamController<String>.broadcast();
+
+  @override
+  Stream<String> get availableBlobs => _available.stream;
+
+  @override
+  Future<Uint8List?> get(String blobId) async {
+    final data = _blobs[blobId];
+    return data == null ? null : Uint8List.fromList(data);
+  }
+
+  @override
+  Future<void> save(String blobId, Uint8List data) async {
+    final existing = _blobs[blobId];
+    if (existing != null) {
+      if (existing.length != data.length) {
+        throw StateError('Blob already contains different bytes: $blobId');
+      }
+      for (var index = 0; index < data.length; index++) {
+        if (existing[index] != data[index]) {
+          throw StateError('Blob already contains different bytes: $blobId');
+        }
+      }
+      return;
+    }
+    _blobs[blobId] = Uint8List.fromList(data);
+    _available.add(blobId);
+  }
+
+  @override
+  Future<List<String>> listIds() async => _blobs.keys.toList();
+
+  @override
+  Future<void> delete(String blobId) async {
+    _blobs.remove(blobId);
+  }
+}

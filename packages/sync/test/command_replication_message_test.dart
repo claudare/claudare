@@ -65,7 +65,6 @@ void main() {
     final time = DateTime.utc(2026, 10, 3, 12, 30);
     final original = CommandReplicationMessageCommand(
       StoredCommand(
-        blobIds: const [],
         commandId: const CommandId('local', 3),
         dependency: CommandDependency({'local': 2, 'remote': 5}),
         occuredAt: time,

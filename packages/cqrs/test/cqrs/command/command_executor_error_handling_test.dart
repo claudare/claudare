@@ -1,4 +1,3 @@
-import 'package:cqrs/src/cqrs/blob_store/memory_blob_store.dart';
 import 'package:id_generator/id_generator.dart';
 
 import 'dart:typed_data';
@@ -99,7 +98,6 @@ CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
   final registry = EventRegistry()..add(const _EventCodec());
   return CommandExecutor(
     idGenerator: IdGeneratorSequential(),
-    blobStore: MemoryBlobStore(),
     actor: 'test-actor',
     eventStore: eventStore ?? database,
     streamReader: CqrsTestRuntime(eventStore: eventStore ?? database)

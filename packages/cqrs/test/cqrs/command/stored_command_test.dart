@@ -6,7 +6,6 @@ import 'package:test/test.dart';
 
 void main() {
   StoredCommand command() => StoredCommand(
-    blobIds: const ['second', 'first'],
     commandId: const CommandId('writer/actor', 3),
     dependency: CommandDependency({'writer/actor': 2, 'peer': 4}),
     occuredAt: DateTime.utc(2026),
@@ -40,7 +39,6 @@ void main() {
     expect(restored.toJson(), original.toJson());
     expect(restored.commandId, original.commandId);
     expect(restored.dependency, original.dependency);
-    expect(restored.blobIds, ['second', 'first']);
     expect(restored.events.map((event) => event.streamPath), [
       'one',
       'two',

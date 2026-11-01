@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:sync/sync.dart';
+import 'package:transport_proxy/transport_proxy.dart';
 // ignore: depend_on_referenced_packages
 import 'package:web_socket_channel/io.dart';
 

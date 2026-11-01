@@ -28,7 +28,6 @@ void main() {
     expect(
       await store.addStoredCommand(
         StoredCommand(
-          blobIds: const [],
           commandId: const CommandId('actor', 1),
           dependency: CommandDependency(),
           occuredAt: time,
