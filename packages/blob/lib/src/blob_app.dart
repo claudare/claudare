@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
 import 'package:blob/src/blob_event.dart';
+import 'package:blob/src/path.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
 
@@ -36,10 +37,28 @@ class BlobApp implements BlobReader, BlobWriter {
     final id = _idGenerator.generateId();
     await _blobStore.save(id, data);
 
-    final stream = ctx.stream('_blob/$id');
+    final stream = ctx.stream(blobStream(id));
     await stream.mustNotExist();
 
     stream.append(BlobCreated());
     return id;
+  }
+
+  /// Deletes unreferenced local blobs. The runtime must be idle while this runs.
+  Future<void> optimize() async {
+    final unused = (await _blobStore.listIds()).toSet();
+    final events = _runtime.logReader(LogFilter.startsWith(blobStream('')), 0);
+    await for (final event in events.scan()) {
+      final decoded = _runtime.eventRegistry.decode<BlobEvent>(
+        event.encodedEvent,
+      );
+      if (decoded is BlobCreated) {
+        unused.remove(blobIdFromStream(event.streamPath));
+      }
+    }
+
+    for (final id in unused) {
+      await _blobStore.delete(id);
+    }
   }
 }
