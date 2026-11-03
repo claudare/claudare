@@ -5,6 +5,41 @@ import 'package:cqrs/cqrs.dart';
 import 'package:test/test.dart';
 
 void main() {
+  for (final kind in [
+    'test',
+    SystemEventKinds.streamDeleted,
+    SystemEventKinds.eventErased,
+  ]) {
+    test('$kind survives command JSON serialization', () {
+      final original = StoredCommand(
+        commandId: const CommandId('actor', 1),
+        dependency: CommandDependency(),
+        occuredAt: DateTime.utc(2026),
+        events: [
+          StoredCommandEvent(
+            streamPath: 'one',
+            encodedEvent: EncodedEvent(
+              kind: kind,
+              bytes: kind == 'test' ? Uint8List.fromList([255]) : Uint8List(0),
+            ),
+            occuredAt: DateTime.utc(2026),
+          ),
+        ],
+      );
+      final json = original.toJson();
+      final eventJson = (json['events'] as List).single as Map;
+      expect(eventJson['kind'], kind);
+      expect(eventJson['bytes'], kind == 'test' ? '/w==' : '');
+      expect(eventJson.containsKey('kind'), isTrue);
+      expect(eventJson.containsKey('bytes'), isTrue);
+      final restored = StoredCommand.fromJson(
+        jsonDecode(jsonEncode(json)) as Map<String, dynamic>,
+      );
+      expect(restored.toJson(), json);
+      expect(restored.events.single.encodedEvent.kind, kind);
+    });
+  }
+
   StoredCommand command() => StoredCommand(
     commandId: const CommandId('writer/actor', 3),
     dependency: CommandDependency({'writer/actor': 2, 'peer': 4}),
@@ -60,6 +95,11 @@ void main() {
   test('stored event rejects invalid payload encoding', () {
     final json = command().events.first.toJson()..['bytes'] = '!';
     expect(() => StoredCommandEvent.fromJson(json), throwsFormatException);
+  });
+
+  test('stored event rejects an unknown reserved kind', () {
+    final json = command().events.first.toJson()..['kind'] = r'$unknown';
+    expect(() => StoredCommandEvent.fromJson(json), throwsArgumentError);
   });
 
   test('string representations identify types without payload bytes', () {

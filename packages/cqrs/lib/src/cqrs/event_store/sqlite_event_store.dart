@@ -168,7 +168,8 @@ class SqliteEventStore implements EventStore {
       }
       final rows = tx.query(
         '''SELECT
-        id_actor, id_sequence, id_index, kind, detail, occured_at, stream_version, log_position
+        id_actor, id_sequence, id_index, kind, detail,
+        occured_at, stream_version, log_position
       FROM event
       WHERE stream_path = ?
         AND stream_version >= ?
@@ -218,7 +219,8 @@ class SqliteEventStore implements EventStore {
       };
       final rows = tx.query(
         '''SELECT
-        id_actor, id_sequence, id_index, stream_path, kind, detail, occured_at, stream_version, log_position
+        id_actor, id_sequence, id_index, stream_path, kind, detail,
+        occured_at, stream_version, log_position
       FROM event
       WHERE log_position >= ?
         $condition

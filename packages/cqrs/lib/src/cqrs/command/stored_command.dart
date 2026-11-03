@@ -75,6 +75,6 @@ class StoredCommandEvent {
   @override
   String toString() =>
       'StoredCommandEvent(streamPath: $streamPath, '
-      'kind: ${encodedEvent.kind}, byteLength: ${encodedEvent.bytes.length}, '
+      'kind: ${encodedEvent.kind}, '
       'occuredAt: $occuredAt)';
 }

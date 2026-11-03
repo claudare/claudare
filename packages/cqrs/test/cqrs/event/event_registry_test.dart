@@ -5,6 +5,54 @@ import 'package:test/test.dart';
 
 void main() {
   group('EventRegistry', () {
+    for (final kind in [
+      SystemEventKinds.streamDeleted,
+      SystemEventKinds.eventErased,
+      r'$unknown',
+      r'$',
+    ]) {
+      test('rejects registration of $kind', () {
+        expect(
+          () => EventRegistry().add(_TestEventCodec(kind)),
+          throwsA(isA<EventRegistryException>()),
+        );
+      });
+
+      test('rejects encoding when a codec changes its kind to $kind', () {
+        final codec = _MutableCodec();
+        final registry = EventRegistry()..add(codec);
+        codec.kind = kind;
+        expect(
+          () => registry.encode(const _TestEvent('value')),
+          throwsA(
+            isA<EventCodecException>().having(
+              (error) => error.direction,
+              'direction',
+              EventCodecDirection.encode,
+            ),
+          ),
+        );
+      });
+    }
+    for (final kind in [
+      SystemEventKinds.eventErased,
+      SystemEventKinds.streamDeleted,
+    ]) {
+      test('rejects $kind without an application decoder', () {
+        expect(
+          () => EventRegistry().decodeObject(
+            EncodedEvent(kind: kind, bytes: Uint8List(0)),
+          ),
+          throwsA(
+            isA<EventCodecException>().having(
+              (error) => error.direction,
+              'direction',
+              EventCodecDirection.decode,
+            ),
+          ),
+        );
+      });
+    }
     test('encodes by Dart type and decodes by persisted kind', () {
       final registry = EventRegistry()..add(const _TestEventCodec('test'));
 
@@ -55,7 +103,7 @@ void main() {
       );
     });
 
-    test('fails explicitly for an unknown persisted kind', () {
+    test('fails explicitly for an unknown kind', () {
       expect(
         () => EventRegistry().decode<Object>(
           EncodedEvent(kind: 'unknown', bytes: Uint8List(0)),
@@ -86,6 +134,17 @@ final class _TestEvent {
   final String value;
 
   const _TestEvent(this.value);
+}
+
+final class _MutableCodec implements EventCodec<_TestEvent> {
+  @override
+  String kind = 'test';
+
+  @override
+  Uint8List toBytes(_TestEvent event) => Uint8List(0);
+
+  @override
+  _TestEvent fromBytes(Uint8List bytes) => const _TestEvent('');
 }
 
 final class _OtherEvent {
