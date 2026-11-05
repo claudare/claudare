@@ -22,7 +22,7 @@ void main() {
         expect(state.lastCommandLogPosition, isNull);
         expect(state.lastEventLogPosition, isNull);
         expect(state.logVersion, CommandDependency());
-        expect(await store.getStreamVersion('missing'), isNull);
+        expect(await store.getStreamInfo('missing'), isNull);
       });
 
       test('counts stored events', () async {
@@ -50,7 +50,7 @@ void main() {
             throwsStateError,
           );
           expect((await store.getState()).lastEventLogPosition, isNull);
-          expect(await store.getStreamVersion('one'), isNull);
+          expect(await store.getStreamInfo('one'), isNull);
         },
       );
 

@@ -58,6 +58,13 @@ class NoteListState implements AggregateState<NoteEvent> {
     final note = notes.putIfAbsent(noteId, () => NoteState(noteId));
     note.apply(envelope);
   }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {
+    final noteId = noteIdFromStream(deletion.streamPath);
+    final note = notes.remove(noteId);
+    note?.onStreamDeleted(deletion);
+  }
 }
 
 Aggregate<NoteEvent, NoteListState> noteListAggregate() {

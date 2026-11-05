@@ -11,13 +11,29 @@ class EncodedEvent {
   EncodedEvent({required this.kind, required Uint8List bytes})
     : bytes = Uint8List.fromList(bytes).asUnmodifiableView() {
     if (kind.startsWith(r'$')) {
-      if (((kind != SystemEventKinds.streamDeleted &&
-          kind != SystemEventKinds.eventErased))) {
+      if (!isStreamDeleted && !isEventErased) {
         throw ArgumentError('Invalid framework event kind type: $kind');
       }
       if (bytes.isNotEmpty) {
         throw ArgumentError('Invalid non-empty framework event payload: $kind');
       }
     }
+  }
+
+  bool get isStreamDeleted => kind == SystemEventKinds.streamDeleted;
+  bool get isEventErased => kind == SystemEventKinds.eventErased;
+
+  factory EncodedEvent.streamDeleted() {
+    return EncodedEvent(
+      kind: SystemEventKinds.streamDeleted,
+      bytes: Uint8List(0),
+    );
+  }
+
+  factory EncodedEvent.eventErased() {
+    return EncodedEvent(
+      kind: SystemEventKinds.eventErased,
+      bytes: Uint8List(0),
+    );
   }
 }

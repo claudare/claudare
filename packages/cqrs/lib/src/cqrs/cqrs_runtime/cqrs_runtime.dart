@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
@@ -45,6 +43,8 @@ class CqrsRuntime {
   String get actor => _actor;
 
   /// Creates a reader starting at the inclusive stream version.
+  ///
+  /// Includes erased records and stream deletion markers.
   PaginatedReader<StoredEvent> streamReader(
     String streamPath, {
     int fromVersion = 0,
@@ -54,11 +54,15 @@ class CqrsRuntime {
   );
 
   /// Creates a reader starting at the inclusive global log position.
-  PaginatedReader<StoredEvent> logReader(LogFilter filter, int fromPosition) =>
-      PaginatedReader(
-        (int cursor) => _eventStore.getLogEvents(filter, cursor),
-        initialCursor: fromPosition,
-      );
+  ///
+  /// Includes erased records and stream deletion markers.
+  PaginatedReader<StoredEvent> logReader(
+    LogFilter filter, {
+    int fromPosition = 0,
+  }) => PaginatedReader(
+    (int cursor) => _eventStore.getLogEvents(filter, cursor),
+    initialCursor: fromPosition,
+  );
 
   EventRegistry get eventRegistry => _eventRegistry;
 
@@ -68,17 +72,37 @@ class CqrsRuntime {
 
   /// A granular, stateless resolve.
   /// Will start from provided sequence, and return the final sequence.
+  /// TODO: remove me
   Future<int?> resolveStateless<TEvent extends Object>({
     required LogFilter filter,
     required ApplyEnvelope<TEvent> apply,
+    required void Function(StreamDeletion deletion) onStreamDeleted,
     int? sequence,
   }) async {
     final startingSequence = sequence;
     var applyCount = 0;
 
-    final stream = logReader(filter, (startingSequence ?? -1) + 1).scan();
+    final stream = logReader(
+      filter,
+      fromPosition: (startingSequence ?? -1) + 1,
+    ).scan();
 
     await for (final logEvent in stream) {
+      if (logEvent.encodedEvent.isEventErased) {
+        sequence = logEvent.position;
+        continue;
+      }
+      if (logEvent.encodedEvent.isStreamDeleted) {
+        onStreamDeleted(
+          StreamDeletion(
+            actor: logEvent.eventId.actor,
+            streamPath: logEvent.streamPath,
+            occuredAt: logEvent.occuredAt,
+          ),
+        );
+        sequence = logEvent.position;
+        continue;
+      }
       final decoded = _eventRegistry.decode(logEvent.encodedEvent);
       if (decoded is! TEvent) {
         // its programmers job to specify the correct event type
@@ -119,10 +143,25 @@ class CqrsRuntime {
 
     final stream = logReader(
       aggregate.filter,
-      (aggregate.sequence ?? -1) + 1,
+      fromPosition: (aggregate.sequence ?? -1) + 1,
     ).scan();
 
     await for (final logEvent in stream) {
+      if (logEvent.encodedEvent.isEventErased) {
+        aggregate.sequence = logEvent.position;
+        continue;
+      }
+      if (logEvent.encodedEvent.isStreamDeleted) {
+        aggregate.state.onStreamDeleted(
+          StreamDeletion(
+            actor: logEvent.eventId.actor,
+            streamPath: logEvent.streamPath,
+            occuredAt: logEvent.occuredAt,
+          ),
+        );
+        aggregate.sequence = logEvent.position;
+        continue;
+      }
       final decoded = _eventRegistry.decode(logEvent.encodedEvent);
       if (decoded is! TEvent) {
         // its programmers job to specify the correct event type

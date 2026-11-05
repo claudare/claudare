@@ -848,7 +848,7 @@ Future<void> _append(EventStore store, String actor) async {
       locks: [
         StreamLock(
           streamPath: actor,
-          originatingStreamVersion: await store.getStreamVersion(actor),
+          originatingStreamVersion: (await store.getStreamInfo(actor))?.version,
         ),
       ],
       events: [

@@ -15,13 +15,13 @@ void main() {
         dependency: CommandDependency({'local': 1}),
         occuredAt: DateTime.utc(2026, 10, 3),
         events: [
-          for (final kind in [
-            SystemEventKinds.eventErased,
-            SystemEventKinds.streamDeleted,
+          for (final encodedEvent in [
+            EncodedEvent.eventErased(),
+            EncodedEvent.streamDeleted(),
           ])
             StoredCommandEvent(
               streamPath: '/notes/first',
-              encodedEvent: EncodedEvent(kind: kind, bytes: Uint8List(0)),
+              encodedEvent: encodedEvent,
               occuredAt: DateTime.utc(2026, 10, 3),
             ),
           StoredCommandEvent(

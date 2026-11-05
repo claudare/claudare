@@ -401,9 +401,9 @@ final class _ControlledStore extends MemoryEventStore {
   Future<void> Function()? beforeRead;
 
   @override
-  Future<int?> getStreamVersion(String streamPath) async {
+  Future<StreamInfo?> getStreamInfo(String streamPath) async {
     await beforeRead?.call();
-    return super.getStreamVersion(streamPath);
+    return super.getStreamInfo(streamPath);
   }
 
   @override

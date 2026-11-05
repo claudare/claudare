@@ -6,6 +6,13 @@ import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 
+class StreamInfo {
+  final int version;
+  final bool isDeleted;
+
+  const StreamInfo({required this.version, required this.isDeleted});
+}
+
 class EventDatabaseState {
   final int? lastCommandLogPosition;
   final int? lastEventLogPosition;
@@ -71,7 +78,7 @@ abstract interface class EventStoreReplication {
   );
 
   /// Reads events matching [filter] from the inclusive global [fromPosition].
-  /// [EventStore] owns pagination size.
+  /// Includes erased records. [EventStore] owns pagination size.
   Future<PaginatedResult<StoredEvent>> getLogEvents(
     LogFilter filter,
     int fromPosition,
@@ -79,11 +86,11 @@ abstract interface class EventStoreReplication {
 }
 
 abstract interface class EventStore implements EventStoreReplication {
-  /// Quick latest lookup of the last stream's version.
-  Future<int?> getStreamVersion(String streamPath);
+  /// Lookup of a stream's state.
+  Future<StreamInfo?> getStreamInfo(String streamPath);
 
   /// Get paginated result from a single stream.
-  /// [EventStore] owns pagination size.
+  /// Includes erased records. [EventStore] owns pagination size.
   Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,

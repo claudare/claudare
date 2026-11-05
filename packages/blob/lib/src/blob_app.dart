@@ -47,8 +47,13 @@ class BlobApp implements BlobReader, BlobWriter {
   /// Deletes unreferenced local blobs. The runtime must be idle while this runs.
   Future<void> optimize() async {
     final unused = (await _blobStore.listIds()).toSet();
-    final events = _runtime.logReader(LogFilter.startsWith(blobStream('')), 0);
+    final events = _runtime.logReader(LogFilter.startsWith(blobStream('')));
     await for (final event in events.scan()) {
+      if (event.encodedEvent.isStreamDeleted ||
+          event.encodedEvent.isEventErased) {
+        unused.remove(blobIdFromStream(event.streamPath));
+        continue;
+      }
       final decoded = _runtime.eventRegistry.decode<BlobEvent>(
         event.encodedEvent,
       );

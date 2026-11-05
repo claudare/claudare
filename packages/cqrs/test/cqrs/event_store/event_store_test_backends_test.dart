@@ -44,12 +44,12 @@ void main() {
           isTrue,
         );
 
-        expect(await database.getStreamVersion('one'), 2);
-        expect(await database.getStreamVersion('two'), 1);
+        expect((await database.getStreamInfo('one'))?.version, 2);
+        expect((await database.getStreamInfo('two'))?.version, 1);
         final one = await database.getStreamEvents('one', 1);
         expect(one.data.map((event) => event.version), [1, 2]);
         final all = await CqrsTestRuntime(eventStore: database)
-            .logReader(const LogFilter.all(), 0)
+            .logReader(const LogFilter.all())
             .scan()
             .toList();
         expect(all.map((event) => event.streamPath), [

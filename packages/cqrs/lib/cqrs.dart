@@ -42,3 +42,4 @@ export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
 export 'src/cqrs/exception/stream_already_exists_exception.dart';
+export 'src/cqrs/exception/stream_deleted_exception.dart';

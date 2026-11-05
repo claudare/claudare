@@ -69,7 +69,7 @@ void main() {
             CommandDependency({'alice': 1, 'bob': 1}),
           );
           final events = await alice
-              .logReader(const LogFilter.all(), 0)
+              .logReader(const LogFilter.all())
               .scan()
               .toList();
           expect(events.map((event) => event.eventId), [
@@ -103,7 +103,7 @@ void main() {
             isFalse,
           );
           expect((await store.getState()).lastCommandLogPosition, isNull);
-          expect(await store.getStreamVersion('one'), isNull);
+          expect(await store.getStreamInfo('one'), isNull);
           expect(await store.addStoredCommand(_stored('alice')), isTrue);
           expect(
             (await store.getLogEvents(

@@ -41,6 +41,12 @@ class AccountListState implements AggregateState<AccountEvent> {
     final account = accounts.putIfAbsent(accountId, AccountSummaryState.new);
     account.apply(envelope);
   }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {
+    final accountId = accountIdFromStream(deletion.streamPath);
+    accounts.remove(accountId);
+  }
 }
 
 Aggregate<AccountEvent, AccountListState> accountListAggregate() => Aggregate(

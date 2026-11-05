@@ -28,7 +28,7 @@ void main() {
 
     test('handles an empty log', () async {
       expect(
-        await runtime.logReader(const LogFilter.all(), 0).scan().toList(),
+        await runtime.logReader(const LogFilter.all()).scan().toList(),
         isEmpty,
       );
     });
@@ -45,7 +45,7 @@ void main() {
     test('starts log replay at the supplied position across pages', () async {
       await _appendCount(store, 5);
       final events = await runtime
-          .logReader(const LogFilter.all(), 1)
+          .logReader(const LogFilter.all(), fromPosition: 1)
           .scan()
           .toList();
       expect(events.map((event) => event.position), [1, 2, 3, 4]);

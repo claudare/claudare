@@ -48,7 +48,7 @@ void main() {
         (await store.getLogEvents(const LogFilter.all(), 0)).data,
         isEmpty,
       );
-      expect(await store.getStreamVersion('one'), isNull);
+      expect(await store.getStreamInfo('one'), isNull);
       await store.saveChanges(changes([first]));
       expect(
         await store.getStoredCommand(CommandId('test-actor', 1)),

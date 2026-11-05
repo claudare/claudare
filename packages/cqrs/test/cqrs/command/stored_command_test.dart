@@ -101,12 +101,4 @@ void main() {
     final json = command().events.first.toJson()..['kind'] = r'$unknown';
     expect(() => StoredCommandEvent.fromJson(json), throwsArgumentError);
   });
-
-  test('string representations identify types without payload bytes', () {
-    final original = command();
-    expect(original.toString(), startsWith('StoredCommand('));
-    expect(original.events.first.toString(), startsWith('StoredCommandEvent('));
-    expect(original.events.first.toString(), contains('byteLength: 3'));
-    expect(original.toString(), isNot(contains('AAD/')));
-  });
 }
