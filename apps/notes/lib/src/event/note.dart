@@ -13,7 +13,5 @@ part 'note_trashed.dart';
 sealed class NoteEvent {
   const NoteEvent();
 
-  String get noteId;
-
   Map<String, dynamic> toJson();
 }

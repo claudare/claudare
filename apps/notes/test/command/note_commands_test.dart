@@ -34,7 +34,7 @@ void main() {
 
   test('create rejects an existing note', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated());
 
     await expectLater(
       tester.run(const CreateNote(noteId: 'one')),
@@ -44,7 +44,7 @@ void main() {
 
   test('title update writes the supplied value', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated());
 
     await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
 
@@ -56,7 +56,7 @@ void main() {
 
   test('content update writes the supplied value', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated());
 
     await tester.run(
       UpdateNoteContent(
@@ -93,7 +93,7 @@ void main() {
 
   test('trash writes an event for an active note', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated());
 
     await tester.run(const TrashNote(noteId: 'one'));
 
@@ -104,8 +104,8 @@ void main() {
 
   test('trash rejects a note that is already trashed', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
-      ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated())
+      ..withEvent(noteStream('one'), const NoteTrashed());
 
     await expectLater(
       tester.run(const TrashNote(noteId: 'one')),
@@ -122,8 +122,8 @@ void main() {
 
   test('restore writes an event for a trashed note', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'))
-      ..withEvent(noteStream('one'), const NoteTrashed(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated())
+      ..withEvent(noteStream('one'), const NoteTrashed());
 
     await tester.run(const RestoreNote(noteId: 'one'));
 
@@ -134,7 +134,7 @@ void main() {
 
   test('restore rejects a note that is not trashed', () async {
     final tester = createTester()
-      ..withEvent(noteStream('one'), const NoteCreated(noteId: 'one'));
+      ..withEvent(noteStream('one'), const NoteCreated());
 
     await expectLater(
       tester.run(const RestoreNote(noteId: 'one')),

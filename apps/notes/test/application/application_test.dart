@@ -110,19 +110,19 @@ void main() {
       TestEvent(
         actor: 'a',
         stream: 'note/one',
-        event: const NoteCreated(noteId: 'one'),
+        event: const NoteCreated(),
         occuredAt: DateTime.utc(2026, 1, 1),
       ),
       TestEvent(
         actor: 'a',
         stream: 'note/two',
-        event: const NoteCreated(noteId: 'two'),
+        event: const NoteCreated(),
         occuredAt: DateTime.utc(2026, 1, 2),
       ),
       TestEvent(
         actor: 'a',
         stream: 'note/one',
-        event: const NoteTrashed(noteId: 'one'),
+        event: const NoteTrashed(),
         occuredAt: DateTime.utc(2026, 1, 3),
       ),
     ]);
@@ -188,19 +188,19 @@ void main() {
       TestEvent(
         actor: 'a',
         stream: 'note/old',
-        event: const NoteCreated(noteId: 'old'),
+        event: const NoteCreated(),
         occuredAt: createdAt,
       ),
       TestEvent(
         actor: 'a',
         stream: 'note/old',
-        event: const NoteTitleUpdated(noteId: 'old', newTitle: 'Existing'),
+        event: const NoteTitleUpdated(newTitle: 'Existing'),
         occuredAt: editedAt,
       ),
       TestEvent(
         actor: 'a',
         stream: 'note/old',
-        event: NoteContentUpdated(noteId: 'old', change: change!),
+        event: NoteContentUpdated(change: change!),
         occuredAt: editedAt,
       ),
     ]);
@@ -226,13 +226,13 @@ void main() {
       TestEvent(
         actor: 'a',
         stream: 'note/greeting',
-        event: const NoteCreated(noteId: 'greeting'),
+        event: const NoteCreated(),
         occuredAt: time,
       ),
       TestEvent(
         actor: 'a',
         stream: 'note/greeting',
-        event: NoteContentUpdated(noteId: 'greeting', change: change!),
+        event: NoteContentUpdated(change: change!),
         occuredAt: time,
       ),
     ]);

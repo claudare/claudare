@@ -54,7 +54,7 @@ class NoteListState implements AggregateState<NoteEvent> {
 
   @override
   void apply(EventEnvelope<NoteEvent> envelope) {
-    final noteId = envelope.event.noteId;
+    final noteId = noteIdFromStream(envelope.streamPath);
     final note = notes.putIfAbsent(noteId, () => NoteState(noteId));
     note.apply(envelope);
   }
