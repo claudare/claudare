@@ -44,8 +44,8 @@ void main() {
           isTrue,
         );
 
-        expect((await database.getStreamInfo('one'))?.version, 2);
-        expect((await database.getStreamInfo('two'))?.version, 1);
+        expect((await database.getStreamInfo('one')).version, 2);
+        expect((await database.getStreamInfo('two')).version, 1);
         final one = await database.getStreamEvents('one', 1);
         expect(one.data.map((event) => event.version), [1, 2]);
         final all = await CqrsTestRuntime(eventStore: database)

@@ -128,10 +128,12 @@ class MemoryEventStore implements EventStore {
   );
 
   @override
-  Future<StreamInfo?> getStreamInfo(String streamPath) =>
+  Future<StreamInfo> getStreamInfo(String streamPath) =>
       _read("Failed to get stream info for '$streamPath'", () {
         final indexes = _streamVersions[streamPath];
-        if (indexes == null || indexes.isEmpty) return null;
+        if (indexes == null || indexes.isEmpty) {
+          return const StreamInfo.streamDoesNotExist();
+        }
         return StreamInfo(
           version: indexes.length - 1,
           isDeleted: _streamDeleted[streamPath] ?? false,
@@ -363,7 +365,7 @@ class MemoryEventStore implements EventStore {
           if (_streamDeleted[lock.streamPath] ?? false) {
             throw StreamDeletedException(lock.streamPath);
           }
-          final current = _getStreamVersion(lock.streamPath);
+          final current = _getStreamVersion(lock.streamPath) ?? -1;
           if (current != lock.originatingStreamVersion) {
             throw ConcurrencyProblem();
           }

@@ -165,7 +165,7 @@ void main() {
 
 CommandChanges _changes({
   int count = 1,
-  int? version,
+  int version = -1,
   CommandDependency? dependency,
 }) {
   final time = DateTime.utc(2026);

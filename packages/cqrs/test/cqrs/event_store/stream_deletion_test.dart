@@ -23,8 +23,8 @@ void main() {
           expect(await store.addStoredCommand(_deleted('other', 1)), isTrue);
 
           final info = await store.getStreamInfo('one');
-          expect(info?.isDeleted, isTrue);
-          expect(info?.version, 1);
+          expect(info.isDeleted, isTrue);
+          expect(info.version, 1);
 
           final all = await store.getStreamEvents('one', 0);
           expect(all.data.map((event) => event.encodedEvent.kind), [

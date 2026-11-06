@@ -82,10 +82,7 @@ Future<void> _appendCount(EventStore store, int count) async {
         dependency: CommandDependency(),
         occuredAt: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
         locks: [
-          StreamLock(
-            streamPath: 'test',
-            originatingStreamVersion: i == 0 ? null : i - 1,
-          ),
+          StreamLock(streamPath: 'test', originatingStreamVersion: i - 1),
         ],
         events: [
           EventAppend(

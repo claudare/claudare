@@ -47,7 +47,7 @@ void main() {
           locks: [
             StreamLock(
               streamPath: 'existing',
-              originatingStreamVersion: index == 0 ? null : index - 1,
+              originatingStreamVersion: index - 1,
             ),
           ],
           events: [
@@ -401,7 +401,7 @@ final class _ControlledStore extends MemoryEventStore {
   Future<void> Function()? beforeRead;
 
   @override
-  Future<StreamInfo?> getStreamInfo(String streamPath) async {
+  Future<StreamInfo> getStreamInfo(String streamPath) async {
     await beforeRead?.call();
     return super.getStreamInfo(streamPath);
   }

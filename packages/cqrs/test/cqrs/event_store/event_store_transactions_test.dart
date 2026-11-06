@@ -22,7 +22,7 @@ void main() {
         expect(state.lastCommandLogPosition, isNull);
         expect(state.lastEventLogPosition, isNull);
         expect(state.logVersion, CommandDependency());
-        expect(await store.getStreamInfo('missing'), isNull);
+        expect((await store.getStreamInfo('missing')).version, -1);
       });
 
       test('counts stored events', () async {
@@ -50,7 +50,7 @@ void main() {
             throwsStateError,
           );
           expect((await store.getState()).lastEventLogPosition, isNull);
-          expect(await store.getStreamInfo('one'), isNull);
+          expect((await store.getStreamInfo('one')).version, -1);
         },
       );
 
@@ -164,7 +164,7 @@ void main() {
 CommandChanges _changes(
   String path, {
   int count = 1,
-  int? version,
+  int version = -1,
   CommandDependency? dependency,
 }) {
   final timestamp = DateTime.utc(2026);

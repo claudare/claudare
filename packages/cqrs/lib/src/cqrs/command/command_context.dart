@@ -95,7 +95,7 @@ class CommandContext implements CommandContextApi {
     state.lock = lock;
   }
 
-  Future<void> _lock(String streamPath, Future<int?> Function() acquire) async {
+  Future<void> _lock(String streamPath, Future<int> Function() acquire) async {
     _beginAcquisition(streamPath);
     StreamLock? lock;
     try {

@@ -156,7 +156,7 @@ class SqliteEventStore implements EventStore {
   });
 
   @override
-  Future<StreamInfo?> getStreamInfo(String streamPath) => _transaction(
+  Future<StreamInfo> getStreamInfo(String streamPath) => _transaction(
     "Failed to get stream info for '$streamPath'",
     (tx) => _streamInfo(tx, streamPath),
   );
@@ -315,10 +315,10 @@ class SqliteEventStore implements EventStore {
 
       for (final lock in changes.locks) {
         final current = _streamInfo(tx, lock.streamPath);
-        if (current?.isDeleted == true) {
+        if (current.isDeleted) {
           throw StreamDeletedException(lock.streamPath);
         }
-        if (current?.version != lock.originatingStreamVersion) {
+        if (current.version != lock.originatingStreamVersion) {
           throw ConcurrencyProblem();
         }
       }
@@ -428,25 +428,12 @@ int _nextLogPosition(SyncContext tx, String table) {
   return highest == null ? 0 : highest + 1;
 }
 
-StreamInfo? _streamInfo(SyncContext tx, String streamPath) {
+StreamInfo _streamInfo(SyncContext tx, String streamPath) {
   final row = tx.queryRow(
     'SELECT version, deleted FROM stream WHERE stream_path = ?;',
     [streamPath],
   );
-  if (row == null) return null;
-  return StreamInfo(
-    version: row.field<int>('version'),
-    isDeleted: row.field<int>('deleted') != 0,
-  );
-}
-
-// how it should be used!
-StreamInfo _streamInfo2(SyncContext tx, String streamPath) {
-  final row = tx.queryRow(
-    'SELECT version, deleted FROM stream WHERE stream_path = ?;',
-    [streamPath],
-  );
-  if (row == null) return StreamInfo.doesNotExist();
+  if (row == null) return StreamInfo.streamDoesNotExist();
   return StreamInfo(
     version: row.field<int>('version'),
     isDeleted: row.field<int>('deleted') != 0,
@@ -465,7 +452,7 @@ void _insertLogEvents(
 
   final Map<String, StreamInfo> streamInfos = {};
   for (final streamName in streamNames) {
-    streamInfos[streamName] = _streamInfo2(tx, streamName);
+    streamInfos[streamName] = _streamInfo(tx, streamName);
   }
 
   final Map<String, List<StreamAppend>> appends = {};

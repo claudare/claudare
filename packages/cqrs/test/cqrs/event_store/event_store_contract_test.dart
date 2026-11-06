@@ -48,7 +48,7 @@ void main() {
           EventId('actor-1', 1, 1),
           EventId('actor-1', 1, 2),
         ]);
-        expect(await store.getStreamInfo('one'), isNotNull);
+        expect((await store.getStreamInfo('one')).streamExists(), isTrue);
         expect(
           (await session.store.getState()).logVersion,
           CommandDependency({'actor-1': 1}),
@@ -116,9 +116,9 @@ void main() {
       test(
         'local commands preserve stream locks and command sequence',
         () async {
-          await store.saveChanges(_changes('one', null));
+          await store.saveChanges(_changes('one', -1));
           await expectLater(
-            store.saveChanges(_changes('one', null)),
+            store.saveChanges(_changes('one', -1)),
             throwsA(isA<ConcurrencyProblem>()),
           );
           await store.saveChanges(_changes('one', 0));
@@ -134,7 +134,7 @@ void main() {
             (await store.getStoredCommand(CommandId('test-actor', 3))),
             isNull,
           );
-          expect((await store.getStreamInfo('one'))?.version, 1);
+          expect((await store.getStreamInfo('one')).version, 1);
         },
       );
 
@@ -173,7 +173,7 @@ void main() {
   }
 }
 
-CommandChanges _changes(String path, int? version) => CommandChanges(
+CommandChanges _changes(String path, int version) => CommandChanges(
   actor: 'test-actor',
   dependency: CommandDependency(),
   occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),

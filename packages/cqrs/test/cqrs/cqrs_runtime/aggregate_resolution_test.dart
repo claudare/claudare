@@ -192,9 +192,9 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
         dependency: CommandDependency(),
         occuredAt: _timestamp,
         locks: const [
-          StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
-          StreamLock(streamPath: 'account/two', originatingStreamVersion: null),
-          StreamLock(streamPath: 'other/three', originatingStreamVersion: null),
+          StreamLock(streamPath: 'account/one', originatingStreamVersion: -1),
+          StreamLock(streamPath: 'account/two', originatingStreamVersion: -1),
+          StreamLock(streamPath: 'other/three', originatingStreamVersion: -1),
         ],
         events: [
           for (final (index, path, value) in [

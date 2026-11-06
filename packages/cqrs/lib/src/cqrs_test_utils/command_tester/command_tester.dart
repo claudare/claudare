@@ -115,7 +115,7 @@ class CommandTester {
           locks: [
             StreamLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info?.version,
+              originatingStreamVersion: info.version,
             ),
           ],
           events: [event],

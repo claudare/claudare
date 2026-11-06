@@ -103,7 +103,7 @@ void main() {
             isFalse,
           );
           expect((await store.getState()).lastCommandLogPosition, isNull);
-          expect(await store.getStreamInfo('one'), isNull);
+          expect((await store.getStreamInfo('one')).version, -1);
           expect(await store.addStoredCommand(_stored('alice')), isTrue);
           expect(
             (await store.getLogEvents(
@@ -279,7 +279,7 @@ StoredCommand _stored(
 CommandChanges _changes(
   String actor, {
   String path = 'one',
-  int? version,
+  int version = -1,
   CommandDependency? dependency,
 }) => CommandChanges(
   actor: actor,

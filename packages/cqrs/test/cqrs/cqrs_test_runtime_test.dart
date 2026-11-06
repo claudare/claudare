@@ -135,7 +135,7 @@ void main() {
 
     final events = (await runtime.resolve(_valueAggregate())).state.events;
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
-    expect((await database.getStreamInfo('value/one'))?.version, 2);
+    expect((await database.getStreamInfo('value/one')).version, 2);
   });
 
   test('rejects unregistered seed events before writing', () async {

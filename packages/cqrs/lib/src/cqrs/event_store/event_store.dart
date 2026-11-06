@@ -12,9 +12,9 @@ class StreamInfo {
 
   const StreamInfo({required this.version, required this.isDeleted});
 
-  const StreamInfo.doesNotExist() : version = -1, isDeleted = false;
+  const StreamInfo.streamDoesNotExist() : version = -1, isDeleted = false;
 
-  bool exists() => version != -1;
+  bool streamExists() => version != -1;
 }
 
 class EventDatabaseState {
@@ -90,8 +90,8 @@ abstract interface class EventStoreReplication {
 }
 
 abstract interface class EventStore implements EventStoreReplication {
-  /// Lookup of a stream's state.
-  Future<StreamInfo?> getStreamInfo(String streamPath);
+  /// Returns stream state.
+  Future<StreamInfo> getStreamInfo(String streamPath);
 
   /// Get paginated result from a single stream.
   /// Includes erased records. [EventStore] owns pagination size.
