@@ -11,6 +11,10 @@ class StreamInfo {
   final bool isDeleted;
 
   const StreamInfo({required this.version, required this.isDeleted});
+
+  const StreamInfo.doesNotExist() : version = -1, isDeleted = false;
+
+  bool exists() => version != -1;
 }
 
 class EventDatabaseState {

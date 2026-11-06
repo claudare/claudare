@@ -12,7 +12,6 @@ class CommandStream<Event extends Object> {
     _context._beginAcquisition(_streamPath);
 
     int? streamVersion;
-    var completed = false;
     try {
       final info = await _context._eventStore.getStreamInfo(_streamPath);
       if (info?.isDeleted ?? false) throw StreamDeletedException(_streamPath);
@@ -31,7 +30,6 @@ class CommandStream<Event extends Object> {
         streamVersion = event.version;
         yield decoded;
       }
-      completed = true;
     } finally {
       // Keep the lock when a consumer stops or fails after a partial replay.
       // Its version is the last event that was successfully yielded.
@@ -54,10 +52,6 @@ class CommandStream<Event extends Object> {
     await for (final event in reader.scan()) {
       streamVersion = event.version;
       _context._applyCommand(event.eventId.commandId);
-    }
-    if ((await _context._eventStore.getStreamInfo(_streamPath))?.isDeleted ==
-        true) {
-      throw StreamDeletedException(_streamPath);
     }
     return streamVersion;
   });
