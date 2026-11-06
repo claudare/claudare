@@ -158,7 +158,7 @@ class SqliteEventStore implements EventStore {
   @override
   Future<StreamInfo> getStreamInfo(String streamPath) => _transaction(
     "Failed to get stream info for '$streamPath'",
-    (tx) => _streamInfo(tx, streamPath),
+    (tx) => _getStreamInfo(tx, streamPath),
   );
 
   @override
@@ -314,7 +314,7 @@ class SqliteEventStore implements EventStore {
       }
 
       for (final lock in changes.locks) {
-        final current = _streamInfo(tx, lock.streamPath);
+        final current = _getStreamInfo(tx, lock.streamPath);
         if (current.isDeleted) {
           throw StreamDeletedException(lock.streamPath);
         }
@@ -428,7 +428,7 @@ int _nextLogPosition(SyncContext tx, String table) {
   return highest == null ? 0 : highest + 1;
 }
 
-StreamInfo _streamInfo(SyncContext tx, String streamPath) {
+StreamInfo _getStreamInfo(SyncContext tx, String streamPath) {
   final row = tx.queryRow(
     'SELECT version, deleted FROM stream WHERE stream_path = ?;',
     [streamPath],
@@ -452,7 +452,7 @@ void _insertLogEvents(
 
   final Map<String, StreamInfo> streamInfos = {};
   for (final streamName in streamNames) {
-    streamInfos[streamName] = _streamInfo(tx, streamName);
+    streamInfos[streamName] = _getStreamInfo(tx, streamName);
   }
 
   final Map<String, List<StreamAppend>> appends = {};
