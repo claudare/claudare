@@ -135,7 +135,7 @@ void main() {
 
     final events = (await runtime.resolve(_valueAggregate())).state.events;
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
-    expect(await database.getStreamVersion('value/one'), 2);
+    expect((await database.getStreamInfo('value/one')).version, 2);
   });
 
   test('rejects unregistered seed events before writing', () async {
@@ -207,6 +207,9 @@ final class _ValueState implements AggregateState<_ValueEvent> {
 
   @override
   void apply(EventEnvelope<_ValueEvent> envelope) => events.add(envelope);
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {}
 }
 
 Aggregate<_ValueEvent, _ValueState> _valueAggregate() => Aggregate(

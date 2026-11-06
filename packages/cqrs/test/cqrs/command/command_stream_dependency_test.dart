@@ -172,6 +172,34 @@ void main() {
     expect(changes.locks, hasLength(1));
     expect(changes.locks.single.originatingStreamVersion, 1);
   });
+
+  test(
+    'delete locks latest, depends on first, and deletes the stream',
+    () async {
+      final context = CommandContext(
+        idGenerator: IdGeneratorSequential(),
+        actor: 'test-actor',
+        eventStore: eventStore,
+        streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
+        eventRegistry: eventRegistry,
+        timeProvider: FakeTimeProviderStatic.zero(),
+        logger: const NoopLogger(),
+      );
+
+      await context.stream<_Event>('target').delete();
+      final changes = context.finish();
+
+      expect(changes.locks, hasLength(1));
+      expect(changes.locks.single.originatingStreamVersion, 3);
+      expect(changes.dependency, CommandDependency({'actor-1': 1}));
+      expect(changes.events, hasLength(1));
+      expect(changes.events.single.encodedEvent.isStreamDeleted, isTrue);
+
+      await eventStore.saveChanges(changes);
+
+      expect((await eventStore.getStreamInfo('target')).isDeleted, isTrue);
+    },
+  );
 }
 
 Future<void> _execute(

@@ -11,12 +11,32 @@ class StoredCommand {
   final DateTime occuredAt;
   final List<StoredCommandEvent> events;
 
-  const StoredCommand({
+  StoredCommand({
     required this.commandId,
     required this.dependency,
     required this.occuredAt,
-    required this.events,
-  });
+    required List<StoredCommandEvent> events,
+  }) : events = _validateEvents(List.unmodifiable(events));
+
+  static List<StoredCommandEvent> _validateEvents(
+    List<StoredCommandEvent> events,
+  ) {
+    final deletedStreams = {
+      for (final event in events)
+        if (event.encodedEvent.isStreamDeleted) event.streamPath,
+    };
+    for (final event in events) {
+      if (deletedStreams.contains(event.streamPath) &&
+          !event.encodedEvent.isStreamDeleted &&
+          !event.encodedEvent.isEventErased) {
+        throw StateError(
+          'Deleted stream contains an application event for '
+          '${event.streamPath}',
+        );
+      }
+    }
+    return events;
+  }
 
   Map<String, dynamic> toJson() => {
     'commandId': commandId.toJson(),
@@ -75,6 +95,6 @@ class StoredCommandEvent {
   @override
   String toString() =>
       'StoredCommandEvent(streamPath: $streamPath, '
-      'kind: ${encodedEvent.kind}, byteLength: ${encodedEvent.bytes.length}, '
+      'kind: ${encodedEvent.kind}, '
       'occuredAt: $occuredAt)';
 }

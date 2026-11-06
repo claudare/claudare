@@ -45,6 +45,9 @@ final class _RecordingState implements AggregateState<String> {
   void apply(EventEnvelope<String> envelope) {
     values.add('${envelope.actor}:${envelope.streamPath}:${envelope.event}');
   }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {}
 }
 
 Aggregate<String, _RecordingState> _recordingAggregate() => Aggregate(

@@ -35,7 +35,7 @@ void main() {
             'note/one',
           ]);
 
-          final events = await runtime.logReader(filter, 0).scan().toList();
+          final events = await runtime.logReader(filter).scan().toList();
 
           expect(events.map((event) => event.position), positions);
         });
@@ -59,7 +59,7 @@ void main() {
             'CAFÉ/one',
           ]);
 
-          final events = await runtime.logReader(filter, 0).scan().toList();
+          final events = await runtime.logReader(filter).scan().toList();
 
           expect(events.map((event) => event.position), positions);
         });
@@ -99,7 +99,7 @@ void main() {
         test('treats star stream paths literally for $filter', () async {
           await _appendPaths(store, ['other', '*', 'note/one']);
 
-          final events = await runtime.logReader(filter, 0).scan().toList();
+          final events = await runtime.logReader(filter).scan().toList();
 
           expect(events.map((event) => event.streamPath), ['note/one']);
         });

@@ -106,6 +106,36 @@ void main() {
     }
   });
 
+  test('invalid deletion command throws FormatException', () {
+    final json = CommandReplicationMessageCommand(
+      StoredCommand(
+        commandId: const CommandId('local', 1),
+        dependency: CommandDependency(),
+        occuredAt: DateTime.utc(2026),
+        events: [
+          StoredCommandEvent(
+            streamPath: 'other',
+            encodedEvent: EncodedEvent(kind: 'event', bytes: Uint8List(0)),
+            occuredAt: DateTime.utc(2026),
+          ),
+        ],
+      ),
+    ).toJson();
+    final command = json['command'] as Map<String, dynamic>;
+    final events = command['events'] as List<dynamic>;
+    events.add({
+      'streamPath': 'other',
+      'kind': SystemEventKinds.streamDeleted,
+      'bytes': '',
+      'occuredAt': '2026-01-01T00:00:00.000Z',
+    });
+
+    expect(
+      () => CommandReplicationMessage.fromJson(json),
+      throwsFormatException,
+    );
+  });
+
   test('command ACK preserves its ID through JSON', () {
     const original = CommandReplicationMessageCommandAck(CommandId('local', 3));
 

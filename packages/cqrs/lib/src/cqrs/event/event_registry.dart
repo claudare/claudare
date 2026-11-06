@@ -14,6 +14,9 @@ final class EventRegistry {
     if (kind.trim().isEmpty) {
       throw EventRegistryException('Event codec kind must not be empty');
     }
+    if (kind.startsWith(r'$')) {
+      throw EventRegistryException('Event codec kind is reserved: $kind');
+    }
     if (_byKind.containsKey(kind)) {
       throw EventRegistryException(
         'An event codec is already registered for kind $kind',
@@ -40,10 +43,15 @@ final class EventRegistry {
       );
     }
 
-    return EncodedEvent(
-      kind: registered.kind,
-      bytes: registered.toBytes(event),
-    );
+    final kind = registered.kind;
+    if (kind.startsWith(r'$')) {
+      throw EventCodecException(
+        'Cannot encode framework event kind $kind',
+        direction: EventCodecDirection.encode,
+        kind: kind,
+      );
+    }
+    return EncodedEvent(kind: kind, bytes: registered.toBytes(event));
   }
 
   T decode<T extends Object>(EncodedEvent encoded) {
@@ -60,6 +68,13 @@ final class EventRegistry {
   }
 
   Object decodeObject(EncodedEvent encoded) {
+    if (encoded.kind.startsWith(r'$')) {
+      throw EventCodecException(
+        'Cannot decode framework event kind ${encoded.kind}',
+        direction: EventCodecDirection.decode,
+        kind: encoded.kind,
+      );
+    }
     final registered = _byKind[encoded.kind];
     if (registered == null) {
       throw EventCodecException(

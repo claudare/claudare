@@ -15,8 +15,17 @@ void main() {
         dependency: CommandDependency({'local': 1}),
         occuredAt: DateTime.utc(2026, 10, 3),
         events: [
+          for (final encodedEvent in [
+            EncodedEvent.eventErased(),
+            EncodedEvent.streamDeleted(),
+          ])
+            StoredCommandEvent(
+              streamPath: '/notes/first',
+              encodedEvent: encodedEvent,
+              occuredAt: DateTime.utc(2026, 10, 3),
+            ),
           StoredCommandEvent(
-            streamPath: '/notes/first',
+            streamPath: '/notes/second',
             encodedEvent: EncodedEvent(
               kind: 'created',
               bytes: Uint8List.fromList([0, 127, 128, 255]),

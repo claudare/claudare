@@ -6,10 +6,12 @@ import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/stream_already_exists_exception.dart';
 import 'package:cqrs/src/cqrs/exception/stream_not_found_exception.dart';
+import 'package:cqrs/src/cqrs/exception/stream_deleted_exception.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -93,7 +95,7 @@ class CommandContext implements CommandContextApi {
     state.lock = lock;
   }
 
-  Future<void> _lock(String streamPath, Future<int?> Function() acquire) async {
+  Future<void> _lock(String streamPath, Future<int> Function() acquire) async {
     _beginAcquisition(streamPath);
     StreamLock? lock;
     try {
@@ -115,9 +117,11 @@ class CommandContext implements CommandContextApi {
 
   void _append(String streamPath, Object event) {
     _ensureOpen();
-    if (_streams[streamPath]?.lock == null) {
+    final state = _streams[streamPath];
+    if (state?.lock == null) {
       throw StateError('Stream not locked: $streamPath');
     }
+    if (state!.deletionStaged) throw StreamDeletedException(streamPath);
 
     final occuredAt = _timeProvider.now();
     final encodedEvent = _eventRegistry.encode(event);
@@ -130,6 +134,23 @@ class CommandContext implements CommandContextApi {
     );
   }
 
+  void _delete(String streamPath) {
+    _ensureOpen();
+    final state = _streams[streamPath];
+    if (state?.lock == null) {
+      throw StateError('Stream not locked: $streamPath');
+    }
+    if (state!.deletionStaged) throw StreamDeletedException(streamPath);
+    _events.add(
+      EventAppend(
+        streamPath: streamPath,
+        encodedEvent: EncodedEvent.streamDeleted(),
+        occuredAt: _timeProvider.now(),
+      ),
+    );
+    state.deletionStaged = true;
+  }
+
   @override
   String generateId() {
     _ensureOpen();
@@ -140,4 +161,5 @@ class CommandContext implements CommandContextApi {
 class _CommandStreamState {
   bool pending = true;
   StreamLock? lock;
+  bool deletionStaged = false;
 }

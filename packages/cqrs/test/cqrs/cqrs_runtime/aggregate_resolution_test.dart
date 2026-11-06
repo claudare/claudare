@@ -91,6 +91,7 @@ void main() {
     final sequence = await runtime.resolveStateless<_TestEvent>(
       filter: const LogFilter.exact('account/one'),
       apply: (envelope) => values.add(envelope.event.value),
+      onStreamDeleted: (_) {},
     );
 
     expect(values, ['opened', 'deposit']);
@@ -99,6 +100,7 @@ void main() {
       await runtime.resolveStateless<_TestEvent>(
         filter: const LogFilter.exact('account/one'),
         apply: (envelope) => values.add(envelope.event.value),
+        onStreamDeleted: (_) {},
         sequence: sequence,
       ),
       3,
@@ -122,6 +124,7 @@ void main() {
     await observed.resolveStateless<_TestEvent>(
       filter: const LogFilter.exact('account/one'),
       apply: (_) {},
+      onStreamDeleted: (_) {},
     );
 
     final messages = logger.entries.map((entry) => entry.message).join(' ');
@@ -177,6 +180,9 @@ final class _EnvelopeState implements AggregateState<_TestEvent> {
     }
     events.add(envelope);
   }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {}
 }
 
 Future<void> _appendAccountEvents(EventStore eventStore) =>
@@ -186,9 +192,9 @@ Future<void> _appendAccountEvents(EventStore eventStore) =>
         dependency: CommandDependency(),
         occuredAt: _timestamp,
         locks: const [
-          StreamLock(streamPath: 'account/one', originatingStreamVersion: null),
-          StreamLock(streamPath: 'account/two', originatingStreamVersion: null),
-          StreamLock(streamPath: 'other/three', originatingStreamVersion: null),
+          StreamLock(streamPath: 'account/one', originatingStreamVersion: -1),
+          StreamLock(streamPath: 'account/two', originatingStreamVersion: -1),
+          StreamLock(streamPath: 'other/three', originatingStreamVersion: -1),
         ],
         events: [
           for (final (index, path, value) in [

@@ -39,7 +39,7 @@ sealed class CommandReplicationMessage {
           'Unknown replication message type: ${json['type']}',
         ),
       };
-    } on TypeError catch (_, stack) {
+    } catch (_, stack) {
       // Nested CQRS decoders use casts. Translate only at this wire boundary.
       Error.throwWithStackTrace(
         const FormatException('Invalid replication message fields'),

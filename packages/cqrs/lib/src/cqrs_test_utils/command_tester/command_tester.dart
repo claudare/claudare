@@ -80,7 +80,7 @@ class CommandTester {
     // only gets events that were emitted after the test has ran
     final reader = _runtime.logReader(
       LogFilter.exact(streamPath),
-      (_preRunLastLogPosition ?? -1) + 1,
+      fromPosition: (_preRunLastLogPosition ?? -1) + 1,
     );
 
     return reader
@@ -105,7 +105,7 @@ class CommandTester {
   // TODO: this can be cleaned up
   Future<void> _flushSeeds() async {
     for (final event in _seedEvents) {
-      final info = await _eventStore.getStreamVersion(event.streamPath);
+      final info = await _eventStore.getStreamInfo(event.streamPath);
       final timestamp = _timeProvider.now();
       await _eventStore.saveChanges(
         CommandChanges(
@@ -115,7 +115,7 @@ class CommandTester {
           locks: [
             StreamLock(
               streamPath: event.streamPath,
-              originatingStreamVersion: info,
+              originatingStreamVersion: info.version,
             ),
           ],
           events: [event],

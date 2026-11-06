@@ -840,16 +840,14 @@ StoredCommand _command(
 
 Future<void> _append(EventStore store, String actor) async {
   final time = DateTime.utc(2026);
+  final info = await store.getStreamInfo(actor);
   await store.saveChanges(
     CommandChanges(
       actor: actor,
       dependency: (await store.getState()).logVersion,
       occuredAt: time,
       locks: [
-        StreamLock(
-          streamPath: actor,
-          originatingStreamVersion: await store.getStreamVersion(actor),
-        ),
+        StreamLock(streamPath: actor, originatingStreamVersion: info.version),
       ],
       events: [
         EventAppend(

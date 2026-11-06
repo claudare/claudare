@@ -11,15 +11,23 @@ class CommandStream<Event extends Object> {
   Stream<Event> scan() async* {
     _context._beginAcquisition(_streamPath);
 
-    int? streamVersion;
+    var streamVersion = -1;
     try {
+      final info = await _context._eventStore.getStreamInfo(_streamPath);
+      if (info.isDeleted) throw StreamDeletedException(_streamPath);
       final reader = _context._streamReader(_streamPath);
       await for (final event in reader.scan()) {
+        if (event.encodedEvent.isEventErased ||
+            event.encodedEvent.isStreamDeleted) {
+          _context._applyCommand(event.eventId.commandId);
+          streamVersion = event.version;
+          continue;
+        }
         final decoded = _context._eventRegistry.decode<Event>(
           event.encodedEvent,
         );
-        streamVersion = event.version;
         _context._applyCommand(event.eventId.commandId);
+        streamVersion = event.version;
         yield decoded;
       }
     } finally {
@@ -37,7 +45,9 @@ class CommandStream<Event extends Object> {
 
   /// Replays and applies the complete stream without yielding events.
   Future<void> lockLatest() => _context._lock(_streamPath, () async {
-    int? streamVersion;
+    final info = await _context._eventStore.getStreamInfo(_streamPath);
+    if (info.isDeleted) throw StreamDeletedException(_streamPath);
+    var streamVersion = -1;
     final reader = _context._streamReader(_streamPath);
     await for (final event in reader.scan()) {
       streamVersion = event.version;
@@ -46,31 +56,38 @@ class CommandStream<Event extends Object> {
     return streamVersion;
   });
 
-  /// Ensures the stream exists and applies its first event.
+  /// Ensures the stream exists and locks on to its first event.
   Future<void> mustExist() => _context._lock(_streamPath, () async {
-    final info = await _context._eventStore.getStreamVersion(_streamPath);
-    if (info == null) {
+    final info = await _context._eventStore.getStreamInfo(_streamPath);
+    if (!info.streamExists()) {
       throw StreamNotFoundException(_streamPath);
     }
-
+    if (info.isDeleted) throw StreamDeletedException(_streamPath);
     final firstEvent = await _context._streamReader(_streamPath).scan().first;
     _context._applyCommand(firstEvent.eventId.commandId);
-    return info;
+    return info.version;
   });
 
   /// Requires the stream to be absent without applying any dependencies.
   Future<void> mustNotExist() => _context._lock(_streamPath, () async {
-    final info = await _context._eventStore.getStreamVersion(_streamPath);
-    if (info != null) {
+    final info = await _context._eventStore.getStreamInfo(_streamPath);
+    if (info.isDeleted) throw StreamDeletedException(_streamPath);
+    if (info.streamExists()) {
       throw StreamAlreadyExistsException(_streamPath);
     }
 
-    return null;
+    return -1;
   });
 
   /// Appends after replay or an existence check has completed.
   CommandStream<Event> append(Event event) {
     _context._append(_streamPath, event);
     return this;
+  }
+
+  /// Permanently deletes the stream after locking it to its first event.
+  Future<void> delete() async {
+    await mustExist();
+    _context._delete(_streamPath);
   }
 }

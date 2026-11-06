@@ -1,4 +1,5 @@
 import 'package:cqrs/cqrs.dart';
+import 'package:notes_app/src/application/paths.dart';
 import 'package:notes_app/src/event/note.dart';
 
 /// Tracks the latest known existence value for one note.
@@ -68,6 +69,13 @@ class StatisticsState implements AggregateState<Object> {
           break;
       }
     }
+  }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {
+    if (!allNotesFilter.doesMatchPath(deletion.streamPath)) return;
+    final noteId = noteIdFromStream(deletion.streamPath);
+    _crdt._map.remove(noteId);
   }
 }
 

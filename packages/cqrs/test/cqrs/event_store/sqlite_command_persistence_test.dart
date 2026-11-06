@@ -79,7 +79,7 @@ void main() {
     );
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM command'), 0);
     expect(await sqlite.queryValue<int>('SELECT COUNT(*) FROM event'), 0);
-    expect(await store.getStreamVersion('one'), isNull);
+    expect((await store.getStreamInfo('one')).version, -1);
     await sqlite.execute('DROP TRIGGER fail_event');
     expect(
       await store.addStoredCommand(_bundle(CommandId('actor-3', 1))),
@@ -112,7 +112,7 @@ void main() {
       expect(failedState.lastCommandLogPosition, isNull);
       expect(failedState.lastEventLogPosition, isNull);
       expect(failedState.logVersion, CommandDependency());
-      expect(await store.getStreamVersion('one'), isNull);
+      expect((await store.getStreamInfo('one')).version, -1);
       await sqlite.execute('DROP TRIGGER fail_event');
       await store.saveChanges(_changes('one', count: 2));
       final events = (await store.getLogEvents(const LogFilter.all(), 0)).data;
@@ -249,8 +249,8 @@ void main() {
       expect(state.lastCommandLogPosition, 1);
       expect(state.lastEventLogPosition, 1);
       expect(state.logVersion, CommandDependency({'test-actor': 2}));
-      expect(await store.getStreamVersion('one'), 0);
-      expect(await otherStore.getStreamVersion('two'), 0);
+      expect((await store.getStreamInfo('one')).version, 0);
+      expect((await otherStore.getStreamInfo('two')).version, 0);
     },
   );
 }
@@ -261,7 +261,7 @@ CommandChanges _changes(String path, {int count = 1}) {
     actor: 'test-actor',
     dependency: CommandDependency(),
     occuredAt: timestamp,
-    locks: [StreamLock(streamPath: path, originatingStreamVersion: null)],
+    locks: [StreamLock(streamPath: path, originatingStreamVersion: -1)],
     events: [
       for (var i = 0; i < count; i++)
         EventAppend(

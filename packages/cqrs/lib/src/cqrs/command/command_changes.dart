@@ -44,7 +44,9 @@ class CommandChanges {
 
 class StreamLock {
   final String streamPath;
-  final int? originatingStreamVersion;
+
+  /// The locked version. -1 means that the stream must not exist.
+  final int originatingStreamVersion;
 
   const StreamLock({
     required this.streamPath,

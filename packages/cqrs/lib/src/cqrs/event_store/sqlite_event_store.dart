@@ -10,9 +10,11 @@ import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
+import 'package:cqrs/src/cqrs/event/system_event_kinds.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
+import 'package:cqrs/src/cqrs/exception/stream_deleted_exception.dart';
 import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 
@@ -33,7 +35,8 @@ final eventDatabaseMigrations =
         );
         tx.execute('''CREATE TABLE stream(
           stream_path TEXT PRIMARY KEY NOT NULL,
-          version INTEGER NOT NULL
+          version INTEGER NOT NULL,
+          deleted INTEGER NOT NULL DEFAULT 0 CHECK(deleted IN (0, 1))
         );''');
         tx.execute('''CREATE TABLE event(
           log_position INTEGER PRIMARY KEY NOT NULL CHECK(log_position >= 0),
@@ -98,6 +101,8 @@ class SqliteEventStore implements EventStore {
       return await _database.transaction(action);
     } on ConcurrencyProblem {
       rethrow;
+    } on StreamDeletedException {
+      rethrow;
     } on Exception catch (cause, stackTrace) {
       Error.throwWithStackTrace(
         EventStoreException(message, cause: cause),
@@ -151,9 +156,9 @@ class SqliteEventStore implements EventStore {
   });
 
   @override
-  Future<int?> getStreamVersion(String streamPath) => _transaction(
-    "Failed to get stream version for '$streamPath'",
-    (tx) => _getStreamVersion(tx, streamPath),
+  Future<StreamInfo> getStreamInfo(String streamPath) => _transaction(
+    "Failed to get stream info for '$streamPath'",
+    (tx) => _getStreamInfo(tx, streamPath),
   );
 
   @override
@@ -168,7 +173,8 @@ class SqliteEventStore implements EventStore {
       }
       final rows = tx.query(
         '''SELECT
-        id_actor, id_sequence, id_index, kind, detail, occured_at, stream_version, log_position
+        id_actor, id_sequence, id_index, kind, detail,
+        occured_at, stream_version, log_position
       FROM event
       WHERE stream_path = ?
         AND stream_version >= ?
@@ -218,7 +224,8 @@ class SqliteEventStore implements EventStore {
       };
       final rows = tx.query(
         '''SELECT
-        id_actor, id_sequence, id_index, stream_path, kind, detail, occured_at, stream_version, log_position
+        id_actor, id_sequence, id_index, stream_path, kind, detail,
+        occured_at, stream_version, log_position
       FROM event
       WHERE log_position >= ?
         $condition
@@ -307,8 +314,11 @@ class SqliteEventStore implements EventStore {
       }
 
       for (final lock in changes.locks) {
-        final current = _getStreamVersion(tx, lock.streamPath);
-        if (current != lock.originatingStreamVersion) {
+        final current = _getStreamInfo(tx, lock.streamPath);
+        if (current.isDeleted) {
+          throw StreamDeletedException(lock.streamPath);
+        }
+        if (current.version != lock.originatingStreamVersion) {
           throw ConcurrencyProblem();
         }
       }
@@ -321,6 +331,7 @@ class SqliteEventStore implements EventStore {
         dependency: changes.dependency,
         occuredAt: changes.occuredAt,
         events: changes.events,
+        remote: false,
       );
       return commandId;
     });
@@ -355,6 +366,7 @@ class SqliteEventStore implements EventStore {
               occuredAt: event.occuredAt,
             ),
         ],
+        remote: true,
       );
       return true;
     });
@@ -385,16 +397,13 @@ EventDatabaseState _getState(SyncContext tx) {
   );
 }
 
-int? _getStreamVersion(SyncContext tx, String streamPath) => tx
-    .queryRow('SELECT version FROM stream WHERE stream_path = ?', [streamPath])
-    ?.field<int>('version');
-
 void _append(
   SyncContext tx, {
   required CommandId commandId,
   required CommandDependency dependency,
   required DateTime occuredAt,
   required List<EventAppend> events,
+  required bool remote,
 }) {
   tx.execute(
     '''INSERT INTO command(log_position, id_actor, id_sequence,
@@ -419,6 +428,19 @@ int _nextLogPosition(SyncContext tx, String table) {
   return highest == null ? 0 : highest + 1;
 }
 
+StreamInfo _getStreamInfo(SyncContext tx, String streamPath) {
+  final row = tx.queryRow(
+    'SELECT version, deleted FROM stream WHERE stream_path = ?;',
+    [streamPath],
+  );
+  if (row == null) return StreamInfo.streamDoesNotExist();
+  return StreamInfo(
+    version: row.field<int>('version'),
+    isDeleted: row.field<int>('deleted') != 0,
+  );
+}
+
+/// Inserts events into a log. No concurrency checking!
 void _insertLogEvents(
   SyncContext tx,
   CommandId commandId,
@@ -426,35 +448,127 @@ void _insertLogEvents(
 ) {
   var logPosition = _nextLogPosition(tx, 'event');
 
+  final streamNames = Set<String>.from(events.map((e) => e.streamPath));
+
+  final Map<String, StreamInfo> streamInfos = {};
+  for (final streamName in streamNames) {
+    streamInfos[streamName] = _getStreamInfo(tx, streamName);
+  }
+
+  final Map<String, List<StreamAppend>> appends = {};
+  final deletedStreams = {
+    for (final entry in streamInfos.entries)
+      if (entry.value.isDeleted) entry.key,
+  };
+
   for (final (index, event) in events.indexed) {
-    final version = (_getStreamVersion(tx, event.streamPath) ?? -1) + 1;
+    if (!appends.containsKey(event.streamPath)) {
+      appends[event.streamPath] = [];
+    }
+    final encoded =
+        deletedStreams.contains(event.streamPath) &&
+            !event.encodedEvent.isStreamDeleted &&
+            !event.encodedEvent.isEventErased
+        ? EncodedEvent.eventErased()
+        : event.encodedEvent;
+    appends[event.streamPath]!.add(
+      StreamAppend(
+        logPosition: logPosition++,
+        eventId: EventId(commandId.actor, commandId.sequence, index),
+        encoded: encoded,
+        occuredAt: event.occuredAt,
+      ),
+    );
+    if (event.encodedEvent.isStreamDeleted) {
+      deletedStreams.add(event.streamPath);
+    }
+  }
+
+  // insert all events
+  for (var MapEntry(key: streamPath, value: appends) in appends.entries) {
+    _appendEventsToStream(
+      tx,
+      streamPath,
+      streamInfos[streamPath]!.version,
+      appends,
+    );
+  }
+
+  for (var MapEntry(key: streamPath, value: appends) in appends.entries) {
+    if (appends.any((append) => append.encoded.isStreamDeleted)) {
+      _eraseStream(tx, streamPath);
+    }
+  }
+}
+
+class StreamAppend {
+  final int logPosition;
+  final EventId eventId;
+  final EncodedEvent encoded;
+  final DateTime occuredAt;
+
+  const StreamAppend({
+    required this.logPosition,
+    required this.eventId,
+    required this.encoded,
+    required this.occuredAt,
+  });
+}
+
+void _appendEventsToStream(
+  SyncContext tx,
+  String streamPath,
+  int streamVersion,
+  List<StreamAppend> appends,
+) {
+  for (final (index, append) in appends.indexed) {
     tx.execute(
       '''INSERT INTO event(log_position, id_actor, id_sequence, id_index,
         stream_path, stream_version, kind, detail, occured_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);''',
       [
-        logPosition++,
-        commandId.actor,
-        commandId.sequence,
-        index,
-        event.streamPath,
-        version,
-        event.encodedEvent.kind,
-        event.encodedEvent.bytes,
-        event.occuredAt.millisecondsSinceEpoch,
+        append.logPosition,
+        append.eventId.actor,
+        append.eventId.sequence,
+        append.eventId.index,
+        streamPath,
+        streamVersion + index + 1,
+        append.encoded.kind,
+        append.encoded.bytes,
+        append.occuredAt.millisecondsSinceEpoch,
       ],
     );
-    _updateStreamVersion(tx, event.streamPath, version);
   }
-}
-
-void _updateStreamVersion(SyncContext tx, String streamPath, int version) {
   tx.execute(
     '''INSERT INTO stream(stream_path, version)
       VALUES (?, ?)
       ON CONFLICT(stream_path)
         DO UPDATE SET version = excluded.version;''',
-    [streamPath, version],
+    [streamPath, streamVersion + appends.length],
+  );
+}
+
+void _eraseStream(SyncContext tx, String streamPath) {
+  tx.execute(
+    '''UPDATE event SET kind = ?, detail = ?
+      WHERE stream_path = ? AND kind NOT IN (?, ?);''',
+    [
+      SystemEventKinds.eventErased,
+      Uint8List(0),
+      streamPath,
+      SystemEventKinds.eventErased,
+      SystemEventKinds.streamDeleted,
+    ],
+  );
+  tx.execute(
+    '''
+    UPDATE stream
+    SET
+      deleted = 1
+    WHERE
+      stream_path = ?;
+  ''',
+    [streamPath],
   );
 }
 

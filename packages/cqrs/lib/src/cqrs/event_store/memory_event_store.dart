@@ -12,6 +12,7 @@ import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/concurrency_problem.dart';
 import 'package:cqrs/src/cqrs/exception/event_store_exception.dart';
+import 'package:cqrs/src/cqrs/exception/stream_deleted_exception.dart';
 import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:mutex/mutex.dart';
 
@@ -28,6 +29,7 @@ class MemoryEventStore implements EventStore {
   final List<_MemoryLogEvent> _events = [];
   // Each stream links to zero-based indexes in _events, in stream order.
   final Map<String, List<int>> _streamVersions = {};
+  final Map<String, bool> _streamDeleted = {};
 
   final int _eventFetchPageSize;
   final ReadWriteMutex _mutex = ReadWriteMutex();
@@ -66,6 +68,8 @@ class MemoryEventStore implements EventStore {
     try {
       return action();
     } on ConcurrencyProblem {
+      rethrow;
+    } on StreamDeletedException {
       rethrow;
     } on Exception catch (cause, stackTrace) {
       Error.throwWithStackTrace(
@@ -124,10 +128,17 @@ class MemoryEventStore implements EventStore {
   );
 
   @override
-  Future<int?> getStreamVersion(String streamPath) => _read(
-    "Failed to get stream version for '$streamPath'",
-    () => _getStreamVersion(streamPath),
-  );
+  Future<StreamInfo> getStreamInfo(String streamPath) =>
+      _read("Failed to get stream info for '$streamPath'", () {
+        final indexes = _streamVersions[streamPath];
+        if (indexes == null || indexes.isEmpty) {
+          return const StreamInfo.streamDoesNotExist();
+        }
+        return StreamInfo(
+          version: indexes.length - 1,
+          isDeleted: _streamDeleted[streamPath] ?? false,
+        );
+      });
 
   int? _getStreamVersion(String streamPath) {
     final indexes = _streamVersions[streamPath];
@@ -231,6 +242,7 @@ class MemoryEventStore implements EventStore {
     required CommandDependency dependency,
     required DateTime occuredAt,
     required List<EventAppend> events,
+    required bool remote,
   }) {
     final command = _MemoryLogCommand(
       commandId: commandId,
@@ -240,7 +252,54 @@ class MemoryEventStore implements EventStore {
     );
     final appended = <_MemoryLogEvent>[];
     final streamVersions = <String, List<int>>{};
-    for (final (index, event) in events.indexed) {
+    final deleted = Map<String, bool>.from(_streamDeleted);
+    final streamsToErase = <String>{};
+    final normalized = <EventAppend>[];
+    for (final event in events) {
+      final isMarker = event.encodedEvent.isStreamDeleted;
+      final isApplication =
+          !event.encodedEvent.isStreamDeleted &&
+          !event.encodedEvent.isEventErased;
+      if (isApplication && (deleted[event.streamPath] ?? false)) {
+        if (!remote) throw StreamDeletedException(event.streamPath);
+        normalized.add(
+          EventAppend(
+            streamPath: event.streamPath,
+            encodedEvent: EncodedEvent.eventErased(),
+            occuredAt: event.occuredAt,
+          ),
+        );
+      } else {
+        normalized.add(event);
+      }
+      if (isMarker) {
+        deleted[event.streamPath] = true;
+        streamsToErase.add(event.streamPath);
+      }
+    }
+    for (final streamPath in streamsToErase) {
+      for (final index in _streamVersions[streamPath] ?? const <int>[]) {
+        final event = _events[index];
+        if (!event.encodedEvent.isStreamDeleted &&
+            !event.encodedEvent.isEventErased) {
+          event.encodedEvent = EncodedEvent.eventErased();
+        }
+      }
+    }
+    final persisted = [
+      for (final event in normalized)
+        if (streamsToErase.contains(event.streamPath) &&
+            !event.encodedEvent.isStreamDeleted &&
+            !event.encodedEvent.isEventErased)
+          EventAppend(
+            streamPath: event.streamPath,
+            encodedEvent: EncodedEvent.eventErased(),
+            occuredAt: event.occuredAt,
+          )
+        else
+          event,
+    ];
+    for (final (index, event) in persisted.indexed) {
       final eventIndex = _events.length + index;
       appended.add(
         _MemoryLogEvent(
@@ -260,6 +319,7 @@ class MemoryEventStore implements EventStore {
     _commands.add(command);
     _events.addAll(appended);
     _streamVersions.addAll(streamVersions);
+    _streamDeleted.addAll(deleted);
   }
 
   @override
@@ -287,6 +347,7 @@ class MemoryEventStore implements EventStore {
           dependency: command.dependency,
           occuredAt: command.occuredAt,
           events: events,
+          remote: true,
         );
         _publishChanges(ChangeOrigin.remote, command.commandId, events);
         return true;
@@ -301,7 +362,10 @@ class MemoryEventStore implements EventStore {
           throw StateError('command dependency is not in the log');
         }
         for (final lock in changes.locks) {
-          final current = _getStreamVersion(lock.streamPath);
+          if (_streamDeleted[lock.streamPath] ?? false) {
+            throw StreamDeletedException(lock.streamPath);
+          }
+          final current = _getStreamVersion(lock.streamPath) ?? -1;
           if (current != lock.originatingStreamVersion) {
             throw ConcurrencyProblem();
           }
@@ -314,6 +378,7 @@ class MemoryEventStore implements EventStore {
           dependency: changes.dependency,
           occuredAt: changes.occuredAt,
           events: changes.events,
+          remote: false,
         );
         _publishChanges(ChangeOrigin.local, commandId, changes.events);
       });
@@ -335,11 +400,11 @@ class _MemoryLogCommand {
 
 class _MemoryLogEvent {
   final EventId eventId;
-  final EncodedEvent encodedEvent;
+  EncodedEvent encodedEvent;
   final DateTime occuredAt;
   final int logPosition;
 
-  const _MemoryLogEvent({
+  _MemoryLogEvent({
     required this.eventId,
     required this.encodedEvent,
     required this.occuredAt,

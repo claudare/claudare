@@ -8,10 +8,11 @@ import 'package:notes_app/src/event/note.dart';
 class NoteState implements AggregateState<NoteEvent> {
   final String noteId;
   bool exists = false;
-  final CrdtString _title;
-  final CrdtText _content;
-  late DateTime createdAt;
-  late DateTime updatedAt;
+  bool isDeleted = false;
+  CrdtString _title;
+  CrdtText _content;
+  DateTime createdAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  DateTime updatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   DateTime? trashedAt;
 
   NoteState(this.noteId, {CrdtText? contentDocument})
@@ -28,10 +29,9 @@ class NoteState implements AggregateState<NoteEvent> {
       _content.fork(),
     );
     copy.exists = exists;
-    if (exists) {
-      copy.createdAt = createdAt;
-      copy.updatedAt = updatedAt;
-    }
+    copy.isDeleted = isDeleted;
+    copy.createdAt = createdAt;
+    copy.updatedAt = updatedAt;
     copy.trashedAt = trashedAt;
     return copy;
   }
@@ -54,6 +54,7 @@ class NoteState implements AggregateState<NoteEvent> {
     switch (envelope.event) {
       case NoteCreated():
         exists = true;
+        isDeleted = false;
         createdAt = occuredAt;
         updatedAt = occuredAt;
         trashedAt = null;
@@ -74,6 +75,17 @@ class NoteState implements AggregateState<NoteEvent> {
         _requireCreated();
         trashedAt = null;
     }
+  }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {
+    _title = CrdtString();
+    _content = CrdtText();
+    exists = false;
+    isDeleted = true;
+    createdAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    updatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    trashedAt = null;
   }
 
   void _requireCreated() {

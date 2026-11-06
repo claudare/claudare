@@ -13,6 +13,7 @@ export 'src/cqrs/event_store/sqlite_event_store.dart';
 // event
 export 'src/cqrs/event/event_codec.dart';
 export 'src/cqrs/event/encoded_event.dart';
+export 'src/cqrs/event/system_event_kinds.dart';
 export 'src/cqrs/event/event_registry.dart';
 export 'src/cqrs/event/event_envelope.dart';
 export 'src/cqrs/event/stored_event.dart';
@@ -41,3 +42,4 @@ export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
 export 'src/cqrs/exception/stream_already_exists_exception.dart';
+export 'src/cqrs/exception/stream_deleted_exception.dart';

@@ -40,7 +40,7 @@ void main() {
         expect(restored!.toJson(), bundle.toJson());
         expect(restored.events, isNotEmpty);
         final logged = await runtime
-            .logReader(const LogFilter.all(), 0)
+            .logReader(const LogFilter.all())
             .scan()
             .toList();
         expect(logged.map((event) => event.eventId), [
@@ -48,7 +48,7 @@ void main() {
           EventId('actor-1', 1, 1),
           EventId('actor-1', 1, 2),
         ]);
-        expect(await store.getStreamVersion('one'), isNotNull);
+        expect((await store.getStreamInfo('one')).streamExists(), isTrue);
         expect(
           (await session.store.getState()).logVersion,
           CommandDependency({'actor-1': 1}),
@@ -106,7 +106,7 @@ void main() {
           _bundle(CommandId('actor-2', 1), paths: ['one']),
         );
         final events = await runtime
-            .logReader(const LogFilter.all(), 0)
+            .logReader(const LogFilter.all())
             .scan()
             .toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
@@ -116,9 +116,9 @@ void main() {
       test(
         'local commands preserve stream locks and command sequence',
         () async {
-          await store.saveChanges(_changes('one', null));
+          await store.saveChanges(_changes('one', -1));
           await expectLater(
-            store.saveChanges(_changes('one', null)),
+            store.saveChanges(_changes('one', -1)),
             throwsA(isA<ConcurrencyProblem>()),
           );
           await store.saveChanges(_changes('one', 0));
@@ -134,7 +134,7 @@ void main() {
             (await store.getStoredCommand(CommandId('test-actor', 3))),
             isNull,
           );
-          expect(await store.getStreamVersion('one'), 1);
+          expect((await store.getStreamInfo('one')).version, 1);
         },
       );
 
@@ -142,14 +142,14 @@ void main() {
         for (final actor in ['actor-1', 'actor-2', 'actor-3']) {
           await store.addStoredCommand(_bundle(CommandId(actor, 1)));
         }
-        final reader = runtime.logReader(const LogFilter.all(), 0);
+        final reader = runtime.logReader(const LogFilter.all());
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [0, 1]);
         expect(await reader.loadMore(), isTrue);
         expect(reader.currentPage.map((event) => event.position), [2]);
         expect(await reader.loadMore(), isFalse);
         final fromTwo = await runtime
-            .logReader(const LogFilter.all(), 2)
+            .logReader(const LogFilter.all(), fromPosition: 2)
             .scan()
             .toList();
         expect(fromTwo.single.position, 2);
@@ -173,7 +173,7 @@ void main() {
   }
 }
 
-CommandChanges _changes(String path, int? version) => CommandChanges(
+CommandChanges _changes(String path, int version) => CommandChanges(
   actor: 'test-actor',
   dependency: CommandDependency(),
   occuredAt: DateTime.fromMillisecondsSinceEpoch(300, isUtc: true),

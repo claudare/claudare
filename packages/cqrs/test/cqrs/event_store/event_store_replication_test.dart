@@ -160,6 +160,45 @@ void main() {
           (await source.store.getState()).logVersion,
         );
       });
+
+      test('stream deletion transfers from ${sourceBackend.name} '
+          'to ${targetBackend.name}', () async {
+        final source = await sourceBackend.open();
+        addTearDown(source.close);
+        final target = await targetBackend.open();
+        addTearDown(target.close);
+
+        expect(
+          await source.store.addStoredCommand(_streamEvent('first')),
+          isTrue,
+        );
+        expect(await source.store.addStoredCommand(_streamDeletion()), isTrue);
+        expect(
+          await source.store.addStoredCommand(_streamEvent('offline')),
+          isTrue,
+        );
+
+        var dependency = CommandDependency();
+        while (true) {
+          final ids = await source.store.getNextCommandIds(dependency, 2);
+          if (ids.isEmpty) break;
+          for (final id in ids) {
+            final command = (await source.store.getStoredCommand(id))!;
+            expect(await target.store.addStoredCommand(command), isTrue);
+            dependency = dependency.advance(id);
+          }
+        }
+
+        final events = await CqrsTestRuntime(eventStore: target.store)
+            .streamReader('deleted')
+            .scan()
+            .toList();
+        expect(events.map((event) => event.encodedEvent.kind), [
+          SystemEventKinds.eventErased,
+          SystemEventKinds.streamDeleted,
+          SystemEventKinds.eventErased,
+        ]);
+      });
     }
   }
 }
@@ -193,5 +232,31 @@ StoredCommand _command(
         encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
         occuredAt: DateTime.utc(2026),
       ),
+  ],
+);
+
+StoredCommand _streamEvent(String actor) => StoredCommand(
+  commandId: CommandId(actor, 1),
+  dependency: CommandDependency(),
+  occuredAt: DateTime.utc(2026),
+  events: [
+    StoredCommandEvent(
+      streamPath: 'deleted',
+      encodedEvent: EncodedEvent(kind: 'test', bytes: Uint8List(0)),
+      occuredAt: DateTime.utc(2026),
+    ),
+  ],
+);
+
+StoredCommand _streamDeletion() => StoredCommand(
+  commandId: const CommandId('delete', 1),
+  dependency: CommandDependency(),
+  occuredAt: DateTime.utc(2026),
+  events: [
+    StoredCommandEvent(
+      streamPath: 'deleted',
+      encodedEvent: EncodedEvent.streamDeleted(),
+      occuredAt: DateTime.utc(2026),
+    ),
   ],
 );

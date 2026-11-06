@@ -35,7 +35,7 @@ void main() {
         dependency: CommandDependency(),
         occuredAt: DateTime.utc(2026),
         locks: [
-          const StreamLock(streamPath: 'one', originatingStreamVersion: null),
+          const StreamLock(streamPath: 'one', originatingStreamVersion: -1),
         ],
         events: events,
       );
@@ -48,7 +48,7 @@ void main() {
         (await store.getLogEvents(const LogFilter.all(), 0)).data,
         isEmpty,
       );
-      expect(await store.getStreamVersion('one'), isNull);
+      expect((await store.getStreamInfo('one')).version, -1);
       await store.saveChanges(changes([first]));
       expect(
         await store.getStoredCommand(CommandId('test-actor', 1)),

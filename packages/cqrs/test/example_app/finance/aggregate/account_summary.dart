@@ -45,6 +45,16 @@ class AccountSummaryState implements AggregateState<AccountEvent> {
         name = newName;
     }
   }
+
+  @override
+  void onStreamDeleted(StreamDeletion deletion) {
+    accountId = '';
+    name = '';
+    balance = 0;
+    transactionCount = 0;
+    openedAt = DateTime.fromMillisecondsSinceEpoch(0);
+    lastTransactionAt = DateTime.fromMillisecondsSinceEpoch(0);
+  }
 }
 
 Aggregate<AccountEvent, AccountSummaryState> accountSummaryAggregate(

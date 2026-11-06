@@ -53,7 +53,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
 
     for (var index = 0; index < appends.length; index++) {
       final append = appends[index];
-      final info = await _eventStore.getStreamVersion(append.streamPath);
+      final info = await _eventStore.getStreamInfo(append.streamPath);
       await _eventStore.saveChanges(
         CommandChanges(
           actor: events[index].actor,
@@ -62,7 +62,7 @@ final class CqrsTestRuntime extends CqrsRuntime {
           locks: [
             StreamLock(
               streamPath: append.streamPath,
-              originatingStreamVersion: info,
+              originatingStreamVersion: info.version,
             ),
           ],
           events: [append],
