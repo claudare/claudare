@@ -101,4 +101,78 @@ void main() {
     final json = command().events.first.toJson()..['kind'] = r'$unknown';
     expect(() => StoredCommandEvent.fromJson(json), throwsArgumentError);
   });
+
+  test('rejects application events on a deleted stream', () {
+    expect(
+      () => _commandWithEvents([
+        _event('one', EncodedEvent(kind: 'event', bytes: Uint8List(0))),
+        _event('one', EncodedEvent.streamDeleted()),
+      ]),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          contains('one'),
+        ),
+      ),
+    );
+  });
+
+  test('accepts deletion and erased events on the same stream', () {
+    expect(
+      _commandWithEvents([
+        _event('one', EncodedEvent.eventErased()),
+        _event('one', EncodedEvent.streamDeleted()),
+      ]).events,
+      hasLength(2),
+    );
+  });
+
+  test('accepts repeated deletion markers', () {
+    expect(
+      _commandWithEvents([
+        _event('one', EncodedEvent.streamDeleted()),
+        _event('one', EncodedEvent.streamDeleted()),
+      ]).events,
+      hasLength(2),
+    );
+  });
+
+  test('accepts application events on another stream', () {
+    expect(
+      _commandWithEvents([
+        _event('one', EncodedEvent.streamDeleted()),
+        _event('two', EncodedEvent(kind: 'event', bytes: Uint8List(0))),
+      ]).events,
+      hasLength(2),
+    );
+  });
+
+  test('copies events into an unmodifiable list', () {
+    final events = [_event('one', EncodedEvent.eventErased())];
+    final stored = _commandWithEvents(events);
+
+    events.add(_event('one', EncodedEvent.streamDeleted()));
+
+    expect(stored.events, hasLength(1));
+    expect(
+      () => stored.events.add(_event('one', EncodedEvent.eventErased())),
+      throwsUnsupportedError,
+    );
+  });
 }
+
+StoredCommand _commandWithEvents(List<StoredCommandEvent> events) =>
+    StoredCommand(
+      commandId: const CommandId('actor', 1),
+      dependency: CommandDependency(),
+      occuredAt: DateTime.utc(2026),
+      events: events,
+    );
+
+StoredCommandEvent _event(String streamPath, EncodedEvent encodedEvent) =>
+    StoredCommandEvent(
+      streamPath: streamPath,
+      encodedEvent: encodedEvent,
+      occuredAt: DateTime.utc(2026),
+    );

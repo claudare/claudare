@@ -25,7 +25,7 @@ void main() {
               occuredAt: DateTime.utc(2026, 10, 3),
             ),
           StoredCommandEvent(
-            streamPath: '/notes/first',
+            streamPath: '/notes/second',
             encodedEvent: EncodedEvent(
               kind: 'created',
               bytes: Uint8List.fromList([0, 127, 128, 255]),

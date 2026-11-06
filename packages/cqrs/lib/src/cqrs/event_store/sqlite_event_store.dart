@@ -484,17 +484,6 @@ void _insertLogEvents(
     }
   }
 
-  // sanity check, this will never happen, as commands are replicated as whole
-  for (final appends in appends.values) {
-    if (appends.last.encoded.isStreamDeleted) {
-      assert(
-        appends.every(
-          (a) => a.encoded.isStreamDeleted || a.encoded.isEventErased,
-        ),
-      );
-    }
-  }
-
   // insert all events
   for (var MapEntry(key: streamPath, value: appends) in appends.entries) {
     _appendEventsToStream(
