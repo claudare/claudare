@@ -32,7 +32,7 @@ void main() {
   test('resolves matching events and resumes across filtered pages', () async {
     final aggregate = _envelopeAggregate('account/one');
     expect((await runtime.resolve(aggregate)).state.events, isEmpty);
-    expect(aggregate.sequence, isNull);
+    expect(aggregate.sequence, -1);
 
     await _appendAccountEvents(eventStore);
     expect(identical(await runtime.resolve(aggregate), aggregate), isTrue);
@@ -75,9 +75,9 @@ void main() {
     ]);
   });
 
-  test('snapshot exposes the current state and nullable sequence', () async {
+  test('snapshot exposes the current state and sequence', () async {
     final aggregate = _envelopeAggregate('account/one');
-    expect(aggregate.snapshot().sequence, isNull);
+    expect(aggregate.snapshot().sequence, -1);
     await _appendAccountEvents(eventStore);
     await runtime.resolve(aggregate);
 
@@ -150,7 +150,7 @@ void main() {
       aggregate.state.failNext = true;
       await expectLater(runtime.resolve(aggregate), throwsStateError);
       expect(aggregate.state.events, isEmpty);
-      expect(aggregate.sequence, isNull);
+      expect(aggregate.sequence, -1);
       await runtime.resolve(aggregate);
       expect(aggregate.state.events.map((v) => v.event.value), [
         'opened',

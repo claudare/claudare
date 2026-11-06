@@ -81,7 +81,7 @@ class CqrsRuntime {
 
     final stream = logReader(
       aggregate.filter,
-      fromPosition: (startingSequence ?? -1) + 1,
+      fromPosition: startingSequence + 1,
     ).scan();
 
     await for (final logEvent in stream) {
