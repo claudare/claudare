@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -85,29 +86,6 @@ void main() {
     expect(snapshot.sequence, 3);
   });
 
-  test('stateless resolution returns the final matching sequence', () async {
-    await _appendAccountEvents(eventStore);
-    final values = <String>[];
-    final sequence = await runtime.resolveStateless<_TestEvent>(
-      filter: const LogFilter.exact('account/one'),
-      apply: (envelope) => values.add(envelope.event.value),
-      onStreamDeleted: (_) {},
-    );
-
-    expect(values, ['opened', 'deposit']);
-    expect(sequence, 3);
-    expect(
-      await runtime.resolveStateless<_TestEvent>(
-        filter: const LogFilter.exact('account/one'),
-        apply: (envelope) => values.add(envelope.event.value),
-        onStreamDeleted: (_) {},
-        sequence: sequence,
-      ),
-      3,
-    );
-    expect(values, ['opened', 'deposit']);
-  });
-
   test('resolution diagnostics omit event payloads', () async {
     await _appendAccountEvents(eventStore);
     final logger = RecordingLogger();
@@ -121,11 +99,6 @@ void main() {
     observed.eventRegistry.add(const _TestEventCodec());
 
     await observed.resolve(_envelopeAggregate('account/one'));
-    await observed.resolveStateless<_TestEvent>(
-      filter: const LogFilter.exact('account/one'),
-      apply: (_) {},
-      onStreamDeleted: (_) {},
-    );
 
     final messages = logger.entries.map((entry) => entry.message).join(' ');
     expect(messages, isNot(contains('opened')));
@@ -139,6 +112,34 @@ void main() {
       ).toString(),
       isNot(contains('secret')),
     );
+  });
+
+  test('read failure retains the last successfully handled position', () async {
+    final store = _InterruptedMemoryEventStore();
+    final observed = CqrsRuntime(
+      idGenerator: IdGeneratorSequential(),
+      actor: 'test-actor',
+      eventStore: store,
+      logger: const NoopLogger(),
+      timeProvider: FakeTimeProviderStatic.zero(),
+    );
+    observed.eventRegistry.add(const _TestEventCodec());
+    await _appendAccountEvents(store);
+    final aggregate = _envelopeAggregate('account/one');
+
+    store.failAt = 1;
+    await expectLater(observed.resolve(aggregate), throwsException);
+    expect(aggregate.state.events.map((v) => v.event.value), ['opened']);
+    expect(aggregate.sequence, 0);
+
+    store.reads.clear();
+    await observed.resolve(aggregate);
+    expect(store.reads.first, 1);
+    expect(aggregate.state.events.map((v) => v.event.value), [
+      'opened',
+      'deposit',
+    ]);
+    expect(aggregate.sequence, 3);
   });
 
   test(
@@ -157,6 +158,26 @@ void main() {
       ]);
     },
   );
+}
+
+final class _InterruptedMemoryEventStore extends MemoryEventStore {
+  final List<int> reads = [];
+  int? failAt;
+
+  _InterruptedMemoryEventStore() : super(eventFetchPageSize: 1);
+
+  @override
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) {
+    reads.add(fromPosition);
+    if (failAt == fromPosition) {
+      failAt = null;
+      return Future.error(Exception('Interrupted event read'));
+    }
+    return super.getLogEvents(filter, fromPosition);
+  }
 }
 
 Aggregate<_TestEvent, _EnvelopeState> _envelopeAggregate(String path) =>
