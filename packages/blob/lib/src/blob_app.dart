@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
@@ -16,10 +17,14 @@ abstract interface class BlobReader {
   Future<Uint8List?> get(String id);
 }
 
+/// Manages blob commands and erases locally stored bytes after deletion commits.
 class BlobApp implements BlobReader, BlobWriter {
   final CqrsRuntime _runtime;
   final BlobStore _blobStore;
   final IdGenerator _idGenerator;
+  StreamIterator<void>? _changes;
+  Future<void>? _running;
+  bool _closed = false;
 
   BlobApp({
     required this._runtime,
@@ -27,6 +32,60 @@ class BlobApp implements BlobReader, BlobWriter {
     IdGenerator? idGenerator,
   }) : _idGenerator = idGenerator ?? IdGeneratorRandom() {
     _runtime.eventRegistry.add(const BlobCreatedCodec());
+  }
+
+  /// Starts once, processing existing and future committed blob deletions.
+  /// Completes when [close] stops it, or fails with a read or deletion error.
+  Future<void> run() {
+    if (_running != null) throw StateError('BlobApp already started');
+    final filter = LogFilter.startsWith(blobStream(''));
+    final changes = StreamIterator<void>(
+      Stream<void>.multi((controller) {
+        final subscription = _runtime
+            .subscribe(filter)
+            .listen(
+              controller.add,
+              onError: controller.addError,
+              onDone: controller.close,
+            );
+        controller.onCancel = subscription.cancel;
+        // Subscribe before the initial scan so concurrent commits are observed.
+        controller.add(null);
+      }),
+    );
+    _changes = changes;
+    return _running = _eraseDeletedBlobs(filter, changes);
+  }
+
+  Future<void> _eraseDeletedBlobs(
+    LogFilter filter,
+    StreamIterator<void> changes,
+  ) async {
+    var fromPosition = 0;
+    try {
+      while (await changes.moveNext()) {
+        if (_closed) return;
+        final events = _runtime.logReader(filter, fromPosition: fromPosition);
+        await for (final event in events.scan()) {
+          if (_closed) return;
+          if (event.encodedEvent.isStreamDeleted) {
+            await _blobStore.delete(blobIdFromStream(event.streamPath));
+          }
+          fromPosition = event.position + 1;
+        }
+      }
+    } finally {
+      await changes.cancel();
+    }
+  }
+
+  /// Stops listening and waits for an active deletion. Propagates [run] errors.
+  Future<void> close() async {
+    final running = _running;
+    if (running == null) throw StateError('BlobApp has not started');
+    _closed = true;
+    await _changes!.cancel();
+    await running;
   }
 
   @override

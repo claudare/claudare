@@ -60,7 +60,7 @@ void main() {
     ]);
   });
 
-  test('keeps bytes before deletion commits and until optimize runs', () async {
+  test('keeps bytes until optimize runs when not running', () async {
     await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
     final command = _PausedDelete(app, 'blob-id');
 
