@@ -3,28 +3,20 @@ part of 'account.dart';
 class AccountInnerTransfer extends AccountEvent {
   static const String kind = 'accountInnerTransfer';
 
-  @override
-  final String accountId;
-  final String fromAccountId;
+  final String otherAccountId;
   final int amount;
 
   const AccountInnerTransfer({
-    required this.accountId,
-    required this.fromAccountId,
+    required this.otherAccountId,
     required this.amount,
   });
 
   @override
-  toJson() => {
-    'accountId': accountId,
-    'fromAccountId': fromAccountId,
-    'amount': amount,
-  };
+  toJson() => {'otherAccountId': otherAccountId, 'amount': amount};
 
   factory AccountInnerTransfer.fromJson(Map<String, dynamic> json) =>
       AccountInnerTransfer(
-        accountId: json['accountId'] as String,
-        fromAccountId: json['fromAccountId'] as String,
+        otherAccountId: json['otherAccountId'] as String,
         amount: json['amount'] as int,
       );
 }
