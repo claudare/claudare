@@ -19,7 +19,7 @@ class UpdateNoteTitle implements Command {
 
     await stream.mustExist();
 
-    stream.append(NoteTitleUpdated(noteId: noteId, newTitle: fullValue));
+    stream.append(NoteTitleUpdated(newTitle: fullValue));
 
     ctx.logger.debug('note $noteId title updated');
   }

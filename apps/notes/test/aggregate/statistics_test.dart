@@ -8,12 +8,12 @@ void main() {
     final state = AggregateTester(statisticsAggregate())
         .withEvent(
           'note/one',
-          const NoteCreated(noteId: 'one'),
+          const NoteCreated(),
           occuredAt: DateTime.utc(2026, 1, 1),
         )
         .withEvent(
           'note/two',
-          const NoteCreated(noteId: 'two'),
+          const NoteCreated(),
           occuredAt: DateTime.utc(2026, 1, 2),
         )
         .run();
@@ -24,21 +24,9 @@ void main() {
   test('later replayed change wins when timestamps tie', () {
     final time = DateTime.utc(2026, 1, 1);
     final state = AggregateTester(statisticsAggregate())
-        .withEvent(
-          'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: time,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTrashed(noteId: 'one'),
-          occuredAt: time,
-        )
-        .withEvent(
-          'note/one',
-          const NoteRestored(noteId: 'one'),
-          occuredAt: time,
-        )
+        .withEvent('note/one', const NoteCreated(), occuredAt: time)
+        .withEvent('note/one', const NoteTrashed(), occuredAt: time)
+        .withEvent('note/one', const NoteRestored(), occuredAt: time)
         .run();
 
     expect(state.activeCount, 1);
@@ -48,17 +36,17 @@ void main() {
     final state = AggregateTester(statisticsAggregate())
         .withEvent(
           'note/one',
-          const NoteCreated(noteId: 'one'),
+          const NoteCreated(),
           occuredAt: DateTime.utc(2026, 1, 1),
         )
         .withEvent(
           'note/one',
-          const NoteRestored(noteId: 'one'),
+          const NoteRestored(),
           occuredAt: DateTime.utc(2026, 1, 3),
         )
         .withEvent(
           'note/one',
-          const NoteTrashed(noteId: 'one'),
+          const NoteTrashed(),
           occuredAt: DateTime.utc(2026, 1, 2),
         )
         .run();

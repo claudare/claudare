@@ -23,8 +23,8 @@ class AccountSummaryState implements AggregateState<AccountEvent> {
     final event = envelope.event;
     final occuredAt = envelope.occuredAt;
     switch (event) {
-      case AccountOpened(:final name, :final accountId):
-        this.accountId = accountId;
+      case AccountOpened(:final name):
+        accountId = accountIdFromStream(envelope.streamPath);
         this.name = name;
         balance = 0;
         openedAt = occuredAt;

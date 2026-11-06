@@ -27,7 +27,7 @@ void main() {
     test('happy path', () async {
       commandTester.withEvent(
         accountStream('123'),
-        AccountOpened(accountId: '123', name: 'test'),
+        AccountOpened(name: 'test'),
       );
 
       await commandTester.run(AtmDeposit(accountId: '123', amount: 42));
@@ -46,10 +46,7 @@ void main() {
           CommandTester(timeProvider: timeProvider, eventStore: store)
             ..registerEvent(const AccountOpenedCodec())
             ..registerEvent(const AccountAtmDepositedCodec());
-      tester.withEvent(
-        accountStream('123'),
-        AccountOpened(accountId: '123', name: 'test'),
-      );
+      tester.withEvent(accountStream('123'), AccountOpened(name: 'test'));
       await tester.run(AtmDeposit(accountId: '123', amount: 42));
       expect(
         (await store.getStoredCommand(CommandId('test-actor', 2)))!
@@ -70,7 +67,7 @@ void main() {
     test('propagates application validation exception', () async {
       commandTester.withEvent(
         accountStream('123'),
-        AccountOpened(accountId: '123', name: 'test'),
+        AccountOpened(name: 'test'),
       );
 
       await expectLater(

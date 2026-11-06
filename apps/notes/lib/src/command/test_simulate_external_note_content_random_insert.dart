@@ -37,7 +37,7 @@ class TestSimulateExternalNoteContentRandomInsert implements Command {
     editor.insert(boundaries[random.nextInt(boundaries.length)], text);
     final change = editor.prepareChange();
     if (change != null) {
-      stream.append(NoteContentUpdated(noteId: noteId, change: change));
+      stream.append(NoteContentUpdated(change: change));
     }
   }
 }

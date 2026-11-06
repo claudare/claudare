@@ -16,27 +16,27 @@ void main() {
       state = AggregateTester(accountListAggregate())
           .withEvent(
             'account/one',
-            const AccountOpened(accountId: 'one', name: 'Zeta'),
+            const AccountOpened(name: 'Zeta'),
             occuredAt: openedAt,
           )
           .withEvent(
             'account/two',
-            const AccountOpened(accountId: 'two', name: 'Alpha'),
+            const AccountOpened(name: 'Alpha'),
             occuredAt: openedAt,
           )
           .withEvent(
             'account/one',
-            const AccountAtmDeposited(accountId: 'one', amount: 10),
+            const AccountAtmDeposited(amount: 10),
             occuredAt: depositedAt,
           )
           .withEvent(
             'account/two',
-            const AccountAtmDeposited(accountId: 'two', amount: 30),
+            const AccountAtmDeposited(amount: 30),
             occuredAt: depositedAt,
           )
           .withEvent(
             'account/one',
-            const AccountRenamed(accountId: 'one', newName: 'Beta'),
+            const AccountRenamed(newName: 'Beta'),
             occuredAt: renamedAt,
           )
           .run();

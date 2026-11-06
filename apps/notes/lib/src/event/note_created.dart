@@ -3,18 +3,15 @@ part of 'note.dart';
 class NoteCreated extends NoteEvent {
   static const String kind = 'note.created'; // ill try with dots
 
-  @override
-  final String noteId;
-
-  const NoteCreated({required this.noteId});
+  const NoteCreated();
 
   @override
   Map<String, dynamic> toJson() {
-    return {'noteId': noteId};
+    return {};
   }
 
   factory NoteCreated.fromJson(Map<String, dynamic> json) {
-    return NoteCreated(noteId: json['noteId'] as String);
+    return const NoteCreated();
   }
 
   @override

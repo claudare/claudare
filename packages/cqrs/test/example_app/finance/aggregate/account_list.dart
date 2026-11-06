@@ -37,7 +37,7 @@ class AccountListState implements AggregateState<AccountEvent> {
 
   @override
   void apply(EventEnvelope<AccountEvent> envelope) {
-    final accountId = envelope.event.accountId;
+    final accountId = accountIdFromStream(envelope.streamPath);
     final account = accounts.putIfAbsent(accountId, AccountSummaryState.new);
     account.apply(envelope);
   }

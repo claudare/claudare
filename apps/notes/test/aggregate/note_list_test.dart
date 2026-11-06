@@ -10,31 +10,15 @@ void main() {
   final trashedAt = DateTime.utc(2026, 1, 4);
 
   NoteListState replayNotes() => AggregateTester(noteListAggregate())
-      .withEvent(
-        'other/ignored',
-        const NoteCreated(noteId: 'ignored'),
-        occuredAt: firstAt,
-      )
+      .withEvent('other/ignored', const NoteCreated(), occuredAt: firstAt)
+      .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
+      .withEvent('note/two', const NoteCreated(), occuredAt: secondAt)
       .withEvent(
         'note/one',
-        const NoteCreated(noteId: 'one'),
-        occuredAt: firstAt,
-      )
-      .withEvent(
-        'note/two',
-        const NoteCreated(noteId: 'two'),
-        occuredAt: secondAt,
-      )
-      .withEvent(
-        'note/one',
-        const NoteTitleUpdated(noteId: 'one', newTitle: 'One'),
+        const NoteTitleUpdated(newTitle: 'One'),
         occuredAt: editedAt,
       )
-      .withEvent(
-        'note/two',
-        const NoteTrashed(noteId: 'two'),
-        occuredAt: trashedAt,
-      )
+      .withEvent('note/two', const NoteTrashed(), occuredAt: trashedAt)
       .run();
 
   test('collects note streams and counts active notes', () {
@@ -47,17 +31,13 @@ void main() {
     expect(state.activeCount, 1);
   });
 
-  test('keys notes from event data when stream path differs', () {
+  test('keys notes from the stream path', () {
     final state = AggregateTester(noteListAggregate())
-        .withEvent(
-          'note/one',
-          const NoteCreated(noteId: 'two'),
-          occuredAt: firstAt,
-        )
+        .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
         .run();
 
-    expect(state.notes.keys, ['two']);
-    expect(state.notes['two']!.noteId, 'two');
+    expect(state.notes.keys, ['one']);
+    expect(state.notes['one']!.noteId, 'one');
   });
 
   test('filters active, trashed, and all notes', () {
@@ -110,21 +90,9 @@ void main() {
 
   test('restoring a note returns it to the active list', () {
     final state = AggregateTester(noteListAggregate())
-        .withEvent(
-          'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: firstAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTrashed(noteId: 'one'),
-          occuredAt: secondAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteRestored(noteId: 'one'),
-          occuredAt: editedAt,
-        )
+        .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
+        .withEvent('note/one', const NoteTrashed(), occuredAt: secondAt)
+        .withEvent('note/one', const NoteRestored(), occuredAt: editedAt)
         .run();
 
     expect(state.activeCount, 1);

@@ -6,18 +6,15 @@ part of 'note.dart';
 class NoteRestored extends NoteEvent {
   static const String kind = 'note.restored';
 
-  @override
-  final String noteId;
-
-  const NoteRestored({required this.noteId});
+  const NoteRestored();
 
   @override
   Map<String, dynamic> toJson() {
-    return {'noteId': noteId};
+    return {};
   }
 
   factory NoteRestored.fromJson(Map<String, dynamic> json) {
-    return NoteRestored(noteId: json['noteId'] as String);
+    return const NoteRestored();
   }
 
   @override

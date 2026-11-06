@@ -3,27 +3,22 @@ part of 'note.dart';
 class NoteContentUpdated extends NoteEvent {
   static const String kind = 'note.content.updated';
 
-  @override
-  final String noteId;
   final CrdtTextChange change;
 
-  const NoteContentUpdated({required this.noteId, required this.change});
+  const NoteContentUpdated({required this.change});
 
   @override
   Map<String, dynamic> toJson() {
-    return {'noteId': noteId, 'change': change};
+    return {'change': change};
   }
 
   factory NoteContentUpdated.fromJson(Map<String, dynamic> json) {
-    return NoteContentUpdated(
-      noteId: json['noteId'],
-      change: CrdtTextChange.fromJson(json['change']),
-    );
+    return NoteContentUpdated(change: CrdtTextChange.fromJson(json['change']));
   }
 
   @override
   String toString() {
-    return 'NoteContentUpdated{noteId: $noteId, change: $change}';
+    return 'NoteContentUpdated{change: $change}';
   }
 }
 

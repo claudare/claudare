@@ -29,7 +29,7 @@ class TestSimulateExternalNoteContentAppend implements Command {
     editor.insert(document.length, text);
     final change = editor.prepareChange();
     if (change != null) {
-      stream.append(NoteContentUpdated(noteId: noteId, change: change));
+      stream.append(NoteContentUpdated(change: change));
     }
   }
 }

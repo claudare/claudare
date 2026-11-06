@@ -18,7 +18,7 @@ class CreateNote implements Command {
 
     await stream.mustNotExist();
 
-    stream.append(NoteCreated(noteId: noteId));
+    stream.append(NoteCreated());
 
     ctx.logger.debug('note $noteId created');
   }

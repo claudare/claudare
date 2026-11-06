@@ -58,7 +58,7 @@ class StatisticsState implements AggregateState<Object> {
     final occuredAt = envelope.occuredAt;
 
     if (event is NoteEvent) {
-      final noteId = event.noteId;
+      final noteId = noteIdFromStream(envelope.streamPath);
       switch (event) {
         case NoteCreated():
         case NoteRestored():

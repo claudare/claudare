@@ -11,11 +11,7 @@ void main() {
 
   test('starts absent and ignores another note stream', () {
     final state = AggregateTester(noteAggregate('one'))
-        .withEvent(
-          'note/two',
-          const NoteCreated(noteId: 'two'),
-          occuredAt: createdAt,
-        )
+        .withEvent('note/two', const NoteCreated(), occuredAt: createdAt)
         .run();
 
     expect(state.exists, isFalse);
@@ -24,22 +20,15 @@ void main() {
 
   test('replays creation, title, and content with timestamps', () {
     final state = AggregateTester(noteAggregate('one'))
+        .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: createdAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTitleUpdated(noteId: 'one', newTitle: 'Title'),
+          const NoteTitleUpdated(newTitle: 'Title'),
           occuredAt: editedAt,
         )
         .withEvent(
           'note/one',
-          NoteContentUpdated(
-            noteId: 'one',
-            change: CrdtTextTestUtils.singleChange('Text'),
-          ),
+          NoteContentUpdated(change: CrdtTextTestUtils.singleChange('Text')),
           occuredAt: laterAt,
         )
         .run();
@@ -54,19 +43,15 @@ void main() {
 
   test('keeps the title with the latest timestamp', () {
     final state = AggregateTester(noteAggregate('one'))
+        .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: createdAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTitleUpdated(noteId: 'one', newTitle: 'Newer'),
+          const NoteTitleUpdated(newTitle: 'Newer'),
           occuredAt: laterAt,
         )
         .withEvent(
           'note/one',
-          const NoteTitleUpdated(noteId: 'one', newTitle: 'Older'),
+          const NoteTitleUpdated(newTitle: 'Older'),
           occuredAt: editedAt,
         )
         .run();
@@ -77,20 +62,16 @@ void main() {
 
   test('uses the greater actor when title timestamps tie', () {
     final state = AggregateTester(noteAggregate('one'))
+        .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: createdAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTitleUpdated(noteId: 'one', newTitle: 'First'),
+          const NoteTitleUpdated(newTitle: 'First'),
           actor: 'b',
           occuredAt: editedAt,
         )
         .withEvent(
           'note/one',
-          const NoteTitleUpdated(noteId: 'one', newTitle: 'Second'),
+          const NoteTitleUpdated(newTitle: 'Second'),
           actor: 'a',
           occuredAt: editedAt,
         )
@@ -101,16 +82,8 @@ void main() {
 
   test('trash and restore change only trash state', () {
     final tester = AggregateTester(noteAggregate('one'))
-        .withEvent(
-          'note/one',
-          const NoteCreated(noteId: 'one'),
-          occuredAt: createdAt,
-        )
-        .withEvent(
-          'note/one',
-          const NoteTrashed(noteId: 'one'),
-          occuredAt: editedAt,
-        );
+        .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
+        .withEvent('note/one', const NoteTrashed(), occuredAt: editedAt);
 
     final trashed = tester.run();
     expect(trashed.isTrashed, isTrue);
@@ -118,11 +91,7 @@ void main() {
     expect(trashed.updatedAt, createdAt);
 
     final restored = tester
-        .withEvent(
-          'note/one',
-          const NoteRestored(noteId: 'one'),
-          occuredAt: laterAt,
-        )
+        .withEvent('note/one', const NoteRestored(), occuredAt: laterAt)
         .run();
     expect(restored.isTrashed, isFalse);
     expect(restored.trashedAt, isNull);

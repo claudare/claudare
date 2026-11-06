@@ -17,16 +17,16 @@ class TotalBalanceState implements AggregateState<AccountEvent> {
   @override
   void apply(EventEnvelope<AccountEvent> envelope) {
     final event = envelope.event;
-
+    final accountId = accountIdFromStream(envelope.streamPath);
     switch (event) {
       case AccountAtmDeposited(:final amount):
-        _applyBalanceChange(event.accountId, amount);
+        _applyBalanceChange(accountId, amount);
       case AccountAtmWithdrawn(:final amount):
-        _applyBalanceChange(event.accountId, -amount);
+        _applyBalanceChange(accountId, -amount);
       case AccountOpened():
         break;
       case AccountInnerTransfer(:final amount):
-        _applyBalanceChange(event.accountId, amount);
+        _applyBalanceChange(accountId, amount);
       case AccountRenamed():
         break;
     }

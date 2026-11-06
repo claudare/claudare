@@ -20,7 +20,7 @@ class UpdateNoteContent implements Command {
 
     await stream.mustExist();
 
-    stream.append(NoteContentUpdated(noteId: noteId, change: change));
+    stream.append(NoteContentUpdated(change: change));
 
     ctx.logger.debug('note $noteId content updated');
   }
