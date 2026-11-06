@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:blob/blob.dart';
+import 'package:blob/src/path.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 
+import '../blob_store/blob_store.dart';
 import 'blob_replication_channel.dart';
 import 'blob_replication_exception.dart';
 import 'blob_replication_message.dart';
@@ -97,8 +98,8 @@ class BlobReplicator {
   }
 
   Future<void> _discover(String stream) async {
-    final id = _blobIdFromStream(stream);
-    if (id == null || !_known.add(id)) return;
+    final id = blobIdFromStream(stream);
+    if (!_known.add(id)) return;
     _queued.add(id);
     await _pull();
   }
@@ -189,11 +190,4 @@ class BlobReplicator {
       }
     });
   }
-}
-
-String? _blobIdFromStream(String stream) {
-  const prefix = '_blob/';
-  return stream.startsWith(prefix) && stream.length > prefix.length
-      ? stream.substring(prefix.length)
-      : null;
 }

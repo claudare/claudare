@@ -8,8 +8,10 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
+  claudare_logging: ^1.0.0
   cqrs: ^1.0.0
   id_generator: ^1.0.0
+  stream_channel: ^2.1.4
 
 dev_dependencies:
   lints: ^6.0.0
