@@ -35,14 +35,14 @@ class Aggregate<TEvent extends Object, TState extends AggregateState<TEvent>> {
   final String name;
   final LogFilter filter;
   final TState state;
-  int? sequence;
+  int sequence;
 
   Aggregate({
     required this.name,
     required this.filter,
     required this.state,
-    this.sequence,
-  });
+    this.sequence = -1,
+  }) : assert(sequence >= -1);
 
   Snapshot<TState> snapshot() => Snapshot(state, sequence);
 

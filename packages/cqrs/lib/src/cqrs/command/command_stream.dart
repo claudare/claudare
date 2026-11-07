@@ -86,6 +86,7 @@ class CommandStream<Event extends Object> {
   }
 
   /// Permanently deletes the stream after locking it to its first event.
+  /// Do not lock manually.
   Future<void> delete() async {
     await mustExist();
     _context._delete(_streamPath);

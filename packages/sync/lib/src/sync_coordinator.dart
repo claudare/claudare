@@ -9,8 +9,6 @@ import 'package:time_provider/time_provider.dart';
 import 'package:transport/transport.dart';
 
 import 'actor/actor_identity_store.dart';
-import 'replication/blob_replication/blob_replicator.dart';
-import 'replication/blob_replication/blob_replication_message_codec.dart';
 import 'replication/command_replication/command_replication_message_codec.dart';
 import 'replication/command_replication/command_replicator.dart';
 import 'sync_defaults.dart';

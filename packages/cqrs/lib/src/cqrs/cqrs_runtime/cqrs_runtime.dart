@@ -70,68 +70,6 @@ class CqrsRuntime {
     return _commandExecutor.execute(command);
   }
 
-  /// A granular, stateless resolve.
-  /// Will start from provided sequence, and return the final sequence.
-  /// TODO: remove me
-  Future<int?> resolveStateless<TEvent extends Object>({
-    required LogFilter filter,
-    required ApplyEnvelope<TEvent> apply,
-    required void Function(StreamDeletion deletion) onStreamDeleted,
-    int? sequence,
-  }) async {
-    final startingSequence = sequence;
-    var applyCount = 0;
-
-    final stream = logReader(
-      filter,
-      fromPosition: (startingSequence ?? -1) + 1,
-    ).scan();
-
-    await for (final logEvent in stream) {
-      if (logEvent.encodedEvent.isEventErased) {
-        sequence = logEvent.position;
-        continue;
-      }
-      if (logEvent.encodedEvent.isStreamDeleted) {
-        onStreamDeleted(
-          StreamDeletion(
-            actor: logEvent.eventId.actor,
-            streamPath: logEvent.streamPath,
-            occuredAt: logEvent.occuredAt,
-          ),
-        );
-        sequence = logEvent.position;
-        continue;
-      }
-      final decoded = _eventRegistry.decode(logEvent.encodedEvent);
-      if (decoded is! TEvent) {
-        // its programmers job to specify the correct event type
-        throw StateError(
-          'stateless decoded event is not of type $TEvent: ${decoded.runtimeType}',
-        );
-      }
-
-      final envelope = EventEnvelope(
-        actor: logEvent.eventId.actor,
-        streamPath: logEvent.streamPath,
-        event: decoded,
-        occuredAt: logEvent.occuredAt,
-      );
-      apply(envelope);
-      _logger.debug('stateless applied event at position ${logEvent.position}');
-      sequence = logEvent.position;
-      applyCount++;
-    }
-
-    _logger.info(
-      'stateless ran on ${filter.path()}: '
-      'startingSequence=$startingSequence, finalSequence=$sequence, '
-      'applyCount=$applyCount',
-    );
-
-    return sequence;
-  }
-
   /// Catches up the aggregate to the latest version.
   /// Returns the same [Aggregate] that was passed in.
   Future<Aggregate<TEvent, TState>> resolve<
@@ -143,7 +81,7 @@ class CqrsRuntime {
 
     final stream = logReader(
       aggregate.filter,
-      fromPosition: (aggregate.sequence ?? -1) + 1,
+      fromPosition: startingSequence + 1,
     ).scan();
 
     await for (final logEvent in stream) {
@@ -166,7 +104,8 @@ class CqrsRuntime {
       if (decoded is! TEvent) {
         // its programmers job to specify the correct event type
         throw StateError(
-          '$aggregate: decoded event is not of type $TEvent: ${decoded.runtimeType}',
+          '$aggregate: decoded event is not of type $TEvent: '
+          '${decoded.runtimeType}',
         );
       }
 
@@ -176,7 +115,6 @@ class CqrsRuntime {
         event: decoded,
         occuredAt: logEvent.occuredAt,
       );
-
       aggregate.state.apply(envelope);
       _logger.debug(
         '$aggregate: applied event at position ${logEvent.position}',
@@ -185,17 +123,11 @@ class CqrsRuntime {
       applyCount++;
     }
 
-    if (startingSequence == aggregate.sequence) {
-      _logger.info(
-        'resolved $aggregate: already up to date. sequence=${aggregate.sequence}',
-      );
-    } else {
-      _logger.info(
-        'resolved $aggregate: '
-        'startingSequence=$startingSequence, finalSequence=${aggregate.sequence}, '
-        'applyCount=$applyCount',
-      );
-    }
+    _logger.debug(
+      'resolved $aggregate: '
+      'startingSequence=$startingSequence, '
+      'finalSequence=${aggregate.sequence}, applyCount=$applyCount',
+    );
 
     return aggregate;
   }
