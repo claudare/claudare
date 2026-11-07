@@ -2,6 +2,7 @@ library;
 
 // runtime
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
+export 'src/cqrs/cqrs_runtime/stream_deletion.dart';
 
 // event store
 export 'src/cqrs/event_store/event_store.dart';
@@ -29,6 +30,9 @@ export 'src/cqrs/command/command_context.dart' show CommandStream;
 // aggregate
 export 'src/cqrs/aggregate.dart';
 export 'src/cqrs/snapshot.dart';
+
+// projection
+export 'src/cqrs/projection.dart';
 
 // stream route
 export 'src/cqrs/log_filter.dart';
