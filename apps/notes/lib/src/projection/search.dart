@@ -19,6 +19,7 @@ class SearchProjection implements Projection<NoteEvent> {
   @override
   Future<int> load() async {
     // nothing is serialized, fresh start every time
+    await Future.delayed(Duration(seconds: 1));
     return -1;
   }
 

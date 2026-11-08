@@ -6,12 +6,14 @@ class NoteList extends StatelessWidget {
   final Future<void> Function(String? noteId) openNote;
   final List<NoteState> noteData;
   final NoteSortOrder order;
+  final bool showTrashMarker;
 
   const NoteList({
     super.key,
     required this.noteData,
     required this.openNote,
     required this.order,
+    this.showTrashMarker = false,
   });
 
   @override
@@ -23,6 +25,7 @@ class NoteList extends StatelessWidget {
         return NoteListItem(
           note: note,
           order: order,
+          showTrashMarker: showTrashMarker,
           onTap: () {
             openNote(note.noteId);
           },

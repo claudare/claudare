@@ -52,6 +52,9 @@ class NotesApp {
   /// Allocates an identifier before a note is persisted.
   String generateNoteId() => _idGenerator.generateId();
 
+  /// Completes when the search projection has replayed its initial history.
+  Future<void> get projectionReady => _pRun.ready;
+
   Future<void> projectionPromise() {
     return _pRun.done;
   }

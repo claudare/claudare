@@ -30,6 +30,10 @@ void main() {
       );
       expect(tester.getTopLeft(find.byType(AppBar)).dx, wide ? 280 : 0);
       expect(
+        tester.getCenter(find.byType(EditableText)).dy,
+        closeTo(tester.getCenter(find.byType(SearchBar)).dy, 1),
+      );
+      expect(
         tester.getCenter(find.byTooltip('Sort notes')).dx,
         lessThan(tester.getCenter(find.byTooltip('New note')).dx),
       );

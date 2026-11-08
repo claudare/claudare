@@ -5,6 +5,8 @@ import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/layout_breakpoints.dart';
 import 'package:notes/screens/home/note_list_controller.dart';
+import 'package:notes/screens/home/note_search_controller.dart';
+import 'package:notes/screens/home/note_search_view.dart';
 import 'package:notes/screens/home/widget/note_list.dart';
 import 'package:notes/screens/note/note_screen.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
@@ -19,6 +21,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   late NoteListController _controller;
+  late NoteSearchController _searchController;
+  final _searchText = TextEditingController();
   NotesApp? _application;
 
   @override
@@ -32,10 +36,15 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_application != null) {
       _controller.removeListener(_onControllerChanged);
       _controller.dispose();
+      _searchController.removeListener(_onControllerChanged);
+      _searchController.dispose();
     }
     _application = application;
     _controller = NoteListController(application);
     _controller.addListener(_onControllerChanged);
+    _searchText.clear();
+    _searchController = NoteSearchController(application);
+    _searchController.addListener(_onControllerChanged);
     unawaited(_controller.reloadNotes());
   }
 
@@ -47,10 +56,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _controller.removeListener(_onControllerChanged);
     _controller.dispose();
+    _searchController.removeListener(_onControllerChanged);
+    _searchController.dispose();
+    _searchText.dispose();
     super.dispose();
   }
 
   Future<void> _openNote(String? noteId) async {
+    _clearSearch();
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => NoteScreen(noteId: noteId)));
@@ -58,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openSettings() async {
+    _clearSearch();
     await Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => SettingsScreen()));
     if (mounted) await _controller.reloadNotes();
@@ -117,14 +131,27 @@ class _HomeScreenState extends State<HomeScreen> {
       key: _scaffoldKey,
       appBar: AppBar(
         automaticallyImplyLeading: !wide,
-        title: Text(
-          _controller.category == NoteCategory.active ? 'Notes' : 'Trash',
+        title: SearchBar(
+          controller: _searchText,
+          onChanged: _searchController.setQuery,
+          hintText: 'Search note contents',
+          constraints: const BoxConstraints(minHeight: 48, maxHeight: 48),
+          elevation: const WidgetStatePropertyAll(0),
+          leading: const Icon(Icons.search),
+          trailing: [
+            if (_searchController.query.isNotEmpty)
+              IconButton(
+                tooltip: 'Clear search',
+                icon: const Icon(Icons.clear),
+                onPressed: _clearSearch,
+              ),
+          ],
         ),
         actions: [
           PopupMenuButton<NoteSortOrder>(
             tooltip: 'Sort notes',
             icon: const Icon(Icons.sort),
-            enabled: !_controller.isLoading,
+            enabled: !_controller.isLoading && !_searchController.hasQuery,
             onSelected: _controller.setOrder,
             itemBuilder: (context) => [
               for (final order in [
@@ -153,23 +180,45 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: !wide || drawerOpen
           ? Drawer(child: _buildMenu(closeDrawer: true))
           : null,
-      body: _controller.loadError != null
-          ? Center(child: Text('Error loading notes: ${_controller.loadError}'))
-          : _controller.isLoading && _controller.noteData.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : _controller.noteData.isEmpty
-          ? Center(
-              child: Text(
-                _controller.category == NoteCategory.trashed
-                    ? 'Trash is empty'
-                    : 'No notes yet',
-              ),
-            )
-          : NoteList(
-              noteData: _controller.noteData,
-              order: _controller.order,
-              openNote: _openNote,
-            ),
+      body: _buildResults(),
+    );
+  }
+
+  void _clearSearch() {
+    _searchText.clear();
+    _searchController.setQuery('');
+    FocusScope.of(context).focusedChild?.unfocus();
+  }
+
+  Widget _buildResults() {
+    if (_searchController.hasQuery) {
+      return NoteSearchView(controller: _searchController, openNote: _openNote);
+    }
+    return _buildNoteList();
+  }
+
+  Widget _buildNoteList() {
+    if (_controller.loadError != null) {
+      return Center(
+        child: Text('Error loading notes: ${_controller.loadError}'),
+      );
+    }
+    if (_controller.isLoading && _controller.noteData.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_controller.noteData.isEmpty) {
+      return Center(
+        child: Text(
+          _controller.category == NoteCategory.trashed
+              ? 'Trash is empty'
+              : 'No notes yet',
+        ),
+      );
+    }
+    return NoteList(
+      noteData: _controller.noteData,
+      order: _controller.order,
+      openNote: _openNote,
     );
   }
 
@@ -189,6 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
               selected: _controller.category == category,
               onTap: () {
                 if (closeDrawer) _scaffoldKey.currentState?.closeDrawer();
+                _clearSearch();
                 unawaited(_controller.setCategory(category));
               },
             ),
