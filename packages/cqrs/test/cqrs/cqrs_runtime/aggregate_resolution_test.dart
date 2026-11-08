@@ -40,6 +40,7 @@ void main() {
       'opened',
       'deposit',
     ]);
+    expect(aggregate.state.events.map((v) => v.logPosition), [0, 3]);
     expect(aggregate.sequence, 3);
 
     await runtime.resolve(aggregate);
@@ -68,6 +69,7 @@ void main() {
       'account/one',
     ]);
     expect(events.map((v) => v.actor), everyElement('test-actor'));
+    expect(events.map((v) => v.logPosition), [0, 1, 3]);
     expect(events.map((v) => v.occuredAt), [
       _timestamp,
       _timestamp.add(const Duration(days: 1)),
@@ -109,6 +111,7 @@ void main() {
         streamPath: 'account/one',
         event: const _TestEvent('secret', 'one'),
         occuredAt: _timestamp,
+        logPosition: 0,
       ).toString(),
       isNot(contains('secret')),
     );
@@ -130,6 +133,7 @@ void main() {
     store.failAt = 1;
     await expectLater(observed.resolve(aggregate), throwsException);
     expect(aggregate.state.events.map((v) => v.event.value), ['opened']);
+    expect(aggregate.state.events.single.logPosition, 0);
     expect(aggregate.sequence, 0);
 
     store.reads.clear();
@@ -139,6 +143,7 @@ void main() {
       'opened',
       'deposit',
     ]);
+    expect(aggregate.state.events.map((v) => v.logPosition), [0, 3]);
     expect(aggregate.sequence, 3);
   });
 
@@ -156,6 +161,7 @@ void main() {
         'opened',
         'deposit',
       ]);
+      expect(aggregate.state.events.map((v) => v.logPosition), [0, 3]);
     },
   );
 }

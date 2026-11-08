@@ -105,6 +105,7 @@ void main() {
     ]);
     expect(events.map((event) => event.occuredAt), [seededAt, later, later]);
     expect(events.map((event) => event.actor), ['a', 'b', 'a']);
+    expect(events.map((event) => event.logPosition), [0, 1, 2]);
     expect(
       (await database.getLogEvents(
         const LogFilter.all(),
@@ -135,6 +136,7 @@ void main() {
 
     final events = (await runtime.resolve(_valueAggregate())).state.events;
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
+    expect(events.map((event) => event.logPosition), [0, 1, 2]);
     expect((await database.getStreamInfo('value/one')).version, 2);
   });
 

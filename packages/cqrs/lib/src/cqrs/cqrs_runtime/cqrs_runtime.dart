@@ -106,6 +106,7 @@ class CqrsRuntime {
             actor: logEvent.eventId.actor,
             streamPath: logEvent.streamPath,
             occuredAt: logEvent.occuredAt,
+            logPosition: logEvent.position,
           ),
         );
         aggregate.sequence = logEvent.position;
@@ -125,6 +126,7 @@ class CqrsRuntime {
         streamPath: logEvent.streamPath,
         event: decoded,
         occuredAt: logEvent.occuredAt,
+        logPosition: logEvent.position,
       );
       aggregate.state.apply(envelope);
       _logger.debug(
@@ -179,6 +181,7 @@ class CqrsRuntime {
                 actor: logEvent.eventId.actor,
                 streamPath: logEvent.streamPath,
                 occuredAt: logEvent.occuredAt,
+                logPosition: logEvent.position,
               ),
             );
             continue;
@@ -196,6 +199,7 @@ class CqrsRuntime {
             streamPath: logEvent.streamPath,
             event: decoded,
             occuredAt: logEvent.occuredAt,
+            logPosition: logEvent.position,
           );
           await projection.apply(envelope);
         }

@@ -72,6 +72,7 @@ void main() {
       'first',
       'second',
     ]);
+    expect(projection.events.map((event) => event.logPosition), [0, 1]);
   });
 
   test('loads the checkpoint and replays strictly after it', () async {
@@ -87,6 +88,7 @@ void main() {
     expect(projection.loadedPositions, [1]);
     expect(store.positions.first, 2);
     expect(projection.events.map((event) => event.event.value), ['2', '3']);
+    expect(projection.events.map((event) => event.logPosition), [2, 3]);
   });
 
   test('preserves event actors, paths, and timestamps', () async {
@@ -109,6 +111,7 @@ void main() {
     expect(envelope.actor, 'remote-actor');
     expect(envelope.streamPath, 'notes/two');
     expect(envelope.occuredAt, time);
+    expect(envelope.logPosition, 0);
   });
 
   for (final (name, filter, values) in [
@@ -132,6 +135,10 @@ void main() {
       await run.cancel();
 
       expect(projection.events.map((event) => event.event.value), values);
+      expect(
+        projection.events.map((event) => event.logPosition),
+        values.map(int.parse),
+      );
     });
   }
 
@@ -152,6 +159,7 @@ void main() {
         'first',
         'second',
       ]);
+      expect(projection.events.map((event) => event.logPosition), [0, 1]);
     },
   );
 
@@ -187,6 +195,8 @@ void main() {
     await run.cancel();
 
     expect(projection.events.single.event.value, 'retained');
+    expect(projection.events.single.logPosition, 2);
+    expect(projection.deletions.single.logPosition, 1);
   });
 
   test('forwards deletion metadata without decoding it as an event', () async {
@@ -209,6 +219,7 @@ void main() {
     expect(deletion.actor, 'deleting-actor');
     expect(deletion.streamPath, 'notes/deleted');
     expect(deletion.occuredAt, time);
+    expect(deletion.logPosition, 0);
     expect(projection.events, isEmpty);
   });
 

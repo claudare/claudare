@@ -42,6 +42,7 @@ class AggregateTester<
         streamPath: event.stream,
         event: event.event,
         occuredAt: event.occuredAt,
+        logPosition: i,
       );
       aggregate.state.apply(envelope);
       aggregate.sequence = i;

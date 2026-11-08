@@ -41,6 +41,7 @@ class ProjectionTester<TEvent extends Object> {
         streamPath: event.stream,
         event: event.event,
         occuredAt: event.occuredAt,
+        logPosition: i,
       );
 
       await projection.apply(envelope);
