@@ -162,6 +162,22 @@ class SqliteEventStore implements EventStore {
   );
 
   @override
+  Future<int> getLogPosition(LogFilter filter) =>
+      _transaction('Failed to get log position', (tx) {
+        final condition = switch (filter.type) {
+          LogFilterType.all => '',
+          LogFilterType.exact => 'WHERE stream_path = ?',
+          LogFilterType.startsWith => 'WHERE instr(stream_path, ?) = 1',
+        };
+        return tx.queryValue<int>(
+          '''SELECT COALESCE(MAX(log_position), -1)
+          FROM event
+          $condition;''',
+          [if (filter.type != LogFilterType.all) filter.pattern],
+        );
+      });
+
+  @override
   Future<PaginatedResult<StoredEvent>> getStreamEvents(
     String streamPath,
     int fromVersion,

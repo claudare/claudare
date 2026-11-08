@@ -93,6 +93,11 @@ abstract interface class EventStore implements EventStoreReplication {
   /// Returns stream state.
   Future<StreamInfo> getStreamInfo(String streamPath);
 
+  /// Returns the latest log position for a given filter.
+  /// Pass in [LogFilter.all] to get the latest position of the event store.
+  /// -1 is returned when filter did not match anything.
+  Future<int> getLogPosition(LogFilter filter);
+
   /// Get paginated result from a single stream.
   /// Includes erased records. [EventStore] owns pagination size.
   Future<PaginatedResult<StoredEvent>> getStreamEvents(

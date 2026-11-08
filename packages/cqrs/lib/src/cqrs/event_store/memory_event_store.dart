@@ -128,6 +128,18 @@ class MemoryEventStore implements EventStore {
   );
 
   @override
+  Future<int> getLogPosition(LogFilter filter) =>
+      _read('Failed to get log position', () {
+        for (var index = _events.length - 1; index >= 0; index--) {
+          final (streamPath, _) = _streamPosition(index);
+          if (filter.doesMatchPath(streamPath)) {
+            return _events[index].logPosition;
+          }
+        }
+        return -1;
+      });
+
+  @override
   Future<StreamInfo> getStreamInfo(String streamPath) =>
       _read("Failed to get stream info for '$streamPath'", () {
         final indexes = _streamVersions[streamPath];
