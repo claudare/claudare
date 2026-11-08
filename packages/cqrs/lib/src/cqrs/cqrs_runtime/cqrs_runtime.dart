@@ -10,16 +10,30 @@ import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
+import 'package:cqrs/src/cqrs/exception/projection_stopped_exception.dart';
 import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:cqrs/src/cqrs/projection.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
 class ProjectionRun {
+  /// Future that completes when projection is cancelled or when event store
+  /// closes.
   final Future<void> done;
+
+  /// Completes after processing the matching events present after loading.
+  /// Fails with [ProjectionStoppedException] if stopped before catching up.
+  /// Replay failures retain their original error.
+  final Future<void> ready;
+
+  /// Cancel resolving the projection.
   final Future<void> Function() cancel;
 
-  const ProjectionRun({required this.done, required this.cancel});
+  const ProjectionRun({
+    required this.done,
+    required this.ready,
+    required this.cancel,
+  });
 }
 
 /// Coordinates durable command execution and projection delivery.
@@ -152,15 +166,30 @@ class CqrsRuntime {
     var cancelled = false;
     StreamIterator<StoredEvent>? it;
     Future<void>? iteratorCancellation;
+    final readyCompleter = Completer<void>();
+    // Consumers may observe failures through done without awaiting ready.
+    readyCompleter.future.ignore();
 
     Future<void> cancelIterator() =>
         iteratorCancellation ??= it?.cancel() ?? Future<void>.value();
 
-    final done = Future<void>(() async {
+    Future<void> resolveProjection() async {
       if (cancelled) return;
       final logPosition = await projection.load();
+      final readyLogPosition = await _eventStore.getLogPosition(
+        projection.filter,
+      );
       if (cancelled) return;
 
+      void completeIfCaughtUp(int position) {
+        if (!cancelled &&
+            !readyCompleter.isCompleted &&
+            position >= readyLogPosition) {
+          readyCompleter.complete();
+        }
+      }
+
+      completeIfCaughtUp(logPosition);
       final iterator = logIterator(
         projection.filter,
         fromPosition: logPosition + 1,
@@ -172,6 +201,7 @@ class CqrsRuntime {
           if (cancelled) break;
           final logEvent = iterator.current;
           if (logEvent.encodedEvent.isEventErased) {
+            completeIfCaughtUp(logEvent.position);
             continue;
           }
           if (logEvent.encodedEvent.isStreamDeleted) {
@@ -183,6 +213,7 @@ class CqrsRuntime {
                 logPosition: logEvent.position,
               ),
             );
+            completeIfCaughtUp(logEvent.position);
             continue;
           }
           final decoded = _eventRegistry.decode(logEvent.encodedEvent);
@@ -201,14 +232,30 @@ class CqrsRuntime {
             logPosition: logEvent.position,
           );
           await projection.apply(envelope);
+          completeIfCaughtUp(logEvent.position);
         }
       } finally {
         await cancelIterator();
       }
-    });
+    }
+
+    final done = Future<void>(resolveProjection).then<void>(
+      (_) {
+        if (!readyCompleter.isCompleted) {
+          readyCompleter.completeError(const ProjectionStoppedException());
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!readyCompleter.isCompleted) {
+          readyCompleter.completeError(error, stackTrace);
+        }
+        Error.throwWithStackTrace(error, stackTrace);
+      },
+    );
 
     return ProjectionRun(
       done: done,
+      ready: readyCompleter.future,
       cancel: () async {
         cancelled = true;
         try {

@@ -42,6 +42,7 @@ export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';
 export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
+export 'src/cqrs/exception/projection_stopped_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
