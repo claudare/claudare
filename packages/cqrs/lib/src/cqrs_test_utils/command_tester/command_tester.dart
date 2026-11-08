@@ -16,7 +16,7 @@ class CommandTester {
 
   EventRegistry get _eventRegistry => _runtime.eventRegistry;
 
-  int? _preRunLastLogPosition;
+  late int _preRunLastLogPosition;
   bool _ran = false;
 
   CommandTester({
@@ -80,7 +80,7 @@ class CommandTester {
     // only gets events that were emitted after the test has ran
     final reader = _runtime.logReader(
       LogFilter.exact(streamPath),
-      fromPosition: (_preRunLastLogPosition ?? -1) + 1,
+      fromPosition: _preRunLastLogPosition + 1,
     );
 
     return reader
@@ -95,8 +95,9 @@ class CommandTester {
 
     await _flushSeeds();
 
-    final state = await _eventStore.getState();
-    _preRunLastLogPosition = state.lastEventLogPosition;
+    _preRunLastLogPosition = await _eventStore.getLogPosition(
+      const LogFilter.all(),
+    );
     _ran = true;
 
     await _runtime.execute(command);

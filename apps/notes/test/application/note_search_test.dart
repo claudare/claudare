@@ -31,7 +31,7 @@ void main() {
   }
 
   Future<void> waitForIndex(_ObservedFts backend) async {
-    final position = (await store.getState()).lastEventLogPosition!;
+    final position = await store.getLogPosition(const LogFilter.all());
     await backend.waitForRevision(position);
   }
 

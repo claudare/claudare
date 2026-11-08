@@ -228,8 +228,8 @@ void main() {
       expect(await reopened.identities.allPeers(), isEmpty);
       expect(await reopened.kv.listKeys(''), isEmpty);
       expect(
-        (await reopened.eventStore.getState()).lastEventLogPosition,
-        isNull,
+        await reopened.eventStore.getLogPosition(const LogFilter.all()),
+        -1,
       );
     },
   );

@@ -49,7 +49,7 @@ void main() {
             ),
             throwsStateError,
           );
-          expect((await store.getState()).lastEventLogPosition, isNull);
+          expect(await store.getLogPosition(const LogFilter.all()), -1);
           expect((await store.getStreamInfo('one')).version, -1);
         },
       );
