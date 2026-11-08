@@ -3,6 +3,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_bootstrap_provider.dart';
@@ -27,7 +28,7 @@ void main() {
   ) async {
     final store = MemoryEventStore();
     final runtime = CqrsTestRuntime(eventStore: store);
-    final application = NotesApp(cqrsRuntime: runtime);
+    final application = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
     await application.command.updateNoteTitle(noteId, 'Before');
@@ -48,7 +49,10 @@ void main() {
   testWidgets('home list refreshes after saving a new note and returning', (
     tester,
   ) async {
-    final application = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final application = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+    );
     await tester.pumpWidget(
       NotesAppProvider(application: application, child: homeTestApp()),
     );
@@ -66,7 +70,10 @@ void main() {
   testWidgets('new note timestamps appear after a successful write', (
     tester,
   ) async {
-    final application = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final application = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+    );
     await tester.pumpWidget(
       NotesAppProvider(
         application: application,
@@ -89,11 +96,11 @@ void main() {
   testWidgets('home reloads notes when its application provider changes', (
     tester,
   ) async {
-    final first = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final first = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     final firstId = first.generateNoteId();
     await first.command.createNote(firstId);
     await first.command.updateNoteTitle(firstId, 'First application');
-    final second = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final second = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     final secondId = second.generateNoteId();
     await second.command.createNote(secondId);
     await second.command.updateNoteTitle(secondId, 'Second application');
@@ -115,8 +122,8 @@ void main() {
   testWidgets('note editor uses a replacement application provider', (
     tester,
   ) async {
-    final first = NotesApp(cqrsRuntime: CqrsTestRuntime());
-    final second = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final first = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final second = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     await tester.pumpWidget(
       NotesAppProvider(
         application: first,
@@ -148,6 +155,7 @@ void main() {
     final eventStore = MemoryEventStore();
     final application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
+      fts: NoopFts(),
     );
     await application.command.createNote(application.generateNoteId());
     final trashedId = application.generateNoteId();
@@ -226,7 +234,10 @@ Future<void> _pumpSettings(
       child: NotesAppProvider(
         application:
             application ??
-            NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store)),
+            NotesApp(
+              cqrsRuntime: CqrsTestRuntime(eventStore: store),
+              fts: NoopFts(),
+            ),
         child: NoteSystemProvider(
           system: NoteSystem(
             identities: MemoryActorIdentityStore(),

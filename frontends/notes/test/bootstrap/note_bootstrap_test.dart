@@ -7,6 +7,30 @@ import 'package:time_provider/time_provider.dart';
 import 'package:support_directory/support_directory.dart';
 
 void main() {
+  test('closing bootstrap stops the search projection', () async {
+    final bootstrap = NoteBootstrap(
+      logger: const NoopLogger(),
+      timeProvider: FakeTimeProviderStatic.zero(),
+    );
+    addTearDown(bootstrap.close);
+    final system = await bootstrap.initializeSystem(
+      dbFilepath: IsolateSqlite.memoryFilename,
+    );
+    final application = await bootstrap.initialize(
+      system: system,
+      actor: 'test-actor',
+    );
+    var stopped = false;
+    final completion = application.projectionPromise().then((_) {
+      stopped = true;
+    });
+
+    await bootstrap.close();
+
+    expect(stopped, isTrue);
+    await completion;
+  });
+
   test('keeps note history readable after SQLite is reopened', () async {
     final support = TempSupportDirectory();
     addTearDown(support.delete);

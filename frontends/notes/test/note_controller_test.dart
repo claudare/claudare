@@ -5,6 +5,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:id_generator/id_generator.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
@@ -16,6 +17,7 @@ void main() {
     store = _FailingStore();
     application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
       idGenerator: IdGeneratorSequential(),
     );
   });

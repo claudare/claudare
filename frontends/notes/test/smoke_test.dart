@@ -5,6 +5,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_bootstrap.dart';
@@ -138,7 +139,10 @@ class _ControlledBootstrap extends NoteBootstrap {
   void complete() {
     final eventStore = MemoryEventStore();
     _application.complete(
-      NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: eventStore)),
+      NotesApp(
+        cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
+        fts: NoopFts(),
+      ),
     );
   }
 }

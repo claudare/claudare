@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/screens/home/widget/note_list_item.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -13,7 +14,7 @@ void main() {
   testWidgets('Notes and Trash remain separate when switching and restoring', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     final active = app.generateNoteId();
     final trashed = app.generateNoteId();
     await app.command.createNote(active);
@@ -59,7 +60,10 @@ void main() {
   ]) {
     testWidgets('sorts by $label', (tester) async {
       final clock = _Clock();
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(timeProvider: clock));
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(timeProvider: clock),
+        fts: NoopFts(),
+      );
       final first = app.generateNoteId();
       final second = app.generateNoteId();
       await app.command.createNote(first);

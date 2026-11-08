@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:fts/fts.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:mutex/mutex.dart' show Mutex;
 import 'package:notes_app/src/aggregate/note.dart';
@@ -16,19 +17,26 @@ import 'package:notes_app/src/command/update_note_title.dart';
 import 'package:notes_app/src/command/test_simulate_external_note_content_append.dart';
 import 'package:notes_app/src/command/test_simulate_external_note_content_random_insert.dart';
 import 'package:notes_app/src/event/note.dart';
+import 'package:notes_app/src/projection/search.dart';
 
 /// Exposes note commands and aggregate queries over a supplied [CqrsRuntime].
 class NotesApp {
   final NoteCommands command;
-  final NoteQueries query;
+  late final NoteQueries query;
   final IdGenerator _idGenerator;
+  late final CqrsRuntime _runtime;
+  final SearchProjection _searchProjection;
+  late final ProjectionRun _pRun;
 
   late final String actor;
 
-  NotesApp({required CqrsRuntime cqrsRuntime, IdGenerator? idGenerator})
-    : _idGenerator = idGenerator ?? IdGeneratorRandom(),
-      command = NoteCommands(cqrsRuntime),
-      query = NoteQueries(cqrsRuntime) {
+  NotesApp({
+    required CqrsRuntime cqrsRuntime,
+    required Fts fts,
+    IdGenerator? idGenerator,
+  }) : _idGenerator = idGenerator ?? IdGeneratorRandom(),
+       _searchProjection = SearchProjection(fts),
+       command = NoteCommands(cqrsRuntime) {
     cqrsRuntime.eventRegistry
       ..add(const NoteContentUpdatedCodec())
       ..add(const NoteCreatedCodec())
@@ -36,10 +44,21 @@ class NotesApp {
       ..add(const NoteTitleUpdatedCodec())
       ..add(const NoteTrashedCodec());
     actor = cqrsRuntime.actor;
+    _runtime = cqrsRuntime;
+    query = NoteQueries(cqrsRuntime, _searchProjection);
+    _pRun = _runtime.runProjection(_searchProjection);
   }
 
   /// Allocates an identifier before a note is persisted.
   String generateNoteId() => _idGenerator.generateId();
+
+  Future<void> projectionPromise() {
+    return _pRun.done;
+  }
+
+  Future<void> projectionStop() {
+    return _pRun.cancel();
+  }
 }
 
 /// Writes note events through the runtime.
@@ -105,12 +124,13 @@ class NoteCommands {
 /// Resolves current note state directly from the event history.
 class NoteQueries {
   final CqrsRuntime _runtime;
+  final SearchProjection _searchProjection;
   final _noteList = noteListAggregate();
   final _noteListMutex = Mutex();
   // Expando is a "WeakMap"
   final _trackedNotes = Expando<Aggregate<NoteEvent, NoteState>>();
 
-  NoteQueries(this._runtime);
+  NoteQueries(this._runtime, this._searchProjection);
 
   /// Returns the resolved state for one note identifier.
   Future<NoteState> note(String noteId) =>
@@ -131,6 +151,13 @@ class NoteQueries {
     await _runtime.resolve(aggregate);
   }
 
+  /// Notifies callers of note stream updates so they can choose when to query.
+  Stream<void> noteListChanges() => _runtime.subscribe(allNotesFilter);
+
+  /// Notifies callers of changes to one note stream.
+  Stream<void> noteChanges(String noteId) =>
+      _runtime.subscribe(noteStreamFilter(noteId));
+
   /// Returns sorted references to notes in the cached aggregate.
   /// A later catchup can update the returned [NoteState] objects.
   Future<List<NoteState>> noteList({
@@ -143,12 +170,12 @@ class NoteQueries {
     });
   }
 
-  /// Notifies callers of note stream updates so they can choose when to query.
-  Stream<void> noteListChanges() => _runtime.subscribe(allNotesFilter);
+  Future<List<NoteState>> noteSearch(String text) async {
+    final ids = await _searchProjection.search(text, resultCount: 20);
+    final states = await Future.wait(ids.map((id) => note(id)));
 
-  /// Notifies callers of changes to one note stream.
-  Stream<void> noteChanges(String noteId) =>
-      _runtime.subscribe(noteStreamFilter(noteId));
+    return states;
+  }
 
   Future<StatisticsState> statistics() async {
     final v = await _runtime.resolve(statisticsAggregate());

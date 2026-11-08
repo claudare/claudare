@@ -42,6 +42,7 @@ dependencies:
   kv: ^1.0.0
   claudare_crypto: ^1.0.0
   crdt: ^1.0.0
+  fts: ^1.0.0
   notes_app: ^0.0.0
   time_provider: ^1.0.0
   support_directory: ^1.0.0

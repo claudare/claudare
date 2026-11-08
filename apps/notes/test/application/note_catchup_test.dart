@@ -1,5 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:test/test.dart';
 
@@ -8,7 +9,11 @@ void main() {
     'tracked note catchup retains documents across paginated reads',
     () async {
       final store = MemoryEventStore(eventFetchPageSize: 1);
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(eventStore: store),
+        fts: NoopFts(),
+      );
+      addTearDown(app.projectionStop);
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final note = app.query.trackNote(id);
@@ -35,7 +40,8 @@ void main() {
   );
 
   test('catchup rejects note states that were not tracked', () async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    addTearDown(app.projectionStop);
     final state = await app.query.note('missing');
 
     await expectLater(app.query.catchupNote(state), throwsArgumentError);

@@ -5,6 +5,7 @@ import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/layout_breakpoints.dart';
 import 'package:notes/screens/home/widget/note_list.dart';
 import 'package:notes/screens/settings/settings_screen.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 
 import 'support/home_test_app.dart';
@@ -61,7 +62,7 @@ void main() {
   testWidgets('resizing preserves category, order, and scroll position', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     for (var i = 0; i < 40; i++) {
       final id = app.generateNoteId();
       await app.command.createNote(id);
@@ -145,7 +146,9 @@ Future<void> _pumpHome(
   addTearDown(tester.view.resetDevicePixelRatio);
   await tester.pumpWidget(
     NotesAppProvider(
-      application: application ?? NotesApp(cqrsRuntime: CqrsTestRuntime()),
+      application:
+          application ??
+          NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts()),
       child: homeTestApp(),
     ),
   );

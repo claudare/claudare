@@ -12,6 +12,7 @@ import 'package:notes/application/app_version.dart';
 import 'package:notes/application/note_bootstrap.dart';
 import 'package:notes/application/note_sync_provider.dart';
 import 'package:notes/application/note_bootstrap_provider.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/application/note_system.dart';
@@ -529,6 +530,7 @@ NotesApp _application(NoteSystem system, {String actor = 'local'}) => NotesApp(
     logger: const NoopLogger(),
     timeProvider: FakeTimeProviderStatic.zero(),
   ),
+  fts: NoopFts(),
 );
 
 Widget _screen(

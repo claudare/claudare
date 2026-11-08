@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/screens/home/note_list_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +11,7 @@ void main() {
   late NoteListController controller;
 
   setUp(() {
-    application = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    application = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     controller = NoteListController(application);
   });
 
