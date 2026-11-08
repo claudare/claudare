@@ -410,7 +410,7 @@ void main() {
 
         expect(peer.failure, isA<CommandReplicationException>());
         expect(peer.messages, isEmpty);
-        expect((await store.store.getState()).lastCommandLogPosition, isNull);
+        expect((await store.store.getState()).lastCommandLogPosition, -1);
       },
     );
 

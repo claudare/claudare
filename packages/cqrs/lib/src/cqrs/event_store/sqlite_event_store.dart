@@ -396,16 +396,18 @@ class SqliteEventStore implements EventStore {
 }
 
 EventDatabaseState _getState(SyncContext tx) {
-  final counters = tx.queryRow('''SELECT
-      (SELECT MAX(log_position) FROM command) AS command_position,
-      (SELECT MAX(log_position) FROM event) AS event_position''')!;
+  final counters = tx.queryRow(
+    '''SELECT
+      (SELECT COALESCE(MAX(log_position), -1) FROM command) AS command_position,
+      (SELECT COALESCE(MAX(log_position), -1) FROM event) AS event_position''',
+  )!;
   final vectors = tx.query('''SELECT id_actor, MAX(id_sequence) AS id_sequence
       FROM command
       GROUP BY id_actor
       ORDER BY id_actor;''');
   return EventDatabaseState(
-    lastCommandLogPosition: counters.field<int?>('command_position'),
-    lastEventLogPosition: counters.field<int?>('event_position'),
+    lastCommandLogPosition: counters.field<int>('command_position'),
+    lastEventLogPosition: counters.field<int>('event_position'),
     logVersion: CommandDependency({
       for (final row in vectors)
         row.field<String>('id_actor'): row.field<int>('id_sequence'),

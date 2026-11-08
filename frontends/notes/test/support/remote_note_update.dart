@@ -15,7 +15,7 @@ Future<void> addRemoteTitleUpdate(
   final lastPosition = (await store.getState()).lastCommandLogPosition;
   final ids = await store.getNextCommandIds(
     CommandDependency(),
-    (lastPosition ?? -1) + 1,
+    lastPosition + 1,
   );
   for (final id in ids) {
     final command = await store.getStoredCommand(id);

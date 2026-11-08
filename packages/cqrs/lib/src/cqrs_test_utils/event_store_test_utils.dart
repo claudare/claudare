@@ -7,8 +7,6 @@ abstract final class EventStoreTestUtils {
 
   static Future<int> getCommandCount(EventStoreReplication eventStore) async {
     final state = await eventStore.getState();
-    final position = state.lastCommandLogPosition;
-
-    return position == null ? 0 : position + 1;
+    return state.lastCommandLogPosition + 1;
   }
 }

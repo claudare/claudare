@@ -43,7 +43,7 @@ void main() {
         store.saveChanges(changes([first, _FailingAppend()])),
         throwsA(isA<EventStoreException>()),
       );
-      expect((await store.getState()).lastCommandLogPosition, isNull);
+      expect((await store.getState()).lastCommandLogPosition, -1);
       expect(
         (await store.getLogEvents(const LogFilter.all(), 0)).data,
         isEmpty,

@@ -453,7 +453,7 @@ void main() {
   });
 
   for (final (eventPosition, commandPosition, events, commands) in [
-    (null, null, '0', '0'),
+    (-1, -1, '0', '0'),
     (0, 0, '1', '1'),
     (4, 1, '5', '2'),
   ]) {

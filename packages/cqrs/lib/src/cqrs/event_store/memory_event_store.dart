@@ -120,10 +120,8 @@ class MemoryEventStore implements EventStore {
   });
 
   EventDatabaseState _getState() => EventDatabaseState(
-    lastCommandLogPosition: _commands.isEmpty
-        ? null
-        : _commands.last.logPosition,
-    lastEventLogPosition: _events.isEmpty ? null : _events.last.logPosition,
+    lastCommandLogPosition: _commands.isEmpty ? -1 : _commands.last.logPosition,
+    lastEventLogPosition: _events.isEmpty ? -1 : _events.last.logPosition,
     logVersion: _logVersion(),
   );
 

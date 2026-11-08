@@ -18,8 +18,8 @@ class StreamInfo {
 }
 
 class EventDatabaseState {
-  final int? lastCommandLogPosition;
-  final int? lastEventLogPosition;
+  final int lastCommandLogPosition;
+  final int lastEventLogPosition;
   final CommandDependency logVersion;
 
   const EventDatabaseState({
