@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes_app/notes_app.dart';
 
@@ -7,17 +8,17 @@ import 'package:notes_app/notes_app.dart';
 class NoteSearchController extends ChangeNotifier {
   final NotesApp application;
   String _query = '';
-  Timer? _debounce;
+  late final AsyncThrottledRunner _searchRunner;
   List<NoteState> _results = [];
   bool _hasSnapshot = false;
   bool _isReady = false;
   bool _isLoading = false;
   Exception? _readinessError;
   Exception? _searchError;
-  int _generation = 0;
   bool _disposed = false;
 
   NoteSearchController(this.application) {
+    _searchRunner = AsyncThrottledRunner(_search);
     unawaited(_waitForReadiness());
   }
 
@@ -33,26 +34,14 @@ class NoteSearchController extends ChangeNotifier {
   void setQuery(String query) {
     if (_disposed || query == _query) return;
     _query = query;
-    _generation++;
-    _debounce?.cancel();
-    _debounce = null;
     if (!hasQuery) {
       _results = [];
       _hasSnapshot = false;
     }
     _searchError = null;
-    _isLoading = false;
-    if (hasQuery) {
-      _debounce = Timer(const Duration(milliseconds: 100), () {
-        _debounce = null;
-        if (_readinessError != null) return;
-        if (_isReady) {
-          unawaited(_search());
-        } else {
-          _isLoading = true;
-          notifyListeners();
-        }
-      });
+    _isLoading = hasQuery && _readinessError == null;
+    if (hasQuery && _isReady) {
+      unawaited(_searchRunner.run());
     }
     notifyListeners();
   }
@@ -62,7 +51,7 @@ class NoteSearchController extends ChangeNotifier {
       await application.projectionReady;
       if (_disposed) return;
       _isReady = true;
-      if (hasQuery && _debounce == null) unawaited(_search());
+      if (hasQuery) unawaited(_searchRunner.run());
     } on Exception catch (error) {
       if (_disposed) return;
       _readinessError = error;
@@ -72,19 +61,20 @@ class NoteSearchController extends ChangeNotifier {
   }
 
   Future<void> _search() async {
-    final generation = _generation;
+    if (_disposed || !hasQuery || !_isReady) return;
+    final query = _query;
     _isLoading = true;
     notifyListeners();
     try {
-      final results = await application.query.noteSearch(_query.trim());
-      if (_disposed || generation != _generation) return;
+      final results = await application.query.noteSearch(query.trim());
+      if (_disposed || query != _query) return;
       _results = results;
       _hasSnapshot = true;
     } on Exception catch (error) {
-      if (_disposed || generation != _generation) return;
+      if (_disposed || query != _query) return;
       _searchError = error;
     } finally {
-      if (!_disposed && generation == _generation) {
+      if (!_disposed && query == _query) {
         _isLoading = false;
         notifyListeners();
       }
@@ -94,7 +84,6 @@ class NoteSearchController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    _debounce?.cancel();
     super.dispose();
   }
 }

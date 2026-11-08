@@ -276,7 +276,7 @@ void main() {
     });
   }
 
-  for (final pending in ['debounce', 'response', 'error']) {
+  for (final pending in ['throttle', 'response', 'error']) {
     testWidgets('navigation clears a search with a pending $pending', (
       tester,
     ) async {
@@ -284,11 +284,15 @@ void main() {
       await fixture.write('one', 'note');
       await _pumpHome(tester, fixture);
       final response = Completer<List<String>>();
-      fixture.fts.onQuery = (_) => response.future;
+      if (pending != 'throttle') {
+        fixture.fts.onQuery = (_) => response.future;
+      }
       await tester.enterText(find.byType(TextField), 'note');
-      await tester.pump(
-        Duration(milliseconds: pending == 'debounce' ? 50 : 100),
-      );
+      await tester.pump();
+      if (pending == 'throttle') {
+        await tester.enterText(find.byType(TextField), 'queued');
+        await tester.pump();
+      }
       final controller = tester
           .widget<NoteSearchView>(find.byType(NoteSearchView))
           .controller;
@@ -309,7 +313,7 @@ void main() {
       expect(controller.searchError, isNull);
       expect(controller.isLoading, isFalse);
       expect(_titles(tester), ['one']);
-      expect(fixture.fts.queries, pending == 'debounce' ? isEmpty : ['note']);
+      expect(fixture.fts.queries, ['note']);
     });
   }
 
@@ -371,7 +375,25 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Loading search'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
+      final loading = find.ancestor(
+        of: find.text('Loading search'),
+        matching: find.byType(Center),
+      );
+      expect(loading, findsOneWidget);
+      expect(
+        tester.getCenter(loading),
+        tester.getCenter(find.byType(NoteSearchView)),
+      );
+      final response = Completer<List<String>>();
+      fixture.fts.onQuery = (_) => response.future;
       store.loading.complete();
+      await tester.pump(const Duration(seconds: 1));
+      expect(fixture.fts.queries, ['note']);
+      expect(find.text('Loading search'), findsNothing);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('No matching notes'), findsNothing);
+      expect(find.byType(NoteList), findsNothing);
+      response.complete(['one']);
       await tester.pumpAndSettle();
       expect(_titles(tester), ['one']);
       expect(fixture.fts.queries, ['note']);
@@ -407,7 +429,7 @@ void main() {
     },
   );
 
-  testWidgets('pending searches replace notes with centered loading feedback', (
+  testWidgets('ready searches hide the startup indicator while queries run', (
     tester,
   ) async {
     final fixture = SearchTestApp();
@@ -416,26 +438,15 @@ void main() {
     final response = Completer<List<String>>();
     fixture.fts.onQuery = (_) => response.future;
     await tester.enterText(find.byType(TextField), 'note');
-    await tester.pump(const Duration(milliseconds: 99));
+    await tester.pump();
     expect(find.byType(NoteSearchView), findsOneWidget);
     expect(find.byType(NoteList), findsNothing);
     expect(find.text('No matching notes'), findsNothing);
-    expect(find.text('Loading search'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1));
-    expect(find.byType(NoteList), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('Loading search'), findsOneWidget);
-    final loading = find.ancestor(
-      of: find.text('Loading search'),
-      matching: find.byType(Center),
-    );
-    expect(loading, findsOneWidget);
-    expect(
-      tester.getCenter(loading),
-      tester.getCenter(find.byType(NoteSearchView)),
-    );
+    expect(find.text('Loading search'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Loading search'), findsNothing);
     response.complete([]);
     await tester.pumpAndSettle();
     expect(find.text('No matching notes'), findsOneWidget);
@@ -465,21 +476,22 @@ void main() {
       fixture.fts.onQuery = (_) => response.future;
 
       await tester.enterText(find.byType(TextField), 'other');
-      await tester.pump(const Duration(milliseconds: 99));
+      await tester.pump();
       expect(controller.results, same(snapshot));
       expect(tester.element(previousResults), same(element));
       expect(tester.getTopLeft(previousResults), position);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.text('Loading search'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsNothing);
-      expect(fixture.fts.queries, [previousQuery]);
+      expect(fixture.fts.queries, [previousQuery, 'other']);
 
-      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(seconds: 1));
       expect(fixture.fts.queries, [previousQuery, 'other']);
       expect(controller.results, same(snapshot));
       expect(tester.element(previousResults), same(element));
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.text('Loading search'), findsOneWidget);
+      expect(tester.getTopLeft(previousResults), position);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Loading search'), findsNothing);
 
       response.complete(['two']);
       await tester.pumpAndSettle();
@@ -501,15 +513,19 @@ void main() {
 
   for (final inFlight in [false, true]) {
     testWidgets(
-      'application replacement disposes ${inFlight ? 'in-flight' : 'pending'} search',
+      'application replacement disposes ${inFlight ? 'in-flight' : 'queued'} search',
       (tester) async {
         final first = SearchTestApp();
         await first.write('old', 'note');
         await _pumpHome(tester, first);
         final response = Completer<List<String>>();
-        first.fts.onQuery = (_) => response.future;
+        if (inFlight) first.fts.onQuery = (_) => response.future;
         await tester.enterText(find.byType(TextField), 'note');
-        if (inFlight) await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump();
+        if (!inFlight) {
+          await tester.enterText(find.byType(TextField), 'queued');
+          await tester.pump();
+        }
         final second = SearchTestApp();
         await second.write('new', 'note');
         await _pumpHome(tester, second);
@@ -517,7 +533,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(_searchText(tester), isEmpty);
         expect(_titles(tester), ['new']);
-        expect(first.fts.queries, inFlight ? ['note'] : isEmpty);
+        expect(first.fts.queries, ['note']);
         await _search(tester, 'note');
         expect(_titles(tester), ['new']);
         expect(second.fts.queries, ['note']);
@@ -525,15 +541,17 @@ void main() {
     );
   }
 
-  testWidgets('disposing the screen cancels pending debounce work', (
+  testWidgets('disposing the screen skips queued throttle work', (
     tester,
   ) async {
     final fixture = SearchTestApp();
     await _pumpHome(tester, fixture);
     await tester.enterText(find.byType(TextField), 'note');
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'queued');
     await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(fixture.fts.queries, isEmpty);
+    await tester.pump(const Duration(seconds: 1));
+    expect(fixture.fts.queries, ['note']);
   });
 }
 
@@ -544,7 +562,7 @@ Future<void> _pumpHome(
 }) async {
   addTearDown(() async {
     final stopping = fixture.application.projectionStop();
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     await stopping;
   });
   await tester.pumpWidget(
@@ -558,7 +576,7 @@ Future<void> _pumpHome(
 
 Future<void> _search(WidgetTester tester, String query) async {
   await tester.enterText(find.byType(TextField), query);
-  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(seconds: 1));
   await tester.pumpAndSettle();
 }
 
