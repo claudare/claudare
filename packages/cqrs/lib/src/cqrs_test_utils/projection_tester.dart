@@ -2,8 +2,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 
 /// Applies supplied events to an [Aggregate] in order.
-/// This provides no testing to load functinonality.
-/// FIXME: call .load!
+/// This provides no testing to loading previously serialized projection state.
 class ProjectionTester<TEvent extends Object> {
   final Projection<TEvent> projection;
   final List<TestEvent<TEvent>> _testEvents = [];
@@ -29,6 +28,9 @@ class ProjectionTester<TEvent extends Object> {
   }
 
   Future<void> run() async {
+    final initLogPosition = await projection.load();
+    if (initLogPosition != -1) throw StateError('Bad fresh load');
+
     for (var i = _nextEventIndex; i < _testEvents.length; i++) {
       final event = _testEvents[i];
       if (!projection.filter.doesMatchPath(event.stream)) {

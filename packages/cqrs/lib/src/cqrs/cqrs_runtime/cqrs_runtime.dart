@@ -147,9 +147,8 @@ class CqrsRuntime {
 
   // Runs the projection until cancelled
   ProjectionRun runProjection<TEvent extends Object>(
-    Projection<TEvent> projection, {
-    int logPosition = -1,
-  }) {
+    Projection<TEvent> projection,
+  ) {
     var cancelled = false;
     StreamIterator<StoredEvent>? it;
     Future<void>? iteratorCancellation;
@@ -159,7 +158,7 @@ class CqrsRuntime {
 
     final done = Future<void>(() async {
       if (cancelled) return;
-      await projection.load(logPosition);
+      final logPosition = await projection.load();
       if (cancelled) return;
 
       final iterator = logIterator(

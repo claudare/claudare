@@ -20,11 +20,10 @@ void main() {
 
   ProjectionRun start<T extends Object>(
     RecordingProjection<T> projection, {
-    int logPosition = -1,
     List<AsyncGate> gates = const [],
     Matcher? failure,
   }) {
-    final run = runtime.runProjection(projection, logPosition: logPosition);
+    final run = runtime.runProjection(projection);
     addTearDown(() async {
       for (final gate in gates) {
         gate.release();
@@ -48,7 +47,7 @@ void main() {
     final run = start(projection, gates: [gate]);
     expect(run, isA<ProjectionRun>());
     await gate.entered.future;
-    expect(projection.loadedPositions, [-1]);
+    expect(projection.loads.count, 1);
     expect(projection.events, isEmpty);
     expect(store.subscriptions.count, 0);
 
@@ -79,13 +78,15 @@ void main() {
     for (var index = 0; index < 4; index++) {
       await appendProjectionEvent(store, '$index');
     }
-    final projection = RecordingProjection<ProjectionEvent>();
-    final run = start(projection, logPosition: 1);
+    final projection = RecordingProjection<ProjectionEvent>(
+      loadedLogPosition: 1,
+    );
+    final run = start(projection);
 
     await projection.applications.waitFor(2);
     await run.cancel();
 
-    expect(projection.loadedPositions, [1]);
+    expect(projection.loads.count, 1);
     expect(store.positions.first, 2);
     expect(projection.events.map((event) => event.event.value), ['2', '3']);
     expect(projection.events.map((event) => event.logPosition), [2, 3]);
@@ -295,7 +296,7 @@ void main() {
     await run.cancel();
     await run.done;
 
-    expect(projection.loadedPositions, isEmpty);
+    expect(projection.loads.count, 0);
     expect(store.subscriptions.count, 0);
   });
 

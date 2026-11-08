@@ -65,7 +65,7 @@ class RecordingProjection<T extends Object> implements Projection<T> {
   final Future<void> Function()? beforeLoad;
   final Future<void> Function()? beforeApply;
   final Future<void> Function()? beforeDeletion;
-  final loadedPositions = <int>[];
+  final int loadedLogPosition;
   final events = <EventEnvelope<T>>[];
   final deletions = <StreamDeletion>[];
   final loads = CallSignal();
@@ -74,6 +74,7 @@ class RecordingProjection<T extends Object> implements Projection<T> {
 
   RecordingProjection({
     this.filter = const LogFilter.all(),
+    this.loadedLogPosition = -1,
     this.beforeLoad,
     this.beforeApply,
     this.beforeDeletion,
@@ -83,10 +84,10 @@ class RecordingProjection<T extends Object> implements Projection<T> {
   String get name => 'recording projection';
 
   @override
-  Future<void> load(int logPosition) async {
-    loadedPositions.add(logPosition);
+  Future<int> load() async {
     loads.record();
     await beforeLoad?.call();
+    return loadedLogPosition;
   }
 
   @override
