@@ -148,11 +148,12 @@ class NoteQueries {
   }
 
   /// Notifies callers of note stream updates so they can choose when to query.
-  Stream<void> noteListChanges() => _runtime.subscribe(allNotesFilter);
+  Stream<void> noteListChanges() =>
+      _runtime.logPlayer.subscribe(allNotesFilter);
 
   /// Notifies callers of changes to one note stream.
   Stream<void> noteChanges(String noteId) =>
-      _runtime.subscribe(noteStreamFilter(noteId));
+      _runtime.logPlayer.subscribe(noteStreamFilter(noteId));
 
   /// Returns sorted references to notes in the cached aggregate.
   /// A later catchup can update the returned [NoteState] objects.

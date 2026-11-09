@@ -189,7 +189,7 @@ void main() {
           }
         }
 
-        final events = await CqrsTestRuntime(eventStore: target.store)
+        final events = await LogPlayer(target.store)
             .streamReader('deleted')
             .toList();
         expect(events.map((event) => event.encodedEvent.kind), [

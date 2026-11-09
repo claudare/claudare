@@ -41,7 +41,7 @@ class BlobApp implements BlobReader, BlobWriter {
     final filter = LogFilter.startsWith(blobStream(''));
     final changes = StreamIterator<void>(
       Stream<void>.multi((controller) {
-        final subscription = _runtime
+        final subscription = _runtime.logPlayer
             .subscribe(filter)
             .listen(
               controller.add,
@@ -65,7 +65,10 @@ class BlobApp implements BlobReader, BlobWriter {
     try {
       while (await changes.moveNext()) {
         if (_closed) return;
-        final events = _runtime.logReader(filter, fromPosition: fromPosition);
+        final events = _runtime.logPlayer.logReader(
+          filter,
+          fromPosition: fromPosition,
+        );
         await for (final event in events) {
           if (_closed) return;
           if (event.encodedEvent.isStreamDeleted) {

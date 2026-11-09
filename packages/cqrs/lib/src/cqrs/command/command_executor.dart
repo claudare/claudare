@@ -1,7 +1,7 @@
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:id_generator/id_generator.dart';

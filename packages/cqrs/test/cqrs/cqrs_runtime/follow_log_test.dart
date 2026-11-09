@@ -1,18 +1,17 @@
 import 'dart:async';
 
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import 'projection_test_support.dart';
 
 void main() {
   late ControlledMemoryEventStore store;
-  late CqrsTestRuntime runtime;
+  late LogPlayer logPlayer;
 
   setUp(() {
     store = ControlledMemoryEventStore();
-    runtime = CqrsTestRuntime(eventStore: store);
+    logPlayer = LogPlayer(store);
     addTearDown(store.closeChanges);
   });
 
@@ -22,7 +21,7 @@ void main() {
     List<AsyncGate> gates = const [],
   }) {
     final iterator = StreamIterator(
-      runtime.followLog(filter, fromPosition: fromPosition),
+      logPlayer.followLog(filter, fromPosition: fromPosition),
     );
     addTearDown(() async {
       for (final gate in gates) {

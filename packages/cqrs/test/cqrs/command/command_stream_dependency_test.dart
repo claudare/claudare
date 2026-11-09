@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
@@ -141,9 +141,7 @@ void main() {
       );
 
       expect(
-        await CqrsTestRuntime(eventStore: eventStore)
-            .streamReader('unrelated')
-            .toList(),
+        await LogPlayer(eventStore).streamReader('unrelated').toList(),
         hasLength(1),
       );
     },
@@ -154,7 +152,7 @@ void main() {
       idGenerator: IdGeneratorSequential(),
       actor: 'test-actor',
       eventStore: eventStore,
-      streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
+      streamReader: LogPlayer(eventStore).streamReader,
       eventRegistry: eventRegistry,
       timeProvider: FakeTimeProviderStatic.zero(),
       logger: const NoopLogger(),
@@ -179,7 +177,7 @@ void main() {
         idGenerator: IdGeneratorSequential(),
         actor: 'test-actor',
         eventStore: eventStore,
-        streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
+        streamReader: LogPlayer(eventStore).streamReader,
         eventRegistry: eventRegistry,
         timeProvider: FakeTimeProviderStatic.zero(),
         logger: const NoopLogger(),
@@ -210,7 +208,7 @@ Future<void> _execute(
     idGenerator: IdGeneratorSequential(),
     actor: 'test-actor',
     eventStore: eventStore,
-    streamReader: CqrsTestRuntime(eventStore: eventStore).streamReader,
+    streamReader: LogPlayer(eventStore).streamReader,
     timeProvider: FakeTimeProviderStatic.zero(),
     eventRegistry: eventRegistry,
     logger: const NoopLogger(),

@@ -48,7 +48,7 @@ void main() {
         expect((await database.getStreamInfo('two')).version, 1);
         final one = await database.getStreamEvents('one', 1);
         expect(one.data.map((event) => event.version), [1, 2]);
-        final all = await CqrsTestRuntime(eventStore: database)
+        final all = await LogPlayer(database)
             .logReader(const LogFilter.all())
             .toList();
         expect(all.map((event) => event.streamPath), [

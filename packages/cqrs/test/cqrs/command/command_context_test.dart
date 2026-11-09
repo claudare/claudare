@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -26,7 +25,7 @@ void main() {
         idGenerator: IdGeneratorSequential(),
         actor: 'test-actor',
         eventStore: store,
-        streamReader: CqrsTestRuntime(eventStore: store).streamReader,
+        streamReader: LogPlayer(store).streamReader,
         eventRegistry: eventRegistry ?? registry,
         timeProvider: timeProvider,
         logger: const NoopLogger(),

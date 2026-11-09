@@ -11,12 +11,12 @@ void main() {
     group('bundle contract - ${backend.name}', () {
       late EventStoreTestSession session;
       late EventStore store;
-      late CqrsTestRuntime runtime;
+      late LogPlayer logPlayer;
 
       setUp(() async {
         session = await backend.open();
         store = session.store;
-        runtime = CqrsTestRuntime(eventStore: store);
+        logPlayer = LogPlayer(store);
       });
       tearDown(() => session.close());
 
@@ -39,7 +39,9 @@ void main() {
         expect(restored, isNotNull);
         expect(restored!.toJson(), bundle.toJson());
         expect(restored.events, isNotEmpty);
-        final logged = await runtime.logReader(const LogFilter.all()).toList();
+        final logged = await logPlayer
+            .logReader(const LogFilter.all())
+            .toList();
         expect(logged.map((event) => event.eventId), [
           EventId('actor-1', 1, 0),
           EventId('actor-1', 1, 1),
@@ -102,7 +104,9 @@ void main() {
         await store.addStoredCommand(
           _bundle(CommandId('actor-2', 1), paths: ['one']),
         );
-        final events = await runtime.logReader(const LogFilter.all()).toList();
+        final events = await logPlayer
+            .logReader(const LogFilter.all())
+            .toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
         expect(events.map((event) => event.version), [0, 0, 1]);
       });
@@ -136,9 +140,11 @@ void main() {
         for (final actor in ['actor-1', 'actor-2', 'actor-3']) {
           await store.addStoredCommand(_bundle(CommandId(actor, 1)));
         }
-        final events = await runtime.logReader(const LogFilter.all()).toList();
+        final events = await logPlayer
+            .logReader(const LogFilter.all())
+            .toList();
         expect(events.map((event) => event.position), [0, 1, 2]);
-        final fromTwo = await runtime
+        final fromTwo = await logPlayer
             .logReader(const LogFilter.all(), fromPosition: 2)
             .toList();
         expect(fromTwo.single.position, 2);
@@ -151,7 +157,7 @@ void main() {
         await store.addStoredCommand(
           _bundle(CommandId('actor-1', 2), paths: ['one']),
         );
-        final events = await runtime
+        final events = await logPlayer
             .streamReader('one', fromVersion: 1)
             .toList();
         expect(events.single.version, 1);

@@ -2,6 +2,7 @@ library;
 
 // runtime
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
+export 'src/cqrs/cqrs_runtime/log_player.dart';
 export 'src/cqrs/cqrs_runtime/stream_deletion.dart';
 
 // event store

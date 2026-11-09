@@ -4,7 +4,7 @@ import 'package:cqrs/src/cqrs/command/command_dependency_builder.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/stream_reader.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';

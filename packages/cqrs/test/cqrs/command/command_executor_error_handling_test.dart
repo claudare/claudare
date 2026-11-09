@@ -3,7 +3,7 @@ import 'package:id_generator/id_generator.dart';
 import 'dart:typed_data';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context_api.dart';
@@ -100,8 +100,7 @@ CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
     idGenerator: IdGeneratorSequential(),
     actor: 'test-actor',
     eventStore: eventStore ?? database,
-    streamReader: CqrsTestRuntime(eventStore: eventStore ?? database)
-        .streamReader,
+    streamReader: LogPlayer(eventStore ?? database).streamReader,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     eventRegistry: registry,
     logger: const NoopLogger(),

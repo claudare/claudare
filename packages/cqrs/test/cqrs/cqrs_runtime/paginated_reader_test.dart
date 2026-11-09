@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -12,28 +12,31 @@ import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('CqrsRuntime readers', () {
+  group('LogPlayer readers', () {
     late EventStore store;
-    late CqrsTestRuntime runtime;
+    late LogPlayer logPlayer;
 
     const pageSize = 2;
 
     setUp(() {
       store = MemoryEventStore(eventFetchPageSize: pageSize);
-      runtime = CqrsTestRuntime(eventStore: store);
+      logPlayer = LogPlayer(store);
     });
 
     test('handles empty result', () async {
-      expect(await runtime.streamReader('test').toList(), isEmpty);
+      expect(await logPlayer.streamReader('test').toList(), isEmpty);
     });
 
     test('handles an empty log', () async {
-      expect(await runtime.logReader(const LogFilter.all()).toList(), isEmpty);
+      expect(
+        await logPlayer.logReader(const LogFilter.all()).toList(),
+        isEmpty,
+      );
     });
 
     test('starts stream replay at the supplied version across pages', () async {
       await _appendCount(store, 5);
-      final events = await runtime
+      final events = await logPlayer
           .streamReader('test', fromVersion: 1)
           .toList();
       expect(events.map((event) => event.version), [1, 2, 3, 4]);
@@ -41,7 +44,7 @@ void main() {
 
     test('starts log replay at the supplied position across pages', () async {
       await _appendCount(store, 5);
-      final events = await runtime
+      final events = await logPlayer
           .logReader(const LogFilter.all(), fromPosition: 1)
           .toList();
       expect(events.map((event) => event.position), [1, 2, 3, 4]);
@@ -50,7 +53,7 @@ void main() {
     test('handles exact page size', () async {
       await _appendCount(store, pageSize);
 
-      final events = await runtime.streamReader('test').toList();
+      final events = await logPlayer.streamReader('test').toList();
       expect(events, hasLength(pageSize));
       expect(events[0].encodedEvent.kind, 'event-0');
       expect(events[1].encodedEvent.kind, 'event-1');
@@ -59,7 +62,7 @@ void main() {
     test('handles multiple pages', () async {
       await _appendCount(store, pageSize + 1);
 
-      final events = await runtime.streamReader('test').toList();
+      final events = await logPlayer.streamReader('test').toList();
       expect(events, hasLength(pageSize + 1));
       expect(events.map((event) => event.encodedEvent.kind), [
         'event-0',
@@ -71,8 +74,7 @@ void main() {
     test('cancelling stops further page reads', () async {
       final controlled = _ControlledStore();
       await _appendCount(controlled, 2);
-      final stream = CqrsTestRuntime(eventStore: controlled)
-          .streamReader('test');
+      final stream = LogPlayer(controlled).streamReader('test');
 
       expect(controlled.reads, 0);
       final events = await stream.take(1).toList();
@@ -84,8 +86,7 @@ void main() {
     test('cancelling log replay stops further page reads', () async {
       final controlled = _ControlledStore();
       await _appendCount(controlled, 2);
-      final stream = CqrsTestRuntime(eventStore: controlled)
-          .logReader(const LogFilter.all());
+      final stream = LogPlayer(controlled).logReader(const LogFilter.all());
 
       expect(controlled.logReads, 0);
       final events = await stream.take(1).toList();
@@ -97,8 +98,7 @@ void main() {
     test('propagates a later page read failure', () async {
       final controlled = _ControlledStore();
       await _appendCount(controlled, 2);
-      final stream = CqrsTestRuntime(eventStore: controlled)
-          .streamReader('test');
+      final stream = LogPlayer(controlled).streamReader('test');
       final error = StateError('read failed');
       controlled.readError = error;
 

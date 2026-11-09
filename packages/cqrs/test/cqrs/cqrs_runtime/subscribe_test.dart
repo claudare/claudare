@@ -1,23 +1,22 @@
 import 'dart:typed_data';
 
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 void main() {
   test('filters event changes without deduplicating stream paths', () async {
     final store = MemoryEventStore();
-    final runtime = CqrsTestRuntime(eventStore: store);
+    final logPlayer = LogPlayer(store);
     var exact = 0;
     var prefix = 0;
     var all = 0;
-    final exactSubscription = runtime
+    final exactSubscription = logPlayer
         .subscribe(const LogFilter.exact('notes/one'))
         .listen((_) => exact++);
-    final prefixSubscription = runtime
+    final prefixSubscription = logPlayer
         .subscribe(const LogFilter.startsWith('notes/'))
         .listen((_) => prefix++);
-    final allSubscription = runtime
+    final allSubscription = logPlayer
         .subscribe(const LogFilter.all())
         .listen((_) => all++);
     addTearDown(exactSubscription.cancel);

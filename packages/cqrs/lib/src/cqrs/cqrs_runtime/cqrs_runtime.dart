@@ -4,13 +4,13 @@ import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
+import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/stream_deletion.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/exception/projection_stopped_exception.dart';
-import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:cqrs/src/cqrs/projection.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
@@ -43,6 +43,7 @@ class CqrsRuntime {
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final EventRegistry _eventRegistry = EventRegistry();
+  final LogPlayer _logPlayer;
 
   late final CommandExecutor _commandExecutor;
 
@@ -52,11 +53,11 @@ class CqrsRuntime {
     required this._logger,
     required this._timeProvider,
     required this._idGenerator,
-  }) {
+  }) : _logPlayer = LogPlayer(_eventStore) {
     _commandExecutor = CommandExecutor(
       eventStore: _eventStore,
       actor: _actor,
-      streamReader: streamReader,
+      streamReader: _logPlayer.streamReader,
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
       eventRegistry: _eventRegistry,
@@ -66,41 +67,10 @@ class CqrsRuntime {
 
   String get actor => _actor;
 
-  /// Creates a reader starting at the inclusive stream version.
+  /// Read and follow events in this runtime's event store.
   ///
-  /// Includes erased records and stream deletion markers.
-  Stream<StoredEvent> streamReader(
-    String streamPath, {
-    int fromVersion = 0,
-  }) async* {
-    int? cursor = fromVersion;
-    while (cursor != null) {
-      final page = await _eventStore.getStreamEvents(streamPath, cursor);
-      if (page.data.isEmpty) return;
-      for (final event in page.data) {
-        yield event;
-      }
-      cursor = page.next;
-    }
-  }
-
-  /// Creates a reader starting at the inclusive global log position.
-  ///
-  /// Includes erased records and stream deletion markers.
-  Stream<StoredEvent> logReader(
-    LogFilter filter, {
-    int fromPosition = 0,
-  }) async* {
-    int? cursor = fromPosition;
-    while (cursor != null) {
-      final page = await _eventStore.getLogEvents(filter, cursor);
-      if (page.data.isEmpty) return;
-      for (final event in page.data) {
-        yield event;
-      }
-      cursor = page.next;
-    }
-  }
+  /// For application use only. Other code should use [LogPlayer] directly.
+  LogPlayer get logPlayer => _logPlayer;
 
   EventRegistry get eventRegistry => _eventRegistry;
 
@@ -117,7 +87,7 @@ class CqrsRuntime {
     final startingSequence = aggregate.sequence;
     var applyCount = 0;
 
-    final stream = logReader(
+    final stream = _logPlayer.logReader(
       aggregate.filter,
       fromPosition: startingSequence + 1,
     );
@@ -204,7 +174,7 @@ class CqrsRuntime {
 
       completeIfCaughtUp(logPosition);
       final iterator = StreamIterator(
-        followLog(projection.filter, fromPosition: logPosition + 1),
+        _logPlayer.followLog(projection.filter, fromPosition: logPosition + 1),
       );
       it = iterator;
 
@@ -278,62 +248,4 @@ class CqrsRuntime {
       },
     );
   }
-
-  /// Replays matching records from the inclusive [fromPosition], then follows
-  /// changes until the subscription is cancelled or the change stream closes.
-  Stream<StoredEvent> followLog(LogFilter filter, {int fromPosition = 0}) {
-    var position = fromPosition;
-    var pendingChange = false;
-    final changes = StreamIterator<void>(
-      Stream<void>.multi((controller) {
-        void notify() {
-          if (pendingChange) return;
-          pendingChange = true;
-          controller.add(null);
-        }
-
-        final subscription = subscribe(filter).listen(
-          (_) => notify(),
-          onError: controller.addError,
-          onDone: controller.close,
-        );
-        controller.onCancel = subscription.cancel;
-        // Subscribe before the initial replay so concurrent commits are observed.
-        notify();
-      }),
-    );
-    final controller = StreamController<StoredEvent>();
-
-    Future<void> replay() async {
-      try {
-        while (await changes.moveNext()) {
-          pendingChange = false;
-          await controller.addStream(
-            logReader(filter, fromPosition: position).map((event) {
-              position = event.position + 1;
-              return event;
-            }),
-            cancelOnError: true,
-          );
-        }
-      } catch (error, stackTrace) {
-        controller.addError(error, stackTrace);
-      } finally {
-        try {
-          await changes.cancel();
-        } finally {
-          unawaited(controller.close());
-        }
-      }
-    }
-
-    controller.onListen = () => unawaited(replay());
-    controller.onCancel = changes.cancel;
-    return controller.stream;
-  }
-
-  /// Observes matching stream change notifications without resolving any state.
-  Stream<void> subscribe(LogFilter filter) => _eventStore.eventChanges
-      .where((change) => filter.doesMatchPath(change.stream))
-      .map<void>((_) {});
 }

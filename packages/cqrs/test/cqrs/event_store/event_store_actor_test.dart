@@ -68,7 +68,9 @@ void main() {
             commands[2].dependency,
             CommandDependency({'alice': 1, 'bob': 1}),
           );
-          final events = await alice.logReader(const LogFilter.all()).toList();
+          final events = await LogPlayer(store)
+              .logReader(const LogFilter.all())
+              .toList();
           expect(events.map((event) => event.eventId), [
             EventId('alice', 1, 0),
             EventId('bob', 1, 0),

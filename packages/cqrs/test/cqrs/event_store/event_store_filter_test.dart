@@ -8,13 +8,13 @@ void main() {
   for (final backend in eventStoreTestBackends) {
     group('${backend.name} log filtering', () {
       late EventStore store;
-      late CqrsTestRuntime runtime;
+      late LogPlayer logPlayer;
 
       setUp(() async {
         final session = await backend.open();
         addTearDown(session.close);
         store = session.store;
-        runtime = CqrsTestRuntime(eventStore: store);
+        logPlayer = LogPlayer(store);
       });
 
       for (final (filter, positions) in <(LogFilter, List<int>)>[
@@ -35,7 +35,7 @@ void main() {
             'note/one',
           ]);
 
-          final events = await runtime.logReader(filter).toList();
+          final events = await logPlayer.logReader(filter).toList();
 
           expect(events.map((event) => event.position), positions);
         });
@@ -59,7 +59,7 @@ void main() {
             'CAFÉ/one',
           ]);
 
-          final events = await runtime.logReader(filter).toList();
+          final events = await logPlayer.logReader(filter).toList();
 
           expect(events.map((event) => event.position), positions);
         });
@@ -99,7 +99,7 @@ void main() {
         test('treats star stream paths literally for $filter', () async {
           await _appendPaths(store, ['other', '*', 'note/one']);
 
-          final events = await runtime.logReader(filter).toList();
+          final events = await logPlayer.logReader(filter).toList();
 
           expect(events.map((event) => event.streamPath), ['note/one']);
         });
