@@ -2,8 +2,8 @@
 
 Dart packages in `apps/*` own product behavior and compose the shared packages.
 Flutter applications in `frontends/*` own their UI and platform setup.
-`apps/notes` owns note events, commands, and aggregates;
-`frontends/notes` consumes that behavior.
+`apps/notes` owns note events, commands, and aggregates; `frontends/notes`
+consumes that behavior.
 
 ## Event-sourced flow
 
@@ -35,3 +35,8 @@ especially for plain Dart controllers.
 
 See [Implementation Details](IMPLEMENTATION_DETAILS.md) for package ownership
 and [Security](SECURITY.md) for the current security posture.
+
+## Async work
+
+Prefer the use of `AsyncTrailingRunner` and `AsyncThrottledRunner` instead of
+using `generation` counter to invalidate stale data.

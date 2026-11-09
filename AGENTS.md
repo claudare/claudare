@@ -7,32 +7,26 @@ These instructions apply to the entire repository.
 - Never use em dashes when communicating, writing code, or documenting.
 - Do not use strong and expressive language that has no meaning.
 - Be concise in your communications.
-- When unsure about something, do not guess and ask user instead.
 
 ## Workspace
 
 - `apps/*` contains Dart-only application cores. `frontends/*` contains Flutter
-  applications. Use short frontend package names and `com.claudare.<app>` for
-  every platform application identifier.
-- Shared packages own their respective concerns: `cqrs` owns CQRS and domain
-  infrastructure; `common` owns shared async, causal, pagination, and
-  serialization primitives; `id_generator` owns IDs; `time_provider` owns time;
-  `crdt` owns CRDT helpers; `isolate_sqlite` owns SQLite isolation; and
-  `claudare_logging` owns logging. `queue` and `package_template` are support
-  packages.
+  applications. `packages/*` contain shared pacakges, split by responsibility
+  and purpose.
 - Shared packages must not depend on application cores or frontends.
   `apps/notes` consumes shared packages; `frontends/notes` consumes that core.
 - Keep repository-wide, documentation in `docs`. Keep package- and app-specific
-  documentation beside its owner. Do not use `ideas` as maintained
-  documentation.
+  documentation beside its owner.
+- [Implementation details](/docs/IMPLEMENTATION_DETAILS.md) contains general
+  information on data modeling and fundamental operational principlies of
+  Claudare applications.
 
 ## Dependencies
 
 - Pub owns the single root `pubspec.lock`. Never edit, copy, merge, or delete a
   lockfile manually, and do not commit member lockfiles.
-- Change dependencies through the owning `pubspec.yaml` or Pub command. Use
-  `fvm dart pub` for Dart packages and `fvm flutter pub` for Flutter apps.
-- Resolve the workspace from its root with `fvm flutter pub get`, not separate
+- Change dependencies through the owning `pubspec.yaml` or Pub command.
+- Resolve the workspace from its root with `fvm dart pub get`, not separate
   member-level resolves.
 - Reference workspace members by compatible version constraints, never by path,
   Git dependency, or submodule.
@@ -61,27 +55,26 @@ These instructions apply to the entire repository.
   refactor unrelated existing deviations.
 - Use the logger from `claudare_logging`. There is no global logger. Do not add
   ad hoc prints.
-- Breaking changes are encouraged as the project is under development. Do not add
-  compatibility paths. Do not add tests related to breaking changes.
+- Breaking changes are encouraged as the project is under development. Do not
+  add compatibility paths. Do not add tests related to breaking changes.
 - Keep shared analyzer policy at the repository root without member overrides.
 - Use `///` to document key classes and interfaces. Use `[]` to reference code.
   Keep documentation short and to the point.
 
 ## Documentation
 
-- Do not claim a working replication or synchronization system, device
-  enrollment, encryption, blob storage, backup, or production security. They are
-  not implemented.
-- Keep Markdown documentation concise and written for library or app users.
-- Library READMEs explain when to use the package and how to begin using it.
+- Keep Markdown documentation concise.
+- Frontend READMEs are public installiton/documentation/overview page for app
+  users.
+- Package READMEs explain when to use the package and how to begin using it.
   Prefer a short usage example over lists of classes and methods.
-- Keep signatures, parameters, return values, and individual method behavior
-  in Dart API comments. Do not repeat them in Markdown.
-- Include only guidance that API comments cannot explain well, such as
-  choosing between APIs, combining them, or important usage constraints.
-- Omit details that are obvious from names or declarations. If the README
-  adds no useful guidance beyond the code, keep it to a short description.
-  Do not require public import statements.
+- Keep signatures, parameters, return values, and individual method behavior in
+  Dart API comments. Do not repeat them in Markdown.
+- Include only guidance that API comments cannot explain well, such as choosing
+  between APIs, combining them, or important usage constraints.
+- Omit details that are obvious from names or declarations. If the README adds
+  no useful guidance beyond the code, keep it to a short description. Do not
+  require public import statements.
 - App README files provide a short description of the app, its user-facing
   features, and significant limitations.
 - Do not add internal architecture, algorithms, lifecycle details, private
@@ -96,18 +89,20 @@ These instructions apply to the entire repository.
 
 ## Tests
 
-- Prefer tests that verify one behavior or invariant. Split unrelated APIs,
-  success and failure paths, or outcomes into separate tests, and share setup
-  through helpers.
-- Use table-driven tests when variants exercise the same behavior.
+- Name each test for one observable behavior and assert it when required.
+  Separate success, failure, and distinct lifecycle scenarios.
+- Use tables only for cases sharing setup, actions, and assertion structure;
+  vary data only. Write separate tests for workflows needing conditional logic.
+- Test rules in their owning layer; focus widget tests on rendering and wiring.
+- Check existing coverage; skip duplicate, trivial, or obsolete tests.
+- Share setup through small helpers when needed; keep actions and assertions
+  explicit.
 
 ## Validation
 
-For workspace or dependency changes, run:
+For workspace changes affecting code, run:
 
 ```sh
-fvm flutter pub get
-fvm dart pub workspace list
 fvm dart analyze
 fvm dart run melos test
 ```
