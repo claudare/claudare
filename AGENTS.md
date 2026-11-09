@@ -91,6 +91,7 @@ These instructions apply to the entire repository.
 
 - Name each test for one observable behavior and assert it when required.
   Separate success, failure, and distinct lifecycle scenarios.
+- Test API and behavior rather then internals.
 - Use tables only for cases sharing setup, actions, and assertion structure;
   vary data only. Write separate tests for workflows needing conditional logic.
 - Test rules in their owning layer; focus widget tests on rendering and wiring.
