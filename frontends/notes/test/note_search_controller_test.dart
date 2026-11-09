@@ -12,6 +12,7 @@ void main() {
       final fixture = SearchTestApp();
       final controller = await _controller(tester, fixture);
       controller.setQuery('n');
+      await tester.pump();
       expect(fixture.fts.queries, ['n']);
       controller.setQuery('no');
       controller.setQuery('note');
@@ -68,6 +69,7 @@ void main() {
       fixture.fts.onQuery = (query) =>
           query == 'old' ? old.future : latest.future;
       controller.setQuery('old');
+      await tester.pump();
       controller.setQuery('latest');
       await tester.pump(const Duration(seconds: 1));
       expect(fixture.fts.queries, ['old']);
@@ -240,8 +242,9 @@ Future<NoteSearchController> _controller(
 }
 
 void _stopAfterTest(WidgetTester tester, SearchTestApp fixture) {
+  final projectionRun = fixture.projectionRun;
   addTearDown(() async {
-    final stopping = fixture.application.projectionStop();
+    final stopping = projectionRun.cancel();
     await tester.pump();
     await stopping;
   });

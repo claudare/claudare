@@ -12,7 +12,6 @@ void main() {
   setUp(() {
     runtime = CqrsTestRuntime();
     application = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
-    addTearDown(application.projectionStop);
   });
 
   test('returns absent state for a note that was never created', () async {

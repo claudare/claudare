@@ -11,6 +11,7 @@ void main() {
   late MemoryEventStore store;
   late _ObservedFts fts;
   late NotesApp application;
+  late ProjectionRun projectionRun;
 
   setUp(() {
     store = MemoryEventStore(eventFetchPageSize: 1);
@@ -19,7 +20,8 @@ void main() {
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
       fts: fts,
     );
-    addTearDown(application.projectionStop);
+    projectionRun = application.startProjections();
+    addTearDown(projectionRun.cancel);
   });
 
   Future<void> write(String noteId, String content) async {
@@ -87,13 +89,14 @@ void main() {
 
   test('a fresh index replays existing note history', () async {
     await write('one', 'Existing content');
-    await application.projectionStop();
+    await projectionRun.cancel();
     final backend = _ObservedFts();
     final restarted = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
       fts: backend,
     );
-    addTearDown(restarted.projectionStop);
+    final restartedRun = restarted.startProjections();
+    addTearDown(restartedRun.cancel);
 
     await waitForIndex(backend);
 

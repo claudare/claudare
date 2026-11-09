@@ -346,7 +346,7 @@ void main() {
       final store = ProjectionLoadingStore();
       final fixture = SearchTestApp(store: store);
       await fixture.write('one', 'note');
-      fixture.application.projectionPromise().ignore();
+      fixture.projectionRun.done.ignore();
       await tester.pumpWidget(
         NotesAppProvider(
           application: fixture.application,
@@ -364,7 +364,7 @@ void main() {
       expect(find.text('Unable to search notes'), findsOneWidget);
       expect(find.text('Loading search'), findsNothing);
       expect(find.byType(TextField), findsOneWidget);
-      await expectLater(fixture.application.projectionStop(), throwsException);
+      await expectLater(fixture.projectionRun.cancel(), throwsException);
     },
   );
 
@@ -517,8 +517,9 @@ Future<void> _pumpHome(
   SearchTestApp fixture, {
   bool settle = true,
 }) async {
+  final projectionRun = fixture.projectionRun;
   addTearDown(() async {
-    final stopping = fixture.application.projectionStop();
+    final stopping = projectionRun.cancel();
     await tester.pump(const Duration(seconds: 1));
     await stopping;
   });

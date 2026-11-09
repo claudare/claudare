@@ -14,6 +14,7 @@ class SearchTestApp {
     cqrsRuntime: CqrsTestRuntime(eventStore: store),
     fts: fts,
   );
+  late final ProjectionRun projectionRun = application.startProjections();
 
   SearchTestApp({MemoryEventStore? store})
     : store = store ?? MemoryEventStore();
@@ -63,10 +64,11 @@ Future<void> pumpSearchProjection(
   WidgetTester tester,
   SearchTestApp fixture,
 ) async {
+  final projectionRun = fixture.projectionRun;
   final store = fixture.store;
   final loading = store is ProjectionLoadingStore
       ? store.loadingStarted.future
-      : fixture.application.projectionReady;
+      : projectionRun.ready;
   var completed = false;
   final completion = loading.then((_) => completed = true);
   for (var attempt = 0; attempt < 100 && !completed; attempt++) {

@@ -21,7 +21,7 @@ void main() {
       actor: 'test-actor',
     );
     var stopped = false;
-    final completion = application.projectionPromise().then((_) {
+    final completion = application.startProjections().done.then((_) {
       stopped = true;
     });
 
