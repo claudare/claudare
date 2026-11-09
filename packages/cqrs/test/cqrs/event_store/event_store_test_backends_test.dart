@@ -50,7 +50,6 @@ void main() {
         expect(one.data.map((event) => event.version), [1, 2]);
         final all = await CqrsTestRuntime(eventStore: database)
             .logReader(const LogFilter.all())
-            .scan()
             .toList();
         expect(all.map((event) => event.streamPath), [
           'one',

@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';

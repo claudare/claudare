@@ -15,8 +15,7 @@ class CommandStream<Event extends Object> {
     try {
       final info = await _context._eventStore.getStreamInfo(_streamPath);
       if (info.isDeleted) throw StreamDeletedException(_streamPath);
-      final reader = _context._streamReader(_streamPath);
-      await for (final event in reader.scan()) {
+      await for (final event in _context._streamReader(_streamPath)) {
         if (event.encodedEvent.isEventErased ||
             event.encodedEvent.isStreamDeleted) {
           _context._applyCommand(event.eventId.commandId);
@@ -48,8 +47,7 @@ class CommandStream<Event extends Object> {
     final info = await _context._eventStore.getStreamInfo(_streamPath);
     if (info.isDeleted) throw StreamDeletedException(_streamPath);
     var streamVersion = -1;
-    final reader = _context._streamReader(_streamPath);
-    await for (final event in reader.scan()) {
+    await for (final event in _context._streamReader(_streamPath)) {
       streamVersion = event.version;
       _context._applyCommand(event.eventId.commandId);
     }
@@ -63,7 +61,7 @@ class CommandStream<Event extends Object> {
       throw StreamNotFoundException(_streamPath);
     }
     if (info.isDeleted) throw StreamDeletedException(_streamPath);
-    final firstEvent = await _context._streamReader(_streamPath).scan().first;
+    final firstEvent = await _context._streamReader(_streamPath).first;
     _context._applyCommand(firstEvent.eventId.commandId);
     return info.version;
   });

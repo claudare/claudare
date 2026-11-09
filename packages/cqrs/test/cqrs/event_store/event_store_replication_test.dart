@@ -191,7 +191,6 @@ void main() {
 
         final events = await CqrsTestRuntime(eventStore: target.store)
             .streamReader('deleted')
-            .scan()
             .toList();
         expect(events.map((event) => event.encodedEvent.kind), [
           SystemEventKinds.eventErased,

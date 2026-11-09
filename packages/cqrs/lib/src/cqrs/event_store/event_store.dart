@@ -1,6 +1,5 @@
 import 'package:cqrs/src/cqrs/log_filter.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_id.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
@@ -51,6 +50,13 @@ final class EventChange {
   final String stream;
 
   const EventChange({required this.stream});
+}
+
+class PaginatedResult<T> {
+  final List<T> data;
+  final int? next;
+
+  const PaginatedResult({required this.data, required this.next});
 }
 
 abstract interface class EventStoreReplication {

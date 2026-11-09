@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:claudare_logging/claudare_logging.dart';
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -70,24 +69,38 @@ class CqrsRuntime {
   /// Creates a reader starting at the inclusive stream version.
   ///
   /// Includes erased records and stream deletion markers.
-  PaginatedReader<StoredEvent> streamReader(
+  Stream<StoredEvent> streamReader(
     String streamPath, {
     int fromVersion = 0,
-  }) => PaginatedReader(
-    (cursor) => _eventStore.getStreamEvents(streamPath, cursor),
-    initialCursor: fromVersion,
-  );
+  }) async* {
+    int? cursor = fromVersion;
+    while (cursor != null) {
+      final page = await _eventStore.getStreamEvents(streamPath, cursor);
+      if (page.data.isEmpty) return;
+      for (final event in page.data) {
+        yield event;
+      }
+      cursor = page.next;
+    }
+  }
 
   /// Creates a reader starting at the inclusive global log position.
   ///
   /// Includes erased records and stream deletion markers.
-  PaginatedReader<StoredEvent> logReader(
+  Stream<StoredEvent> logReader(
     LogFilter filter, {
     int fromPosition = 0,
-  }) => PaginatedReader(
-    (int cursor) => _eventStore.getLogEvents(filter, cursor),
-    initialCursor: fromPosition,
-  );
+  }) async* {
+    int? cursor = fromPosition;
+    while (cursor != null) {
+      final page = await _eventStore.getLogEvents(filter, cursor);
+      if (page.data.isEmpty) return;
+      for (final event in page.data) {
+        yield event;
+      }
+      cursor = page.next;
+    }
+  }
 
   EventRegistry get eventRegistry => _eventRegistry;
 
@@ -107,7 +120,7 @@ class CqrsRuntime {
     final stream = logReader(
       aggregate.filter,
       fromPosition: startingSequence + 1,
-    ).scan();
+    );
 
     await for (final logEvent in stream) {
       if (logEvent.encodedEvent.isEventErased) {
@@ -300,7 +313,7 @@ class CqrsRuntime {
         while (await changes.moveNext()) {
           pendingChange = false;
           await controller.addStream(
-            logReader(filter, fromPosition: position).scan().map((event) {
+            logReader(filter, fromPosition: position).map((event) {
               position = event.position + 1;
               return event;
             }),

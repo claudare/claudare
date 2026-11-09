@@ -66,7 +66,7 @@ class BlobApp implements BlobReader, BlobWriter {
       while (await changes.moveNext()) {
         if (_closed) return;
         final events = _runtime.logReader(filter, fromPosition: fromPosition);
-        await for (final event in events.scan()) {
+        await for (final event in events) {
           if (_closed) return;
           if (event.encodedEvent.isStreamDeleted) {
             await _blobStore.delete(blobIdFromStream(event.streamPath));

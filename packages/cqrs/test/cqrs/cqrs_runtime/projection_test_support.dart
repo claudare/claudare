@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 
 final projectionTime = DateTime.utc(2026);

@@ -38,7 +38,7 @@ void main() {
   test('creates an event on the blob stream', () async {
     await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
 
-    final events = await runtime.streamReader('_blob/blob-id').scan().toList();
+    final events = await runtime.streamReader('_blob/blob-id').toList();
     expect(events, hasLength(1));
     expect(
       runtime.eventRegistry.decode<Object>(events.single.encodedEvent),
@@ -52,7 +52,7 @@ void main() {
     await runtime.execute(_DeleteBlob(app, 'blob-id'));
 
     final info = await eventStore.getStreamInfo('_blob/blob-id');
-    final events = await runtime.streamReader('_blob/blob-id').scan().toList();
+    final events = await runtime.streamReader('_blob/blob-id').toList();
     expect(info.isDeleted, isTrue);
     expect(events.map((event) => event.encodedEvent.kind), [
       SystemEventKinds.eventErased,
@@ -113,10 +113,7 @@ void main() {
 
     expect(state.activeIds, {'active'});
     expect(state.deletedIds, {'deleted'});
-    final deletedEvents = await runtime
-        .streamReader('_blob/deleted')
-        .scan()
-        .toList();
+    final deletedEvents = await runtime.streamReader('_blob/deleted').toList();
     expect(deletedEvents.first.encodedEvent.isEventErased, isTrue);
   });
 

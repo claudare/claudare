@@ -5,6 +5,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
+import 'package:cqrs/src/cqrs/event/stored_event.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/event_store/memory_event_store.dart';
 import 'package:cqrs/src/cqrs/log_filter.dart';
@@ -23,21 +24,17 @@ void main() {
     });
 
     test('handles empty result', () async {
-      expect(await runtime.streamReader('test').scan().toList(), isEmpty);
+      expect(await runtime.streamReader('test').toList(), isEmpty);
     });
 
     test('handles an empty log', () async {
-      expect(
-        await runtime.logReader(const LogFilter.all()).scan().toList(),
-        isEmpty,
-      );
+      expect(await runtime.logReader(const LogFilter.all()).toList(), isEmpty);
     });
 
     test('starts stream replay at the supplied version across pages', () async {
       await _appendCount(store, 5);
       final events = await runtime
           .streamReader('test', fromVersion: 1)
-          .scan()
           .toList();
       expect(events.map((event) => event.version), [1, 2, 3, 4]);
     });
@@ -46,7 +43,6 @@ void main() {
       await _appendCount(store, 5);
       final events = await runtime
           .logReader(const LogFilter.all(), fromPosition: 1)
-          .scan()
           .toList();
       expect(events.map((event) => event.position), [1, 2, 3, 4]);
     });
@@ -54,7 +50,7 @@ void main() {
     test('handles exact page size', () async {
       await _appendCount(store, pageSize);
 
-      final events = await runtime.streamReader('test').scan().toList();
+      final events = await runtime.streamReader('test').toList();
       expect(events, hasLength(pageSize));
       expect(events[0].encodedEvent.kind, 'event-0');
       expect(events[1].encodedEvent.kind, 'event-1');
@@ -63,7 +59,7 @@ void main() {
     test('handles multiple pages', () async {
       await _appendCount(store, pageSize + 1);
 
-      final events = await runtime.streamReader('test').scan().toList();
+      final events = await runtime.streamReader('test').toList();
       expect(events, hasLength(pageSize + 1));
       expect(events.map((event) => event.encodedEvent.kind), [
         'event-0',
@@ -71,7 +67,77 @@ void main() {
         'event-2',
       ]);
     });
+
+    test('cancelling stops further page reads', () async {
+      final controlled = _ControlledStore();
+      await _appendCount(controlled, 2);
+      final stream = CqrsTestRuntime(eventStore: controlled)
+          .streamReader('test');
+
+      expect(controlled.reads, 0);
+      final events = await stream.take(1).toList();
+
+      expect(events.single.version, 0);
+      expect(controlled.reads, 1);
+    });
+
+    test('cancelling log replay stops further page reads', () async {
+      final controlled = _ControlledStore();
+      await _appendCount(controlled, 2);
+      final stream = CqrsTestRuntime(eventStore: controlled)
+          .logReader(const LogFilter.all());
+
+      expect(controlled.logReads, 0);
+      final events = await stream.take(1).toList();
+
+      expect(events.single.position, 0);
+      expect(controlled.logReads, 1);
+    });
+
+    test('propagates a later page read failure', () async {
+      final controlled = _ControlledStore();
+      await _appendCount(controlled, 2);
+      final stream = CqrsTestRuntime(eventStore: controlled)
+          .streamReader('test');
+      final error = StateError('read failed');
+      controlled.readError = error;
+
+      await expectLater(
+        stream.map((event) => event.version),
+        emitsInOrder([0, emitsError(same(error)), emitsDone]),
+      );
+
+      expect(controlled.reads, 2);
+    });
   });
+}
+
+class _ControlledStore extends MemoryEventStore {
+  int reads = 0;
+  int logReads = 0;
+  StateError? readError;
+
+  _ControlledStore() : super(eventFetchPageSize: 1);
+
+  @override
+  Future<PaginatedResult<StoredEvent>> getLogEvents(
+    LogFilter filter,
+    int fromPosition,
+  ) {
+    logReads++;
+    return super.getLogEvents(filter, fromPosition);
+  }
+
+  @override
+  Future<PaginatedResult<StoredEvent>> getStreamEvents(
+    String streamPath,
+    int fromVersion,
+  ) async {
+    reads++;
+    final error = readError;
+    if (error != null && fromVersion > 0) throw error;
+    return super.getStreamEvents(streamPath, fromVersion);
+  }
 }
 
 Future<void> _appendCount(EventStore store, int count) async {

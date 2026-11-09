@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:common/common.dart';
 import 'package:cqrs/src/cqrs/command/stored_command.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';

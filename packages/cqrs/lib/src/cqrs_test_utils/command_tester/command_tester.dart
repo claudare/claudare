@@ -84,7 +84,6 @@ class CommandTester {
     );
 
     return reader
-        .scan()
         .where((event) => event.streamPath == streamPath)
         .map((e) => _eventRegistry.decode<Event>(e.encodedEvent))
         .toList();
