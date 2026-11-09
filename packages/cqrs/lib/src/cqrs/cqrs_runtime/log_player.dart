@@ -57,7 +57,12 @@ class LogPlayer {
 
   /// Replays matching records from the inclusive [fromPosition], then follows
   /// changes until the subscription is cancelled or the change stream closes.
-  Stream<StoredEvent> followLog(LogFilter filter, {int fromPosition = 0}) {
+  /// Calls [caughtUp] whenever replay reaches the end with no pending changes.
+  Stream<StoredEvent> followLog(
+    LogFilter filter, {
+    int fromPosition = 0,
+    void Function()? caughtUp,
+  }) {
     var position = fromPosition;
     var pendingChange = false;
     final changes = StreamIterator<void>(
@@ -91,6 +96,7 @@ class LogPlayer {
             }),
             cancelOnError: true,
           );
+          if (controller.hasListener && !pendingChange) caughtUp?.call();
         }
       } catch (error, stackTrace) {
         controller.addError(error, stackTrace);
