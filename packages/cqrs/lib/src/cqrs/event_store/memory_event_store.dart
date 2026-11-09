@@ -120,12 +120,22 @@ class MemoryEventStore implements EventStore {
   });
 
   EventDatabaseState _getState() => EventDatabaseState(
-    lastCommandLogPosition: _commands.isEmpty
-        ? null
-        : _commands.last.logPosition,
-    lastEventLogPosition: _events.isEmpty ? null : _events.last.logPosition,
+    lastCommandLogPosition: _commands.isEmpty ? -1 : _commands.last.logPosition,
+    lastEventLogPosition: _events.isEmpty ? -1 : _events.last.logPosition,
     logVersion: _logVersion(),
   );
+
+  @override
+  Future<int> getLogPosition(LogFilter filter) =>
+      _read('Failed to get log position', () {
+        for (var index = _events.length - 1; index >= 0; index--) {
+          final (streamPath, _) = _streamPosition(index);
+          if (filter.doesMatchPath(streamPath)) {
+            return _events[index].logPosition;
+          }
+        }
+        return -1;
+      });
 
   @override
   Future<StreamInfo> getStreamInfo(String streamPath) =>

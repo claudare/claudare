@@ -5,6 +5,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/notes_app_provider.dart';
 import 'package:notes/screens/note/note_screen.dart';
@@ -16,7 +17,7 @@ void main() {
   testWidgets(
     'title binding displays replayed updates without writing them back',
     (tester) async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
       final id = app.generateNoteId();
       await app.command.createNote(id);
       await _open(tester, app, id);
@@ -39,7 +40,7 @@ void main() {
   ) async {
     final store = MemoryEventStore();
     final runtime = CqrsTestRuntime(eventStore: store);
-    final app = NotesApp(cqrsRuntime: runtime);
+    final app = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);
@@ -56,7 +57,10 @@ void main() {
     tester,
   ) async {
     final store = _ControlledStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);
@@ -77,7 +81,7 @@ void main() {
     testWidgets('Ctrl+S saves field $fieldIndex without moving focus', (
       tester,
     ) async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
       await tester.pumpWidget(
         NotesAppProvider(
           application: app,
@@ -105,7 +109,7 @@ void main() {
     testWidgets('Ctrl+S reports nothing to save for existing=$existing', (
       tester,
     ) async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
       final id = existing ? app.generateNoteId() : null;
       if (id != null) await app.command.createNote(id);
       await _open(tester, app, id);
@@ -123,7 +127,7 @@ void main() {
   testWidgets(
     'saving a draft after deleting all content finishes without creating it',
     (tester) async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
       await _open(tester, app, null);
       final field = find.byType(TextField).last;
       await tester.enterText(field, 'Temporary content');
@@ -139,7 +143,7 @@ void main() {
   );
 
   testWidgets('navigation saves a new content-only note', (tester) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     await tester.pumpWidget(
       NotesAppProvider(application: app, child: homeTestApp()),
     );
@@ -157,8 +161,8 @@ void main() {
   testWidgets('application replacement detaches the previous content draft', (
     tester,
   ) async {
-    final first = NotesApp(cqrsRuntime: CqrsTestRuntime());
-    final second = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final first = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final second = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     for (final app in [first, second]) {
       await tester.pumpWidget(
         NotesAppProvider(
@@ -179,7 +183,10 @@ void main() {
     tester,
   ) async {
     final store = MemoryEventStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);
@@ -202,7 +209,10 @@ void main() {
     tester,
   ) async {
     final store = MemoryEventStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
@@ -236,7 +246,7 @@ void main() {
   testWidgets('automatic refresh preserves selection before appended text', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
@@ -258,7 +268,7 @@ void main() {
   testWidgets('automatic refresh waits for composition before field update', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await app.command.testSimulateExternalNoteContentAppend(
@@ -287,7 +297,10 @@ void main() {
 
   testWidgets('failed content save retries the prepared batch', (tester) async {
     final store = _ControlledStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);
@@ -306,7 +319,10 @@ void main() {
     tester,
   ) async {
     final store = _ControlledStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);
@@ -327,7 +343,10 @@ void main() {
     tester,
   ) async {
     final store = MemoryEventStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     await _open(tester, app, id);

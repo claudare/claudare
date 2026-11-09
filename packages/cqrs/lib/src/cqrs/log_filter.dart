@@ -8,23 +8,7 @@ class LogFilter {
 
   const LogFilter.exact(this.pattern) : type = LogFilterType.exact;
   const LogFilter.startsWith(this.pattern) : type = LogFilterType.startsWith;
-  const LogFilter.all() : type = LogFilterType.all, pattern = '*';
-
-  factory LogFilter.fromString(String value) {
-    final catchAllIndex = value.indexOf('*');
-    if (catchAllIndex == -1) {
-      return LogFilter.exact(value);
-    }
-
-    if (catchAllIndex == 0) {
-      assert(value.length == 1, "Wildcard pattern must be '*' only");
-
-      return LogFilter.all();
-    }
-
-    final prefix = value.substring(0, catchAllIndex);
-    return LogFilter.startsWith(prefix);
-  }
+  const LogFilter.all() : type = LogFilterType.all, pattern = '';
 
   bool doesMatchPath(String path) {
     switch (type) {
@@ -34,17 +18,6 @@ class LogFilter {
         return path.startsWith(pattern);
       case LogFilterType.exact:
         return path == pattern;
-    }
-  }
-
-  String path() {
-    switch (type) {
-      case LogFilterType.all:
-        return '*';
-      case LogFilterType.startsWith:
-        return '$pattern/*';
-      case LogFilterType.exact:
-        return pattern;
     }
   }
 

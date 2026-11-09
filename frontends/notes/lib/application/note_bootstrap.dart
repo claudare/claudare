@@ -3,6 +3,7 @@ import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:kv/kv.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/application/note_system.dart';
 import 'package:sync/sync.dart';
@@ -95,7 +96,7 @@ class NoteBootstrap {
       logger: logger,
       timeProvider: timeProvider,
     );
-    final application = NotesApp(cqrsRuntime: runtime);
+    final application = NotesApp(cqrsRuntime: runtime, fts: MemoryFts());
     // preload the note list for speed and to reveal any schema-breaking changes
     await application.query.noteList();
     _syncSystem = system;
@@ -185,11 +186,13 @@ class NoteBootstrap {
       }
       final initialization = _initialization;
       if (initialization != null) {
+        NotesApp? application;
         try {
-          await initialization;
+          application = await initialization;
         } catch (_) {
           // Application initialization reports its error to the caller.
         }
+        await application?.projectionStop();
       }
     } finally {
       await _syncCoordinator?.close();

@@ -8,7 +8,7 @@ void main() {
   test('memory backend returns a ready store', () async {
     final session = await const MemoryEventStoreTestBackend().open();
     addTearDown(session.close);
-    expect((await session.store.getState()).lastEventLogPosition, null);
+    expect(await session.store.getLogPosition(const LogFilter.all()), -1);
     expect(await EventStoreTestUtils.getEventCount(session.store), 0);
   });
 

@@ -233,8 +233,8 @@ class _SettingsData {
     return _SettingsData(
       actor: application.actor,
       peerCount: peers.length,
-      eventCount: (storeState.lastEventLogPosition ?? -1) + 1,
-      commandCount: (storeState.lastCommandLogPosition ?? -1) + 1,
+      eventCount: storeState.lastEventLogPosition + 1,
+      commandCount: storeState.lastCommandLogPosition + 1,
       enabled: enabled ?? false,
       group: group,
       serverUrl: serverUrl,

@@ -109,8 +109,8 @@ void main() {
         throwsA(isA<EventStoreException>()),
       );
       final failedState = await store.getState();
-      expect(failedState.lastCommandLogPosition, isNull);
-      expect(failedState.lastEventLogPosition, isNull);
+      expect(failedState.lastCommandLogPosition, -1);
+      expect(failedState.lastEventLogPosition, -1);
       expect(failedState.logVersion, CommandDependency());
       expect((await store.getStreamInfo('one')).version, -1);
       await sqlite.execute('DROP TRIGGER fail_event');

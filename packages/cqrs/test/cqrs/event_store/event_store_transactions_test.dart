@@ -19,8 +19,8 @@ void main() {
 
       test('reports empty state', () async {
         final state = await store.getState();
-        expect(state.lastCommandLogPosition, isNull);
-        expect(state.lastEventLogPosition, isNull);
+        expect(state.lastCommandLogPosition, -1);
+        expect(state.lastEventLogPosition, -1);
         expect(state.logVersion, CommandDependency());
         expect((await store.getStreamInfo('missing')).version, -1);
       });
@@ -32,7 +32,7 @@ void main() {
 
       test('empty changes do not allocate a command', () async {
         await store.saveChanges(_changes('one', count: 0));
-        expect((await store.getState()).lastCommandLogPosition, isNull);
+        expect((await store.getState()).lastCommandLogPosition, -1);
         await store.saveChanges(_changes('one'));
         expect(
           await store.getStoredCommand(CommandId('test-actor', 1)),
@@ -49,7 +49,7 @@ void main() {
             ),
             throwsStateError,
           );
-          expect((await store.getState()).lastEventLogPosition, isNull);
+          expect(await store.getLogPosition(const LogFilter.all()), -1);
           expect((await store.getStreamInfo('one')).version, -1);
         },
       );

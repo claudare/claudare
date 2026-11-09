@@ -1,5 +1,6 @@
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
@@ -10,7 +11,8 @@ void main() {
 
   setUp(() {
     runtime = CqrsTestRuntime();
-    application = NotesApp(cqrsRuntime: runtime);
+    application = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
+    addTearDown(application.projectionStop);
   });
 
   test('returns absent state for a note that was never created', () async {

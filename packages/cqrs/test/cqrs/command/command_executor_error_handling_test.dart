@@ -26,7 +26,7 @@ void main() {
       throwsA(same(exception)),
     );
 
-    expect((await database.getState()).lastCommandLogPosition, isNull);
+    expect((await database.getState()).lastCommandLogPosition, -1);
   });
 
   test('propagates command errors unchanged', () async {
@@ -38,7 +38,7 @@ void main() {
       throwsA(same(error)),
     );
 
-    expect((await database.getState()).lastCommandLogPosition, isNull);
+    expect((await database.getState()).lastCommandLogPosition, -1);
   });
 
   for (final acquireStream in [false, true]) {

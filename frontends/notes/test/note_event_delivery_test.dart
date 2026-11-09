@@ -2,13 +2,17 @@ import 'package:common/common.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
 void main() {
   test('refresh advances past non-content events and empty reads', () async {
     final store = _ObservedStore();
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(eventStore: store),
+      fts: NoopFts(),
+    );
     final id = app.generateNoteId();
     await app.command.createNote(id);
     final controller = NoteController(app, noteId: id);
@@ -30,7 +34,7 @@ void main() {
   test(
     'refresh merges persisted content into the retained local draft',
     () async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime());
+      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final controller = NoteController(app, noteId: id);
@@ -63,7 +67,10 @@ void main() {
     'a saved batch stays pending until a failed refresh is retried',
     () async {
       final store = _ObservedStore();
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(eventStore: store),
+        fts: NoopFts(),
+      );
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final controller = NoteController(app, noteId: id);
@@ -89,7 +96,10 @@ void main() {
     'refresh retries editor notification after document application',
     () async {
       final store = _ObservedStore();
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(eventStore: store),
+        fts: NoopFts(),
+      );
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final controller = NoteController(app, noteId: id);
@@ -122,7 +132,10 @@ void main() {
     'refresh resumes after the last successfully delivered event on failure',
     () async {
       final store = _ObservedStore();
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(eventStore: store));
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(eventStore: store),
+        fts: NoopFts(),
+      );
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final controller = NoteController(app, noteId: id);

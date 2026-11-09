@@ -102,7 +102,7 @@ void main() {
             await store.addStoredCommand(_stored('alice', sequence: sequence)),
             isFalse,
           );
-          expect((await store.getState()).lastCommandLogPosition, isNull);
+          expect((await store.getState()).lastCommandLogPosition, -1);
           expect((await store.getStreamInfo('one')).version, -1);
           expect(await store.addStoredCommand(_stored('alice')), isTrue);
           expect(

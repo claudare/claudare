@@ -6,12 +6,14 @@ class NoteListItem extends StatelessWidget {
   final NoteState note;
   final NoteSortOrder order;
   final VoidCallback onTap;
+  final bool showTrashMarker;
 
   const NoteListItem({
     super.key,
     required this.note,
     required this.onTap,
     required this.order,
+    this.showTrashMarker = false,
   });
 
   @override
@@ -20,7 +22,13 @@ class NoteListItem extends StatelessWidget {
         order == NoteSortOrder.createdAtAscending ||
         order == NoteSortOrder.createdAtDescending;
     return ListTile(
-      title: Text(note.title),
+      title: Row(
+        children: [
+          Expanded(child: Text(note.title)),
+          if (showTrashMarker && note.isTrashed)
+            Text('In Trash', style: Theme.of(context).textTheme.labelSmall),
+        ],
+      ),
       subtitle: Text(
         note.content,
         maxLines: 2,

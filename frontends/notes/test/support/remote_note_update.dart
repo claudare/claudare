@@ -1,6 +1,7 @@
 import 'package:id_generator/id_generator.dart';
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
+import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -14,7 +15,7 @@ Future<void> addRemoteTitleUpdate(
   final lastPosition = (await store.getState()).lastCommandLogPosition;
   final ids = await store.getNextCommandIds(
     CommandDependency(),
-    (lastPosition ?? -1) + 1,
+    lastPosition + 1,
   );
   for (final id in ids) {
     final command = await store.getStoredCommand(id);
@@ -31,6 +32,7 @@ Future<void> addRemoteTitleUpdate(
       logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic(DateTime.utc(2026)),
     ),
+    fts: NoopFts(),
   );
   await remote.command.updateNoteTitle(noteId, title);
   final command = await remoteStore.getStoredCommand(

@@ -16,6 +16,7 @@ void main() {
     expect(second, same(aggregate.state));
     expect(second.values, ['a:account/one:opened']);
     expect(tester.run().values, ['a:account/one:opened']);
+    expect(second.logPositions, [0]);
   });
 
   test('AggregateTester applies matching events in order', () {
@@ -27,6 +28,7 @@ void main() {
             .run();
 
     expect(state.values, ['a:account/one:opened', 'a:account/two:deposit']);
+    expect(state.logPositions, [0, 2]);
   });
 
   test('AggregateTester passes an explicit actor', () {
@@ -40,10 +42,12 @@ void main() {
 
 final class _RecordingState implements AggregateState<String> {
   final values = <String>[];
+  final logPositions = <int>[];
 
   @override
   void apply(EventEnvelope<String> envelope) {
     values.add('${envelope.actor}:${envelope.streamPath}:${envelope.event}');
+    logPositions.add(envelope.logPosition);
   }
 
   @override

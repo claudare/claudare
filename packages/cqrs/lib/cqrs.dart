@@ -2,6 +2,7 @@ library;
 
 // runtime
 export 'src/cqrs/cqrs_runtime/cqrs_runtime.dart';
+export 'src/cqrs/cqrs_runtime/stream_deletion.dart';
 
 // event store
 export 'src/cqrs/event_store/event_store.dart';
@@ -30,6 +31,9 @@ export 'src/cqrs/command/command_context.dart' show CommandStream;
 export 'src/cqrs/aggregate.dart';
 export 'src/cqrs/snapshot.dart';
 
+// projection
+export 'src/cqrs/projection.dart';
+
 // stream route
 export 'src/cqrs/log_filter.dart';
 
@@ -38,6 +42,7 @@ export 'src/cqrs/exception/command_exception.dart';
 export 'src/cqrs/exception/concurrency_problem.dart';
 export 'src/cqrs/exception/event_codec_exception.dart';
 export 'src/cqrs/exception/event_store_exception.dart';
+export 'src/cqrs/exception/projection_stopped_exception.dart';
 export 'src/cqrs/exception/runtime_database_exception.dart';
 export 'src/cqrs/exception/runtime_store_exception.dart';
 export 'src/cqrs/exception/stream_not_found_exception.dart';
