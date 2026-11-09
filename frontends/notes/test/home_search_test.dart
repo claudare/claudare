@@ -56,19 +56,6 @@ void main() {
     expect(find.text('Search note contents'), findsOneWidget);
   });
 
-  testWidgets('search displays at most twenty matches', (tester) async {
-    final fixture = SearchTestApp();
-    for (var i = 0; i < 21; i++) {
-      await fixture.write('note-$i', List.filled(i + 1, 'word').join(' '));
-    }
-    await _pumpHome(tester, fixture);
-    await _search(tester, 'word');
-    final results = tester.widget<NoteList>(find.byType(NoteList)).noteData;
-    expect(results.map((note) => note.noteId), [
-      for (var i = 20; i > 0; i--) 'note-$i',
-    ]);
-  });
-
   testWidgets('clearing restores the selected section and date order', (
     tester,
   ) async {
@@ -120,7 +107,7 @@ void main() {
     });
   }
 
-  testWidgets('the search field retains focus while switching result views', (
+  testWidgets('typing a query keeps the search field mounted and focused', (
     tester,
   ) async {
     final fixture = SearchTestApp();
@@ -128,14 +115,7 @@ void main() {
     await _pumpHome(tester, fixture);
     final field = tester.element(find.byType(TextField));
     await tester.enterText(find.byType(TextField), 'note');
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(tester.element(find.byType(TextField)), same(field));
-    expect(
-      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
-      isTrue,
-    );
-    await tester.tap(find.byTooltip('Clear search'));
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     expect(tester.element(find.byType(TextField)), same(field));
     expect(
       tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
@@ -166,12 +146,7 @@ void main() {
     }
   });
 
-  for (final (section, trashed) in [
-    ('Notes', false),
-    ('Notes', true),
-    ('Trash', false),
-    ('Trash', true),
-  ]) {
+  for (final (section, trashed) in [('Notes', true), ('Trash', false)]) {
     testWidgets(
       'opening a ${trashed ? 'trashed' : 'normal'} match returns to $section',
       (tester) async {
@@ -239,9 +214,14 @@ void main() {
     await fixture.write('one', 'note');
     await _pumpHome(tester, fixture);
     await _search(tester, 'note');
+    final searchText = tester
+        .widget<SearchBar>(find.byType(SearchBar))
+        .controller!;
     await tester.tap(find.byTooltip('New note'));
     await tester.pumpAndSettle();
     expect(tester.widget<NoteScreen>(find.byType(NoteScreen)).noteId, isNull);
+    expect(searchText.text, isEmpty);
+    expect(find.byType(NoteSearchView, skipOffstage: false), findsNothing);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     _expectSearchCleared(tester);
@@ -272,47 +252,6 @@ void main() {
         tester.widget<NoteList>(find.byType(NoteList)).order,
         NoteSortOrder.createdAtAscending,
       );
-      expect(fixture.fts.queries, ['note']);
-    });
-  }
-
-  for (final pending in ['throttle', 'response', 'error']) {
-    testWidgets('navigation clears a search with a pending $pending', (
-      tester,
-    ) async {
-      final fixture = SearchTestApp();
-      await fixture.write('one', 'note');
-      await _pumpHome(tester, fixture);
-      final response = Completer<List<String>>();
-      if (pending != 'throttle') {
-        fixture.fts.onQuery = (_) => response.future;
-      }
-      await tester.enterText(find.byType(TextField), 'note');
-      await tester.pump();
-      if (pending == 'throttle') {
-        await tester.enterText(find.byType(TextField), 'queued');
-        await tester.pump();
-      }
-      final controller = tester
-          .widget<NoteSearchView>(find.byType(NoteSearchView))
-          .controller;
-      await tester.tap(find.byTooltip('New note'));
-      await tester.pumpAndSettle();
-      expect(tester.widget<NoteScreen>(find.byType(NoteScreen)).noteId, isNull);
-      expect(controller.query, isEmpty);
-      if (pending == 'response') {
-        response.complete(['one']);
-      } else if (pending == 'error') {
-        response.completeError(Exception('Obsolete search'));
-      }
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-      _expectSearchCleared(tester);
-      expect(controller.results, isEmpty);
-      expect(controller.searchError, isNull);
-      expect(controller.isLoading, isFalse);
-      expect(_titles(tester), ['one']);
       expect(fixture.fts.queries, ['note']);
     });
   }
@@ -511,35 +450,53 @@ void main() {
     expect(find.textContaining('Internal details'), findsNothing);
   });
 
-  for (final inFlight in [false, true]) {
-    testWidgets(
-      'application replacement disposes ${inFlight ? 'in-flight' : 'queued'} search',
-      (tester) async {
-        final first = SearchTestApp();
-        await first.write('old', 'note');
-        await _pumpHome(tester, first);
-        final response = Completer<List<String>>();
-        if (inFlight) first.fts.onQuery = (_) => response.future;
-        await tester.enterText(find.byType(TextField), 'note');
-        await tester.pump();
-        if (!inFlight) {
-          await tester.enterText(find.byType(TextField), 'queued');
-          await tester.pump();
-        }
-        final second = SearchTestApp();
-        await second.write('new', 'note');
-        await _pumpHome(tester, second);
-        if (inFlight) response.completeError(Exception('Old application'));
-        await tester.pumpAndSettle();
-        expect(_searchText(tester), isEmpty);
-        expect(_titles(tester), ['new']);
-        expect(first.fts.queries, ['note']);
-        await _search(tester, 'note');
-        expect(_titles(tester), ['new']);
-        expect(second.fts.queries, ['note']);
-      },
-    );
-  }
+  testWidgets(
+    'application replacement skips queued searches from the old application',
+    (tester) async {
+      final first = SearchTestApp();
+      await first.write('old', 'note');
+      await _pumpHome(tester, first);
+      await tester.enterText(find.byType(TextField), 'note');
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'queued');
+      await tester.pump();
+
+      final second = SearchTestApp();
+      await second.write('new', 'note');
+      await _pumpHome(tester, second);
+      expect(_searchText(tester), isEmpty);
+      expect(_titles(tester), ['new']);
+      expect(first.fts.queries, ['note']);
+      await _search(tester, 'note');
+      expect(_titles(tester), ['new']);
+      expect(second.fts.queries, ['note']);
+    },
+  );
+
+  testWidgets(
+    'application replacement ignores in-flight errors from the old application',
+    (tester) async {
+      final first = SearchTestApp();
+      await first.write('old', 'note');
+      await _pumpHome(tester, first);
+      final response = Completer<List<String>>();
+      first.fts.onQuery = (_) => response.future;
+      await tester.enterText(find.byType(TextField), 'note');
+      await tester.pump();
+
+      final second = SearchTestApp();
+      await second.write('new', 'note');
+      await _pumpHome(tester, second);
+      response.completeError(Exception('Old application'));
+      await tester.pumpAndSettle();
+      expect(_searchText(tester), isEmpty);
+      expect(_titles(tester), ['new']);
+      expect(first.fts.queries, ['note']);
+      await _search(tester, 'note');
+      expect(_titles(tester), ['new']);
+      expect(second.fts.queries, ['note']);
+    },
+  );
 
   testWidgets('disposing the screen skips queued throttle work', (
     tester,

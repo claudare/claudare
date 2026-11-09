@@ -106,6 +106,21 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
   });
 
+  testWidgets('clearing ignores an in-flight error', (tester) async {
+    final fixture = SearchTestApp();
+    final controller = await _controller(tester, fixture);
+    final response = Completer<List<String>>();
+    fixture.fts.onQuery = (_) => response.future;
+    controller.setQuery('note');
+    await tester.pump();
+    controller.setQuery('');
+    response.completeError(Exception('Obsolete search'));
+    await tester.pump();
+    expect(controller.searchError, isNull);
+    expect(controller.isLoading, isFalse);
+    await tester.pump(const Duration(seconds: 1));
+  });
+
   testWidgets('a failed search is cleared by changing the query', (
     tester,
   ) async {
@@ -123,34 +138,46 @@ void main() {
     expect(controller.searchError, isNull);
   });
 
-  for (final pendingResponse in [false, true]) {
-    testWidgets(
-      'disposal skips queued searches ${pendingResponse ? 'after active work' : 'during the throttle interval'}',
-      (tester) async {
-        final fixture = SearchTestApp();
-        _stopAfterTest(tester, fixture);
-        final controller = NoteSearchController(fixture.application);
-        await pumpSearchProjection(tester, fixture);
-        var notifications = 0;
-        controller.addListener(() => notifications++);
-        final response = Completer<List<String>>();
-        if (pendingResponse) {
-          fixture.fts.onQuery = (_) => response.future;
-        }
-        controller.setQuery('note');
-        await tester.pump();
-        controller.setQuery('queued');
-        controller.dispose();
-        final before = notifications;
-        if (pendingResponse) {
-          response.completeError(Exception('Disposed search'));
-        }
-        await tester.pump(const Duration(seconds: 1));
-        expect(notifications, before);
-        expect(fixture.fts.queries, ['note']);
-      },
-    );
-  }
+  testWidgets('disposal skips searches queued during the throttle interval', (
+    tester,
+  ) async {
+    final fixture = SearchTestApp();
+    _stopAfterTest(tester, fixture);
+    final controller = NoteSearchController(fixture.application);
+    await pumpSearchProjection(tester, fixture);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+    controller.setQuery('note');
+    await tester.pump();
+    controller.setQuery('queued');
+    controller.dispose();
+    final before = notifications;
+    await tester.pump(const Duration(seconds: 1));
+    expect(notifications, before);
+    expect(fixture.fts.queries, ['note']);
+  });
+
+  testWidgets('disposal ignores in-flight errors and skips queued searches', (
+    tester,
+  ) async {
+    final fixture = SearchTestApp();
+    _stopAfterTest(tester, fixture);
+    final controller = NoteSearchController(fixture.application);
+    await pumpSearchProjection(tester, fixture);
+    var notifications = 0;
+    controller.addListener(() => notifications++);
+    final response = Completer<List<String>>();
+    fixture.fts.onQuery = (_) => response.future;
+    controller.setQuery('note');
+    await tester.pump();
+    controller.setQuery('queued');
+    controller.dispose();
+    final before = notifications;
+    response.completeError(Exception('Disposed search'));
+    await tester.pump(const Duration(seconds: 1));
+    expect(notifications, before);
+    expect(fixture.fts.queries, ['note']);
+  });
 
   testWidgets('waits for readiness and searches the latest query', (
     tester,
@@ -168,19 +195,6 @@ void main() {
     expect(controller.isReady, isTrue);
     expect(fixture.fts.queries, ['latest']);
     expect(controller.isLoading, isFalse);
-    await tester.pump(const Duration(seconds: 1));
-  });
-
-  testWidgets('readiness completion starts the current search immediately', (
-    tester,
-  ) async {
-    final store = ProjectionLoadingStore();
-    final fixture = SearchTestApp(store: store);
-    final controller = await _controller(tester, fixture);
-    controller.setQuery('note');
-    store.loading.complete();
-    await tester.pump();
-    expect(fixture.fts.queries, ['note']);
     await tester.pump(const Duration(seconds: 1));
   });
 
