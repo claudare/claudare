@@ -203,9 +203,8 @@ class CqrsRuntime {
       }
 
       completeIfCaughtUp(logPosition);
-      final iterator = logIterator(
-        projection.filter,
-        fromPosition: logPosition + 1,
+      final iterator = StreamIterator(
+        logIterator(projection.filter, fromPosition: logPosition + 1),
       );
       it = iterator;
 
@@ -282,10 +281,7 @@ class CqrsRuntime {
 
   /// Replays matching records from the inclusive [fromPosition], then follows
   /// changes until the iterator is cancelled or the change stream closes.
-  StreamIterator<StoredEvent> logIterator(
-    LogFilter filter, {
-    int fromPosition = 0,
-  }) {
+  Stream<StoredEvent> logIterator(LogFilter filter, {int fromPosition = 0}) {
     var position = fromPosition;
     var pendingChange = false;
     final changes = StreamIterator<void>(
@@ -333,7 +329,7 @@ class CqrsRuntime {
 
     controller.onListen = () => unawaited(replay());
     controller.onCancel = changes.cancel;
-    return StreamIterator(controller.stream);
+    return controller.stream;
   }
 
   /// Observes matching stream change notifications without resolving any state.

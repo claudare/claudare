@@ -21,7 +21,9 @@ void main() {
     int fromPosition = 0,
     List<AsyncGate> gates = const [],
   }) {
-    final iterator = runtime.logIterator(filter, fromPosition: fromPosition);
+    final iterator = StreamIterator(
+      runtime.logIterator(filter, fromPosition: fromPosition),
+    );
     addTearDown(() async {
       for (final gate in gates) {
         gate.release();
