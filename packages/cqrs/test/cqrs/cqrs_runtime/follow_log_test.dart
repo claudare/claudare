@@ -22,7 +22,7 @@ void main() {
     List<AsyncGate> gates = const [],
   }) {
     final iterator = StreamIterator(
-      runtime.logIterator(filter, fromPosition: fromPosition),
+      runtime.followLog(filter, fromPosition: fromPosition),
     );
     addTearDown(() async {
       for (final gate in gates) {

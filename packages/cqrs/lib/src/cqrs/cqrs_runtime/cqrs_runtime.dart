@@ -204,7 +204,7 @@ class CqrsRuntime {
 
       completeIfCaughtUp(logPosition);
       final iterator = StreamIterator(
-        logIterator(projection.filter, fromPosition: logPosition + 1),
+        followLog(projection.filter, fromPosition: logPosition + 1),
       );
       it = iterator;
 
@@ -280,8 +280,8 @@ class CqrsRuntime {
   }
 
   /// Replays matching records from the inclusive [fromPosition], then follows
-  /// changes until the iterator is cancelled or the change stream closes.
-  Stream<StoredEvent> logIterator(LogFilter filter, {int fromPosition = 0}) {
+  /// changes until the subscription is cancelled or the change stream closes.
+  Stream<StoredEvent> followLog(LogFilter filter, {int fromPosition = 0}) {
     var position = fromPosition;
     var pendingChange = false;
     final changes = StreamIterator<void>(
