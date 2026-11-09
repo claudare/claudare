@@ -24,6 +24,7 @@ class NoteBootstrap {
   final TimeProvider timeProvider;
   final IsolateSqlite _sqlite;
   final NoteTransportFactory? _createTransport;
+  ProjectionRun? _projectionRun;
   SyncCoordinator? _syncCoordinator;
   String _syncUnavailableReason = 'Disabled';
   NoteSystem? _syncSystem;
@@ -97,6 +98,7 @@ class NoteBootstrap {
       timeProvider: timeProvider,
     );
     final application = NotesApp(cqrsRuntime: runtime, fts: MemoryFts());
+    _projectionRun = application.startProjections();
     // preload the note list for speed and to reveal any schema-breaking changes
     await application.query.noteList();
     _syncSystem = system;
@@ -186,14 +188,13 @@ class NoteBootstrap {
       }
       final initialization = _initialization;
       if (initialization != null) {
-        NotesApp? application;
         try {
-          application = await initialization;
+          await initialization;
         } catch (_) {
           // Application initialization reports its error to the caller.
         }
-        await application?.projectionStop();
       }
+      await _projectionRun?.cancel();
     } finally {
       await _syncCoordinator?.close();
       await _closeDatabase();

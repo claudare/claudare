@@ -307,6 +307,8 @@ class _SetupBootstrap extends NoteBootstrap {
   }) async {
     eventInitializations++;
     writer = actor;
-    return super.initialize(system: system, actor: actor);
+    final application = await super.initialize(system: system, actor: actor);
+    await application.startProjections().ready;
+    return application;
   }
 }

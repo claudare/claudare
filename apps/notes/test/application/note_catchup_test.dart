@@ -13,7 +13,6 @@ void main() {
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
         fts: NoopFts(),
       );
-      addTearDown(app.projectionStop);
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final note = app.query.trackNote(id);
@@ -41,7 +40,6 @@ void main() {
 
   test('catchup rejects note states that were not tracked', () async {
     final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
-    addTearDown(app.projectionStop);
     final state = await app.query.note('missing');
 
     await expectLater(app.query.catchupNote(state), throwsArgumentError);

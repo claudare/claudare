@@ -13,13 +13,13 @@ class NoteSearchController extends ChangeNotifier {
   bool _hasSnapshot = false;
   bool _isReady = false;
   bool _isLoading = false;
+  Future<void>? _readiness;
   Exception? _readinessError;
   Exception? _searchError;
   bool _disposed = false;
 
   NoteSearchController(this.application) {
     _searchRunner = AsyncThrottledRunner(_search);
-    unawaited(_waitForReadiness());
   }
 
   String get query => _query;
@@ -40,15 +40,19 @@ class NoteSearchController extends ChangeNotifier {
     }
     _searchError = null;
     _isLoading = hasQuery && _readinessError == null;
-    if (hasQuery && _isReady) {
-      unawaited(_searchRunner.run());
+    if (hasQuery) {
+      if (_isReady) {
+        unawaited(_searchRunner.run());
+      } else {
+        unawaited(_readiness ??= _waitForReadiness());
+      }
     }
     notifyListeners();
   }
 
   Future<void> _waitForReadiness() async {
     try {
-      await application.projectionReady;
+      await application.startProjections().ready;
       if (_disposed) return;
       _isReady = true;
       if (hasQuery) unawaited(_searchRunner.run());

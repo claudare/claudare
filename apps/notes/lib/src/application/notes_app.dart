@@ -26,7 +26,7 @@ class NotesApp {
   final IdGenerator _idGenerator;
   late final CqrsRuntime _runtime;
   final SearchProjection _searchProjection;
-  late final ProjectionRun _pRun;
+  ProjectionRun? _projectionRun;
 
   late final String actor;
 
@@ -46,22 +46,15 @@ class NotesApp {
     actor = cqrsRuntime.actor;
     _runtime = cqrsRuntime;
     query = NoteQueries(cqrsRuntime, _searchProjection);
-    _pRun = _runtime.runProjection(_searchProjection);
   }
 
   /// Allocates an identifier before a note is persisted.
   String generateNoteId() => _idGenerator.generateId();
 
-  /// Completes when the search projection has replayed its initial history.
-  Future<void> get projectionReady => _pRun.ready;
-
-  Future<void> projectionPromise() {
-    return _pRun.done;
-  }
-
-  Future<void> projectionStop() {
-    return _pRun.cancel();
-  }
+  /// Starts projections once and returns their shared [ProjectionRun].
+  /// Later calls return the same run, including after it stops.
+  ProjectionRun startProjections() =>
+      _projectionRun ??= _runtime.runProjection(_searchProjection);
 }
 
 /// Writes note events through the runtime.
