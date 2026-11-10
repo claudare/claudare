@@ -34,6 +34,7 @@ export 'src/cqrs/snapshot.dart';
 
 // projection
 export 'src/cqrs/projection.dart';
+export 'src/cqrs/projection_runner.dart';
 
 // stream route
 export 'src/cqrs/log_filter.dart';

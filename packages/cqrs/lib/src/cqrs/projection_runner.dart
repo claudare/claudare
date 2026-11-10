@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 
 /// Replays and follows events for one projection until stopped.
 class ProjectionRunner<TEvent extends Object> {
-  final Logger _logger;
   final EventRegistry _eventRegistry;
   final LogPlayer _logPlayer;
   final Projection<TEvent> _projection;
@@ -20,7 +18,6 @@ class ProjectionRunner<TEvent extends Object> {
     this._projection, {
     required this._logPlayer,
     required this._eventRegistry,
-    this._logger = const NoopLogger(),
   }) {
     // Callers may observe failures through done without awaiting ready.
     _readyCompleter.future.ignore();
@@ -36,8 +33,11 @@ class ProjectionRunner<TEvent extends Object> {
 
   /// Starts once and returns [done]. Starting after [stop] is an error.
   Future<void> start() {
-    if (_started || _stopped) {
-      throw StateError('ProjectionRunner already started or stopped');
+    if (_started) {
+      throw StateError('ProjectionRunner already started');
+    }
+    if (_stopped) {
+      throw StateError('ProjectionRunner already stopped');
     }
     _started = true;
     Future<void>(_resolveProjection).then<void>(
@@ -79,7 +79,6 @@ class ProjectionRunner<TEvent extends Object> {
 
   Future<void> _resolveProjection() async {
     if (_stopped) return;
-    _logger.debug('Starting projection ${_projection.name}');
     final logPosition = await _projection.load();
     if (_stopped) return;
 
