@@ -242,10 +242,8 @@ Future<NoteSearchController> _controller(
 }
 
 void _stopAfterTest(WidgetTester tester, SearchTestApp fixture) {
-  final projectionRun = fixture.projectionRun;
+  fixture.projectionsDone;
   addTearDown(() async {
-    final stopping = projectionRun.cancel();
-    await tester.pump();
-    await stopping;
+    await pumpSearchCompletion(tester, fixture.application.stopProjections());
   });
 }

@@ -346,7 +346,7 @@ void main() {
       final store = ProjectionLoadingStore();
       final fixture = SearchTestApp(store: store);
       await fixture.write('one', 'note');
-      fixture.projectionRun.done.ignore();
+      fixture.projectionsDone.ignore();
       await tester.pumpWidget(
         NotesAppProvider(
           application: fixture.application,
@@ -357,6 +357,10 @@ void main() {
       expect(_titles(tester), ['one']);
       expect(find.byType(CircularProgressIndicator), findsNothing);
       store.loading.completeError(Exception('Projection unavailable'));
+      await pumpSearchCompletion(
+        tester,
+        expectLater(fixture.application.query.searchReady, throwsException),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(_titles(tester), ['one']);
@@ -364,7 +368,10 @@ void main() {
       expect(find.text('Unable to search notes'), findsOneWidget);
       expect(find.text('Loading search'), findsNothing);
       expect(find.byType(TextField), findsOneWidget);
-      await expectLater(fixture.projectionRun.cancel(), throwsException);
+      await pumpSearchCompletion(
+        tester,
+        expectLater(fixture.application.stopProjections(), throwsException),
+      );
     },
   );
 
@@ -517,11 +524,9 @@ Future<void> _pumpHome(
   SearchTestApp fixture, {
   bool settle = true,
 }) async {
-  final projectionRun = fixture.projectionRun;
+  unawaited(fixture.projectionsDone);
   addTearDown(() async {
-    final stopping = projectionRun.cancel();
-    await tester.pump(const Duration(seconds: 1));
-    await stopping;
+    await pumpSearchCompletion(tester, fixture.application.stopProjections());
   });
   await tester.pumpWidget(
     NotesAppProvider(application: fixture.application, child: homeTestApp()),

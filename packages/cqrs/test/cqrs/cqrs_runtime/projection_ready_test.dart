@@ -7,30 +7,31 @@ import 'package:test/test.dart';
 import 'projection_test_support.dart';
 
 void main() {
-  late _ReadyStore store;
+  late ControlledMemoryEventStore store;
   late CqrsTestRuntime runtime;
 
   setUp(() {
-    store = _ReadyStore();
+    store = ControlledMemoryEventStore();
     runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const ProjectionEventCodec());
     addTearDown(store.closeChanges);
   });
 
-  ProjectionRun start(
+  ProjectionRunner<ProjectionEvent> start(
     RecordingProjection<ProjectionEvent> projection, {
     List<AsyncGate> gates = const [],
     Object? failure,
   }) {
-    final run = runtime.runProjection(projection);
+    final run = runtime.projectionRunner(projection);
+    run.start().ignore();
     addTearDown(() async {
       for (final gate in gates) {
         gate.release();
       }
       if (failure == null) {
-        await run.cancel();
+        await run.stop();
       } else {
-        await expectLater(run.cancel(), throwsA(same(failure)));
+        await expectLater(run.stop(), throwsA(same(failure)));
       }
     });
     return run;
@@ -62,27 +63,9 @@ void main() {
     expect(projection.events, isEmpty);
   });
 
-  test('ready waits for the target position lookup', () async {
-    final gate = AsyncGate();
-    store.readPosition = (_) async {
-      await gate.wait();
-      return -1;
-    };
-    final run = start(RecordingProjection(), gates: [gate]);
-    var ready = false;
-    final completion = run.ready.then((_) => ready = true);
-
-    await gate.entered.future;
-    await Future<void>(() {});
-    expect(ready, isFalse);
-
-    gate.release();
-    await completion;
-  });
-
   for (final checkpoint in [0, 1]) {
     test(
-      'ready completes when checkpoint $checkpoint covers the target',
+      'ready completes when no events follow checkpoint $checkpoint',
       () async {
         await appendProjectionEvent(store, 'existing');
         final projection = RecordingProjection<ProjectionEvent>(
@@ -176,34 +159,35 @@ void main() {
     expect(store.reads.count, greaterThan(0));
   });
 
-  test(
-    'ready keeps its initial target when new events arrive during replay',
-    () async {
-      await appendProjectionEvent(store, 'initial');
-      final gate = AsyncGate();
-      var applications = 0;
-      final projection = RecordingProjection<ProjectionEvent>(
-        beforeApply: () async {
-          if (++applications == 1) {
-            await appendProjectionEvent(store, 'later');
-          } else {
-            await gate.wait();
-          }
-        },
-      );
-      final run = start(projection, gates: [gate]);
+  test('ready waits for events arriving during replay', () async {
+    await appendProjectionEvent(store, 'initial');
+    final gate = AsyncGate();
+    var applications = 0;
+    final projection = RecordingProjection<ProjectionEvent>(
+      beforeApply: () async {
+        if (++applications == 1) {
+          await appendProjectionEvent(store, 'later');
+        } else {
+          await gate.wait();
+        }
+      },
+    );
+    final run = start(projection, gates: [gate]);
 
-      await gate.entered.future;
-      await run.ready;
-      expect(projection.events.map((event) => event.event.value), [
-        'initial',
-        'later',
-      ]);
-      gate.release();
-    },
-  );
+    var ready = false;
+    final completion = run.ready.then((_) => ready = true);
+    await gate.entered.future;
+    await Future<void>(() {});
+    expect(ready, isFalse);
+    gate.release();
+    await completion;
+    expect(projection.events.map((event) => event.event.value), [
+      'initial',
+      'later',
+    ]);
+  });
 
-  for (final source in ['load', 'target', 'read', 'application', 'deletion']) {
+  for (final source in ['load', 'read', 'application', 'deletion']) {
     test(
       '$source failure reaches ready and done with its original trace',
       () async {
@@ -220,9 +204,6 @@ void main() {
                 ? EncodedEvent.streamDeleted()
                 : null,
           );
-        }
-        if (source == 'target') {
-          store.readPosition = (_) => Future<int>.error(error, trace);
         }
         if (source == 'read') store.afterRead = (_) => failOperation();
         final run = start(
@@ -253,7 +234,7 @@ void main() {
       throwsA(isA<ProjectionStoppedException>()),
     );
 
-    await run.cancel();
+    await run.stop();
     await expectation;
   });
 
@@ -272,18 +253,10 @@ void main() {
       );
       await gate.entered.future;
 
-      final cancellation = run.cancel();
+      final cancellation = run.stop();
       gate.release();
       await cancellation;
       await expectation;
     },
   );
-}
-
-class _ReadyStore extends ControlledMemoryEventStore {
-  Future<int> Function(LogFilter)? readPosition;
-
-  @override
-  Future<int> getLogPosition(LogFilter filter) =>
-      readPosition?.call(filter) ?? super.getLogPosition(filter);
 }

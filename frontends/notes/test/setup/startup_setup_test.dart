@@ -308,7 +308,7 @@ class _SetupBootstrap extends NoteBootstrap {
     eventInitializations++;
     writer = actor;
     final application = await super.initialize(system: system, actor: actor);
-    await application.startProjections().ready;
+    await application.query.searchReady;
     return application;
   }
 }

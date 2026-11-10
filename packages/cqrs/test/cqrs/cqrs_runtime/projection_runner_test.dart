@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:cqrs/cqrs.dart';
-import 'package:cqrs/src/cqrs/projection_runner.dart';
 import 'package:test/test.dart';
 
 import 'projection_test_support.dart';

@@ -18,26 +18,27 @@ void main() {
     addTearDown(store.closeChanges);
   });
 
-  ProjectionRun start<T extends Object>(
+  ProjectionRunner<T> start<T extends Object>(
     RecordingProjection<T> projection, {
     List<AsyncGate> gates = const [],
     Matcher? failure,
   }) {
-    final run = runtime.runProjection(projection);
+    final run = runtime.projectionRunner(projection);
+    run.start().ignore();
     addTearDown(() async {
       for (final gate in gates) {
         gate.release();
       }
       if (failure == null) {
-        await run.cancel();
+        await run.stop();
       } else {
-        await expectLater(run.cancel(), throwsA(failure));
+        await expectLater(run.stop(), throwsA(failure));
       }
     });
     return run;
   }
 
-  test('returns a handle and loads once before delivering events', () async {
+  test('loads once before delivering events', () async {
     await appendProjectionEvent(store, 'existing');
     final gate = AsyncGate();
     final projection = RecordingProjection<ProjectionEvent>(
@@ -45,7 +46,7 @@ void main() {
     );
 
     final run = start(projection, gates: [gate]);
-    expect(run, isA<ProjectionRun>());
+    expect(run, isA<ProjectionRunner<ProjectionEvent>>());
     await gate.entered.future;
     expect(projection.loads.count, 1);
     expect(projection.events, isEmpty);
@@ -53,7 +54,7 @@ void main() {
 
     gate.release();
     await projection.applications.waitFor(1);
-    await run.cancel();
+    await run.stop();
     expect(projection.loads.count, 1);
     expect(projection.events.single.event.value, 'existing');
   });
@@ -65,7 +66,7 @@ void main() {
     final run = start(projection);
 
     await projection.applications.waitFor(2);
-    await run.cancel();
+    await run.stop();
 
     expect(projection.events.map((event) => event.event.value), [
       'first',
@@ -84,7 +85,7 @@ void main() {
     final run = start(projection);
 
     await projection.applications.waitFor(2);
-    await run.cancel();
+    await run.stop();
 
     expect(projection.loads.count, 1);
     expect(store.positions.first, 2);
@@ -105,7 +106,7 @@ void main() {
     final run = start(projection);
 
     await projection.applications.waitFor(1);
-    await run.cancel();
+    await run.stop();
 
     final envelope = projection.events.single;
     expect(envelope.event.value, 'payload');
@@ -133,7 +134,7 @@ void main() {
       final run = start(projection);
 
       await projection.applications.waitFor(values.length);
-      await run.cancel();
+      await run.stop();
 
       expect(projection.events.map((event) => event.event.value), values);
       expect(
@@ -154,7 +155,7 @@ void main() {
       await projection.applications.waitFor(1);
       await appendProjectionEvent(store, 'second');
       await projection.applications.waitFor(2);
-      await run.cancel();
+      await run.stop();
 
       expect(projection.events.map((event) => event.event.value), [
         'first',
@@ -175,7 +176,7 @@ void main() {
     await appendProjectionEvent(store, 'during load');
     gate.release();
     await projection.applications.waitFor(1);
-    await run.cancel();
+    await run.stop();
 
     expect(projection.events.single.event.value, 'during load');
   });
@@ -193,7 +194,7 @@ void main() {
     final run = start(projection);
 
     await projection.applications.waitFor(1);
-    await run.cancel();
+    await run.stop();
 
     expect(projection.events.single.event.value, 'retained');
     expect(projection.events.single.logPosition, 2);
@@ -214,7 +215,7 @@ void main() {
     final run = start(projection);
 
     await projection.deletionCalls.waitFor(1);
-    await run.cancel();
+    await run.stop();
 
     final deletion = projection.deletions.single;
     expect(deletion.actor, 'deleting-actor');
@@ -258,7 +259,7 @@ void main() {
 
         gate.release();
         await projection.applications.waitFor(deletion ? 1 : 2);
-        await run.cancel();
+        await run.stop();
         expect(projection.events.last.event.value, 'second');
       },
     );
@@ -274,7 +275,7 @@ void main() {
         var done = false;
         final completion = run.done.then((_) => done = true);
         var cancelled = false;
-        final cancellation = run.cancel().then((_) => cancelled = true);
+        final cancellation = run.stop().then((_) => cancelled = true);
 
         await store.cancellations.waitFor(1);
         expect(done, isFalse);
@@ -293,7 +294,7 @@ void main() {
     final projection = RecordingProjection<ProjectionEvent>();
     final run = start(projection);
 
-    await run.cancel();
+    await run.stop();
     await run.done;
 
     expect(projection.loads.count, 0);
@@ -311,7 +312,7 @@ void main() {
       final run = start(projection, gates: [gate]);
       await gate.entered.future;
       var cancelled = false;
-      final cancellation = run.cancel().then((_) => cancelled = true);
+      final cancellation = run.stop().then((_) => cancelled = true);
 
       await Future<void>(() {});
       expect(cancelled, isFalse);
@@ -330,7 +331,7 @@ void main() {
     final run = start(projection);
     await store.emptyReads.waitFor(1);
 
-    await run.cancel();
+    await run.stop();
     await run.done;
 
     expect(store.hasChangeListener, isFalse);
@@ -345,7 +346,7 @@ void main() {
     final run = start(projection, gates: [gate]);
     await gate.entered.future;
 
-    final cancellation = run.cancel();
+    final cancellation = run.stop();
     gate.release();
     await cancellation;
     await run.done;
@@ -361,8 +362,8 @@ void main() {
       final run = start(projection);
       await store.emptyReads.waitFor(1);
 
-      await Future.wait([run.cancel(), run.cancel()]);
-      await run.cancel();
+      await Future.wait([run.stop(), run.stop()]);
+      await run.stop();
       await run.done;
 
       expect(store.cancellations.count, 1);
@@ -425,7 +426,7 @@ void main() {
         await expectation;
         expect(store.hasChangeListener, isFalse);
         expect(store.cancellations.count, source == 'load' ? 0 : 1);
-        await expectLater(run.cancel(), throwsA(same(error)));
+        await expectLater(run.stop(), throwsA(same(error)));
 
         final applied = projection.events.length;
         final notificationCount = store.notifications.count;

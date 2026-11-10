@@ -52,7 +52,7 @@ class NoteSearchController extends ChangeNotifier {
 
   Future<void> _waitForReadiness() async {
     try {
-      await application.startProjections().ready;
+      await application.query.searchReady;
       if (_disposed) return;
       _isReady = true;
       if (hasQuery) unawaited(_searchRunner.run());

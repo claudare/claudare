@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:id_generator/id_generator.dart';
@@ -24,7 +26,7 @@ class NoteBootstrap {
   final TimeProvider timeProvider;
   final IsolateSqlite _sqlite;
   final NoteTransportFactory? _createTransport;
-  ProjectionRun? _projectionRun;
+  NotesApp? _application;
   SyncCoordinator? _syncCoordinator;
   String _syncUnavailableReason = 'Disabled';
   NoteSystem? _syncSystem;
@@ -98,7 +100,8 @@ class NoteBootstrap {
       timeProvider: timeProvider,
     );
     final application = NotesApp(cqrsRuntime: runtime, fts: MemoryFts());
-    _projectionRun = application.startProjections();
+    _application = application;
+    unawaited(application.startProjections());
     // preload the note list for speed and to reveal any schema-breaking changes
     await application.query.noteList();
     _syncSystem = system;
@@ -194,7 +197,7 @@ class NoteBootstrap {
           // Application initialization reports its error to the caller.
         }
       }
-      await _projectionRun?.cancel();
+      await _application?.stopProjections();
     } finally {
       await _syncCoordinator?.close();
       await _closeDatabase();

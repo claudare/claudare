@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isolate_sqlite/isolate_sqlite.dart';
 import 'package:notes/application/note_bootstrap.dart';
+import 'package:notes/application/note_system.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:support_directory/support_directory.dart';
 
@@ -16,19 +20,21 @@ void main() {
     final system = await bootstrap.initializeSystem(
       dbFilepath: IsolateSqlite.memoryFilename,
     );
+    final store = _ObservedEventStore();
     final application = await bootstrap.initialize(
-      system: system,
+      system: NoteSystem(
+        identities: system.identities,
+        kv: system.kv,
+        eventStore: store,
+      ),
       actor: 'test-actor',
     );
-    var stopped = false;
-    final completion = application.startProjections().done.then((_) {
-      stopped = true;
-    });
+    await application.query.searchReady;
+    expect(store.listeners, 1);
 
     await bootstrap.close();
 
-    expect(stopped, isTrue);
-    await completion;
+    expect(store.listeners, 0);
   });
 
   test('keeps note history readable after SQLite is reopened', () async {
@@ -115,6 +121,24 @@ void main() {
     expect(sqlite.closeCount, 0);
     await bootstrap.close();
     expect(sqlite.closeCount, 0);
+  });
+}
+
+class _ObservedEventStore extends MemoryEventStore {
+  int listeners = 0;
+
+  @override
+  Stream<EventChange> get eventChanges => Stream.multi((controller) {
+    listeners++;
+    final subscription = super.eventChanges.listen(
+      controller.add,
+      onError: controller.addError,
+      onDone: controller.close,
+    );
+    controller.onCancel = () async {
+      await subscription.cancel();
+      listeners--;
+    };
   });
 }
 
