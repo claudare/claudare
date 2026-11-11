@@ -9,15 +9,13 @@ class NoteState implements AggregateState<NoteEvent> {
   final String noteId;
   bool exists = false;
   bool isDeleted = false;
-  CrdtString _title;
-  CrdtText _content;
+  CrdtString _title = CrdtString();
+  CrdtText _content = CrdtText();
   DateTime createdAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   DateTime updatedAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
   DateTime? trashedAt;
 
-  NoteState(this.noteId, {CrdtText? contentDocument})
-    : _title = CrdtString(),
-      _content = contentDocument ?? CrdtText();
+  NoteState(this.noteId);
 
   NoteState._copy(this.noteId, this._title, this._content);
 
@@ -95,11 +93,8 @@ class NoteState implements AggregateState<NoteEvent> {
   }
 }
 
-Aggregate<NoteEvent, NoteState> noteAggregate(
-  String noteId, {
-  CrdtText? contentDocument,
-}) => Aggregate(
+Aggregate<NoteEvent, NoteState> noteAggregate(String noteId) => Aggregate(
   name: 'Note $noteId',
   filter: noteStreamFilter(noteId),
-  state: NoteState(noteId, contentDocument: contentDocument),
+  state: NoteState(noteId),
 );
