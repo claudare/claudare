@@ -28,7 +28,7 @@ class NotesApp {
   // Keep the warning for now
   late final CqrsRuntime _runtime;
 
-  late final ProjectionRunner<NoteEvent> _searchProjectionRunner;
+  late final LiveProjection<SearchModel, NoteEvent> _searchProjection;
 
   NotesApp({
     required CqrsRuntime cqrsRuntime,
@@ -44,23 +44,21 @@ class NotesApp {
       ..add(const NoteTrashedCodec());
     actor = cqrsRuntime.actor;
     _runtime = cqrsRuntime;
-    final searchProjection = SearchProjection(fts);
-    _searchProjectionRunner = cqrsRuntime.projectionRunner(searchProjection);
-    query = NoteQueries(
-      cqrsRuntime,
-      searchProjection: searchProjection,
-      searchProjectionRunner: _searchProjectionRunner,
-    );
+    _searchProjection = cqrsRuntime.liveProjection(SearchProjection(fts));
+    query = NoteQueries(cqrsRuntime, searchProjection: _searchProjection);
   }
 
   /// Allocates an identifier before a note is persisted.
   String generateNoteId() => _idGenerator.generateId();
 
-  /// Starts projections once and completes when they stop.
-  Future<void> startProjections() => _searchProjectionRunner.start();
+  /// Starts projections and completes after initial catch-up.
+  Future<void> startProjections() => _searchProjection.start();
+
+  /// Completes when projections stop, or fails after a projection failure.
+  Future<void> get projectionsDone => _searchProjection.done;
 
   /// Stops projections and waits for active work to finish.
-  Future<void> stopProjections() => _searchProjectionRunner.stop();
+  Future<void> stopProjections() => _searchProjection.stop();
 }
 
 /// Writes note events through the runtime.
@@ -126,18 +124,13 @@ class NoteCommands {
 /// Resolves current note state directly from the event history.
 class NoteQueries {
   final CqrsRuntime _runtime;
-  final SearchProjection _searchProjection;
-  final ProjectionRunner<NoteEvent> _searchProjectionRunner;
+  final LiveProjection<SearchModel, NoteEvent> _searchProjection;
   final _noteList = noteListAggregate();
   final _noteListMutex = Mutex();
   // Expando is a "WeakMap"
   final _trackedNotes = Expando<Aggregate<NoteEvent, NoteState>>();
 
-  NoteQueries(
-    this._runtime, {
-    required this._searchProjection,
-    required this._searchProjectionRunner,
-  });
+  NoteQueries(this._runtime, {required this._searchProjection});
 
   /// Returns the resolved state for one note identifier.
   Future<NoteState> note(String noteId) =>
@@ -159,7 +152,7 @@ class NoteQueries {
   }
 
   /// Completes when search has caught up with the event log for the first time.
-  Future<void> get searchReady => _searchProjectionRunner.ready;
+  Future<void> get searchReady => _searchProjection.ready;
 
   /// Notifies callers of note stream updates so they can choose when to query.
   Stream<void> noteListChanges() =>
@@ -182,7 +175,8 @@ class NoteQueries {
   }
 
   Future<List<NoteState>> noteSearch(String text) async {
-    final ids = await _searchProjection.search(text, resultCount: 20);
+    final model = await _searchProjection.ready;
+    final ids = await model.search(text, resultCount: 20);
     final states = await Future.wait(ids.map((id) => note(id)));
 
     return states;

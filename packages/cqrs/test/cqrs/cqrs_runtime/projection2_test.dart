@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:cqrs/cqrs.dart' hide Projection;
-import 'package:cqrs/src/cqrs/projection2.dart';
+import 'package:cqrs/cqrs.dart';
+import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import 'projection_test_support.dart'
@@ -53,6 +53,25 @@ void main() {
     addTearDown(gate.release);
     return gate;
   }
+
+  test(
+    'runtime projections replay and follow events using its registry',
+    () async {
+      final runtime = CqrsTestRuntime(eventStore: store);
+      runtime.eventRegistry.add(const ProjectionEventCodec());
+      await appendProjectionEvent(store, 'existing');
+      final live = runtime.liveProjection(_Projection<ProjectionEvent>());
+      addTearDown(live.stop);
+
+      expect(_values(await live.start()), ['existing']);
+      final updated = live.updates.firstWhere(
+        (model) => model.events.length == 2,
+      );
+      await appendProjectionEvent(store, 'new');
+
+      expect(_values(await updated), ['existing', 'new']);
+    },
+  );
 
   group('ProjectionResolver', () {
     test('returns the loaded model when the log is empty', () async {

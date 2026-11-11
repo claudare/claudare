@@ -9,8 +9,7 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/stream_deletion.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/projection.dart';
-import 'package:cqrs/src/cqrs/projection_runner.dart';
+import 'package:cqrs/src/cqrs/projection2.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
@@ -58,10 +57,12 @@ class CqrsRuntime {
     return _commandExecutor.execute(command);
   }
 
-  ProjectionRunner<TEvent> projectionRunner<TEvent extends Object>(
-    Projection<TEvent> projection,
-  ) {
-    return ProjectionRunner(
+  /// Creates an unstarted live projection using this runtime's event store.
+  LiveProjection<TModel, TEvent> liveProjection<
+    TModel extends Object,
+    TEvent extends Object
+  >(Projection<TModel, TEvent> projection) {
+    return LiveProjection(
       projection,
       logPlayer: _logPlayer,
       eventRegistry: _eventRegistry,

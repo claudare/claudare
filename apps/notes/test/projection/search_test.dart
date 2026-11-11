@@ -8,17 +8,20 @@ import 'package:test/test.dart';
 void main() {
   late MemoryFts fts;
   late SearchProjection projection;
+  late SearchModel model;
   var position = 0;
   final time = DateTime.utc(2026);
 
   setUp(() {
     fts = MemoryFts();
     projection = SearchProjection(fts);
+    model = projection.load().model;
     position = 0;
   });
 
   Future<void> apply(NoteEvent event, {String noteId = 'one'}) =>
       projection.apply(
+        model,
         EventEnvelope(
           actor: 'actor',
           streamPath: 'note/$noteId',
@@ -37,6 +40,7 @@ void main() {
   }
 
   Future<void> delete(String noteId) => projection.onStreamDeleted(
+    model,
     StreamDeletion(
       actor: 'actor',
       streamPath: 'note/$noteId',
@@ -45,14 +49,10 @@ void main() {
     ),
   );
 
-  test('starts replay from the beginning', () async {
-    expect(await projection.load(), -1);
-  });
-
   test('indexes note content in the supplied backend', () async {
     await write('one', 'Notebook content');
 
-    expect(await fts.query('NOTE', 10), ['one']);
+    expect(await model.search('NOTE', resultCount: 10), ['one']);
   });
 
   test('replaces indexed content after CRDT edits', () async {
@@ -69,15 +69,16 @@ void main() {
       ),
     );
 
-    expect(await projection.search('old new', resultCount: 10), ['one']);
-    expect(await projection.search('old', resultCount: 10), isEmpty);
+    expect(await model.search('new', resultCount: 10), ['one']);
+    expect(await model.search('old', resultCount: 10), isEmpty);
   });
 
   test('keeps content from different note streams separate', () async {
     await write('one', 'First');
     await write('two', 'Second');
 
-    expect(await projection.search('fir', resultCount: 10), ['one']);
+    expect(await model.search('fir', resultCount: 10), ['one']);
+    expect(await model.search('sec', resultCount: 10), ['two']);
   });
 
   test('search preserves backend ranking and result limit', () async {
@@ -85,7 +86,7 @@ void main() {
     await write('two', 'note notebook');
     await write('three', 'note notebook notes');
 
-    expect(await projection.search('note', resultCount: 2), ['three', 'two']);
+    expect(await model.search('note', resultCount: 2), ['three', 'two']);
   });
 
   test('stores the event log position as the index revision', () async {
@@ -100,15 +101,7 @@ void main() {
 
     await delete('one');
 
-    expect(await projection.search('content', resultCount: 10), ['two']);
-  });
-
-  test('permanent deletion removes cached note state', () async {
-    await write('one', 'Content');
-
-    await delete('one');
-
-    expect(projection.notes, isEmpty);
+    expect(await model.search('content', resultCount: 10), ['two']);
   });
 
   for (final noteId in ['one', 'missing']) {

@@ -346,7 +346,7 @@ void main() {
       final store = ProjectionLoadingStore();
       final fixture = SearchTestApp(store: store);
       await fixture.write('one', 'note');
-      fixture.projectionsDone.ignore();
+      fixture.projectionsReady.ignore();
       await tester.pumpWidget(
         NotesAppProvider(
           application: fixture.application,
@@ -524,7 +524,7 @@ Future<void> _pumpHome(
   SearchTestApp fixture, {
   bool settle = true,
 }) async {
-  unawaited(fixture.projectionsDone);
+  fixture.projectionsReady.ignore();
   addTearDown(() async {
     await pumpSearchCompletion(tester, fixture.application.stopProjections());
   });

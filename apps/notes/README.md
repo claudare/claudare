@@ -7,8 +7,7 @@ Supply a CQRS runtime to connect it to event storage.
 Start projections before searching and stop them when finished:
 
 ```dart
-application.startProjections();
-await application.query.searchReady;
+await application.startProjections();
 final matches = await application.query.noteSearch('meeting');
 await application.stopProjections();
 ```

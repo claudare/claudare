@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:cqrs/cqrs.dart' hide Projection;
+import 'package:cqrs/cqrs.dart';
 
 /// Loaded projection state and its last durably applied log position.
 class ProjectionLoad<TModel extends Object> {

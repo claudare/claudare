@@ -101,13 +101,22 @@ class NoteBootstrap {
     );
     final application = NotesApp(cqrsRuntime: runtime, fts: MemoryFts());
     _application = application;
-    unawaited(application.startProjections());
+    application.startProjections().ignore();
+    unawaited(_observeProjections(application));
     // preload the note list for speed and to reveal any schema-breaking changes
     await application.query.noteList();
     _syncSystem = system;
     _syncActor = actor;
     if (_closing == null) await _reloadSync(system, actor);
     return application;
+  }
+
+  Future<void> _observeProjections(NotesApp application) async {
+    try {
+      await application.projectionsDone;
+    } on Exception catch (error, stackTrace) {
+      logger.error('Search projection failed', error, stackTrace);
+    }
   }
 
   /// Applies saved transport settings without waiting for network connectivity.

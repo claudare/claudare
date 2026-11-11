@@ -19,7 +19,7 @@ class SearchTestApp {
         : CqrsTestRuntime(eventStore: store),
     fts: fts,
   );
-  late final Future<void> projectionsDone = application.startProjections();
+  late final Future<void> projectionsReady = application.startProjections();
 
   SearchTestApp({MemoryEventStore? store})
     : store = store ?? MemoryEventStore();
@@ -71,9 +71,10 @@ class _LoadingRuntime extends CqrsRuntime {
       );
 
   @override
-  ProjectionRunner<T> projectionRunner<T extends Object>(
-    Projection<T> projection,
-  ) => ProjectionRunner(
+  LiveProjection<TModel, TEvent> liveProjection<
+    TModel extends Object,
+    TEvent extends Object
+  >(Projection<TModel, TEvent> projection) => LiveProjection(
     projection,
     logPlayer: _LoadingLogPlayer(store),
     eventRegistry: eventRegistry,
@@ -121,7 +122,7 @@ Future<void> pumpSearchProjection(
   WidgetTester tester,
   SearchTestApp fixture,
 ) async {
-  unawaited(fixture.projectionsDone);
+  fixture.projectionsReady.ignore();
   final store = fixture.store;
   final loading = store is ProjectionLoadingStore
       ? store.loadingStarted.future

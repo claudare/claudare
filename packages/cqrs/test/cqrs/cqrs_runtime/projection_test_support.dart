@@ -57,53 +57,6 @@ class ProjectionEventCodec implements EventCodec<ProjectionEvent> {
       Uint8List.fromList(utf8.encode(event.value));
 }
 
-class RecordingProjection<T extends Object> implements Projection<T> {
-  @override
-  final LogFilter filter;
-
-  final Future<void> Function()? beforeLoad;
-  final Future<void> Function()? beforeApply;
-  final Future<void> Function()? beforeDeletion;
-  final int loadedLogPosition;
-  final events = <EventEnvelope<T>>[];
-  final deletions = <StreamDeletion>[];
-  final loads = CallSignal();
-  final applications = CallSignal();
-  final deletionCalls = CallSignal();
-
-  RecordingProjection({
-    this.filter = const LogFilter.all(),
-    this.loadedLogPosition = -1,
-    this.beforeLoad,
-    this.beforeApply,
-    this.beforeDeletion,
-  });
-
-  @override
-  String get name => 'recording projection';
-
-  @override
-  Future<int> load() async {
-    loads.record();
-    await beforeLoad?.call();
-    return loadedLogPosition;
-  }
-
-  @override
-  Future<void> apply(EventEnvelope<T> envelope) async {
-    events.add(envelope);
-    applications.record();
-    await beforeApply?.call();
-  }
-
-  @override
-  Future<void> onStreamDeleted(StreamDeletion deletion) async {
-    deletions.add(deletion);
-    deletionCalls.record();
-    await beforeDeletion?.call();
-  }
-}
-
 class ControlledMemoryEventStore extends MemoryEventStore {
   late final StreamController<EventChange> _changes;
   late final StreamSubscription<EventChange> _forwarding;
