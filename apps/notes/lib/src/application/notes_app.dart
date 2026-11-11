@@ -25,8 +25,6 @@ class NotesApp {
   late final NoteQueries query;
   final IdGenerator _idGenerator;
   late final String actor;
-  // Keep the warning for now
-  late final CqrsRuntime _runtime;
 
   late final LiveProjection<SearchModel, NoteEvent> _searchProjection;
 
@@ -43,7 +41,6 @@ class NotesApp {
       ..add(const NoteTitleUpdatedCodec())
       ..add(const NoteTrashedCodec());
     actor = cqrsRuntime.actor;
-    _runtime = cqrsRuntime;
     _searchProjection = cqrsRuntime.liveProjection(SearchProjection(fts));
     query = NoteQueries(cqrsRuntime, searchProjection: _searchProjection);
   }
