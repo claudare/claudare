@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:fts/fts.dart';
@@ -11,7 +12,11 @@ void main() {
 
   setUp(() {
     runtime = CqrsTestRuntime();
-    application = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
+    application = NotesApp(
+      cqrsRuntime: runtime,
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
   });
 
   test('returns absent state for a note that was never created', () async {

@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
@@ -25,7 +26,7 @@ void main() {
   test('create writes a note creation event', () async {
     final tester = createTester();
 
-    await tester.run(const CreateNote(noteId: 'one'));
+    await tester.run(const CreateNote(noteId: 'one', logger: NoopLogger()));
 
     final events = await tester.getWrittenEvents<NoteEvent>(noteStream('one'));
     expect(events, hasLength(1));
@@ -37,7 +38,7 @@ void main() {
       ..withEvent(noteStream('one'), const NoteCreated());
 
     await expectLater(
-      tester.run(const CreateNote(noteId: 'one')),
+      tester.run(const CreateNote(noteId: 'one', logger: NoopLogger())),
       throwsA(isA<StreamAlreadyExistsException>()),
     );
   });
@@ -46,7 +47,13 @@ void main() {
     final tester = createTester()
       ..withEvent(noteStream('one'), const NoteCreated());
 
-    await tester.run(const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'));
+    await tester.run(
+      const UpdateNoteTitle(
+        noteId: 'one',
+        fullValue: 'Title',
+        logger: NoopLogger(),
+      ),
+    );
 
     final events = await tester.getWrittenEvents<NoteEvent>(noteStream('one'));
     expect(events, hasLength(1));
@@ -62,6 +69,7 @@ void main() {
       UpdateNoteContent(
         noteId: 'one',
         change: CrdtTextTestUtils.singleChange('Body'),
+        logger: const NoopLogger(),
       ),
     );
 
@@ -73,7 +81,11 @@ void main() {
   test('title update rejects a missing note', () async {
     await expectLater(
       createTester().run(
-        const UpdateNoteTitle(noteId: 'one', fullValue: 'Title'),
+        const UpdateNoteTitle(
+          noteId: 'one',
+          fullValue: 'Title',
+          logger: NoopLogger(),
+        ),
       ),
       throwsA(isA<StreamNotFoundException>()),
     );
@@ -85,6 +97,7 @@ void main() {
         UpdateNoteContent(
           noteId: 'one',
           change: CrdtTextTestUtils.singleChange('Body'),
+          logger: const NoopLogger(),
         ),
       ),
       throwsA(isA<StreamNotFoundException>()),

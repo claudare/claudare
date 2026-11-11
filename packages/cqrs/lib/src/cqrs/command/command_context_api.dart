@@ -1,11 +1,8 @@
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart' show CommandStream;
 
 /// Provides streams, IDs, and logging to command handlers.
 abstract interface class CommandContextApi {
-  Logger get logger;
-
-  /// Generates an ID using the injected generator.
+  /// Generates a unique id. Defaults to uuid in prod.
   String generateId();
 
   /// Replay streams to ensure data consistency and to establish dependencies.

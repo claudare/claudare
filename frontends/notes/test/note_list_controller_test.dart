@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
@@ -11,7 +12,11 @@ void main() {
   late NoteListController controller;
 
   setUp(() {
-    application = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    application = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     controller = NoteListController(application);
   });
 

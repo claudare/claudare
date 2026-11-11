@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:notes_app/src/application/paths.dart';
@@ -6,8 +7,13 @@ import 'package:notes_app/src/event/note.dart';
 class UpdateNoteContent implements Command {
   final String noteId;
   final CrdtTextChange change;
+  final Logger logger;
 
-  const UpdateNoteContent({required this.noteId, required this.change});
+  const UpdateNoteContent({
+    required this.noteId,
+    required this.change,
+    required this.logger,
+  });
 
   @override
   String toString() {
@@ -22,6 +28,6 @@ class UpdateNoteContent implements Command {
 
     stream.append(NoteContentUpdated(change: change));
 
-    ctx.logger.debug('note $noteId content updated');
+    logger.debug('note $noteId content updated');
   }
 }

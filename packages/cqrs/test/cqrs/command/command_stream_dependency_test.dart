@@ -2,7 +2,6 @@ import 'package:id_generator/id_generator.dart';
 
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
@@ -155,7 +154,6 @@ void main() {
       streamReader: LogPlayer(eventStore).streamReader,
       eventRegistry: eventRegistry,
       timeProvider: FakeTimeProviderStatic.zero(),
-      logger: const NoopLogger(),
     );
 
     var count = 0;
@@ -180,7 +178,6 @@ void main() {
         streamReader: LogPlayer(eventStore).streamReader,
         eventRegistry: eventRegistry,
         timeProvider: FakeTimeProviderStatic.zero(),
-        logger: const NoopLogger(),
       );
 
       await context.stream<_Event>('target').delete();
@@ -211,7 +208,6 @@ Future<void> _execute(
     streamReader: LogPlayer(eventStore).streamReader,
     timeProvider: FakeTimeProviderStatic.zero(),
     eventRegistry: eventRegistry,
-    logger: const NoopLogger(),
   );
   await executor.execute(_Command(handle));
 }

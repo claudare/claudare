@@ -142,6 +142,7 @@ class _ControlledBootstrap extends NoteBootstrap {
       NotesApp(
         cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       ),
     );
   }

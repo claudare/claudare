@@ -1,11 +1,13 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:notes_app/src/application/paths.dart';
 
 class CreateNote implements Command {
   final String noteId;
+  final Logger logger;
 
-  const CreateNote({required this.noteId});
+  const CreateNote({required this.noteId, required this.logger});
 
   @override
   String toString() {
@@ -20,6 +22,6 @@ class CreateNote implements Command {
 
     stream.append(NoteCreated());
 
-    ctx.logger.debug('note $noteId created');
+    logger.debug('note $noteId created');
   }
 }

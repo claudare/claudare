@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:fts/fts.dart';
@@ -31,9 +32,10 @@ class NotesApp {
   NotesApp({
     required CqrsRuntime cqrsRuntime,
     required Fts fts,
+    required Logger logger,
     IdGenerator? idGenerator,
   }) : _idGenerator = idGenerator ?? IdGeneratorRandom(),
-       command = NoteCommands(cqrsRuntime) {
+       command = NoteCommands(cqrsRuntime, logger) {
     cqrsRuntime.eventRegistry
       ..add(const NoteContentUpdatedCodec())
       ..add(const NoteCreatedCodec())
@@ -61,18 +63,22 @@ class NotesApp {
 /// Writes note events through the runtime.
 class NoteCommands {
   final CqrsRuntime _runtime;
+  final Logger _logger;
   final Random _random = Random();
 
-  NoteCommands(this._runtime);
+  NoteCommands(this._runtime, this._logger);
 
   Future<void> createNote(String noteId) =>
-      _runtime.execute(CreateNote(noteId: noteId));
+      _runtime.execute(CreateNote(noteId: noteId, logger: _logger));
 
-  Future<void> updateNoteTitle(String noteId, String value) =>
-      _runtime.execute(UpdateNoteTitle(noteId: noteId, fullValue: value));
+  Future<void> updateNoteTitle(String noteId, String value) => _runtime.execute(
+    UpdateNoteTitle(noteId: noteId, fullValue: value, logger: _logger),
+  );
 
   Future<void> updateNoteContent(String noteId, CrdtTextChange change) =>
-      _runtime.execute(UpdateNoteContent(noteId: noteId, change: change));
+      _runtime.execute(
+        UpdateNoteContent(noteId: noteId, change: change, logger: _logger),
+      );
 
   Future<void> trashNote(String noteId) =>
       _runtime.execute(TrashNote(noteId: noteId));

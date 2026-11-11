@@ -1,4 +1,3 @@
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -8,7 +7,7 @@ import 'package:id_generator/id_generator.dart';
 
 /// Test runtime with event seeding support.
 ///
-/// Defaults to memory stores, sequential IDs, a noop logger, and zero timestamps.
+/// Defaults to memory stores, sequential IDs, and zero timestamps.
 final class CqrsTestRuntime extends CqrsRuntime {
   static const _testActor = 'test-actor';
 
@@ -16,26 +15,22 @@ final class CqrsTestRuntime extends CqrsRuntime {
 
   factory CqrsTestRuntime({
     EventStore? eventStore,
-    Logger? logger,
     TimeProvider? timeProvider,
     IdGenerator? idGenerator,
   }) => CqrsTestRuntime._(
     eventStore ?? MemoryEventStore(),
-    logger ?? const NoopLogger(),
     timeProvider ?? FakeTimeProviderStatic.zero(),
     idGenerator ?? IdGeneratorSequential(),
   );
 
   CqrsTestRuntime._(
     EventStore eventStore,
-    Logger logger,
     TimeProvider timeProvider,
     IdGenerator idGenerator,
   ) : _eventStore = eventStore,
       super(
         actor: _testActor,
         eventStore: eventStore,
-        logger: logger,
         timeProvider: timeProvider,
         idGenerator: idGenerator,
       );

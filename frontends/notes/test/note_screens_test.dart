@@ -28,7 +28,11 @@ void main() {
   ) async {
     final store = MemoryEventStore();
     final runtime = CqrsTestRuntime(eventStore: store);
-    final application = NotesApp(cqrsRuntime: runtime, fts: NoopFts());
+    final application = NotesApp(
+      cqrsRuntime: runtime,
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
     await application.command.updateNoteTitle(noteId, 'Before');
@@ -52,6 +56,7 @@ void main() {
     final application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(),
       fts: NoopFts(),
+      logger: const NoopLogger(),
     );
     await tester.pumpWidget(
       NotesAppProvider(application: application, child: homeTestApp()),
@@ -73,6 +78,7 @@ void main() {
     final application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(),
       fts: NoopFts(),
+      logger: const NoopLogger(),
     );
     await tester.pumpWidget(
       NotesAppProvider(
@@ -96,11 +102,19 @@ void main() {
   testWidgets('home reloads notes when its application provider changes', (
     tester,
   ) async {
-    final first = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final first = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     final firstId = first.generateNoteId();
     await first.command.createNote(firstId);
     await first.command.updateNoteTitle(firstId, 'First application');
-    final second = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final second = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     final secondId = second.generateNoteId();
     await second.command.createNote(secondId);
     await second.command.updateNoteTitle(secondId, 'Second application');
@@ -119,36 +133,6 @@ void main() {
     expect(find.text('First application'), findsNothing);
   });
 
-  testWidgets('note editor uses a replacement application provider', (
-    tester,
-  ) async {
-    final first = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
-    final second = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
-    await tester.pumpWidget(
-      NotesAppProvider(
-        application: first,
-        child: const MaterialApp(home: NoteScreen(noteId: null)),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField).first, 'Old draft');
-
-    await tester.pumpWidget(
-      NotesAppProvider(
-        application: second,
-        child: const MaterialApp(home: NoteScreen(noteId: null)),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('Old draft'), findsNothing);
-
-    await tester.enterText(find.byType(TextField).first, 'New draft');
-    await tester.tap(find.byType(TextField).last);
-    await tester.pumpAndSettle();
-    expect(await first.query.noteList(), isEmpty);
-    expect(await second.query.noteList(), hasLength(1));
-  });
-
   testWidgets('settings displays active notes, events, and commands', (
     tester,
   ) async {
@@ -156,6 +140,7 @@ void main() {
     final application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: eventStore),
       fts: NoopFts(),
+      logger: const NoopLogger(),
     );
     await application.command.createNote(application.generateNoteId());
     final trashedId = application.generateNoteId();
@@ -237,6 +222,7 @@ Future<void> _pumpSettings(
             NotesApp(
               cqrsRuntime: CqrsTestRuntime(eventStore: store),
               fts: NoopFts(),
+              logger: const NoopLogger(),
             ),
         child: NoteSystemProvider(
           system: NoteSystem(

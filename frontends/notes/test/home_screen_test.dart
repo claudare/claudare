@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,7 +15,11 @@ void main() {
   testWidgets('Notes and Trash remain separate when switching and restoring', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     final active = app.generateNoteId();
     final trashed = app.generateNoteId();
     await app.command.createNote(active);
@@ -63,6 +68,7 @@ void main() {
       final app = NotesApp(
         cqrsRuntime: CqrsTestRuntime(timeProvider: clock),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       );
       final first = app.generateNoteId();
       final second = app.generateNoteId();

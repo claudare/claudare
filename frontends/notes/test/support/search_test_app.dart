@@ -18,6 +18,7 @@ class SearchTestApp {
         ? _LoadingRuntime(store as ProjectionLoadingStore)
         : CqrsTestRuntime(eventStore: store),
     fts: fts,
+    logger: const NoopLogger(),
   );
   late final Future<void> projectionsReady = application.startProjections();
 
@@ -65,7 +66,6 @@ class _LoadingRuntime extends CqrsRuntime {
     : super(
         eventStore: store,
         actor: 'test-actor',
-        logger: const NoopLogger(),
         idGenerator: IdGeneratorSequential(),
         timeProvider: FakeTimeProviderStatic.zero(),
       );

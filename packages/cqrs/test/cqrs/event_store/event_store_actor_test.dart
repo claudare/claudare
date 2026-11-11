@@ -3,7 +3,6 @@ import 'package:id_generator/id_generator.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -233,7 +232,6 @@ CqrsRuntime _runtime(EventStore store, String actor) => CqrsRuntime(
   idGenerator: IdGeneratorSequential(),
   eventStore: store,
   actor: actor,
-  logger: const NoopLogger(),
   timeProvider: FakeTimeProviderStatic.zero(),
 )..eventRegistry.add(const _StringCodec());
 

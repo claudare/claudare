@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:fts/fts.dart';
@@ -12,6 +13,7 @@ void main() {
       final app = NotesApp(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       );
       final id = app.generateNoteId();
       await app.command.createNote(id);
@@ -39,7 +41,11 @@ void main() {
   );
 
   test('catchup rejects note states that were not tracked', () async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     final state = await app.query.note('missing');
 
     await expectLater(app.query.catchupNote(state), throwsArgumentError);

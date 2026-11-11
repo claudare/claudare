@@ -2,7 +2,6 @@ import 'package:id_generator/id_generator.dart';
 
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -103,7 +102,6 @@ CommandExecutor _executor(MemoryEventStore database, {EventStore? eventStore}) {
     streamReader: LogPlayer(eventStore ?? database).streamReader,
     timeProvider: FakeTimeProviderStatic.unixMilliseconds(0),
     eventRegistry: registry,
-    logger: const NoopLogger(),
   );
 }
 

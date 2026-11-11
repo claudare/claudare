@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -66,7 +67,11 @@ void main() {
   testWidgets('resizing preserves category, order, and scroll position', (
     tester,
   ) async {
-    final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+    final app = NotesApp(
+      cqrsRuntime: CqrsTestRuntime(),
+      fts: NoopFts(),
+      logger: const NoopLogger(),
+    );
     for (var i = 0; i < 40; i++) {
       final id = app.generateNoteId();
       await app.command.createNote(id);
@@ -152,7 +157,11 @@ Future<void> _pumpHome(
     NotesAppProvider(
       application:
           application ??
-          NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts()),
+          NotesApp(
+            cqrsRuntime: CqrsTestRuntime(),
+            fts: NoopFts(),
+            logger: const NoopLogger(),
+          ),
       child: homeTestApp(),
     ),
   );

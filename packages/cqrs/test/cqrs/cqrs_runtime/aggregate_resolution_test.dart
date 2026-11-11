@@ -3,7 +3,6 @@ import 'package:id_generator/id_generator.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -22,7 +21,6 @@ void main() {
       idGenerator: IdGeneratorSequential(),
       actor: 'test-actor',
       eventStore: eventStore,
-      logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
     );
     runtime.eventRegistry.add(const _TestEventCodec());
@@ -87,23 +85,7 @@ void main() {
     expect(snapshot.sequence, 3);
   });
 
-  test('resolution diagnostics omit event payloads', () async {
-    await _appendAccountEvents(eventStore);
-    final logger = RecordingLogger();
-    final observed = CqrsRuntime(
-      idGenerator: IdGeneratorSequential(),
-      actor: 'test-actor',
-      eventStore: eventStore,
-      logger: logger,
-      timeProvider: FakeTimeProviderStatic.zero(),
-    );
-    observed.eventRegistry.add(const _TestEventCodec());
-
-    await observed.resolve(_envelopeAggregate('account/one'));
-
-    final messages = logger.entries.map((entry) => entry.message).join(' ');
-    expect(messages, isNot(contains('opened')));
-    expect(messages, isNot(contains('deposit')));
+  test('event envelope text omits event payloads', () {
     expect(
       EventEnvelope(
         actor: 'a',
@@ -122,7 +104,6 @@ void main() {
       idGenerator: IdGeneratorSequential(),
       actor: 'test-actor',
       eventStore: store,
-      logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic.zero(),
     );
     observed.eventRegistry.add(const _TestEventCodec());

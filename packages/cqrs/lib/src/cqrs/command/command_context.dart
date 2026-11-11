@@ -1,4 +1,3 @@
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency.dart';
 import 'package:cqrs/src/cqrs/command/command_dependency_builder.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
@@ -25,7 +24,6 @@ class CommandContext implements CommandContextApi {
   final EventRegistry _eventRegistry;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
-  final Logger _logger;
   final DateTime _occuredAt;
   final List<EventAppend> _events = [];
   final Map<String, _CommandStreamState> _streams = {};
@@ -39,12 +37,8 @@ class CommandContext implements CommandContextApi {
     required this._eventRegistry,
     required TimeProvider timeProvider,
     required this._idGenerator,
-    required this._logger,
   }) : _timeProvider = timeProvider,
        _occuredAt = timeProvider.now();
-
-  @override
-  Logger get logger => _logger;
 
   CommandDependency get dependency => _dependency.finish();
 

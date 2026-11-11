@@ -96,10 +96,13 @@ class NoteBootstrap {
       idGenerator: IdGeneratorRandom(),
       eventStore: system.eventStore,
       actor: actor,
-      logger: logger,
       timeProvider: timeProvider,
     );
-    final application = NotesApp(cqrsRuntime: runtime, fts: MemoryFts());
+    final application = NotesApp(
+      cqrsRuntime: runtime,
+      fts: MemoryFts(),
+      logger: logger,
+    );
     _application = application;
     application.startProjections().ignore();
     unawaited(_observeProjections(application));

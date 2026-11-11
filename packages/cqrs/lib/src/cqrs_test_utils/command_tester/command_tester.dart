@@ -1,4 +1,3 @@
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/event/event_append.dart';
@@ -29,7 +28,6 @@ class CommandTester {
       actor: _testActor,
       eventStore: _eventStore,
       timeProvider: timeProvider,
-      logger: const NoopLogger(),
       idGenerator: idGenerator ?? IdGeneratorSequential(),
     );
   }

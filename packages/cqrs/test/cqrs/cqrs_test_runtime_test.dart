@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
@@ -22,12 +21,11 @@ void main() {
     expect(events.single.occuredAt, DateTime.utc(1970));
   });
 
-  test('uses an injected store, logger, and time provider', () async {
+  test('uses an injected store and time provider', () async {
     final database = MemoryEventStore();
     final store = database;
     final runtime = CqrsTestRuntime(
       eventStore: store,
-      logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic(seededAt),
     );
     runtime.eventRegistry.add(const _ValueEventCodec());

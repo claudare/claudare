@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,7 @@ void main() {
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
       fts: NoopFts(),
       idGenerator: IdGeneratorSequential(),
+      logger: const NoopLogger(),
     );
   });
 

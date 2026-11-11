@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
@@ -17,7 +16,6 @@ import 'package:time_provider/time_provider.dart';
 class CqrsRuntime {
   final EventStore _eventStore;
   final String _actor;
-  final Logger _logger;
   final TimeProvider _timeProvider;
   final IdGenerator _idGenerator;
   final EventRegistry _eventRegistry = EventRegistry();
@@ -28,7 +26,6 @@ class CqrsRuntime {
   CqrsRuntime({
     required this._eventStore,
     required this._actor,
-    required this._logger,
     required this._timeProvider,
     required this._idGenerator,
   }) : _logPlayer = LogPlayer(_eventStore) {
@@ -39,7 +36,6 @@ class CqrsRuntime {
       timeProvider: _timeProvider,
       idGenerator: _idGenerator,
       eventRegistry: _eventRegistry,
-      logger: _logger,
     );
   }
 
@@ -86,7 +82,6 @@ class CqrsRuntime {
     TState extends AggregateState<TEvent>
   >(Aggregate<TEvent, TState> aggregate) async {
     final startingSequence = aggregate.sequence;
-    var applyCount = 0;
 
     final stream = _logPlayer.logReader(
       aggregate.filter,
@@ -127,18 +122,8 @@ class CqrsRuntime {
         logPosition: logEvent.position,
       );
       aggregate.state.apply(envelope);
-      _logger.debug(
-        '$aggregate: applied event at position ${logEvent.position}',
-      );
       aggregate.sequence = logEvent.position;
-      applyCount++;
     }
-
-    _logger.debug(
-      'resolved $aggregate: '
-      'startingSequence=$startingSequence, '
-      'finalSequence=${aggregate.sequence}, applyCount=$applyCount',
-    );
 
     return aggregate;
   }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
@@ -20,6 +21,7 @@ void main() {
     application = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
       fts: fts,
+      logger: const NoopLogger(),
     );
     addTearDown(() async {
       final failure = projectionFailure;

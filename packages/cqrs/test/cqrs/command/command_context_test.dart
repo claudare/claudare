@@ -3,7 +3,6 @@ import 'package:id_generator/id_generator.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs/command/command_changes.dart';
 import 'package:cqrs/src/cqrs/command/command_context.dart';
@@ -28,7 +27,6 @@ void main() {
         streamReader: LogPlayer(store).streamReader,
         eventRegistry: eventRegistry ?? registry,
         timeProvider: timeProvider,
-        logger: const NoopLogger(),
       );
 
   setUp(() async {

@@ -29,10 +29,10 @@ Future<void> addRemoteTitleUpdate(
       idGenerator: IdGeneratorSequential(),
       eventStore: remoteStore,
       actor: 'remote',
-      logger: const NoopLogger(),
       timeProvider: FakeTimeProviderStatic(DateTime.utc(2026)),
     ),
     fts: NoopFts(),
+    logger: const NoopLogger(),
   );
   await remote.command.updateNoteTitle(noteId, title);
   final command = await remoteStore.getStoredCommand(

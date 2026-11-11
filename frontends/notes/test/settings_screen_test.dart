@@ -527,10 +527,10 @@ NotesApp _application(NoteSystem system, {String actor = 'local'}) => NotesApp(
     idGenerator: IdGeneratorSequential(),
     eventStore: system.eventStore,
     actor: actor,
-    logger: const NoopLogger(),
     timeProvider: FakeTimeProviderStatic.zero(),
   ),
   fts: NoopFts(),
+  logger: const NoopLogger(),
 );
 
 Widget _screen(

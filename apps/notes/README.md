@@ -2,7 +2,6 @@
 
 Notes behavior in a Dart application without its Flutter interface.
 It supports creating, editing, trashing, restoring, and querying notes.
-Supply a CQRS runtime to connect it to event storage.
 
 Start projections before searching and stop them when finished:
 

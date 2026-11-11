@@ -1,3 +1,4 @@
+import 'package:claudare_logging/claudare_logging.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,6 +12,7 @@ void main() {
     final app = NotesApp(
       cqrsRuntime: CqrsTestRuntime(eventStore: store),
       fts: NoopFts(),
+      logger: const NoopLogger(),
     );
     final id = app.generateNoteId();
     await app.command.createNote(id);
@@ -33,7 +35,11 @@ void main() {
   test(
     'refresh merges persisted content into the retained local draft',
     () async {
-      final app = NotesApp(cqrsRuntime: CqrsTestRuntime(), fts: NoopFts());
+      final app = NotesApp(
+        cqrsRuntime: CqrsTestRuntime(),
+        fts: NoopFts(),
+        logger: const NoopLogger(),
+      );
       final id = app.generateNoteId();
       await app.command.createNote(id);
       final controller = NoteController(app, noteId: id);
@@ -69,6 +75,7 @@ void main() {
       final app = NotesApp(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       );
       final id = app.generateNoteId();
       await app.command.createNote(id);
@@ -98,6 +105,7 @@ void main() {
       final app = NotesApp(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       );
       final id = app.generateNoteId();
       await app.command.createNote(id);
@@ -134,6 +142,7 @@ void main() {
       final app = NotesApp(
         cqrsRuntime: CqrsTestRuntime(eventStore: store),
         fts: NoopFts(),
+        logger: const NoopLogger(),
       );
       final id = app.generateNoteId();
       await app.command.createNote(id);
