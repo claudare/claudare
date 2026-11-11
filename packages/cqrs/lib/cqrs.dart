@@ -33,7 +33,7 @@ export 'src/cqrs/aggregate.dart';
 export 'src/cqrs/snapshot.dart';
 
 // projection
-export 'src/cqrs/projection2.dart';
+export 'src/cqrs/projection.dart';
 
 // stream route
 export 'src/cqrs/log_filter.dart';

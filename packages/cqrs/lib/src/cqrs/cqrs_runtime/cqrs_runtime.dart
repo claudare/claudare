@@ -9,7 +9,7 @@ import 'package:cqrs/src/cqrs/cqrs_runtime/stream_deletion.dart';
 import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
-import 'package:cqrs/src/cqrs/projection2.dart';
+import 'package:cqrs/src/cqrs/projection.dart';
 import 'package:id_generator/id_generator.dart';
 import 'package:time_provider/time_provider.dart';
 
