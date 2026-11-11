@@ -69,6 +69,16 @@ class CqrsRuntime {
     );
   }
 
+  Future<TModel> resolveProjection<TModel extends Object>(
+    Projection<TModel, Object> projection,
+  ) {
+    final resolver = ProjectionResolver(
+      logPlayer: _logPlayer,
+      eventRegistry: _eventRegistry,
+    );
+    return resolver.resolve(projection);
+  }
+
   /// Catches up the aggregate to the latest version.
   /// Returns the same [Aggregate] that was passed in.
   Future<Aggregate<TEvent, TState>> resolve<
