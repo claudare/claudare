@@ -218,7 +218,7 @@ void main() {
       await write('one', 'Content');
       await done;
 
-      await application.query.searchReady;
+      await expectLater(application.query.searchReady, throwsA(same(error)));
     },
   );
 }

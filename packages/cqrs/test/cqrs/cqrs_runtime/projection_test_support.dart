@@ -71,8 +71,6 @@ class ControlledMemoryEventStore extends MemoryEventStore {
 
   ControlledMemoryEventStore() : super(eventFetchPageSize: 1) {
     _changes = StreamController<EventChange>.broadcast(
-      // TODO: sync could be sus
-      sync: true,
       onListen: subscriptions.record,
       onCancel: cancellations.record,
     );
@@ -86,6 +84,8 @@ class ControlledMemoryEventStore extends MemoryEventStore {
   Stream<EventChange> get eventChanges => _changes.stream;
 
   bool get hasChangeListener => _changes.hasListener;
+
+  void pauseNotifications() => _forwarding.pause();
 
   void notify(String path) => _changes.add(EventChange(stream: path));
 

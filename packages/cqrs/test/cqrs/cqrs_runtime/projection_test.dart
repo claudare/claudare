@@ -56,7 +56,7 @@ void main() {
       final live = runtime.liveProjection(_Projection<ProjectionEvent>());
       addTearDown(live.stop);
 
-      expect(_values(await live.start()), ['existing']);
+      expect(_values(await live.latest()), ['existing']);
       final updated = live.updates.firstWhere(
         (model) => model.events.length == 2,
       );
@@ -196,7 +196,7 @@ void main() {
   });
 
   group('LiveProjection', () {
-    test('loads only after an explicit start', () async {
+    test('loads only when latest is first requested', () async {
       final projection = _Projection<ProjectionEvent>();
       final live = create(projection);
       final received = <_Model<ProjectionEvent>>[];
@@ -207,18 +207,18 @@ void main() {
       expect(live.value, isNull);
       expect(received, isEmpty);
 
-      expect(await live.start(), same(projection.model));
+      expect(await live.latest(), same(projection.model));
       expect(projection.loaded, isTrue);
       expect(live.value, same(projection.model));
     });
 
-    test('repeated starts return the same readiness future', () async {
+    test('concurrent latest calls share replay', () async {
       final live = create(_Projection<ProjectionEvent>());
 
-      expect(live.start(), same(live.ready));
-      expect(live.start(), same(live.ready));
-      await live.ready;
-      expect(live.start(), same(live.ready));
+      final first = live.latest();
+      final second = live.latest();
+      expect(second, same(first));
+      expect(await second, same(await first));
     });
 
     test('publishes the initial model only after catch-up', () async {
@@ -226,12 +226,123 @@ void main() {
       final live = create(_Projection<ProjectionEvent>());
       final snapshots = live.updates.map(_values).toList();
 
-      await live.start();
+      await live.latest();
       await live.stop();
 
       expect(await snapshots, [
         ['existing'],
       ]);
+    });
+
+    test('latest after a write waits for its asynchronous handler', () async {
+      final projection = _Projection<ProjectionEvent>();
+      final live = create(projection);
+      final model = await live.latest();
+      final blocked = gate();
+      projection.beforeApply = blocked.wait;
+
+      await appendProjectionEvent(store, 'new');
+      var completed = false;
+      final pending = live.latest().then((value) {
+        completed = true;
+        return value;
+      });
+      await blocked.entered.future;
+      expect(completed, isFalse);
+      blocked.release();
+
+      expect(await pending, same(model));
+      expect(_values(model), ['new']);
+    });
+
+    test('latest reads committed events before notifications arrive', () async {
+      final live = create(_Projection<ProjectionEvent>());
+      final model = await live.latest();
+      store.pauseNotifications();
+
+      await appendProjectionEvent(store, 'new');
+      expect(model.events, isEmpty);
+
+      expect(_values(await live.latest()), ['new']);
+    });
+
+    test('latest during a read includes writes made after that read', () async {
+      final live = create(_Projection<ProjectionEvent>());
+      await live.latest();
+      store.pauseNotifications();
+      final blocked = gate();
+      store.afterRead = (page) async {
+        if (page.data.isEmpty) await blocked.wait();
+      };
+      final first = live.latest();
+      await blocked.entered.future;
+
+      await appendProjectionEvent(store, 'new');
+      final second = live.latest();
+      blocked.release();
+
+      expect(_values(await second), ['new']);
+      expect(await first, same(await second));
+    });
+
+    test('latest includes changes notified during ongoing replay', () async {
+      final projection = _Projection<ProjectionEvent>();
+      final live = create(projection);
+      await live.latest();
+      final first = gate();
+      final second = gate();
+      projection.beforeApply = first.wait;
+      await appendProjectionEvent(store, 'first');
+      await first.entered.future;
+      var completed = false;
+      final pending = live.latest().then((model) {
+        completed = true;
+        return model;
+      });
+
+      await appendProjectionEvent(store, 'second');
+      projection.beforeApply = second.wait;
+      first.release();
+      await second.entered.future;
+      expect(completed, isFalse);
+      second.release();
+
+      expect(_values(await pending), ['first', 'second']);
+    });
+
+    test('latest waits for permanent deletion handling', () async {
+      final projection = _Projection<ProjectionEvent>();
+      final live = create(projection);
+      await live.latest();
+      final blocked = gate();
+      projection.beforeDeletion = blocked.wait;
+      await appendProjectionEvent(
+        store,
+        '',
+        encodedEvent: EncodedEvent.streamDeleted(),
+      );
+      var completed = false;
+      final pending = live.latest().then((model) {
+        completed = true;
+        return model;
+      });
+      await blocked.entered.future;
+      expect(completed, isFalse);
+      blocked.release();
+
+      expect((await pending).deletions, hasLength(1));
+    });
+
+    test('latest completes after replaying erased records', () async {
+      final live = create(_Projection<ProjectionEvent>());
+      await live.latest();
+      await appendProjectionEvent(
+        store,
+        '',
+        encodedEvent: EncodedEvent.eventErased(),
+      );
+
+      expect((await live.latest()).events, isEmpty);
     });
 
     test('resumes live replay after the loaded checkpoint', () async {
@@ -245,7 +356,7 @@ void main() {
         ),
       );
 
-      final model = await live.start();
+      final model = await live.latest();
 
       expect(_values(model), ['remaining']);
       expect(model.events.single.logPosition, 2);
@@ -256,7 +367,7 @@ void main() {
       final live = create(projection);
       final blocked = gate();
       projection.beforeLoad = blocked.wait;
-      final ready = live.start();
+      final ready = live.latest();
       await blocked.entered.future;
 
       expect(live.value, isNull);
@@ -274,7 +385,7 @@ void main() {
       final second = gate();
       projection.beforeApply = first.wait;
       var ready = false;
-      final completion = live.start().then((_) => ready = true);
+      final completion = live.latest().then((_) => ready = true);
       await first.entered.future;
 
       await appendProjectionEvent(store, 'second');
@@ -292,7 +403,7 @@ void main() {
     test('publishes a live update after the handler completes', () async {
       final projection = _Projection<ProjectionEvent>();
       final live = create(projection);
-      await live.start();
+      await live.latest();
       final blocked = gate();
       projection.beforeApply = blocked.wait;
       final values = <List<String>>[];
@@ -317,7 +428,7 @@ void main() {
 
     test('replays the current model to a late listener', () async {
       final live = create(_Projection<ProjectionEvent>());
-      await live.start();
+      await live.latest();
       final updated = live.updates.firstWhere(
         (model) => model.events.isNotEmpty,
       );
@@ -332,7 +443,7 @@ void main() {
 
     test('canceling one listener leaves other listeners active', () async {
       final live = create(_Projection<ProjectionEvent>());
-      await live.start();
+      await live.latest();
       final first = live.updates.listen((_) {});
       final second = live.updates.firstWhere(
         (model) => model.events.isNotEmpty,
@@ -347,7 +458,7 @@ void main() {
     test('keeps applying events without update listeners', () async {
       final projection = _Projection<ProjectionEvent>();
       final live = create(projection);
-      await live.start();
+      await live.latest();
       await live.updates.first;
       final applied = Completer<void>();
       projection.afterApply = applied.complete;
@@ -361,7 +472,7 @@ void main() {
     test('publishes deletions after the deletion handler completes', () async {
       final projection = _Projection<ProjectionEvent>();
       final live = create(projection);
-      await live.start();
+      await live.latest();
       final blocked = gate();
       projection.beforeDeletion = blocked.wait;
       final counts = <int>[];
@@ -388,7 +499,7 @@ void main() {
 
     test('does not publish an update for an erased event', () async {
       final live = create(_Projection<ProjectionEvent>());
-      await live.start();
+      await live.latest();
       final values = live.updates.map(_values).toList();
       final updated = live.updates.firstWhere(
         (model) => model.events.isNotEmpty,
@@ -409,7 +520,7 @@ void main() {
       ]);
     });
 
-    test('delivers load failures through ready, updates, and done', () async {
+    test('delivers load failures through latest, updates, and done', () async {
       final error = Exception('load');
       final trace = StackTrace.current;
       final live = create(
@@ -422,14 +533,14 @@ void main() {
         live.updates,
         emitsInOrder([emitsError(same(error)), emitsDone]),
       );
-      final ready = _expectFailure(live.ready, error, trace);
+      final ready = _expectFailure(live.latest(), error, trace);
       final done = _expectFailure(live.done, error, trace);
 
-      live.start().ignore();
+      live.latest().ignore();
       await Future.wait([updates, ready, done]);
 
       expect(live.value, isNull);
-      await expectLater(live.ready, throwsA(same(error)));
+      await expectLater(live.latest(), throwsA(same(error)));
     });
 
     test('delivers an initial handler failure before readiness', () async {
@@ -444,33 +555,30 @@ void main() {
         emitsInOrder([emitsError(same(error)), emitsDone]),
       );
 
-      await expectLater(live.start(), throwsA(same(error)));
+      await expectLater(live.latest(), throwsA(same(error)));
       await updates;
       await expectLater(live.done, throwsA(same(error)));
       expect(live.value, isNull);
     });
 
-    test(
-      'delivers a live handler failure without failing completed readiness',
-      () async {
-        final error = Exception('apply');
-        final trace = StackTrace.current;
-        final projection = _Projection<ProjectionEvent>();
-        final live = create(projection, failure: same(error));
-        final model = await live.start();
-        projection.beforeApply = () => Error.throwWithStackTrace(error, trace);
-        final updates = expectLater(
-          live.updates,
-          emitsInOrder([same(model), emitsError(same(error)), emitsDone]),
-        );
-        final done = _expectFailure(live.done, error, trace);
+    test('latest propagates a live handler failure', () async {
+      final error = Exception('apply');
+      final trace = StackTrace.current;
+      final projection = _Projection<ProjectionEvent>();
+      final live = create(projection, failure: same(error));
+      final model = await live.latest();
+      projection.beforeApply = () => Error.throwWithStackTrace(error, trace);
+      final updates = expectLater(
+        live.updates,
+        emitsInOrder([same(model), emitsError(same(error)), emitsDone]),
+      );
+      final done = _expectFailure(live.done, error, trace);
 
-        await appendProjectionEvent(store, 'bad');
-        await Future.wait([updates, done]);
+      await appendProjectionEvent(store, 'bad');
+      await Future.wait([updates, done]);
 
-        expect(await live.ready, same(model));
-      },
-    );
+      await _expectFailure(live.latest(), error, trace);
+    });
 
     test(
       'delivers a deletion failure without publishing a successful update',
@@ -478,7 +586,7 @@ void main() {
         final error = Exception('delete');
         final projection = _Projection<ProjectionEvent>();
         final live = create(projection, failure: same(error));
-        final model = await live.start();
+        final model = await live.latest();
         projection.beforeDeletion = () => throw error;
         final updates = expectLater(
           live.updates,
@@ -501,7 +609,7 @@ void main() {
         await appendProjectionEvent(store, 'wrong type');
         final live = create(_Projection<String>(), failure: isA<StateError>());
 
-        await expectLater(live.start(), throwsStateError);
+        await expectLater(live.latest(), throwsStateError);
         await expectLater(live.done, throwsStateError);
       },
     );
@@ -510,7 +618,7 @@ void main() {
       final error = Exception('source');
       final trace = StackTrace.current;
       final live = create(_Projection<ProjectionEvent>(), failure: same(error));
-      final model = await live.start();
+      final model = await live.latest();
       final updates = expectLater(
         live.updates,
         emitsInOrder([same(model), emitsError(same(error)), emitsDone]),
@@ -528,7 +636,7 @@ void main() {
         _Projection<ProjectionEvent>(beforeLoad: () => throw error),
         failure: same(error),
       );
-      await expectLater(live.start(), throwsA(same(error)));
+      await expectLater(live.latest(), throwsA(same(error)));
       await expectLater(live.done, throwsA(same(error)));
 
       await expectLater(
@@ -537,17 +645,16 @@ void main() {
       );
     });
 
-    test('stopping before start fails readiness without loading', () async {
+    test('stopping before latest prevents loading', () async {
       final projection = _Projection<ProjectionEvent>();
       final live = create(projection);
 
       await live.stop();
 
-      await expectLater(live.ready, throwsA(isA<ProjectionStoppedException>()));
       await expectLater(live.updates, emitsDone);
       await live.done;
       expect(projection.loaded, isFalse);
-      expect(live.start, throwsStateError);
+      expect(live.latest, throwsStateError);
     });
 
     test('stopping during loading waits for loading to finish', () async {
@@ -555,7 +662,8 @@ void main() {
       final live = create(projection);
       final blocked = gate();
       projection.beforeLoad = blocked.wait;
-      live.start().ignore();
+      final pending = live.latest();
+      pending.ignore();
       await blocked.entered.future;
       var stopped = false;
 
@@ -565,7 +673,7 @@ void main() {
       blocked.release();
       await stopping;
 
-      await expectLater(live.ready, throwsA(isA<ProjectionStoppedException>()));
+      await expectLater(pending, throwsA(isA<ProjectionStoppedException>()));
       expect(live.value, isNull);
     });
 
@@ -574,11 +682,15 @@ void main() {
       () async {
         final projection = _Projection<ProjectionEvent>();
         final live = create(projection);
-        await live.start();
+        final model = await live.latest();
         final blocked = gate();
         projection.beforeApply = blocked.wait;
         await appendProjectionEvent(store, 'active');
         await blocked.entered.future;
+        final pending = expectLater(
+          live.latest(),
+          throwsA(isA<ProjectionStoppedException>()),
+        );
         await appendProjectionEvent(store, 'queued');
         var stopped = false;
 
@@ -587,9 +699,11 @@ void main() {
         expect(stopped, isFalse);
         blocked.release();
         await stopping;
+        await pending;
 
-        expect(_values(live.value!), ['active']);
-        expect(live.start, throwsStateError);
+        expect(_values(model), ['active']);
+        expect(live.value, isNull);
+        expect(live.latest, throwsStateError);
       },
     );
 
@@ -600,35 +714,34 @@ void main() {
       final blocked = gate();
       projection.beforeApply = blocked.wait;
       final updates = live.updates.toList();
-      live.start().ignore();
+      final pending = live.latest();
+      pending.ignore();
       await blocked.entered.future;
 
       final stopping = live.stop();
       blocked.release();
       await stopping;
 
-      await expectLater(live.ready, throwsA(isA<ProjectionStoppedException>()));
+      await expectLater(pending, throwsA(isA<ProjectionStoppedException>()));
       expect(live.value, isNull);
       expect(await updates, isEmpty);
     });
 
     test('repeated stops share cleanup', () async {
       final live = create(_Projection<ProjectionEvent>());
-      await live.start();
+      await live.latest();
 
       final stopping = live.stop();
       expect(live.stop(), same(stopping));
       await stopping;
       await live.done;
-      await expectLater(
-        live.updates,
-        emitsInOrder([same(live.value), emitsDone]),
-      );
+      expect(live.value, isNull);
+      await expectLater(live.updates, emitsDone);
     });
 
     test('a paused update listener does not prevent stopping', () async {
       final live = create(_Projection<ProjectionEvent>());
-      await live.start();
+      await live.latest();
       final subscription = live.updates.listen((_) {});
       addTearDown(subscription.cancel);
       subscription.pause();
@@ -639,7 +752,7 @@ void main() {
 
     test('source closure closes updates and completes done', () async {
       final live = create(_Projection<ProjectionEvent>());
-      final model = await live.start();
+      final model = await live.latest();
       final updates = expectLater(
         live.updates,
         emitsInOrder([same(model), emitsDone]),
@@ -649,6 +762,10 @@ void main() {
 
       await live.done;
       await updates;
+      await expectLater(
+        live.latest(),
+        throwsA(isA<ProjectionStoppedException>()),
+      );
     });
 
     test('source closure before catch-up fails readiness', () async {
@@ -658,7 +775,7 @@ void main() {
       );
 
       await expectLater(
-        live.start(),
+        live.latest(),
         throwsA(isA<ProjectionStoppedException>()),
       );
       await live.done;
@@ -734,9 +851,5 @@ class _ClosedLogPlayer extends LogPlayer {
   _ClosedLogPlayer(super.store);
 
   @override
-  Stream<StoredEvent> followLog(
-    LogFilter filter, {
-    int fromPosition = 0,
-    void Function()? caughtUp,
-  }) => const Stream.empty();
+  Stream<void> subscribe(LogFilter filter) => const Stream.empty();
 }

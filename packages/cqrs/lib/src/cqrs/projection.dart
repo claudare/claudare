@@ -74,12 +74,12 @@ class ProjectionResolver {
 /// data. The application owns shared projections; removing a widget cancels its
 /// subscription without stopping the projection.
 ///
-/// Application ownership using the proposed runtime factory:
+/// Application ownership using the runtime factory:
 /// ```dart
 /// final live = runtime.liveProjection(NoteProjection(noteId));
 ///
 /// // During application initialization.
-/// await live.start();
+/// await live.latest();
 ///
 /// // During application shutdown.
 /// await live.stop();
@@ -100,16 +100,18 @@ class LiveProjection<TModel extends Object, TEvent extends Object> {
   final Projection<TModel, TEvent> _projection;
   final LogPlayer _logPlayer;
   final EventRegistry _eventRegistry;
-  final _ready = Completer<TModel>();
+  Completer<TModel>? _latest;
+  bool _replayRequested = false;
   final _done = Completer<void>();
   final _listeners = <MultiStreamController<TModel>>{};
-  TModel? _value;
-  StreamIterator<StoredEvent>? _iterator;
-  Future<void>? _cancellation;
-  Future<void>? _stopping;
-  bool _started = false;
+  StreamSubscription<void>? _changes;
+  TModel? _model;
+  bool _ready = false;
+  int _position = -1;
   bool _stopped = false;
+  bool _ended = false;
   bool _finished = false;
+  Future<void>? _closing;
   Object? _failure;
   StackTrace? _failureTrace;
 
@@ -119,31 +121,23 @@ class LiveProjection<TModel extends Object, TEvent extends Object> {
     required this._logPlayer,
     required this._eventRegistry,
   }) {
-    // Consumers may observe failures through updates, ready, or done.
-    _ready.future.ignore();
+    // Consumers may observe failures through updates, latest, or done.
     _done.future.ignore();
   }
 
-  /// Completes with state after initial catch-up and all matching handlers finish,
-  /// including changes notified during replay. Repeated reads share one future.
-  ///
-  /// Fails on loading or handler failure, or with [ProjectionStoppedException]
-  /// if the run stops or the source closes before readiness.
-  Future<TModel> get ready => _ready.future;
-
   /// The ready state, or null until initial catch-up succeeds.
-  TModel? get value => _value;
+  /// Cleared when shutdown completes.
+  TModel? get value => _ready ? _model : null;
 
   /// A stable stream supporting multiple listeners.
   ///
-  /// Each listener receives the intial ready state. Updates to the value emit
-  /// updates.
+  /// Updates emit a value on every update, including the initial one.
   ///
   /// Loading and handler failures are delivered as stream errors. The stream
   /// closes after stopping, source closure, or failure. Canceling a listener
   /// does not stop the projection.
   late final Stream<TModel> updates = Stream<TModel>.multi((controller) {
-    final model = _value;
+    final model = value;
     if (model != null) controller.add(model);
     if (_finished) {
       final failure = _failure;
@@ -159,107 +153,128 @@ class LiveProjection<TModel extends Object, TEvent extends Object> {
   /// Fails with the run failure after cleanup if loading or a handler fails.
   Future<void> get done => _done.future;
 
-  /// Starts once and returns [ready]. Repeated calls return the same future.
-  /// Starting after [stop] throws [StateError].
-  Future<TModel> start() {
+  /// Starts lazily and checks the log before returning the latest model.
+  /// Concurrent calls share pending replay. Later writes can delay completion.
+  /// Throws [StateError] after [stop], and propagates loading or replay failures.
+  Future<TModel> latest() {
     if (_stopped) throw StateError('LiveProjection already stopped');
-    if (!_started) {
-      _started = true;
-      unawaited(_run());
+    if (_ended) {
+      return Future.error(
+        _failure ?? const ProjectionStoppedException(),
+        _failureTrace,
+      );
     }
-    return ready;
+    return _requestReplay();
   }
 
-  /// Stops replay and waits for cleanup.
+  Future<TModel> _requestReplay() {
+    _replayRequested = true;
+    final pending = _latest;
+    if (pending != null) return pending.future;
+    final completion = _latest = Completer<TModel>();
+    completion.future.ignore();
+    unawaited(_run());
+    return completion.future;
+  }
+
+  /// Stops replay and waits for active loading or handlers and cleanup.
   /// Repeated calls share cleanup and preserve any run failure.
   Future<void> stop() {
     _stopped = true;
-    return _stopping ??= _stop();
+    _end();
+    return done;
   }
 
-  Future<void> _stop() async {
-    if (!_started) _finish();
-    try {
-      await _cancelIterator();
-    } finally {
-      await done;
-    }
-  }
-
-  Future<void> _cancelIterator() {
-    final iterator = _iterator;
-    if (iterator == null) return Future<void>.value();
-    return _cancellation ??= iterator.cancel();
+  void _end([Object? failure, StackTrace? trace]) {
+    _failure ??= failure;
+    _failureTrace ??= trace;
+    _ended = true;
+    if (_latest == null) unawaited(_close());
   }
 
   Future<void> _run() async {
-    Object? failure;
-    StackTrace? trace;
     try {
-      await _replay();
-    } catch (error, stackTrace) {
-      failure = error;
-      trace = stackTrace;
+      if (_model == null) {
+        _changes = _logPlayer
+            .subscribe(_projection.filter)
+            .listen(
+              (_) {
+                if (!_ended) _requestReplay();
+              },
+              onError: (Object error, StackTrace trace) => _end(error, trace),
+              onDone: _end,
+            );
+        final loaded = await _projection.load();
+        _model = loaded.model;
+        _position = loaded.logPosition;
+      }
+      while (!_ended && _replayRequested) {
+        _replayRequested = false;
+        await for (final event in _logPlayer.logReader(
+          _projection.filter,
+          fromPosition: _position + 1,
+        )) {
+          if (_ended) break;
+          final applied = await _applyLogEvent(
+            _projection,
+            _model!,
+            event,
+            _eventRegistry,
+          );
+          _position = event.position;
+          if (applied && !_ended && _ready) _publish();
+        }
+      }
+      if (!_ended) {
+        final completion = _latest!;
+        _latest = null;
+        if (!_ready) {
+          _ready = true;
+          _publish();
+        }
+        completion.complete(_model!);
+      }
+    } catch (error, trace) {
+      _end(error, trace);
     }
-    try {
-      await _cancelIterator();
-    } catch (error, stackTrace) {
-      failure ??= error;
-      trace ??= stackTrace;
-    }
-    _finish(failure, trace);
+    if (_ended) await _close();
   }
 
-  Future<void> _replay() async {
-    final loaded = await _projection.load();
-    if (_stopped) return;
-    final model = loaded.model;
-    final iterator = StreamIterator(
-      _logPlayer.followLog(
-        _projection.filter,
-        fromPosition: loaded.logPosition + 1,
-        caughtUp: () {
-          if (_stopped || _ready.isCompleted) return;
-          _value = model;
-          _ready.complete(model);
-          _publish(model);
-        },
-      ),
-    );
-    _iterator = iterator;
-    while (!_stopped && await iterator.moveNext()) {
-      if (_stopped) break;
-      final applied = await _applyLogEvent(
-        _projection,
-        model,
-        iterator.current,
-        _eventRegistry,
-      );
-      if (applied && !_stopped && _value != null) _publish(model);
-    }
-  }
+  Future<void> _close() => _closing ??= _finish();
 
-  void _publish(TModel model) {
+  void _publish() {
+    final model = value;
+    if (model == null) {
+      throw StateError('Attempted to publish without value');
+    }
+
     for (final listener in _listeners) {
       listener.add(model);
     }
   }
 
-  void _finish([Object? failure, StackTrace? trace]) {
-    _finished = true;
-    _failure = failure;
-    _failureTrace = trace;
-    if (!_ready.isCompleted) {
-      _ready.completeError(
-        failure ?? const ProjectionStoppedException(),
-        trace,
-      );
+  Future<void> _finish() async {
+    try {
+      await _changes?.cancel();
+    } catch (error, trace) {
+      _failure ??= error;
+      _failureTrace ??= trace;
     }
+    _finished = true;
+    final failure = _failure;
+    final trace = _failureTrace;
+    _latest?.completeError(
+      failure ?? const ProjectionStoppedException(),
+      trace,
+    );
+    _latest = null;
     for (final listener in _listeners) {
       if (failure != null) listener.addError(failure, trace);
-      listener.close();
+      unawaited(listener.close());
     }
     _listeners.clear();
+    _model = null;
+    _ready = false;
     if (failure == null) {
       _done.complete();
     } else {

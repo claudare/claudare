@@ -87,18 +87,13 @@ class _LoadingLogPlayer extends LogPlayer {
   _LoadingLogPlayer(this.store) : super(store);
 
   @override
-  Stream<StoredEvent> followLog(
+  Stream<StoredEvent> logReader(
     LogFilter filter, {
     int fromPosition = 0,
-    void Function()? caughtUp,
   }) async* {
     if (!store.loadingStarted.isCompleted) store.loadingStarted.complete();
     await store.loading.future;
-    yield* super.followLog(
-      filter,
-      fromPosition: fromPosition,
-      caughtUp: caughtUp,
-    );
+    yield* super.logReader(filter, fromPosition: fromPosition);
   }
 }
 

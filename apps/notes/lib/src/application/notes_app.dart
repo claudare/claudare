@@ -51,7 +51,7 @@ class NotesApp {
   String generateNoteId() => _idGenerator.generateId();
 
   /// Starts projections and completes after initial catch-up.
-  Future<void> startProjections() => _searchProjection.start();
+  Future<void> startProjections() => _searchProjection.latest();
 
   /// Completes when projections stop, or fails after a projection failure.
   Future<void> get projectionsDone => _searchProjection.done;
@@ -154,8 +154,8 @@ class NoteQueries {
     await _runtime.resolve(aggregate);
   }
 
-  /// Completes when search has caught up with the event log for the first time.
-  Future<void> get searchReady => _searchProjection.ready;
+  /// Waits for search to apply all notified changes.
+  Future<void> get searchReady => _searchProjection.latest();
 
   /// Notifies callers of note stream updates so they can choose when to query.
   Stream<void> noteListChanges() =>
@@ -178,7 +178,7 @@ class NoteQueries {
   }
 
   Future<List<NoteState>> noteSearch(String text) async {
-    final model = await _searchProjection.ready;
+    final model = await _searchProjection.latest();
     final ids = await model.search(text, resultCount: 20);
     final states = await Future.wait(ids.map((id) => note(id)));
 
