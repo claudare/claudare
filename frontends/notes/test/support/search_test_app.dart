@@ -13,10 +13,14 @@ import 'package:time_provider/time_provider.dart';
 class SearchTestApp {
   final MemoryEventStore store;
   final SearchTestFts fts = SearchTestFts();
+  late final _runtime = CqrsTestRuntime(eventStore: store);
+  late final CqrsRuntime _searchRuntime = switch (store) {
+    ProjectionLoadingStore store => _LoadingSearchRuntime(store),
+    _ => _runtime,
+  };
   late final NotesApp application = NotesApp(
-    cqrsRuntime: store is ProjectionLoadingStore
-        ? _LoadingRuntime(store as ProjectionLoadingStore)
-        : CqrsTestRuntime(eventStore: store),
+    cqrsRuntime: _runtime,
+    searchRuntime: _searchRuntime,
     fts: fts,
     logger: const NoopLogger(),
   );
@@ -59,10 +63,10 @@ class ProjectionLoadingStore extends MemoryEventStore {
   final loadingStarted = Completer<void>();
 }
 
-class _LoadingRuntime extends CqrsRuntime {
+class _LoadingSearchRuntime extends CqrsRuntime {
   final ProjectionLoadingStore store;
 
-  _LoadingRuntime(this.store)
+  _LoadingSearchRuntime(this.store)
     : super(
         eventStore: store,
         actor: 'test-actor',
@@ -74,11 +78,13 @@ class _LoadingRuntime extends CqrsRuntime {
   LiveProjection<TModel, TEvent> liveProjection<
     TModel extends Object,
     TEvent extends Object
-  >(Projection<TModel, TEvent> projection) => LiveProjection(
-    projection,
-    logPlayer: _LoadingLogPlayer(store),
-    eventRegistry: eventRegistry,
-  );
+  >(Projection<TModel, TEvent> projection) {
+    return LiveProjection(
+      projection,
+      logPlayer: _LoadingLogPlayer(store),
+      eventRegistry: eventRegistry,
+    );
+  }
 }
 
 class _LoadingLogPlayer extends LogPlayer {

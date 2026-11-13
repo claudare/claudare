@@ -106,8 +106,6 @@ class NoteBootstrap {
     _application = application;
     application.startProjections().ignore();
     unawaited(_observeProjections(application));
-    // preload the note list for speed and to reveal any schema-breaking changes
-    await application.query.noteList();
     _syncSystem = system;
     _syncActor = actor;
     if (_closing == null) await _reloadSync(system, actor);

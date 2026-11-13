@@ -2,24 +2,24 @@
 
 Dart packages in `apps/*` own product behavior and compose the shared packages.
 Flutter applications in `frontends/*` own their UI and platform setup.
-`apps/notes` owns note events, commands, and aggregates; `frontends/notes`
+`apps/notes` owns note events, commands, and projections; `frontends/notes`
 consumes that behavior.
 
 ## Event-sourced flow
 
 ```text
 user action -> application command -> durable stream events
-user view   -> application query   -> aggregate replay -> UI
+user view   -> application query   -> projection model -> UI
 ```
 
 Commands read the streams needed to validate a change and append events. The
 event store checks stream versions when saving, so a stale concurrent command
 can fail with `ConcurrencyProblem`. A successful command has stored its events.
 
-Queries resolve aggregates from stored events. Notes uses this for note details,
-lists, and counts. The notes list refreshes after note stream changes and when
-returning from another screen. The Notes application has no separate search or
-projection database.
+Queries read projection models from stored events. The queries can return
+`LiveProjections` to enable refresh of components when data changes. Queries
+can also return the resolved state if needed. Await `catchUp()` when the caller
+needs to read a completed command's changes.
 
 ## Application composition
 

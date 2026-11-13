@@ -6,6 +6,8 @@ import 'package:notes/application/note_bootstrap.dart';
 import 'package:time_provider/time_provider.dart';
 import 'package:support_directory/support_directory.dart';
 
+import '../support/queries.dart';
+
 void main() {
   test('closing bootstrap stops the search projection', () async {
     final bootstrap = NoteBootstrap(
@@ -63,8 +65,8 @@ void main() {
       actor: 'test-actor',
     );
 
-    expect((await reopened.query.note(noteId)).title, 'Persisted title');
-    expect(await reopened.query.noteList(), hasLength(1));
+    expect((await readNote(reopened, noteId)).title, 'Persisted title');
+    expect(await readNoteList(reopened), hasLength(1));
     expect(
       await EventStoreTestUtils.getEventCount(reopenedSystem.eventStore),
       2,

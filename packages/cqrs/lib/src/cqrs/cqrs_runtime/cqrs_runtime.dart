@@ -1,11 +1,8 @@
 import 'dart:async';
 
-import 'package:cqrs/src/cqrs/aggregate.dart';
 import 'package:cqrs/src/cqrs/command/command.dart';
 import 'package:cqrs/src/cqrs/command/command_executor.dart';
 import 'package:cqrs/src/cqrs/cqrs_runtime/log_player.dart';
-import 'package:cqrs/src/cqrs/cqrs_runtime/stream_deletion.dart';
-import 'package:cqrs/src/cqrs/event/event_envelope.dart';
 import 'package:cqrs/src/cqrs/event/event_registry.dart';
 import 'package:cqrs/src/cqrs/event_store/event_store.dart';
 import 'package:cqrs/src/cqrs/projection.dart';
@@ -65,66 +62,14 @@ class CqrsRuntime {
     );
   }
 
-  Future<TModel> resolveProjection<TModel extends Object>(
-    Projection<TModel, Object> projection,
-  ) {
+  Future<TModel> resolveProjection<
+    TModel extends Object,
+    TEvent extends Object
+  >(Projection<TModel, TEvent> projection) {
     final resolver = ProjectionResolver(
       logPlayer: _logPlayer,
       eventRegistry: _eventRegistry,
     );
     return resolver.resolve(projection);
-  }
-
-  /// Catches up the aggregate to the latest version.
-  /// Returns the same [Aggregate] that was passed in.
-  Future<Aggregate<TEvent, TState>> resolve<
-    TEvent extends Object,
-    TState extends AggregateState<TEvent>
-  >(Aggregate<TEvent, TState> aggregate) async {
-    final startingSequence = aggregate.sequence;
-
-    final stream = _logPlayer.logReader(
-      aggregate.filter,
-      fromPosition: startingSequence + 1,
-    );
-
-    await for (final logEvent in stream) {
-      if (logEvent.encodedEvent.isEventErased) {
-        aggregate.sequence = logEvent.position;
-        continue;
-      }
-      if (logEvent.encodedEvent.isStreamDeleted) {
-        aggregate.state.onStreamDeleted(
-          StreamDeletion(
-            actor: logEvent.eventId.actor,
-            streamPath: logEvent.streamPath,
-            occuredAt: logEvent.occuredAt,
-            logPosition: logEvent.position,
-          ),
-        );
-        aggregate.sequence = logEvent.position;
-        continue;
-      }
-      final decoded = _eventRegistry.decode(logEvent.encodedEvent);
-      if (decoded is! TEvent) {
-        // its programmers job to specify the correct event type
-        throw StateError(
-          '$aggregate: decoded event is not of type $TEvent: '
-          '${decoded.runtimeType}',
-        );
-      }
-
-      final envelope = EventEnvelope(
-        actor: logEvent.eventId.actor,
-        streamPath: logEvent.streamPath,
-        event: decoded,
-        occuredAt: logEvent.occuredAt,
-        logPosition: logEvent.position,
-      );
-      aggregate.state.apply(envelope);
-      aggregate.sequence = logEvent.position;
-    }
-
-    return aggregate;
   }
 }

@@ -1,8 +1,8 @@
 import 'package:cqrs/cqrs.dart';
 
-import 'aggregate/account_list.dart';
-import 'aggregate/account_summary.dart';
-import 'aggregate/total_balance.dart';
+import 'projection/account_list_projection.dart';
+import 'projection/account_summary_projection.dart';
+import 'projection/total_balance_projection.dart';
 import 'command/atm_depost.dart';
 import 'command/atm_withdrawal.dart';
 import 'command/open_account.dart';
@@ -69,12 +69,12 @@ class Queries {
   final CqrsRuntime _runtime;
   const Queries(this._runtime);
 
-  Future<AccountSummaryState> accountSummary(String accountId) =>
-      _runtime.resolve(accountSummaryAggregate(accountId)).then((v) => v.state);
+  Future<AccountSummaryModel> accountSummary(String accountId) =>
+      _runtime.resolveProjection(AccountSummaryProjection(accountId));
 
-  Future<AccountListState> accountList() =>
-      _runtime.resolve(accountListAggregate()).then((v) => v.state);
+  Future<AccountListModel> accountList() =>
+      _runtime.resolveProjection(AccountListProjection());
 
-  Future<TotalBalanceState> totalBalance() =>
-      _runtime.resolve(totalBalanceAggregate()).then((v) => v.state);
+  Future<TotalBalanceModel> totalBalance() =>
+      _runtime.resolveProjection(TotalBalanceProjection());
 }

@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:fts/fts.dart';
-import 'package:notes_app/src/aggregate/note.dart';
+import 'package:notes_app/src/projection/note_projection.dart';
 import 'package:notes_app/src/application/paths.dart';
 import 'package:notes_app/src/event/note.dart';
 
@@ -27,8 +27,11 @@ class SearchProjection implements Projection<SearchModel, NoteEvent> {
   ) async {
     final noteId = noteIdFromStream(envelope.streamPath);
 
-    final note = model._notes.putIfAbsent(noteId, () => NoteState(noteId));
-    note.apply(envelope);
+    final note = model._notes.putIfAbsent(
+      noteId,
+      () => NoteProjection(noteId).load().model,
+    );
+    NoteProjection(noteId).apply(note, envelope);
 
     await model._fts.upsert(noteId, note.content, envelope.logPosition);
   }
@@ -47,7 +50,7 @@ class SearchProjection implements Projection<SearchModel, NoteEvent> {
 /// Queries indexed note content in relevance order.
 class SearchModel {
   final Fts _fts;
-  final _notes = <String, NoteState>{};
+  final _notes = <String, NoteModel>{};
 
   SearchModel._(this._fts);
 

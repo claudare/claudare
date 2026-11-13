@@ -2,7 +2,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import '../../account_event/account.dart';
-import '../../aggregate/account_summary.dart';
+import '../../projection/account_summary_projection.dart';
 
 void main() {
   final openedAt = DateTime.utc(2026, 1, 1);
@@ -10,13 +10,13 @@ void main() {
   final withdrawnAt = DateTime.utc(2026, 1, 3);
   final transferredAt = DateTime.utc(2026, 1, 4);
 
-  group('AccountSummaryAggregate', () {
-    test('starts empty and opens the selected account', () {
-      final tester = AggregateTester(accountSummaryAggregate('one'));
+  group('AccountSummaryProjection', () {
+    test('starts empty and opens the selected account', () async {
+      final tester = ProjectionTester(AccountSummaryProjection('one'));
 
-      expect(tester.run().accountId, isEmpty);
+      expect((await tester.run()).accountId, isEmpty);
 
-      final state = tester
+      final state = await tester
           .withEvent(
             'account/one',
             const AccountOpened(name: 'Checking'),
@@ -31,8 +31,8 @@ void main() {
       expect(state.openedAt, openedAt);
     });
 
-    test('applies deposits, withdrawals, transfers, and renaming', () {
-      final state = AggregateTester(accountSummaryAggregate('one'))
+    test('applies deposits, withdrawals, transfers, and renaming', () async {
+      final state = await ProjectionTester(AccountSummaryProjection('one'))
           .withEvent(
             'account/one',
             const AccountOpened(name: 'Checking'),
@@ -66,8 +66,8 @@ void main() {
       expect(state.lastTransactionAt, transferredAt);
     });
 
-    test('skips events from another account', () {
-      final state = AggregateTester(accountSummaryAggregate('one'))
+    test('skips events from another account', () async {
+      final state = await ProjectionTester(AccountSummaryProjection('one'))
           .withEvent(
             'account/one',
             const AccountOpened(name: 'One'),

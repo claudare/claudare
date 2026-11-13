@@ -17,6 +17,8 @@ import 'package:support_directory/support_directory.dart';
 
 import '../sync_test_transport.dart';
 
+import '../support/queries.dart';
+
 void main() {
   for (final initiallyEnabled in [false, true]) {
     test(
@@ -56,7 +58,7 @@ void main() {
           expect(transports.first.closed, isTrue);
           expect(previous!.snapshot.connection, SyncConnectionState.closed);
         }
-        expect(await app.query.noteList(), hasLength(1));
+        expect(await readNoteList(app), hasLength(1));
       },
     );
   }
@@ -154,7 +156,7 @@ void main() {
         SyncConnectionState.connecting,
       );
       await application.command.createNote('offline-note');
-      expect(await application.query.noteList(), hasLength(1));
+      expect(await readNoteList(application), hasLength(1));
       connecting.complete();
     },
   );
@@ -230,7 +232,7 @@ void main() {
         bootstrap.syncCoordinator!.snapshot.connection,
         SyncConnectionState.reconnecting,
       );
-      expect(await application.query.noteList(), hasLength(1));
+      expect(await readNoteList(application), hasLength(1));
     },
   );
 
@@ -313,7 +315,7 @@ void main() {
       firstTransport.discovery.add(pair.first);
       secondTransport.discovery.add(pair.second);
       await catchup.timeout(const Duration(seconds: 5));
-      expect(await secondApp.query.noteList(), hasLength(1));
+      expect(await readNoteList(secondApp), hasLength(1));
 
       final live = firstSystem.eventStore.commandChanges.firstWhere(
         (change) => change.origin == ChangeOrigin.remote,
@@ -324,7 +326,7 @@ void main() {
       );
       await live.timeout(const Duration(seconds: 5));
       expect(
-        (await firstApp.query.note('shared-note')).title,
+        (await readNote(firstApp, 'shared-note')).title,
         'From the other device',
       );
       expect(first.syncCoordinator!.snapshot.activePeers, [_actor(2)]);

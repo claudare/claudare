@@ -1,10 +1,13 @@
 import 'package:claudare_logging/claudare_logging.dart';
+import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
+
+import '../support/queries.dart';
 
 void main() {
   late CqrsTestRuntime runtime;
@@ -20,8 +23,8 @@ void main() {
   });
 
   test('returns absent state for a note that was never created', () async {
-    expect((await application.query.note('missing')).exists, isFalse);
-    expect(await application.query.noteList(), isEmpty);
+    expect((await readNote(application, 'missing')).exists, isFalse);
+    expect(await readNoteList(application), isEmpty);
   });
 
   test('create generates a usable note ID', () async {
@@ -36,7 +39,7 @@ void main() {
         ),
       ),
     );
-    final note = await application.query.note(noteId);
+    final note = await readNote(application, noteId);
     expect(note.exists, isTrue);
     expect(note.noteId, noteId);
     expect(note.title, '');
@@ -53,7 +56,7 @@ void main() {
 
     expect(secondId, isNot(firstId));
     expect(
-      (await application.query.noteList()).map((note) => note.noteId).toSet(),
+      (await readNoteList(application)).map((note) => note.noteId).toSet(),
       {firstId, secondId},
     );
   });
@@ -69,8 +72,8 @@ void main() {
       CrdtTextTestUtils.singleChange('Body'),
     );
 
-    final note = await application.query.note(noteId);
-    final list = await application.query.noteList();
+    final note = await readNote(application, noteId);
+    final list = await readNoteList(application);
 
     expect(note.title, 'Title');
     expect(note.content, 'Body');
@@ -83,29 +86,30 @@ void main() {
     await application.command.createNote(noteId);
     await application.command.trashNote(noteId);
 
-    final trashedList = await application.query.noteList();
+    final trashedList = await readNoteList(application);
     expect(trashedList, isEmpty);
     expect(
-      (await application.query.noteList(category: NoteCategory.trashed))
-          .single
-          .noteId,
+      (await readNoteList(
+        application,
+        category: NoteCategory.trashed,
+      )).single.noteId,
       noteId,
     );
-    expect((await application.query.note(noteId)).isTrashed, isTrue);
+    expect((await readNote(application, noteId)).isTrashed, isTrue);
 
     await application.command.restoreNote(noteId);
 
-    final restoredList = await application.query.noteList();
+    final restoredList = await readNoteList(application);
     expect(restoredList, hasLength(1));
     expect(restoredList.single.noteId, noteId);
-    expect((await application.query.note(noteId)).isTrashed, isFalse);
+    expect((await readNote(application, noteId)).isTrashed, isFalse);
   });
 
   test('list query reflects commands after an earlier read', () async {
-    final before = await application.query.noteList();
+    final before = await readNoteList(application);
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
-    final after = await application.query.noteList();
+    final after = await readNoteList(application);
 
     expect(before, isEmpty);
     expect(after.map((note) => note.noteId), [noteId]);
@@ -133,31 +137,35 @@ void main() {
       ),
     ]);
 
-    expect((await application.query.noteList()).map((note) => note.noteId), [
+    expect((await readNoteList(application)).map((note) => note.noteId), [
       'two',
     ]);
     expect(
-      (await application.query.noteList(
+      (await readNoteList(
+        application,
         category: NoteCategory.all,
         order: NoteSortOrder.createdAtAscending,
       )).map((note) => note.noteId),
       ['one', 'two'],
     );
     expect(
-      (await application.query.noteList(
+      (await readNoteList(
+        application,
         category: NoteCategory.all,
         order: NoteSortOrder.createdAtDescending,
       )).map((note) => note.noteId),
       ['two', 'one'],
     );
     expect(
-      (await application.query.noteList(category: NoteCategory.trashed))
-          .map((note) => note.noteId),
+      (await readNoteList(
+        application,
+        category: NoteCategory.trashed,
+      )).map((note) => note.noteId),
       ['one'],
     );
   });
 
-  test('list query returns current note state without cloning it', () async {
+  test('live list updates the existing note model', () async {
     final noteId = application.generateNoteId();
     await application.command.createNote(noteId);
     final document = CrdtText();
@@ -166,14 +174,18 @@ void main() {
       noteId,
       CrdtTextTestUtils.applyChangeToDocument(document, 'First')!,
     );
-    final before = await application.query.noteList();
+    final live = application.query.liveNoteList();
+    addTearDown(live.stop);
+    final model = await live.latest();
+    final before = model.toSortedList();
 
     await application.command.updateNoteTitle(noteId, 'Second');
     await application.command.updateNoteContent(
       noteId,
       CrdtTextTestUtils.applyChangeToDocument(document, 'Second')!,
     );
-    final after = await application.query.noteList();
+    await live.latest();
+    final after = model.toSortedList();
 
     expect(after.single, same(before.single));
     expect(after.single.title, 'Second');
@@ -211,14 +223,53 @@ void main() {
       ),
     ]);
 
-    final note = await application.query.note('old');
-    final list = await application.query.noteList();
+    final note = await readNote(application, 'old');
+    final list = await readNoteList(application);
 
     expect(note.title, 'Existing');
     expect(note.content, 'History');
     expect(note.createdAt, createdAt);
     expect(note.updatedAt, editedAt);
     expect(list.single.title, 'Existing');
+  });
+
+  test('statistics excludes trashed notes', () async {
+    await application.command.createNote('one');
+    await application.command.createNote('two');
+    await application.command.trashNote('one');
+
+    expect((await application.query.statistics()).activeCount, 1);
+  });
+
+  test('statistics includes restored notes', () async {
+    await application.command.createNote('one');
+    await application.command.trashNote('one');
+    await application.command.restoreNote('one');
+
+    expect((await application.query.statistics()).activeCount, 1);
+  });
+
+  test('permanent deletion removes the note from live lists', () async {
+    await application.command.createNote('one');
+    await application.command.createNote('two');
+    final live = application.query.liveNoteList();
+    addTearDown(live.stop);
+    final model = await live.latest();
+
+    await runtime.execute(const _DeleteNote('one'));
+    await live.latest();
+
+    expect(model.toSortedList().single.noteId, 'two');
+    expect(model.activeCount, 1);
+  });
+
+  test('permanent deletion removes the note from statistics', () async {
+    await application.command.createNote('one');
+    await application.command.createNote('two');
+
+    await runtime.execute(const _DeleteNote('one'));
+
+    expect((await application.query.statistics()).activeCount, 1);
   });
 
   test('crdt text works', () async {
@@ -243,7 +294,7 @@ void main() {
       ),
     ]);
 
-    final note = await application.query.note('greeting');
+    final note = await readNote(application, 'greeting');
     expect(note.content, 'Hello,');
 
     final change2 = CrdtTextTestUtils.applyChangeToDocument(
@@ -254,7 +305,16 @@ void main() {
 
     await application.command.updateNoteContent('greeting', change2!);
 
-    final updatedNote = await application.query.note('greeting');
+    final updatedNote = await readNote(application, 'greeting');
     expect(updatedNote.content, 'Hello, CRDT!');
   });
+}
+
+class _DeleteNote implements Command {
+  final String id;
+
+  const _DeleteNote(this.id);
+
+  @override
+  Future<void> handle(CommandContextApi ctx) => ctx.stream('note/$id').delete();
 }

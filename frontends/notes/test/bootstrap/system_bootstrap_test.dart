@@ -11,6 +11,8 @@ import 'package:sync/sync.dart';
 import 'package:support_directory/support_directory.dart';
 import 'package:time_provider/time_provider.dart';
 
+import '../support/queries.dart';
+
 NoteBootstrap _bootstrap({IsolateSqlite? sqlite}) => NoteBootstrap(
   logger: const NoopLogger(),
   timeProvider: FakeTimeProviderStatic.zero(),
@@ -139,7 +141,7 @@ void main() {
       final system = await second.initializeSystem(dbFilepath: filepath);
       final actor = PublicKey.staticValue(24).toString();
       final application = await second.initialize(system: system, actor: actor);
-      expect((await application.query.note('note')).title, 'Existing note');
+      expect((await readNote(application, 'note')).title, 'Existing note');
       await application.command.updateNoteTitle('note', 'Updated note');
       final commands = await system.eventStore.getNextCommandIds(
         CommandDependency(),
@@ -192,7 +194,7 @@ void main() {
         system: copied,
         actor: identity.publicKey.toString(),
       );
-      expect((await restored.query.note('note')).title, 'Copied note');
+      expect((await readNote(restored, 'note')).title, 'Copied note');
     },
   );
 

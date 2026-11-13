@@ -14,6 +14,8 @@ import 'package:notes/screens/note/note_screen.dart';
 import 'support/home_test_app.dart';
 import 'support/remote_note_update.dart';
 
+import 'support/queries.dart';
+
 void main() {
   testWidgets(
     'title binding displays replayed updates without writing them back',
@@ -36,7 +38,7 @@ void main() {
       await _pressSaveShortcut(tester);
       await tester.pumpAndSettle();
       expect(find.text('Nothing to save'), findsOneWidget);
-      expect((await app.query.note(id)).title, 'Remote title');
+      expect((await readWidgetNote(tester, app, id)).title, 'Remote title');
     },
   );
 
@@ -83,7 +85,7 @@ void main() {
     await tester.enterText(field, 'Second');
     gate.complete();
     await tester.pumpAndSettle();
-    expect((await app.query.note(id)).title, 'Second');
+    expect((await readWidgetNote(tester, app, id)).title, 'Second');
     expect(tester.widget<TextField>(field).controller!.text, 'Second');
   });
 
@@ -109,7 +111,7 @@ void main() {
       await _pressSaveShortcut(tester);
       await tester.pumpAndSettle();
 
-      final notes = await app.query.noteList();
+      final notes = await readWidgetNoteList(tester, app);
       expect(notes, hasLength(1));
       expect(
         fieldIndex == 0 ? notes.single.title : notes.single.content,
@@ -138,7 +140,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Nothing to save'), findsOneWidget);
-      expect(await app.query.noteList(), hasLength(existing ? 1 : 0));
+      expect(
+        await readWidgetNoteList(tester, app),
+        hasLength(existing ? 1 : 0),
+      );
     });
   }
 
@@ -160,7 +165,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Nothing to save'), findsOneWidget);
-      expect(await app.query.noteList(), isEmpty);
+      expect(await readWidgetNoteList(tester, app), isEmpty);
     },
   );
 
@@ -179,7 +184,7 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'New content');
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    final notes = await app.query.noteList();
+    final notes = await readWidgetNoteList(tester, app);
     expect(notes, hasLength(1));
     expect(notes.single.content, 'New content');
   });
@@ -209,8 +214,8 @@ void main() {
       await tester.enterText(find.byType(TextField).last, 'Draft');
     }
     await _save(tester);
-    expect(await first.query.noteList(), isEmpty);
-    expect((await second.query.noteList()).single.content, 'Draft');
+    expect(await readWidgetNoteList(tester, first), isEmpty);
+    expect((await readWidgetNoteList(tester, second)).single.content, 'Draft');
   });
 
   testWidgets('successive UI edits persist and reopen with their actor', (
@@ -228,7 +233,7 @@ void main() {
     for (final text in ['Hello', 'Hello world', 'Hello 🌍', '🌍', '']) {
       await tester.enterText(find.byType(TextField).last, text);
       await _save(tester);
-      expect((await app.query.note(id)).content, text);
+      expect((await readWidgetNote(tester, app, id)).content, text);
     }
     final events = (await store.getLogEvents(const LogFilter.all(), 0)).data;
     expect(events, hasLength(6));
@@ -270,7 +275,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(_content(tester).text, 'Local Base one two');
-    expect((await app.query.note(id)).content, 'Base one two');
+    expect((await readWidgetNote(tester, app, id)).content, 'Base one two');
     await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(await EventStoreTestUtils.getEventCount(store), 4);
@@ -352,11 +357,11 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'Draft');
     store.failNext = true;
     await _save(tester);
-    expect((await app.query.note(id)).content, '');
+    expect((await readWidgetNote(tester, app, id)).content, '');
     expect(find.textContaining('Error saving note'), findsOneWidget);
     await tester.tap(find.byType(TextField).last);
     await _save(tester);
-    expect((await app.query.note(id)).content, 'Draft');
+    expect((await readWidgetNote(tester, app, id)).content, 'Draft');
     expect(await EventStoreTestUtils.getEventCount(store), 2);
   });
 
@@ -380,7 +385,7 @@ void main() {
     await tester.enterText(find.byType(TextField).last, 'First second');
     gate.complete();
     await tester.pumpAndSettle();
-    final note = await app.query.note(id);
+    final note = await readWidgetNote(tester, app, id);
     expect(note.content, 'First second');
     expect(await EventStoreTestUtils.getEventCount(store), 3);
   });

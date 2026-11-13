@@ -10,7 +10,7 @@ Important workspace packages are listed below.
 
 | Package            | Ownership                                                    |
 | ------------------ | ------------------------------------------------------------ |
-| `cqrs`             | Commands, event codecs and storage, aggregates, and runtime  |
+| `cqrs`             | Commands, event codecs and storage, projections, runtime     |
 | `blob`             | Blob storage, CQRS integration, and blob replication         |
 | `crdt`             | Text CRDT, editor binding, and timestamp-based value helpers |
 | `sync`             | Actor identities and replication coordination                |
@@ -41,15 +41,10 @@ commit events.
 Events, not read models, are authoritative application state. Each concrete
 event type has an application-owned `EventCodec` with a stable persisted kind.
 
-Aggregates and projections are read models used to query application data.
-
-An aggregate selects events by path filter and synchronously applies them to its
-state. It can resume from its last applied log position. Snapshot persistence is
-not provided.
-
-A projection applies matching events asynchronously, replaying existing events
-and following new ones. It can resume from persisted state and a log position;
-the projection implements its own persistence.
+Projections maintain read models used to query application data. Use
+`resolveProjection()` for a latest state or `liveProjection()` to keep a model
+updated. The caller starts and stops live projections and can await `catchUp()`
+after a command before reading its changes.
 
 ### Large file storage
 
@@ -60,6 +55,6 @@ However, their metadata is saved to the event-store within the same command.
 
 ### Replication
 
-The `sync` package coordinates cross-device replication over `Transport`.
-Stored commands and their events are replicated together; optional blob
-replication transfers bytes separately. Replication has not been finalized yet.
+The `sync` package coordinates cross-device replication over `Transport`. Stored
+commands and their events are replicated together; optional blob replication
+transfers bytes separately. Replication has not been finalized yet.

@@ -2,18 +2,18 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import '../../account_event/account.dart';
-import '../../aggregate/account_list.dart';
+import '../../projection/account_list_projection.dart';
 
 void main() {
   final openedAt = DateTime.utc(2026, 1, 1);
   final depositedAt = DateTime.utc(2026, 1, 2);
   final renamedAt = DateTime.utc(2026, 1, 3);
 
-  group('AccountListAggregate', () {
-    late AccountListState state;
+  group('AccountListProjection', () {
+    late AccountListModel state;
 
-    setUp(() {
-      state = AggregateTester(accountListAggregate())
+    setUp(() async {
+      state = await ProjectionTester(AccountListProjection())
           .withEvent(
             'account/one',
             const AccountOpened(name: 'Zeta'),
@@ -42,13 +42,13 @@ void main() {
           .run();
     });
 
-    test('collects account streams', () {
+    test('collects account streams', () async {
       expect(state.accounts.keys, containsAll(['one', 'two']));
       expect(state.accounts['one']!.name, 'Beta');
       expect(state.accounts['two']!.balance, 30);
     });
 
-    test('sorts by name in either direction', () {
+    test('sorts by name in either direction', () async {
       expect(state.toSortedByName().map((account) => account.accountId), [
         'two',
         'one',
@@ -61,7 +61,7 @@ void main() {
       );
     });
 
-    test('sorts by balance in either direction', () {
+    test('sorts by balance in either direction', () async {
       expect(state.toSortedByBalance().map((account) => account.accountId), [
         'one',
         'two',

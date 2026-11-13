@@ -15,7 +15,7 @@ void main() {
 
     await runtime.execute(const _AppendValue('one'));
 
-    final events = (await runtime.resolve(_valueAggregate())).state.events;
+    final events = (await runtime.resolveProjection(_ValueProjection())).events;
     expect(events, hasLength(1));
     expect(events.single.event.value, 'one');
     expect(events.single.occuredAt, DateTime.utc(1970));
@@ -35,11 +35,11 @@ void main() {
     final bundle = await database.getStoredCommand(CommandId('test-actor', 1));
     expect(bundle!.events, hasLength(1));
     expect(bundle.events.single.occuredAt, seededAt);
-    final events = (await runtime.resolve(_valueAggregate())).state.events;
+    final events = (await runtime.resolveProjection(_ValueProjection())).events;
     expect(events.single.occuredAt, seededAt);
   });
 
-  test('seeds an event for aggregate resolution', () async {
+  test('seeds an event for projection resolution', () async {
     final store = MemoryEventStore();
     final runtime = CqrsTestRuntime(eventStore: store);
     runtime.eventRegistry.add(const _ValueEventCodec());
@@ -56,7 +56,7 @@ void main() {
       same(runtime),
     );
 
-    final events = (await runtime.resolve(_valueAggregate())).state.events;
+    final events = (await runtime.resolveProjection(_ValueProjection())).events;
     expect(events, hasLength(1));
     expect(events.single.event.value, 'seeded');
     expect(events.single.occuredAt, seededAt);
@@ -90,7 +90,7 @@ void main() {
       ),
     ]);
 
-    final events = (await runtime.resolve(_valueAggregate())).state.events;
+    final events = (await runtime.resolveProjection(_ValueProjection())).events;
     expect(events.map((event) => event.event.value), [
       'first',
       'second',
@@ -132,7 +132,7 @@ void main() {
     ]);
     await runtime.execute(const _AppendValue('one'));
 
-    final events = (await runtime.resolve(_valueAggregate())).state.events;
+    final events = (await runtime.resolveProjection(_ValueProjection())).events;
     expect(events.map((event) => event.event.value), ['one', 'seeded', 'one']);
     expect(events.map((event) => event.logPosition), [0, 1, 2]);
     expect((await database.getStreamInfo('value/one')).version, 2);
@@ -202,18 +202,24 @@ final class _AppendValue implements Command {
   }
 }
 
-final class _ValueState implements AggregateState<_ValueEvent> {
+final class _ValueModel {
   final events = <EventEnvelope<_ValueEvent>>[];
-
-  @override
-  void apply(EventEnvelope<_ValueEvent> envelope) => events.add(envelope);
-
-  @override
-  void onStreamDeleted(StreamDeletion deletion) {}
 }
 
-Aggregate<_ValueEvent, _ValueState> _valueAggregate() => Aggregate(
-  name: 'Values',
-  filter: const LogFilter.startsWith('value/'),
-  state: _ValueState(),
-);
+final class _ValueProjection implements Projection<_ValueModel, _ValueEvent> {
+  @override
+  String get name => 'Values';
+
+  @override
+  LogFilter get filter => const LogFilter.startsWith('value/');
+
+  @override
+  ProjectionLoad<_ValueModel> load() => ProjectionLoad.initial(_ValueModel());
+
+  @override
+  void apply(_ValueModel model, EventEnvelope<_ValueEvent> envelope) =>
+      model.events.add(envelope);
+
+  @override
+  void onStreamDeleted(_ValueModel model, StreamDeletion deletion) {}
+}

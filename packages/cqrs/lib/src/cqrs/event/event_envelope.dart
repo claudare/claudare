@@ -1,4 +1,4 @@
-/// Events which are emitted to aggregates and projections
+/// Events delivered to projections.
 class EventEnvelope<TEvent extends Object> {
   final String actor;
   final String streamPath;

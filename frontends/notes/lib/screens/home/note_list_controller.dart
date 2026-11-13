@@ -8,23 +8,22 @@ import 'package:notes_app/notes_app.dart';
 class NoteListController extends ChangeNotifier {
   final NotesApp application;
 
-  List<NoteState> _noteData = [];
+  List<NoteModel> _noteData = [];
   NoteCategory _category = NoteCategory.active;
   NoteSortOrder _order = NoteSortOrder.updatedAtDescending;
   bool _isLoading = false;
   Exception? _loadError;
   bool _disposed = false;
   late final AsyncTrailingRunner _reloadRunner;
-  late final StreamSubscription<void> _noteListChanges;
+  late final _projection = application.query.liveNoteList();
+  StreamSubscription<NoteListModel>? _subscription;
+  Future<void>? _initialization;
 
   NoteListController(this.application) {
     _reloadRunner = AsyncTrailingRunner(_reloadOnce);
-    _noteListChanges = application.query.noteListChanges().listen((_) {
-      unawaited(reloadNotes());
-    });
   }
 
-  List<NoteState> get noteData => _noteData;
+  List<NoteModel> get noteData => _noteData;
   NoteCategory get category => _category;
   NoteSortOrder get order => _order;
   bool get isLoading => _isLoading;
@@ -58,15 +57,11 @@ class NoteListController extends ChangeNotifier {
     _notify();
 
     try {
-      final category = _category;
-      final order = _order;
-      final notes = await application.query.noteList(
-        category: category,
-        order: order,
-      );
+      await (_initialization ??= _initialize());
       if (_disposed) return;
-      if (category != _category || order != _order) return;
-      _noteData = notes;
+      await _projection.latest();
+      if (_disposed) return;
+      _rebuild(_projection.value!);
       _loadError = null;
     } on Exception catch (error) {
       if (!_disposed) _loadError = error;
@@ -74,6 +69,29 @@ class NoteListController extends ChangeNotifier {
       _isLoading = false;
       _notify();
     }
+  }
+
+  Future<void> _initialize() async {
+    final model = await _projection.latest();
+    if (_disposed) return;
+    _rebuild(model);
+    _subscription = _projection.updates.listen(
+      (model) {
+        if (_disposed) return;
+        _rebuild(model);
+        _notify();
+      },
+      onError: (Object failure, StackTrace trace) {
+        if (failure is! Exception) Error.throwWithStackTrace(failure, trace);
+        if (_disposed) return;
+        _loadError = failure;
+        _notify();
+      },
+    );
+  }
+
+  void _rebuild(NoteListModel model) {
+    _noteData = model.toSortedList(category: _category, order: _order);
   }
 
   Future<void> deleteNotes(List<String> noteIds) async {
@@ -93,7 +111,16 @@ class NoteListController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
-    unawaited(_noteListChanges.cancel());
+    unawaited(_subscription?.cancel());
+    unawaited(_stop());
     super.dispose();
+  }
+
+  Future<void> _stop() async {
+    try {
+      await _projection.stop();
+    } on Exception {
+      // Loading and update failures are presented through loadError.
+    }
   }
 }

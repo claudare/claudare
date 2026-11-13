@@ -2,7 +2,7 @@ import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:test/test.dart';
 
 import '../../account_event/account.dart';
-import '../../aggregate/total_balance.dart';
+import '../../projection/total_balance_projection.dart';
 
 void main() {
   final openedAt = DateTime.utc(2026, 1, 1);
@@ -10,15 +10,15 @@ void main() {
   final withdrawnAt = DateTime.utc(2026, 1, 3);
   final transferredAt = DateTime.utc(2026, 1, 4);
 
-  group('TotalBalanceAggregate', () {
-    test('starts at zero', () {
-      final state = AggregateTester(totalBalanceAggregate()).run();
+  group('TotalBalanceProjection', () {
+    test('starts at zero', () async {
+      final state = await ProjectionTester(TotalBalanceProjection()).run();
 
       expect(state.balance, 0);
     });
 
-    test('sums deposits and withdrawals across account streams', () {
-      final state = AggregateTester(totalBalanceAggregate())
+    test('sums deposits and withdrawals across account streams', () async {
+      final state = await ProjectionTester(TotalBalanceProjection())
           .withEvent(
             'account/one',
             const AccountAtmDeposited(amount: 100),
@@ -39,8 +39,8 @@ void main() {
       expect(state.balance, 140);
     });
 
-    test('ignores account metadata and internal transfers', () {
-      final state = AggregateTester(totalBalanceAggregate())
+    test('ignores account metadata and internal transfers', () async {
+      final state = await ProjectionTester(TotalBalanceProjection())
           .withEvent(
             'account/one',
             const AccountAtmDeposited(amount: 25),

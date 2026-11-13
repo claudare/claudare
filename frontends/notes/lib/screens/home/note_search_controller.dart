@@ -9,7 +9,7 @@ class NoteSearchController extends ChangeNotifier {
   final NotesApp application;
   String _query = '';
   late final AsyncThrottledRunner _searchRunner;
-  List<NoteState> _results = [];
+  List<NoteModel> _results = [];
   bool _hasSnapshot = false;
   bool _isReady = false;
   bool _isLoading = false;
@@ -24,7 +24,7 @@ class NoteSearchController extends ChangeNotifier {
 
   String get query => _query;
   bool get hasQuery => _query.trim().isNotEmpty;
-  List<NoteState> get results => _results;
+  List<NoteModel> get results => _results;
   bool get hasSnapshot => _hasSnapshot;
   bool get isReady => _isReady;
   bool get isLoading => _isLoading;

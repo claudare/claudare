@@ -1,6 +1,6 @@
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:crdt/crdt_text.dart';
-import 'package:notes_app/src/aggregate/note.dart';
+import 'package:notes_app/src/projection/note_projection.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
 
@@ -9,8 +9,8 @@ void main() {
   final editedAt = DateTime.utc(2026, 1, 2);
   final laterAt = DateTime.utc(2026, 1, 3);
 
-  test('starts absent and ignores another note stream', () {
-    final state = AggregateTester(noteAggregate('one'))
+  test('starts absent and ignores another note stream', () async {
+    final state = await ProjectionTester(NoteProjection('one'))
         .withEvent('note/two', const NoteCreated(), occuredAt: createdAt)
         .run();
 
@@ -18,8 +18,8 @@ void main() {
     expect(state.noteId, 'one');
   });
 
-  test('replays creation, title, and content with timestamps', () {
-    final state = AggregateTester(noteAggregate('one'))
+  test('replays creation, title, and content with timestamps', () async {
+    final state = await ProjectionTester(NoteProjection('one'))
         .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
@@ -41,8 +41,8 @@ void main() {
     expect(state.isTrashed, isFalse);
   });
 
-  test('keeps the title with the latest timestamp', () {
-    final state = AggregateTester(noteAggregate('one'))
+  test('keeps the title with the latest timestamp', () async {
+    final state = await ProjectionTester(NoteProjection('one'))
         .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
@@ -60,8 +60,8 @@ void main() {
     expect(state.updatedAt, editedAt);
   });
 
-  test('uses the greater actor when title timestamps tie', () {
-    final state = AggregateTester(noteAggregate('one'))
+  test('uses the greater actor when title timestamps tie', () async {
+    final state = await ProjectionTester(NoteProjection('one'))
         .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent(
           'note/one',
@@ -80,17 +80,17 @@ void main() {
     expect(state.title, 'First');
   });
 
-  test('trash and restore change only trash state', () {
-    final tester = AggregateTester(noteAggregate('one'))
+  test('trash and restore change only trash state', () async {
+    final tester = ProjectionTester(NoteProjection('one'))
         .withEvent('note/one', const NoteCreated(), occuredAt: createdAt)
         .withEvent('note/one', const NoteTrashed(), occuredAt: editedAt);
 
-    final trashed = tester.run();
+    final trashed = await tester.run();
     expect(trashed.isTrashed, isTrue);
     expect(trashed.trashedAt, editedAt);
     expect(trashed.updatedAt, createdAt);
 
-    final restored = tester
+    final restored = await tester
         .withEvent('note/one', const NoteRestored(), occuredAt: laterAt)
         .run();
     expect(restored.isTrashed, isFalse);

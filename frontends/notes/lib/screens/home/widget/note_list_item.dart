@@ -3,7 +3,7 @@ import 'package:notes_app/notes_app.dart';
 import 'package:notes/common.dart';
 
 class NoteListItem extends StatelessWidget {
-  final NoteState note;
+  final NoteModel note;
   final NoteSortOrder order;
   final VoidCallback onTap;
   final bool showTrashMarker;

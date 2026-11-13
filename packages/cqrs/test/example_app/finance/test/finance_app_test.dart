@@ -10,9 +10,11 @@ void main() {
   final occurredAt = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
   late FinanceApp app;
+  late CqrsTestRuntime runtime;
 
   setUp(() async {
-    app = FinanceApp(cqrsRuntime: CqrsTestRuntime());
+    runtime = CqrsTestRuntime();
+    app = FinanceApp(cqrsRuntime: runtime);
   });
 
   Future<void> openFirstAccount() =>
@@ -91,6 +93,71 @@ void main() {
     expect(after.accounts[firstAccountId]!.name, 'renamed');
   });
 
+  test('summary queries leave earlier results unchanged', () async {
+    await openFirstAccount();
+    final before = await app.query.accountSummary(firstAccountId);
+
+    await app.command.atmDeposit(accountId: firstAccountId, amount: 40);
+    final after = await app.query.accountSummary(firstAccountId);
+
+    expect(before.balance, 0);
+    expect(before.transactionCount, 0);
+    expect(after.balance, 40);
+    expect(after.transactionCount, 1);
+  });
+
+  test('total balance queries leave earlier results unchanged', () async {
+    await openFirstAccount();
+    final before = await app.query.totalBalance();
+
+    await app.command.atmDeposit(accountId: firstAccountId, amount: 40);
+    final after = await app.query.totalBalance();
+
+    expect(before.balance, 0);
+    expect(after.balance, 40);
+  });
+
+  test('permanent deletion clears an account summary', () async {
+    await transferToSecondAccount();
+
+    await runtime.execute(const _DeleteAccount(firstAccountId));
+    final summary = await app.query.accountSummary(firstAccountId);
+
+    expect(summary.accountId, isEmpty);
+    expect(summary.name, isEmpty);
+    expect(summary.balance, 0);
+    expect(summary.transactionCount, 0);
+    expect(summary.openedAt.millisecondsSinceEpoch, 0);
+    expect(summary.lastTransactionAt.millisecondsSinceEpoch, 0);
+  });
+
+  test('permanent deletion removes an account from the list', () async {
+    await transferToSecondAccount();
+    final before = await app.query.accountList();
+
+    await runtime.execute(const _DeleteAccount(firstAccountId));
+    final after = await app.query.accountList();
+
+    expect(
+      before.accounts.keys,
+      containsAll([firstAccountId, secondAccountId]),
+    );
+    expect(after.accounts.keys, [secondAccountId]);
+    expect(after.accounts[secondAccountId]!.balance, 20);
+  });
+
+  test(
+    'permanent deletion subtracts only the deleted account balance',
+    () async {
+      await transferToSecondAccount();
+
+      await runtime.execute(const _DeleteAccount(firstAccountId));
+      final total = await app.query.totalBalance();
+
+      expect(total.balance, 20);
+    },
+  );
+
   test('transfer updates both account summaries', () async {
     await transferToSecondAccount();
 
@@ -163,4 +230,14 @@ void main() {
     final summary = await app.query.accountSummary(firstAccountId);
     expect(summary.balance, 20);
   });
+}
+
+class _DeleteAccount implements Command {
+  final String accountId;
+
+  const _DeleteAccount(this.accountId);
+
+  @override
+  Future<void> handle(CommandContextApi ctx) =>
+      ctx.stream('account/$accountId').delete();
 }

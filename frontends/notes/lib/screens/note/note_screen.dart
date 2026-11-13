@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:common/common.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:crdt/crdt_string.dart';
 import 'package:flutter/material.dart';
@@ -34,8 +33,7 @@ class _NoteScreenState extends State<NoteScreen> {
   CrdtTextBinding? _contentBinding;
 
   late NoteContentSimulation _simulation;
-  StreamSubscription<void>? _noteChanges;
-  late AsyncTrailingRunner _refreshRunner;
+  Future<void>? _refreshing;
 
   Future<bool>? _flushInProgress;
   bool _flushAgain = false;
@@ -71,8 +69,6 @@ class _NoteScreenState extends State<NoteScreen> {
     if (identical(_application, application)) return;
 
     if (_application != null) {
-      unawaited(_noteChanges?.cancel());
-      _noteChanges = null;
       _simulation.dispose();
       _titleBinding?.dispose();
       _titleBinding = null;
@@ -88,10 +84,6 @@ class _NoteScreenState extends State<NoteScreen> {
       onError: _onSimulationError,
     );
     _controller.addListener(_onControllerChanged);
-    final controller = _controller;
-    _refreshRunner = AsyncTrailingRunner(
-      () => _runRefresh(controller, _flushInProgress),
-    );
     _flushInProgress = null;
     _flushAgain = false;
     _allowPop = false;
@@ -103,7 +95,12 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   void _onControllerChanged() {
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _loadError = _controller.error;
+        if (_controller.isTrashed) _simulation.stop();
+      });
+    }
   }
 
   Future<void> _loadNote(NoteController controller) async {
@@ -118,14 +115,6 @@ class _NoteScreenState extends State<NoteScreen> {
         editContext: controller.content,
         controller: FlutterCrdtTextController(_contentController),
       );
-      _noteChanges = controller.application.query
-          .noteChanges(controller.noteId)
-          .listen((_) {
-            if (mounted && !_leaving && identical(controller, _controller)) {
-              unawaited(_refreshNote());
-            }
-          });
-      unawaited(_refreshNote());
     } on Exception catch (error) {
       if (mounted && identical(controller, _controller)) {
         setState(() => _loadError = error);
@@ -135,7 +124,6 @@ class _NoteScreenState extends State<NoteScreen> {
 
   @override
   void dispose() {
-    unawaited(_noteChanges?.cancel());
     _simulation.dispose();
     _titleBinding?.dispose();
     _contentBinding?.dispose();
@@ -165,7 +153,7 @@ class _NoteScreenState extends State<NoteScreen> {
 
   Future<bool> _flushChanges({bool showNothingToSave = false}) async {
     final controller = _controller;
-    await _refreshRunner.activeRun;
+    await _refreshing;
     if (!mounted || !identical(controller, _controller)) return false;
     final active = _flushInProgress;
     if (active != null) {
@@ -325,15 +313,15 @@ class _NoteScreenState extends State<NoteScreen> {
   }
 
   Future<void> _refreshNote() async {
-    final runner = _refreshRunner;
-    final wasRunning = runner.activeRun != null;
-    final refresh = runner.run();
-    if (wasRunning) return refresh;
+    if (_refreshing != null) return _refreshing;
+    final refresh = _runRefresh(_controller, _flushInProgress);
+    _refreshing = refresh;
     setState(() {});
     try {
       await refresh;
     } finally {
-      if (mounted && identical(_refreshRunner, runner)) setState(() {});
+      _refreshing = null;
+      if (mounted) setState(() {});
     }
   }
 
@@ -391,7 +379,7 @@ class _NoteScreenState extends State<NoteScreen> {
                   onPressed:
                       _controller.exists &&
                           !_controller.isLoading &&
-                          _refreshRunner.activeRun == null
+                          _refreshing == null
                       ? _refreshNote
                       : null,
                 ),

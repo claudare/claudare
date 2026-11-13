@@ -14,7 +14,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          FutureBuilder<StatisticsState>(
+          FutureBuilder<StatisticsModel>(
             key: ValueKey(application),
             future: application.query.statistics(),
             builder: (context, snapshot) {

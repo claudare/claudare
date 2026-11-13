@@ -4,7 +4,7 @@ import 'package:notes/screens/home/widget/note_list_item.dart';
 
 class NoteList extends StatelessWidget {
   final Future<void> Function(String? noteId) openNote;
-  final List<NoteState> noteData;
+  final List<NoteModel> noteData;
   final NoteSortOrder order;
   final bool showTrashMarker;
 

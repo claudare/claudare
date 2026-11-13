@@ -1,18 +1,18 @@
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/src/cqrs_test_utils/test_event.dart';
 
-/// Applies supplied events to an [Aggregate] in order.
-class AggregateTester<
-  TEvent extends Object,
-  TState extends AggregateState<TEvent>
-> {
-  final Aggregate<TEvent, TState> aggregate;
+/// Loads one model and applies supplied events to a [Projection] in order.
+class ProjectionTester<TModel extends Object, TEvent extends Object> {
+  final Projection<TModel, TEvent> projection;
   final List<TestEvent<TEvent>> _testEvents = [];
+  late final Future<ProjectionLoad<TModel>> _loaded = Future.sync(
+    projection.load,
+  );
   int _nextEventIndex = 0;
 
-  AggregateTester(this.aggregate);
+  ProjectionTester(this.projection);
 
-  AggregateTester<TEvent, TState> withEvent(
+  ProjectionTester<TModel, TEvent> withEvent(
     String streamPath,
     TEvent event, {
     String actor = 'a',
@@ -29,10 +29,11 @@ class AggregateTester<
     return this;
   }
 
-  TState run() {
+  Future<TModel> run() async {
+    final model = (await _loaded).model;
     for (var i = _nextEventIndex; i < _testEvents.length; i++) {
       final event = _testEvents[i];
-      if (!aggregate.filter.doesMatchPath(event.stream)) {
+      if (!projection.filter.doesMatchPath(event.stream)) {
         _nextEventIndex = i + 1;
         continue;
       }
@@ -44,10 +45,9 @@ class AggregateTester<
         occuredAt: event.occuredAt,
         logPosition: i,
       );
-      aggregate.state.apply(envelope);
-      aggregate.sequence = i;
+      await projection.apply(model, envelope);
       _nextEventIndex = i + 1;
     }
-    return aggregate.state;
+    return model;
   }
 }

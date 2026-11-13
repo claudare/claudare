@@ -63,7 +63,7 @@ void main() {
   test(
     'edit, persist, replay, acknowledge, and restore document state',
     () async {
-      // Aggregate initialization and snapshots require no local actor identity.
+      // Projection initialization and snapshots require no local actor identity.
       final state = CrdtText();
       final editor = CrdtTextEditContext(document: state, actorId: 'alice');
       final eventLog = <String>[];

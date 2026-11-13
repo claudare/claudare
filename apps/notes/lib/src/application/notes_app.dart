@@ -5,11 +5,8 @@ import 'package:cqrs/cqrs.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:fts/fts.dart';
 import 'package:id_generator/id_generator.dart';
-import 'package:mutex/mutex.dart' show Mutex;
-import 'package:notes_app/src/aggregate/note.dart';
-import 'package:notes_app/src/aggregate/note_list.dart';
-import 'package:notes_app/src/aggregate/statistics.dart';
-import 'package:notes_app/src/application/paths.dart';
+import 'package:notes_app/src/projection/note_list_projection.dart';
+import 'package:notes_app/src/projection/note_projection.dart';
 import 'package:notes_app/src/command/create_note.dart';
 import 'package:notes_app/src/command/restore_note.dart';
 import 'package:notes_app/src/command/trash_note.dart';
@@ -19,8 +16,9 @@ import 'package:notes_app/src/command/test_simulate_external_note_content_append
 import 'package:notes_app/src/command/test_simulate_external_note_content_random_insert.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:notes_app/src/projection/search.dart';
+import 'package:notes_app/src/projection/statistics_projection.dart';
 
-/// Exposes note commands and aggregate queries over a supplied [CqrsRuntime].
+/// Exposes note commands and projection queries over a supplied [CqrsRuntime].
 class NotesApp {
   final NoteCommands command;
   late final NoteQueries query;
@@ -29,21 +27,26 @@ class NotesApp {
 
   late final LiveProjection<SearchModel, NoteEvent> _searchProjection;
 
+  /// [searchRuntime] defaults to [cqrsRuntime] and must use the same event store.
   NotesApp({
     required CqrsRuntime cqrsRuntime,
+    CqrsRuntime? searchRuntime,
     required Fts fts,
     required Logger logger,
     IdGenerator? idGenerator,
   }) : _idGenerator = idGenerator ?? IdGeneratorRandom(),
        command = NoteCommands(cqrsRuntime, logger) {
-    cqrsRuntime.eventRegistry
-      ..add(const NoteContentUpdatedCodec())
-      ..add(const NoteCreatedCodec())
-      ..add(const NoteRestoredCodec())
-      ..add(const NoteTitleUpdatedCodec())
-      ..add(const NoteTrashedCodec());
+    searchRuntime ??= cqrsRuntime;
+    for (final runtime in {cqrsRuntime, searchRuntime}) {
+      runtime.eventRegistry
+        ..add(const NoteContentUpdatedCodec())
+        ..add(const NoteCreatedCodec())
+        ..add(const NoteRestoredCodec())
+        ..add(const NoteTitleUpdatedCodec())
+        ..add(const NoteTrashedCodec());
+    }
     actor = cqrsRuntime.actor;
-    _searchProjection = cqrsRuntime.liveProjection(SearchProjection(fts));
+    _searchProjection = searchRuntime.liveProjection(SearchProjection(fts));
     query = NoteQueries(cqrsRuntime, searchProjection: _searchProjection);
   }
 
@@ -128,65 +131,32 @@ class NoteCommands {
 class NoteQueries {
   final CqrsRuntime _runtime;
   final LiveProjection<SearchModel, NoteEvent> _searchProjection;
-  final _noteList = noteListAggregate();
-  final _noteListMutex = Mutex();
-  // Expando is a "WeakMap"
-  final _trackedNotes = Expando<Aggregate<NoteEvent, NoteState>>();
+  final _noteListProjection = NoteListProjection();
+  final _statisticsProjection = StatisticsProjection();
 
   NoteQueries(this._runtime, {required this._searchProjection});
 
-  /// Returns the resolved state for one note identifier.
-  Future<NoteState> note(String noteId) =>
-      (_runtime.resolve(noteAggregate(noteId))).then((v) => v.state);
+  /// Creates an unstarted note projection owned by the caller.
+  LiveProjection<NoteModel, NoteEvent> liveNote(String noteId) =>
+      _runtime.liveProjection(NoteProjection(noteId));
 
-  /// Creates a note state that can be refreshed without replacing its documents.
-  NoteState trackNote(String noteId) {
-    final aggregate = noteAggregate(noteId);
-    _trackedNotes[aggregate.state] = aggregate;
-    return aggregate.state;
-  }
-
-  Future<void> catchupNote(NoteState note) async {
-    final aggregate = _trackedNotes[note];
-    if (aggregate == null) {
-      throw ArgumentError.value(note, 'note', 'Note state is not tracked');
-    }
-    await _runtime.resolve(aggregate);
-  }
+  /// Creates an unstarted list projection owned by the caller.
+  LiveProjection<NoteListModel, NoteEvent> liveNoteList() =>
+      _runtime.liveProjection(_noteListProjection);
 
   /// Waits for search to apply all notified changes.
   Future<void> get searchReady => _searchProjection.latest();
 
-  /// Notifies callers of note stream updates so they can choose when to query.
-  Stream<void> noteListChanges() =>
-      _runtime.logPlayer.subscribe(allNotesFilter);
-
-  /// Notifies callers of changes to one note stream.
-  Stream<void> noteChanges(String noteId) =>
-      _runtime.logPlayer.subscribe(noteStreamFilter(noteId));
-
-  /// Returns sorted references to notes in the cached aggregate.
-  /// A later catchup can update the returned [NoteState] objects.
-  Future<List<NoteState>> noteList({
-    NoteCategory category = NoteCategory.active,
-    NoteSortOrder order = NoteSortOrder.createdAtDescending,
-  }) {
-    return _noteListMutex.protect(() async {
-      await _runtime.resolve(_noteList);
-      return _noteList.state.toSortedList(category: category, order: order);
-    });
-  }
-
-  Future<List<NoteState>> noteSearch(String text) async {
+  Future<List<NoteModel>> noteSearch(String text) async {
     final model = await _searchProjection.latest();
     final ids = await model.search(text, resultCount: 20);
-    final states = await Future.wait(ids.map((id) => note(id)));
+    final states = await Future.wait(
+      ids.map((id) => _runtime.resolveProjection(NoteProjection(id))),
+    );
 
     return states;
   }
 
-  Future<StatisticsState> statistics() async {
-    final v = await _runtime.resolve(statisticsAggregate());
-    return v.state;
-  }
+  Future<StatisticsModel> statistics() =>
+      _runtime.resolveProjection(_statisticsProjection);
 }

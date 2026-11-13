@@ -1,28 +1,30 @@
+import 'dart:async';
+
 import 'package:cqrs/cqrs.dart';
 import 'package:notes_app/src/application/paths.dart';
 import 'package:notes_app/src/event/note.dart';
 
 /// Tracks the latest known existence value for one note.
-class NoteExistence {
+class _NoteExistence {
   final String noteId;
   bool isActive;
   DateTime time;
 
-  NoteExistence(this.noteId, this.isActive, this.time);
+  _NoteExistence(this.noteId, this.isActive, this.time);
 }
 
 /// Collects note existence values by identifier.
-class MakeshiftCrdt {
-  final Map<String, NoteExistence> _map;
+class _MakeshiftCrdt {
+  final Map<String, _NoteExistence> _map;
 
-  const MakeshiftCrdt(this._map);
+  const _MakeshiftCrdt(this._map);
 
   int get activeCount => _map.values.where((n) => n.isActive).length;
 
   void applyTrashChange(String noteId, DateTime time) {
     final v = _map[noteId];
     if (v == null) {
-      _map[noteId] = NoteExistence(noteId, false, time);
+      _map[noteId] = _NoteExistence(noteId, false, time);
       return;
     }
     if (time.compareTo(v.time) >= 0) {
@@ -34,7 +36,7 @@ class MakeshiftCrdt {
   void applyRestoreChange(String noteId, DateTime time) {
     final v = _map[noteId];
     if (v == null) {
-      _map[noteId] = NoteExistence(noteId, true, time);
+      _map[noteId] = _NoteExistence(noteId, true, time);
       return;
     }
     if (time.compareTo(v.time) >= 0) {
@@ -45,15 +47,19 @@ class MakeshiftCrdt {
 }
 
 /// Counts active notes across all streams.
-class StatisticsState implements AggregateState<Object> {
-  final MakeshiftCrdt _crdt;
-
-  int get activeCount => _crdt.activeCount;
-
-  StatisticsState() : _crdt = MakeshiftCrdt({});
+class StatisticsProjection implements Projection<StatisticsModel, Object> {
+  @override
+  String get name => 'statistics';
 
   @override
-  void apply(EventEnvelope<Object> envelope) {
+  LogFilter get filter => LogFilter.all();
+
+  @override
+  FutureOr<ProjectionLoad<StatisticsModel>> load() =>
+      ProjectionLoad.initial(StatisticsModel._());
+
+  @override
+  void apply(model, envelope) {
     final event = envelope.event;
     final occuredAt = envelope.occuredAt;
 
@@ -62,9 +68,9 @@ class StatisticsState implements AggregateState<Object> {
       switch (event) {
         case NoteCreated():
         case NoteRestored():
-          _crdt.applyRestoreChange(noteId, occuredAt);
+          model._crdt.applyRestoreChange(noteId, occuredAt);
         case NoteTrashed():
-          _crdt.applyTrashChange(noteId, occuredAt);
+          model._crdt.applyTrashChange(noteId, occuredAt);
         default:
           break;
       }
@@ -72,17 +78,18 @@ class StatisticsState implements AggregateState<Object> {
   }
 
   @override
-  void onStreamDeleted(StreamDeletion deletion) {
+  void onStreamDeleted(model, deletion) {
     if (!allNotesFilter.doesMatchPath(deletion.streamPath)) return;
     final noteId = noteIdFromStream(deletion.streamPath);
-    _crdt._map.remove(noteId);
+    model._crdt._map.remove(noteId);
   }
 }
 
-Aggregate<Object, StatisticsState> statisticsAggregate() {
-  return Aggregate(
-    name: 'statistics',
-    filter: LogFilter.all(),
-    state: StatisticsState(),
-  );
+/// Current note counts maintained by [StatisticsProjection].
+class StatisticsModel {
+  final _MakeshiftCrdt _crdt = _MakeshiftCrdt({});
+
+  int get activeCount => _crdt.activeCount;
+
+  StatisticsModel._();
 }

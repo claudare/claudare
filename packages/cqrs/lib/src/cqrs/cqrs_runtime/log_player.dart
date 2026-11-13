@@ -19,6 +19,10 @@ class LogPlayer {
 
   const LogPlayer(this._eventStore);
 
+  /// Returns the latest matching log position, or -1 for an empty log.
+  Future<int> getLogPosition(LogFilter filter) =>
+      _eventStore.getLogPosition(filter);
+
   /// Creates a reader starting at the inclusive stream version.
   ///
   /// Includes erased records and stream deletion markers.

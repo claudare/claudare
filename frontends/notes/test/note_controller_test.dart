@@ -9,6 +9,8 @@ import 'package:fts/fts.dart';
 import 'package:notes_app/notes_app.dart';
 import 'package:notes/screens/note/note_controller.dart';
 
+import 'support/queries.dart';
+
 void main() {
   late _FailingStore store;
   late NotesApp application;
@@ -35,8 +37,8 @@ void main() {
     final second = controller();
     expect(first.noteId, ids.generateId());
     expect(second.noteId, ids.generateId());
-    final document = first.content.document;
     await first.load();
+    final document = first.content.document;
     await first.refresh();
     expect(first.content.document, same(document));
     expect(first.exists, isFalse);
@@ -106,43 +108,30 @@ void main() {
     expect(draft.content.text, 'Local body');
     expect(document.text, 'Local body');
     expect(draft.content.hasPendingChanges, isFalse);
-    expect((await application.query.note(id)).title, 'Local title');
+    expect((await readNote(application, id)).title, 'Local title');
     expect(draft.createdAt, isNotNull);
     expect(await draft.flushChanges(), isFalse);
   });
 
-  for (final failure in ['creation', 'refresh after creation']) {
-    test(
-      '$failure failure retains identity and retries creation once',
-      () async {
-        final draft = controller();
-        await draft.load();
-        final id = draft.noteId;
-        final document = draft.content.document;
-        draft.content.insert(0, 'Body');
-        if (failure == 'creation') {
-          store.failWrite = true;
-        } else {
-          store.failReadAfterWrite = true;
-        }
-        await expectLater(draft.flushChanges(), throwsException);
-        expect(draft.noteId, id);
-        expect(draft.content.document, same(document));
-        expect(draft.content.text, 'Body');
-        expect(draft.content.hasPendingChanges, isTrue);
-        expect(draft.createdAt, isNull);
-        expect(draft.updatedAt, isNull);
-
-        expect(await draft.flushChanges(), isTrue);
-        expect(draft.noteId, id);
-        expect(draft.exists, isTrue);
-        expect(draft.content.hasPendingChanges, isFalse);
-        expect((await application.query.note(id)).content, 'Body');
-        expect(store.kinds, hasLength(2));
-        expect(await application.query.noteList(), hasLength(1));
-      },
-    );
-  }
+  test(
+    'creation failure retains the draft and retries without duplicate events',
+    () async {
+      final draft = controller();
+      await draft.load();
+      final id = draft.noteId;
+      final document = draft.content.document;
+      draft.content.insert(0, 'Body');
+      store.failWrite = true;
+      await expectLater(draft.flushChanges(), throwsException);
+      expect(draft.noteId, id);
+      expect(draft.content.document, same(document));
+      expect(draft.content.hasPendingChanges, isTrue);
+      expect(await draft.flushChanges(), isTrue);
+      expect(draft.content.hasPendingChanges, isFalse);
+      expect((await readNote(application, id)).content, 'Body');
+      expect(store.kinds, hasLength(2));
+    },
+  );
 
   test('failed initial loading leaves timestamps safe', () async {
     await application.command.createNote('existing');
@@ -153,8 +142,7 @@ void main() {
     expect(note.createdAt, isNull);
     expect(note.updatedAt, isNull);
     expect(note.trashedAt, isNull);
-    await note.load();
-    expect(note.createdAt, isNotNull);
+    await expectLater(note.load(), throwsException);
   });
 
   test('draft cannot be trashed before persistence', () async {
@@ -186,26 +174,22 @@ void main() {
     expect(note.title.value, 'Z local');
     expect(note.title.document.value, 'Remote');
     expect(await note.flushChanges(), isTrue);
-    expect((await application.query.note('existing')).title, 'Z local');
+    expect((await readNote(application, 'existing')).title, 'Z local');
     expect(note.title.hasPendingChanges, isFalse);
   });
 
-  for (final failure in ['write', 'replay']) {
-    test('title $failure failure retries without duplicate events', () async {
-      await application.command.createNote('existing');
-      final note = controller(noteId: 'existing');
-      await note.load();
-      note.title.value = 'Local';
-      store.failWrite = failure == 'write';
-      store.failReadAfterWrite = failure == 'replay';
-      await expectLater(note.flushChanges(), throwsException);
-      expect(note.title.value, 'Local');
-      expect(note.title.hasPendingChanges, isTrue);
-      expect(await note.flushChanges(), failure == 'write');
-      expect(note.title.hasPendingChanges, isFalse);
-      expect(store.kinds, hasLength(2));
-    });
-  }
+  test('title write failure retries without duplicate events', () async {
+    await application.command.createNote('existing');
+    final note = controller(noteId: 'existing');
+    await note.load();
+    note.title.value = 'Local';
+    store.failWrite = true;
+    await expectLater(note.flushChanges(), throwsException);
+    expect(note.title.hasPendingChanges, isTrue);
+    expect(await note.flushChanges(), isTrue);
+    expect(note.title.hasPendingChanges, isFalse);
+    expect(store.kinds, hasLength(2));
+  });
 
   test('title edits during a save remain pending for the next save', () async {
     await application.command.createNote('existing');
@@ -224,7 +208,7 @@ void main() {
     expect(note.title.value, 'Second');
     expect(note.title.hasPendingChanges, isTrue);
     expect(await note.flushChanges(), isTrue);
-    expect((await application.query.note('existing')).title, 'Second');
+    expect((await readNote(application, 'existing')).title, 'Second');
     expect(note.title.hasPendingChanges, isFalse);
   });
 

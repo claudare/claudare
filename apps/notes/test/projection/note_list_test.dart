@@ -1,5 +1,5 @@
 import 'package:cqrs/cqrs_test_utils.dart';
-import 'package:notes_app/src/aggregate/note_list.dart';
+import 'package:notes_app/src/projection/note_list_projection.dart';
 import 'package:notes_app/src/event/note.dart';
 import 'package:test/test.dart';
 
@@ -9,7 +9,7 @@ void main() {
   final editedAt = DateTime.utc(2026, 1, 3);
   final trashedAt = DateTime.utc(2026, 1, 4);
 
-  NoteListState replayNotes() => AggregateTester(noteListAggregate())
+  Future<NoteListModel> replayNotes() => ProjectionTester(NoteListProjection())
       .withEvent('other/ignored', const NoteCreated(), occuredAt: firstAt)
       .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
       .withEvent('note/two', const NoteCreated(), occuredAt: secondAt)
@@ -21,27 +21,33 @@ void main() {
       .withEvent('note/two', const NoteTrashed(), occuredAt: trashedAt)
       .run();
 
-  test('collects note streams and counts active notes', () {
-    final state = replayNotes();
+  test('collects note streams and counts active notes', () async {
+    final state = await replayNotes();
 
-    expect(state.notes.keys, containsAll(['one', 'two']));
-    expect(state.notes, hasLength(2));
-    expect(state.notes['one']!.title, 'One');
-    expect(state.notes['two']!.trashedAt, trashedAt);
+    expect(
+      state.toSortedList(category: NoteCategory.all).map((n) => n.noteId),
+      containsAll(['one', 'two']),
+    );
+    expect(state.toSortedList(category: NoteCategory.all), hasLength(2));
+    expect(state.toSortedList().single.title, 'One');
+    expect(
+      state.toSortedList(category: NoteCategory.trashed).single.trashedAt,
+      trashedAt,
+    );
     expect(state.activeCount, 1);
   });
 
-  test('keys notes from the stream path', () {
-    final state = AggregateTester(noteListAggregate())
+  test('keys notes from the stream path', () async {
+    final state = await ProjectionTester(NoteListProjection())
         .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
         .run();
 
-    expect(state.notes.keys, ['one']);
-    expect(state.notes['one']!.noteId, 'one');
+    expect(state.toSortedList().map((n) => n.noteId), ['one']);
+    expect(state.toSortedList().single.noteId, 'one');
   });
 
-  test('filters active, trashed, and all notes', () {
-    final state = replayNotes();
+  test('filters active, trashed, and all notes', () async {
+    final state = await replayNotes();
 
     expect(state.toSortedList().map((note) => note.noteId), ['one']);
     expect(
@@ -56,8 +62,8 @@ void main() {
     );
   });
 
-  test('sorts chronologically by creation and update time', () {
-    final state = replayNotes();
+  test('sorts chronologically by creation and update time', () async {
+    final state = await replayNotes();
 
     expect(
       state
@@ -88,8 +94,8 @@ void main() {
     );
   });
 
-  test('restoring a note returns it to the active list', () {
-    final state = AggregateTester(noteListAggregate())
+  test('restoring a note returns it to the active list', () async {
+    final state = await ProjectionTester(NoteListProjection())
         .withEvent('note/one', const NoteCreated(), occuredAt: firstAt)
         .withEvent('note/one', const NoteTrashed(), occuredAt: secondAt)
         .withEvent('note/one', const NoteRestored(), occuredAt: editedAt)

@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cqrs/cqrs.dart';
 import 'package:flutter/foundation.dart';
 import 'package:crdt/crdt_text.dart';
 import 'package:crdt/crdt_string.dart';
@@ -6,27 +9,51 @@ import 'package:notes_app/notes_app.dart';
 class NoteController extends ChangeNotifier {
   final NotesApp application;
 
-  final NoteState _persisted;
+  NoteModel? _model;
+  NoteModel get _persisted => _model!;
+  late final LiveProjection<NoteModel, Object> _live;
+  StreamSubscription<NoteModel>? _subscription;
+  Future<void>? _initialization;
+  Exception? error;
+  final String noteId;
   final bool _isNewDraft;
   late final CrdtStringEditContext title;
   late final CrdtTextEditContext content;
   bool _isLoading = false;
   bool _disposed = false;
 
-  String get noteId => _persisted.noteId;
-
   NoteController(this.application, {String? noteId})
     : _isNewDraft = noteId == null,
-      _persisted = application.query.trackNote(
-        noteId ?? application.generateNoteId(),
-      ) {
+      noteId = noteId ?? application.generateNoteId() {
+    _live = application.query.liveNote(this.noteId);
+  }
+
+  Future<void> _initialize() async {
+    final model = await _live.latest();
+    if (_disposed) return;
+    _model = model;
     title = CrdtStringEditContext(
-      document: _persisted.titleDocument,
+      document: model.titleDocument,
       actorId: application.actor,
     );
     content = CrdtTextEditContext(
-      document: _persisted.contentDocument,
+      document: model.contentDocument,
       actorId: application.actor,
+    );
+    _subscription = _live.updates.listen(
+      (model) {
+        if (_disposed) return;
+        if (model.isDeleted || (!model.exists && !_isNewDraft)) {
+          error = Exception('Note not found');
+        }
+        _notify();
+      },
+      onError: (Object failure, StackTrace trace) {
+        if (failure is! Exception) Error.throwWithStackTrace(failure, trace);
+        if (_disposed) return;
+        error = failure;
+        _notify();
+      },
     );
   }
 
@@ -44,12 +71,12 @@ class NoteController extends ChangeNotifier {
 
   bool get isLoading => _isLoading;
   bool get hasPendingChanges =>
-      title.hasPendingChanges || content.hasPendingChanges;
-  bool get exists => _persisted.exists;
+      _model != null && (title.hasPendingChanges || content.hasPendingChanges);
+  bool get exists => _model?.exists ?? false;
   DateTime? get createdAt => exists ? _persisted.createdAt : null;
   DateTime? get updatedAt => exists ? _persisted.updatedAt : null;
-  DateTime? get trashedAt => _persisted.trashedAt;
-  bool get isTrashed => _persisted.isTrashed;
+  DateTime? get trashedAt => _model?.trashedAt;
+  bool get isTrashed => _model?.isTrashed ?? false;
 
   Future<LoadResolvedText> load() async {
     _isLoading = true;
@@ -118,8 +145,13 @@ class NoteController extends ChangeNotifier {
 
   Future<void> _refreshNote() async {
     try {
-      await application.query.catchupNote(_persisted);
-      if (!exists && !_isNewDraft) throw Exception('Note not found');
+      await (_initialization ??= _initialize());
+      if (_disposed) throw const ProjectionStoppedException();
+      if (error != null) throw error!;
+      await _live.latest();
+      if (_persisted.isDeleted || (!exists && !_isNewDraft)) {
+        throw Exception('Note not found');
+      }
     } finally {
       _notify();
     }
@@ -129,11 +161,23 @@ class NoteController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  Future<void> _close() async {
+    await _subscription?.cancel();
+    try {
+      await _live.stop();
+    } on Exception {
+      // Projection failures were delivered through loading or updates.
+    }
+  }
+
   @override
   void dispose() {
-    title.dispose();
-    content.dispose();
     _disposed = true;
+    if (_model != null) {
+      title.dispose();
+      content.dispose();
+    }
+    unawaited(_close());
     super.dispose();
   }
 }

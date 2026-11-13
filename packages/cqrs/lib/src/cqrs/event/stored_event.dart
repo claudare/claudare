@@ -1,7 +1,7 @@
 import 'package:cqrs/src/cqrs/event/encoded_event.dart';
 import 'package:cqrs/src/cqrs/event/event_id.dart';
 
-/// [StoredEvent] is an event in the log which is used for aggregate replays.
+/// [StoredEvent] is an event in the log used for projection replays.
 /// It is returned for both log and stream replays.
 class StoredEvent {
   final String streamPath;

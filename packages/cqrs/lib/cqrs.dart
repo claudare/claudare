@@ -28,10 +28,6 @@ export 'src/cqrs/command/command_dependency_builder.dart';
 export 'src/cqrs/command/command_context_api.dart';
 export 'src/cqrs/command/command_context.dart' show CommandStream;
 
-// aggregate
-export 'src/cqrs/aggregate.dart';
-export 'src/cqrs/snapshot.dart';
-
 // projection
 export 'src/cqrs/projection.dart';
 

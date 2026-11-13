@@ -17,6 +17,8 @@ import 'package:sync/sync.dart';
 import 'setup_test_helpers.dart';
 import '../sync_test_transport.dart';
 
+import '../support/queries.dart';
+
 void main() {
   testWidgets(
     'saving transport settings replaces replication and preserves Notes',
@@ -55,7 +57,7 @@ void main() {
         same(bootstrap.syncCoordinator),
       );
       expect(NotesAppProvider.of(context), same(application));
-      expect(await application.query.noteList(), hasLength(1));
+      expect(await readWidgetNoteList(tester, application), hasLength(1));
       expect(await system.kv.getString(NoteSystem.groupKey), 'changed');
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
