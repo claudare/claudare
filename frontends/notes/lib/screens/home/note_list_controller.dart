@@ -1,117 +1,79 @@
 import 'dart:async';
 
-import 'package:common/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:notes_app/notes_app.dart';
 
-/// Loads either active or trashed notes in the selected order.
+/// Provides live notes filtered by category and sorted in the selected order.
 class NoteListController extends ChangeNotifier {
   final NotesApp application;
 
-  List<NoteModel> _noteData = [];
   NoteCategory _category = NoteCategory.active;
   NoteSortOrder _order = NoteSortOrder.updatedAtDescending;
-  bool _isLoading = false;
-  Exception? _loadError;
-  bool _disposed = false;
-  late final AsyncTrailingRunner _reloadRunner;
   late final _projection = application.query.liveNoteList();
-  StreamSubscription<NoteListModel>? _subscription;
-  Future<void>? _initialization;
 
   NoteListController(this.application) {
-    _reloadRunner = AsyncTrailingRunner(_reloadOnce);
+    // Loading and replay failures are delivered through updates.
+    _projection.latest().ignore();
   }
 
-  List<NoteModel> get noteData => _noteData;
+  /// Emits filtered notes when the data, category, or sort order changes.
+  late final Stream<List<NoteModel>> updates = Stream.multi((controller) {
+    void selectionChanged() {
+      final notes = value;
+      if (notes != null) controller.add(notes);
+    }
+
+    addListener(selectionChanged);
+    final subscription = _projection.updates.listen(
+      (model) => controller.add(_toSortedList(model)),
+      onError: controller.addError,
+      onDone: () {
+        removeListener(selectionChanged);
+        unawaited(controller.close());
+      },
+    );
+    controller.onCancel = () {
+      removeListener(selectionChanged);
+      return subscription.cancel();
+    };
+  }, isBroadcast: true);
+
+  List<NoteModel>? get value {
+    final model = _projection.value;
+    return model == null ? null : _toSortedList(model);
+  }
+
   NoteCategory get category => _category;
   NoteSortOrder get order => _order;
-  bool get isLoading => _isLoading;
-  Exception? get loadError => _loadError;
 
-  Future<void> setCategory(NoteCategory category) async {
+  List<NoteModel> _toSortedList(NoteListModel model) =>
+      model.toSortedList(category: _category, order: _order);
+
+  void setCategory(NoteCategory category) {
     if (category == NoteCategory.all) {
       throw ArgumentError.value(category, 'category', 'Choose Notes or Trash');
     }
     if (_category == category) return;
 
     _category = category;
-    _noteData = [];
-
-    await reloadNotes();
+    notifyListeners();
   }
 
-  Future<void> setOrder(NoteSortOrder order) async {
+  void setOrder(NoteSortOrder order) {
     if (_order == order) return;
 
     _order = order;
-    _noteData = [];
-
-    await reloadNotes();
-  }
-
-  Future<void> reloadNotes() => _reloadRunner.run();
-
-  Future<void> _reloadOnce() async {
-    _isLoading = true;
-    _notify();
-
-    try {
-      await (_initialization ??= _initialize());
-      if (_disposed) return;
-      await _projection.latest();
-      if (_disposed) return;
-      _rebuild(_projection.value!);
-      _loadError = null;
-    } on Exception catch (error) {
-      if (!_disposed) _loadError = error;
-    } finally {
-      _isLoading = false;
-      _notify();
-    }
-  }
-
-  Future<void> _initialize() async {
-    final model = await _projection.latest();
-    if (_disposed) return;
-    _rebuild(model);
-    _subscription = _projection.updates.listen(
-      (model) {
-        if (_disposed) return;
-        _rebuild(model);
-        _notify();
-      },
-      onError: (Object failure, StackTrace trace) {
-        if (failure is! Exception) Error.throwWithStackTrace(failure, trace);
-        if (_disposed) return;
-        _loadError = failure;
-        _notify();
-      },
-    );
-  }
-
-  void _rebuild(NoteListModel model) {
-    _noteData = model.toSortedList(category: _category, order: _order);
+    notifyListeners();
   }
 
   Future<void> deleteNotes(List<String> noteIds) async {
-    try {
-      for (final noteId in noteIds) {
-        await application.command.trashNote(noteId);
-      }
-    } finally {
-      await reloadNotes();
+    for (final noteId in noteIds) {
+      await application.command.trashNote(noteId);
     }
-  }
-
-  void _notify() {
-    if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
-    _disposed = true;
-    unawaited(_subscription?.cancel());
     unawaited(_stop());
     super.dispose();
   }
@@ -120,7 +82,7 @@ class NoteListController extends ChangeNotifier {
     try {
       await _projection.stop();
     } on Exception {
-      // Loading and update failures are presented through loadError.
+      // Loading and replay failures were delivered through updates.
     }
   }
 }

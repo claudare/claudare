@@ -45,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchText.clear();
     _searchController = NoteSearchController(application);
     _searchController.addListener(_onControllerChanged);
-    unawaited(_controller.reloadNotes());
   }
 
   void _onControllerChanged() {
@@ -67,14 +66,12 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => NoteScreen(noteId: noteId)));
-    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _openSettings() async {
     _clearSearch();
     await Navigator.of(context)
         .push(MaterialPageRoute(builder: (context) => SettingsScreen()));
-    if (mounted) await _controller.reloadNotes();
   }
 
   Future<void> _newNote() async {
@@ -90,6 +87,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return StreamBuilder<List<NoteModel>>(
+      key: ObjectKey(_controller),
+      stream: _controller.updates,
+      initialData: _controller.value,
+      builder: (context, snapshot) {
+        final error = snapshot.error;
+        if (error != null && error is! Exception) {
+          Error.throwWithStackTrace(
+            error,
+            snapshot.stackTrace ?? StackTrace.current,
+          );
+        }
+        return _buildHome(snapshot);
+      },
+    );
+  }
+
+  Widget _buildHome(AsyncSnapshot<List<NoteModel>> snapshot) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= LayoutBreakpoints.wide;
@@ -119,14 +134,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     )
                   : null,
             ),
-            Expanded(child: _buildContent(wide, drawerOpen)),
+            Expanded(child: _buildContent(wide, drawerOpen, snapshot)),
           ],
         );
       },
     );
   }
 
-  Widget _buildContent(bool wide, bool drawerOpen) {
+  Widget _buildContent(
+    bool wide,
+    bool drawerOpen,
+    AsyncSnapshot<List<NoteModel>> snapshot,
+  ) {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -151,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
           PopupMenuButton<NoteSortOrder>(
             tooltip: 'Sort notes',
             icon: const Icon(Icons.sort),
-            enabled: !_controller.isLoading && !_searchController.hasQuery,
+            enabled: snapshot.hasData && !_searchController.hasQuery,
             onSelected: _controller.setOrder,
             itemBuilder: (context) => [
               for (final order in [
@@ -180,7 +199,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: !wide || drawerOpen
           ? Drawer(child: _buildMenu(closeDrawer: true))
           : null,
-      body: _buildResults(),
+      body: _buildResults(snapshot),
     );
   }
 
@@ -190,23 +209,22 @@ class _HomeScreenState extends State<HomeScreen> {
     FocusScope.of(context).focusedChild?.unfocus();
   }
 
-  Widget _buildResults() {
+  Widget _buildResults(AsyncSnapshot<List<NoteModel>> snapshot) {
     if (_searchController.hasQuery) {
       return NoteSearchView(controller: _searchController, openNote: _openNote);
     }
-    return _buildNoteList();
+    return _buildNoteList(snapshot);
   }
 
-  Widget _buildNoteList() {
-    if (_controller.loadError != null) {
-      return Center(
-        child: Text('Error loading notes: ${_controller.loadError}'),
-      );
+  Widget _buildNoteList(AsyncSnapshot<List<NoteModel>> snapshot) {
+    if (snapshot.hasError) {
+      return Center(child: Text('Error loading notes: ${snapshot.error}'));
     }
-    if (_controller.isLoading && _controller.noteData.isEmpty) {
+    final notes = snapshot.data;
+    if (notes == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_controller.noteData.isEmpty) {
+    if (notes.isEmpty) {
       return Center(
         child: Text(
           _controller.category == NoteCategory.trashed
@@ -216,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
     return NoteList(
-      noteData: _controller.noteData,
+      noteData: notes,
       order: _controller.order,
       openNote: _openNote,
     );
@@ -239,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 if (closeDrawer) _scaffoldKey.currentState?.closeDrawer();
                 _clearSearch();
-                unawaited(_controller.setCategory(category));
+                _controller.setCategory(category);
               },
             ),
           const Divider(),

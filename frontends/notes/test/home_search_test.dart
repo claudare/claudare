@@ -93,6 +93,24 @@ void main() {
     );
   });
 
+  testWidgets('clearing search immediately shows changes made during search', (
+    tester,
+  ) async {
+    final fixture = SearchTestApp();
+    await fixture.write('one', 'note', title: 'Original');
+    await _pumpHome(tester, fixture);
+    await _search(tester, 'note');
+
+    await fixture.application.command.updateNoteTitle('one', 'Updated');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pump();
+
+    expect(find.byType(NoteSearchView), findsNothing);
+    expect(_titles(tester), ['Updated']);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
   for (final section in ['Notes', 'Trash']) {
     testWidgets('selecting $section clears the query', (tester) async {
       final fixture = SearchTestApp();
