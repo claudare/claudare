@@ -45,6 +45,49 @@ void main() {
     expect(model.events.map((e) => e.logPosition), [0, 2]);
   });
 
+  test('passes stream deletion metadata once across runs', () async {
+    final tester = ProjectionTester(_RecordingProjection())
+      ..withEvent('account/one', 'opened', occuredAt: occuredAt)
+      ..withStreamDeleted('account/one', actor: 'b', occuredAt: occuredAt);
+
+    await tester.run();
+    final model = await tester.run();
+
+    expect(model.deletions, hasLength(1));
+    final deletion = model.deletions.single;
+    expect(deletion.streamPath, 'account/one');
+    expect(deletion.actor, 'b');
+    expect(deletion.occuredAt, occuredAt);
+    expect(deletion.logPosition, 1);
+  });
+
+  test('ignores stream deletions outside the projection filter', () async {
+    final model = await ProjectionTester(_RecordingProjection())
+        .withStreamDeleted('other/one', occuredAt: occuredAt)
+        .run();
+
+    expect(model.deletions, isEmpty);
+  });
+
+  test('waits for an asynchronous deletion handler before returning', () async {
+    final gate = AsyncGate();
+    addTearDown(gate.release);
+    final projection = _RecordingProjection()..beforeDelete = gate.wait;
+    var completed = false;
+    final result = ProjectionTester(projection)
+        .withStreamDeleted('account/one', occuredAt: occuredAt)
+        .run()
+        .then((model) {
+          completed = true;
+          return model;
+        });
+
+    await gate.entered.future;
+    expect(completed, isFalse);
+    gate.release();
+    expect((await result).deletions.single.streamPath, 'account/one');
+  });
+
   test('waits for loading before applying events', () async {
     final gate = AsyncGate();
     addTearDown(gate.release);
@@ -79,6 +122,7 @@ void main() {
 
 final class _RecordingModel {
   final events = <EventEnvelope<String>>[];
+  final deletions = <StreamDeletion>[];
 }
 
 final class _RecordingProjection
@@ -87,6 +131,7 @@ final class _RecordingProjection
   int loads = 0;
   Future<void> Function()? beforeLoad;
   Future<void> Function()? beforeApply;
+  Future<void> Function()? beforeDelete;
 
   @override
   String get name => 'recording';
@@ -111,5 +156,11 @@ final class _RecordingProjection
   }
 
   @override
-  void onStreamDeleted(_RecordingModel model, StreamDeletion deletion) {}
+  Future<void> onStreamDeleted(
+    _RecordingModel model,
+    StreamDeletion deletion,
+  ) async {
+    await beforeDelete?.call();
+    model.deletions.add(deletion);
+  }
 }
