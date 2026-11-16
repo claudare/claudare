@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
@@ -63,22 +62,6 @@ void main() {
     ]);
   });
 
-  test('keeps bytes until optimize runs when not running', () async {
-    await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
-    final command = _PausedDelete(app, 'blob-id');
-
-    final deletion = runtime.execute(command);
-    await command.staged.future;
-    expect(await store.get('blob-id'), [1]);
-
-    command.release.complete();
-    await deletion;
-    expect(await store.get('blob-id'), [1]);
-
-    await app.optimize();
-    expect(await store.get('blob-id'), isNull);
-  });
-
   test('failed deletion leaves the stream and bytes live', () async {
     await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
 
@@ -91,7 +74,6 @@ void main() {
       isFalse,
     );
 
-    await app.optimize();
     expect(await store.get('blob-id'), [1]);
   });
 
@@ -121,140 +103,6 @@ void main() {
         .toList();
     expect(deletedEvents.first.encodedEvent.isEventErased, isTrue);
   });
-
-  test(
-    'optimize removes failed writes and preserves committed blobs',
-    () async {
-      await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
-      final failedRuntime = CqrsTestRuntime(
-        idGenerator: IdGeneratorStatic('orphan'),
-      );
-      final failedApp = BlobApp(runtime: failedRuntime, blobStore: store);
-      await expectLater(
-        failedRuntime.execute(_FailAfterSave(failedApp)),
-        throwsException,
-      );
-
-      await app.optimize();
-
-      expect(await store.listIds(), ['blob-id']);
-      expect(await app.get('blob-id'), [1]);
-    },
-  );
-
-  test('listing failure leaves blobs untouched', () async {
-    await store.save('orphan', Uint8List.fromList([1]));
-    final failing = BlobApp(
-      runtime: CqrsTestRuntime(),
-      blobStore: _FailingStore(store, failList: true),
-    );
-
-    await expectLater(failing.optimize(), throwsException);
-    expect(await store.get('orphan'), [1]);
-  });
-
-  test('resolution failure leaves blobs untouched', () async {
-    await store.save('orphan', Uint8List.fromList([1]));
-    await eventStore.addStoredCommand(
-      StoredCommand(
-        commandId: const CommandId('other', 1),
-        dependency: CommandDependency(),
-        occuredAt: DateTime.utc(2026),
-        events: [
-          StoredCommandEvent(
-            streamPath: '_blob/unknown',
-            encodedEvent: EncodedEvent(kind: 'unknown', bytes: Uint8List(0)),
-            occuredAt: DateTime.utc(2026),
-          ),
-        ],
-      ),
-    );
-
-    await expectLater(app.optimize(), throwsException);
-    expect(await store.get('orphan'), [1]);
-  });
-
-  test('deletion failure propagates', () async {
-    await store.save('orphan', Uint8List.fromList([1]));
-    final failing = BlobApp(
-      runtime: CqrsTestRuntime(),
-      blobStore: _FailingStore(store),
-    );
-
-    await expectLater(failing.optimize(), throwsException);
-  });
-
-  test('events in other streams do not preserve blobs', () async {
-    await store.save('orphan', Uint8List.fromList([1]));
-    await runtime.seedEvents([
-      TestEvent(
-        actor: 'actor',
-        stream: 'other/orphan',
-        event: const BlobCreated(),
-        occuredAt: DateTime.utc(2026),
-      ),
-    ]);
-
-    await app.optimize();
-    expect(await store.get('orphan'), isNull);
-  });
-
-  test('optimize preserves active blobs and deletes unused bytes', () async {
-    await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
-    await runtime.seedEvents([
-      TestEvent(
-        actor: 'actor',
-        stream: '_blob/deleted',
-        event: const BlobCreated(),
-        occuredAt: DateTime.utc(2026),
-      ),
-    ]);
-    await store.save('deleted', Uint8List.fromList([2]));
-    await store.save('orphan', Uint8List.fromList([3]));
-    await runtime.execute(_DeleteBlob(app, 'deleted'));
-
-    await app.optimize();
-
-    expect(await store.listIds(), ['blob-id']);
-    expect(await store.get('blob-id'), [1]);
-    expect(await store.get('deleted'), isNull);
-    expect(await store.get('orphan'), isNull);
-  });
-}
-
-final class _FailingStore implements BlobStore {
-  @override
-  Stream<String> get availableBlobs => store.availableBlobs;
-
-  final BlobStore store;
-  final bool failList;
-  _FailingStore(this.store, {this.failList = false});
-
-  @override
-  Future<List<String>> listIds() async {
-    if (failList) throw Exception('list failed');
-    return store.listIds();
-  }
-
-  @override
-  Future<void> delete(String id) async => throw Exception('delete failed');
-
-  @override
-  Future<Uint8List?> get(String id) => store.get(id);
-
-  @override
-  Future<void> save(String id, Uint8List data) => store.save(id, data);
-}
-
-final class _FailAfterSave implements Command {
-  final BlobApp app;
-  _FailAfterSave(this.app);
-
-  @override
-  Future<void> handle(CommandContextApi ctx) async {
-    await app.integrate(ctx).save(Uint8List.fromList([2]));
-    throw Exception('command failed');
-  }
 }
 
 final class _DeleteBlob implements Command {
@@ -277,22 +125,6 @@ final class _FailAfterDelete implements Command {
   Future<void> handle(CommandContextApi ctx) async {
     await app.integrate(ctx).delete(id);
     throw Exception('command failed');
-  }
-}
-
-final class _PausedDelete implements Command {
-  final BlobApp app;
-  final String id;
-  final staged = Completer<void>();
-  final release = Completer<void>();
-
-  _PausedDelete(this.app, this.id);
-
-  @override
-  Future<void> handle(CommandContextApi ctx) async {
-    await app.integrate(ctx).delete(id);
-    staged.complete();
-    await release.future;
   }
 }
 

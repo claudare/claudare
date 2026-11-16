@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
+import 'package:blob/src/blob_cleanup_projection.dart';
 import 'package:blob/src/blob_event.dart';
-import 'package:blob/src/blob_index_projection.dart';
 import 'package:blob/src/path.dart';
 import 'package:cqrs/cqrs.dart';
 
@@ -44,75 +44,16 @@ class BlobCqrsIntegration implements BlobWriter {
 
 /// Manages blob commands and erases locally stored bytes after deletion commits.
 class BlobApp implements BlobReader {
-  final CqrsRuntime _runtime;
   final BlobStore _blobStore;
-  StreamIterator<void>? _changes;
-  Future<void>? _running;
-  bool _closed = false;
+  late final LiveProjection<Object, BlobEvent> _cleanup;
 
-  BlobApp({required this._runtime, required this._blobStore}) {
-    _runtime.eventRegistry.add(const BlobCreatedCodec());
+  BlobApp({required CqrsRuntime runtime, required this._blobStore}) {
+    runtime.eventRegistry.add(const BlobCreatedCodec());
+    _cleanup = runtime.liveProjection(BlobCleanupProjection(_blobStore));
   }
 
-  BlobCqrsIntegration integrate(CommandContextApi ctx) {
+  BlobWriter integrate(CommandContextApi ctx) {
     return BlobCqrsIntegration(ctx: ctx, blobStore: _blobStore);
-  }
-
-  /// Starts once, processing existing and future committed blob deletions.
-  /// Completes when [close] stops it, or fails with a read or deletion error.
-  Future<void> run() {
-    if (_running != null) throw StateError('BlobApp already started');
-    final filter = LogFilter.startsWith(blobStream(''));
-    final changes = StreamIterator<void>(
-      Stream<void>.multi((controller) {
-        final subscription = _runtime.logPlayer
-            .subscribe(filter)
-            .listen(
-              controller.add,
-              onError: controller.addError,
-              onDone: controller.close,
-            );
-        controller.onCancel = subscription.cancel;
-        // Subscribe before the initial scan so concurrent commits are observed.
-        controller.add(null);
-      }),
-    );
-    _changes = changes;
-    return _running = _eraseDeletedBlobs(filter, changes);
-  }
-
-  Future<void> _eraseDeletedBlobs(
-    LogFilter filter,
-    StreamIterator<void> changes,
-  ) async {
-    var fromPosition = 0;
-    try {
-      while (await changes.moveNext()) {
-        if (_closed) return;
-        final events = _runtime.logPlayer.logReader(
-          filter,
-          fromPosition: fromPosition,
-        );
-        await for (final event in events) {
-          if (_closed) return;
-          if (event.encodedEvent.isStreamDeleted) {
-            await _blobStore.delete(blobIdFromStream(event.streamPath));
-          }
-          fromPosition = event.position + 1;
-        }
-      }
-    } finally {
-      await changes.cancel();
-    }
-  }
-
-  /// Stops listening and waits for an active deletion. Propagates [run] errors.
-  Future<void> close() async {
-    final running = _running;
-    if (running == null) throw StateError('BlobApp has not started');
-    _closed = true;
-    await _changes!.cancel();
-    await running;
   }
 
   @override
@@ -120,14 +61,14 @@ class BlobApp implements BlobReader {
     return _blobStore.get(id);
   }
 
-  /// Deletes unreferenced local blobs. The runtime must be idle while this runs.
-  Future<void> optimize() async {
-    final storedIds = (await _blobStore.listIds()).toSet();
-    final blobs = await _runtime.resolveProjection(BlobIndexProjection());
-    final unused = storedIds.difference(blobs.activeIds);
+  /// Runs deletion cleanup until stopped or the event source closes.
+  Future<void> run() async {
+    await _cleanup.latest();
+    await _cleanup.done;
+  }
 
-    for (final id in unused) {
-      await _blobStore.delete(id);
-    }
+  /// Permanently stops cleanup and waits for active work.
+  Future<void> stop() async {
+    await _cleanup.stop();
   }
 }

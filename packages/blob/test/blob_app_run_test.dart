@@ -40,9 +40,11 @@ void main() {
           runtime.execute(_Command((ctx) => app.integrate(ctx).delete(id)));
 
       void start() {
-        final running = app.run();
+        final running = app.run().onError<ProjectionStoppedException>(
+          (_, _) {},
+        );
         addTearDown(() async {
-          await app.close();
+          await app.stop();
           await running;
         });
       }
@@ -175,63 +177,54 @@ void main() {
         expect(store.deleteCalls, ['one']);
         release.complete();
         await store.deleted('three');
-        await app.close();
+        await app.stop();
 
         expect(store.deleteCalls, ['one', 'two', 'three']);
       });
 
-      test(
-        'close waits for the active deletion and stops later work',
-        () async {
-          await seed('one');
-          await seed('two');
-          final started = Completer<void>();
-          final release = Completer<void>();
-          store.beforeDelete = (_) async {
-            started.complete();
-            await release.future;
-          };
-          start();
-          addTearDown(() {
-            if (!release.isCompleted) release.complete();
-          });
-          await delete('one');
-          await started.future;
+      test('stop waits for the active deletion and stops later work', () async {
+        await seed('one');
+        await seed('two');
+        final started = Completer<void>();
+        final release = Completer<void>();
+        store.beforeDelete = (_) async {
+          started.complete();
+          await release.future;
+        };
+        start();
+        addTearDown(() {
+          if (!release.isCompleted) release.complete();
+        });
+        await delete('one');
+        await started.future;
 
-          var closed = false;
-          final closing = app.close().then((_) => closed = true);
-          await delete('two');
-          expect(closed, isFalse);
-          release.complete();
-          await closing;
+        var closed = false;
+        final closing = app.stop().then((_) => closed = true);
+        await delete('two');
+        expect(closed, isFalse);
+        release.complete();
+        await closing;
 
-          expect(await app.get('one'), isNull);
-          expect(await app.get('two'), [1]);
-          expect(store.deleteCalls, ['one']);
-        },
-      );
+        expect(await app.get('one'), isNull);
+        expect(await app.get('two'), [1]);
+        expect(store.deleteCalls, ['one']);
+      });
 
-      test('reports deletion failures through run and close', () async {
+      test('reports deletion failures through run and stop', () async {
         await seed('id');
         await delete('id');
         final failure = Exception('delete failed');
         store.beforeDelete = (_) async => throw failure;
 
         await expectLater(app.run(), throwsA(same(failure)));
-        await expectLater(app.close(), throwsA(same(failure)));
+        await expectLater(app.stop(), throwsA(same(failure)));
 
         expect(await app.get('id'), [1]);
-      });
-
-      test('rejects a second run', () async {
-        start();
-
-        expect(app.run, throwsStateError);
       });
     });
   }
 
-  test('reports log read failures through run and close', () async {
+  test('reports log read failures through run and stop', () async {
     final events = _FailingEventStore();
     final app = BlobApp(
       runtime: CqrsTestRuntime(eventStore: events),
@@ -239,7 +232,7 @@ void main() {
     );
 
     await expectLater(app.run(), throwsA(same(events.failure)));
-    await expectLater(app.close(), throwsA(same(events.failure)));
+    await expectLater(app.stop(), throwsA(same(events.failure)));
   });
 }
 
