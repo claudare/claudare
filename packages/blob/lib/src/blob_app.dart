@@ -6,32 +6,56 @@ import 'package:blob/src/blob_event.dart';
 import 'package:blob/src/blobs_projection.dart';
 import 'package:blob/src/path.dart';
 import 'package:cqrs/cqrs.dart';
-import 'package:id_generator/id_generator.dart';
 
 abstract interface class BlobWriter {
-  Future<String> save(CommandContextApi ctx, Uint8List data);
-  Future<void> delete(CommandContextApi ctx, String id);
+  Future<String> save(Uint8List data);
+  Future<void> delete(String id);
 }
 
 abstract interface class BlobReader {
   Future<Uint8List?> get(String id);
 }
 
+class BlobCqrsIntegration implements BlobWriter {
+  final CommandContextApi _ctx;
+  final BlobStore _blobStore;
+
+  const BlobCqrsIntegration({required this._ctx, required this._blobStore});
+
+  @override
+  Future<void> delete(String id) async {
+    final stream = _ctx.stream(blobStream(id));
+    await stream.delete();
+  }
+
+  @override
+  Future<String> save(Uint8List data) async {
+    final id = _ctx.generateId();
+
+    await _blobStore.save(id, data);
+
+    final stream = _ctx.stream(blobStream(id));
+    await stream.mustNotExist();
+
+    stream.append(BlobCreated());
+    return id;
+  }
+}
+
 /// Manages blob commands and erases locally stored bytes after deletion commits.
-class BlobApp implements BlobReader, BlobWriter {
+class BlobApp implements BlobReader {
   final CqrsRuntime _runtime;
   final BlobStore _blobStore;
-  final IdGenerator _idGenerator;
   StreamIterator<void>? _changes;
   Future<void>? _running;
   bool _closed = false;
 
-  BlobApp({
-    required this._runtime,
-    required this._blobStore,
-    IdGenerator? idGenerator,
-  }) : _idGenerator = idGenerator ?? IdGeneratorRandom() {
+  BlobApp({required this._runtime, required this._blobStore}) {
     _runtime.eventRegistry.add(const BlobCreatedCodec());
+  }
+
+  BlobCqrsIntegration integrate(CommandContextApi ctx) {
+    return BlobCqrsIntegration(ctx: ctx, blobStore: _blobStore);
   }
 
   /// Starts once, processing existing and future committed blob deletions.
@@ -94,25 +118,6 @@ class BlobApp implements BlobReader, BlobWriter {
   @override
   Future<Uint8List?> get(String id) {
     return _blobStore.get(id);
-  }
-
-  @override
-  Future<void> delete(CommandContextApi ctx, String id) async {
-    final stream = ctx.stream(blobStream(id));
-    await stream.delete();
-  }
-
-  @override
-  Future<String> save(CommandContextApi ctx, Uint8List data) async {
-    final id = _idGenerator.generateId();
-
-    await _blobStore.save(id, data);
-
-    final stream = ctx.stream(blobStream(id));
-    await stream.mustNotExist();
-
-    stream.append(BlobCreated());
-    return id;
   }
 
   /// Deletes unreferenced local blobs. The runtime must be idle while this runs.

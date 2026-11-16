@@ -37,7 +37,7 @@ void main() {
       }
 
       Future<void> delete(String id) =>
-          runtime.execute(_Command((ctx) => app.delete(ctx, id)));
+          runtime.execute(_Command((ctx) => app.integrate(ctx).delete(id)));
 
       void start() {
         final running = app.run();
@@ -58,7 +58,7 @@ void main() {
 
         final deleting = runtime.execute(
           _Command((ctx) async {
-            await app.delete(ctx, 'id');
+            await app.integrate(ctx).delete('id');
             staged.complete();
             await release.future;
           }),
@@ -138,7 +138,7 @@ void main() {
         await expectLater(
           runtime.execute(
             _Command((ctx) async {
-              await app.delete(ctx, 'kept');
+              await app.integrate(ctx).delete('kept');
               throw Exception('command failed');
             }),
           ),

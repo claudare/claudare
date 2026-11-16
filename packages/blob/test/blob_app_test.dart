@@ -17,13 +17,12 @@ void main() {
 
   setUp(() {
     eventStore = MemoryEventStore();
-    runtime = CqrsTestRuntime(eventStore: eventStore);
-    store = MemoryBlobStore();
-    app = BlobApp(
-      runtime: runtime,
-      blobStore: store,
+    runtime = CqrsTestRuntime(
+      eventStore: eventStore,
       idGenerator: IdGeneratorStatic('blob-id'),
     );
+    store = MemoryBlobStore();
+    app = BlobApp(runtime: runtime, blobStore: store);
   });
 
   test('saves and retrieves bytes using the generated ID', () async {
@@ -127,13 +126,12 @@ void main() {
     'optimize removes failed writes and preserves committed blobs',
     () async {
       await runtime.execute(_SaveBlob(app, Uint8List.fromList([1])));
-      final failedApp = BlobApp(
-        runtime: CqrsTestRuntime(),
-        blobStore: store,
+      final failedRuntime = CqrsTestRuntime(
         idGenerator: IdGeneratorStatic('orphan'),
       );
+      final failedApp = BlobApp(runtime: failedRuntime, blobStore: store);
       await expectLater(
-        runtime.execute(_FailAfterSave(failedApp)),
+        failedRuntime.execute(_FailAfterSave(failedApp)),
         throwsException,
       );
 
@@ -254,7 +252,7 @@ final class _FailAfterSave implements Command {
 
   @override
   Future<void> handle(CommandContextApi ctx) async {
-    await app.save(ctx, Uint8List.fromList([2]));
+    await app.integrate(ctx).save(Uint8List.fromList([2]));
     throw Exception('command failed');
   }
 }
@@ -266,7 +264,7 @@ final class _DeleteBlob implements Command {
   _DeleteBlob(this.app, this.id);
 
   @override
-  Future<void> handle(CommandContextApi ctx) => app.delete(ctx, id);
+  Future<void> handle(CommandContextApi ctx) => app.integrate(ctx).delete(id);
 }
 
 final class _FailAfterDelete implements Command {
@@ -277,7 +275,7 @@ final class _FailAfterDelete implements Command {
 
   @override
   Future<void> handle(CommandContextApi ctx) async {
-    await app.delete(ctx, id);
+    await app.integrate(ctx).delete(id);
     throw Exception('command failed');
   }
 }
@@ -292,7 +290,7 @@ final class _PausedDelete implements Command {
 
   @override
   Future<void> handle(CommandContextApi ctx) async {
-    await app.delete(ctx, id);
+    await app.integrate(ctx).delete(id);
     staged.complete();
     await release.future;
   }
@@ -307,6 +305,6 @@ final class _SaveBlob implements Command {
 
   @override
   Future<void> handle(CommandContextApi ctx) async {
-    id = await app.save(ctx, data);
+    id = await app.integrate(ctx).save(data);
   }
 }
