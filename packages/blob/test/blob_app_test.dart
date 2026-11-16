@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:blob/blob.dart';
 import 'package:blob/src/blob_event.dart';
-import 'package:blob/src/blobs_projection.dart';
+import 'package:blob/src/blob_index_projection.dart';
 import 'package:cqrs/cqrs.dart';
 import 'package:cqrs/cqrs_test_utils.dart';
 import 'package:id_generator/id_generator.dart';
@@ -112,7 +112,7 @@ void main() {
     ]);
     await runtime.execute(_DeleteBlob(app, 'deleted'));
 
-    final state = await runtime.resolveProjection(BlobsProjection());
+    final state = await runtime.resolveProjection(BlobIndexProjection());
 
     expect(state.activeIds, {'active'});
     expect(state.deletedIds, {'deleted'});

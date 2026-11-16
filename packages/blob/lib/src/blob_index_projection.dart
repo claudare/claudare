@@ -5,16 +5,17 @@ import 'package:blob/src/path.dart';
 import 'package:cqrs/cqrs.dart';
 
 /// Tracks active and permanently deleted blob stream IDs.
-final class BlobsProjection implements Projection<BlobsModel, BlobEvent> {
+final class BlobIndexProjection
+    implements Projection<BlobIndexModel, BlobEvent> {
   @override
-  String get name => 'blobs-status';
+  String get name => 'blob-index';
 
   @override
   LogFilter get filter => LogFilter.startsWith(blobStream(''));
 
   @override
-  FutureOr<ProjectionLoad<BlobsModel>> load() =>
-      ProjectionLoad.initial(BlobsModel._());
+  FutureOr<ProjectionLoad<BlobIndexModel>> load() =>
+      ProjectionLoad.initial(BlobIndexModel._());
 
   @override
   void apply(model, envelope) {
@@ -32,9 +33,9 @@ final class BlobsProjection implements Projection<BlobsModel, BlobEvent> {
 }
 
 /// Active and permanently deleted blob identifiers.
-class BlobsModel {
+class BlobIndexModel {
   final Set<String> activeIds = {};
   final Set<String> deletedIds = {};
 
-  BlobsModel._();
+  BlobIndexModel._();
 }
