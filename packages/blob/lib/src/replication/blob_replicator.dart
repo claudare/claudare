@@ -72,6 +72,9 @@ class BlobReplicator {
 
   void _enqueue(Future<void> Function() action) {
     if (_closed) return;
+    // this is messy.
+    // TODO: rework they queue to not infinitely chain the promises.
+    // or whole async queue model should be rethought.
     _work = _work.then((_) async {
       if (_closed) return;
       try {
